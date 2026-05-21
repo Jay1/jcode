@@ -4,10 +4,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Emanuele-web04/dpcode",
+    "url": "https://github.com/Jay1/jcode",
     "directory": "apps/server"
   },
   "bin": {
+    "jcode": "./dist/index.mjs",
     "t3": "./dist/index.mjs"
   },
   "files": [

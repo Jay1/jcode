@@ -11,6 +11,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 
 export const DPCODE_CODEX_HOME_OVERLAY_DIR = "codex-home-overlay";
+export const JCODE_DISABLE_CODEX_BROWSER_PLUGIN_ENV = "JCODE_DISABLE_CODEX_BROWSER_PLUGIN";
 export const DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN_ENV =
   "DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN";
 
@@ -28,21 +29,24 @@ export function resolveBaseCodexHomePath(
 
 export function shouldDisableDpCodeBrowserPlugin(env: NodeJS.ProcessEnv): boolean {
   // The plugin is disabled by default; the only way to opt out is the explicit "0" sentinel.
-  return env[DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN_ENV] !== "0";
+  return (
+    env[JCODE_DISABLE_CODEX_BROWSER_PLUGIN_ENV] !== "0" &&
+    env[DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN_ENV] !== "0"
+  );
 }
 
 export function resolveDpCodeCodexHomeOverlayPath(
   env: NodeJS.ProcessEnv,
   sourceHomePath: string,
 ): string {
-  const runtimeHome = env.DPCODE_HOME?.trim() || env.T3CODE_HOME?.trim();
-  const overlayRoot = runtimeHome || path.join(path.dirname(sourceHomePath), ".dpcode", "runtime");
+  const runtimeHome = env.JCODE_HOME?.trim() || env.DPCODE_HOME?.trim() || env.T3CODE_HOME?.trim();
+  const overlayRoot = runtimeHome || path.join(path.dirname(sourceHomePath), ".jcode", "runtime");
   return path.join(overlayRoot, DPCODE_CODEX_HOME_OVERLAY_DIR);
 }
 
 /**
  * Returns the home directory that the codex app-server child process actually
- * writes under. This is the overlay home when DP Code wraps Codex with the
+ * writes under. This is the overlay home when JCode wraps Codex with the
  * dpcode-browser plugin disabled (the production default), otherwise the
  * caller-supplied or env-provided home.
  */

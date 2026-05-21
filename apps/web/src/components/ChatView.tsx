@@ -8072,7 +8072,7 @@ export default function ChatView({
                 <div className="flex w-full max-w-3xl flex-col justify-center">
                   <div className="flex flex-col items-center gap-4 px-6 pb-5 text-center select-none">
                     <img
-                      alt="DP Code logo"
+                      alt="JCode logo"
                       className="size-12 rounded-lg object-contain"
                       draggable={false}
                       height={96}

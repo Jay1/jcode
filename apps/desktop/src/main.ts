@@ -80,6 +80,7 @@ import {
   BrowserUsePipeServer,
   DPCODE_BROWSER_USE_PIPE_ENV,
   DPCODE_BROWSER_USE_PIPE_PATH,
+  JCODE_BROWSER_USE_PIPE_ENV,
   T3CODE_BROWSER_USE_PIPE_ENV,
 } from "./browserUsePipeServer";
 import {
@@ -119,15 +120,16 @@ const UPDATE_INSTALL_CHANNEL = "desktop:update-install";
 const NOTIFICATIONS_IS_SUPPORTED_CHANNEL = "desktop:notifications-is-supported";
 const NOTIFICATIONS_SHOW_CHANNEL = "desktop:notifications-show";
 const BASE_DIR =
+  process.env.JCODE_HOME?.trim() ||
   process.env.DPCODE_HOME?.trim() ||
   process.env.T3CODE_HOME?.trim() ||
-  Path.join(OS.homedir(), ".dpcode");
+  Path.join(OS.homedir(), ".jcode");
 const STATE_DIR = Path.join(BASE_DIR, "userdata");
 const DESKTOP_SCHEME = "t3";
 const ROOT_DIR = Path.resolve(__dirname, "../../..");
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
-const APP_DISPLAY_NAME = isDevelopment ? "DP Code (Dev)" : "DP Code (Alpha)";
-const APP_USER_MODEL_ID = isDevelopment ? "com.t3tools.dpcode.dev" : "com.t3tools.dpcode";
+const APP_DISPLAY_NAME = isDevelopment ? "JCode (Dev)" : "JCode (Alpha)";
+const APP_USER_MODEL_ID = isDevelopment ? "com.jcode.dev" : "com.jcode";
 const COMMIT_HASH_PATTERN = /^[0-9a-f]{7,40}$/i;
 const COMMIT_HASH_DISPLAY_LENGTH = 12;
 const LOG_DIR = Path.join(STATE_DIR, "logs");
@@ -143,8 +145,9 @@ const AUTO_UPDATE_CHECK_TIMEOUT_MS = 45 * 1000;
 const DESKTOP_UPDATE_CHANNEL = "latest";
 const DESKTOP_UPDATE_ALLOW_PRERELEASE = false;
 const BROWSER_PERF_SAMPLE_INTERVAL_MS = 5_000;
-const DPCODE_BROWSER_LABEL = "DPCODE browser";
+const DPCODE_BROWSER_LABEL = "JCode browser";
 const browserPerfLoggingEnabled =
+  process.env.JCODE_BROWSER_PERF === "1" ||
   process.env.DPCODE_BROWSER_PERF === "1" || process.env.T3CODE_BROWSER_PERF === "1";
 
 type DesktopUpdateErrorContext = DesktopUpdateState["errorContext"];
@@ -357,6 +360,7 @@ async function reserveBackendEndpoint(reason: string): Promise<void> {
   backendBindHost = resolveDesktopServerBindHost(backendExposureActiveMode);
   backendHttpUrl = `http://127.0.0.1:${backendPort}`;
   backendWsUrl = `ws://127.0.0.1:${backendPort}/?token=${encodeURIComponent(backendAuthToken)}`;
+  process.env.JCODE_DESKTOP_WS_URL = backendWsUrl;
   process.env.DPCODE_DESKTOP_WS_URL = backendWsUrl;
   process.env.T3CODE_DESKTOP_WS_URL = backendWsUrl;
   writeDesktopLogHeader(
@@ -715,7 +719,7 @@ function handleFatalStartupError(stage: string, error: unknown): void {
   console.error(`[desktop] fatal startup error (${stage})`, error);
   if (!isQuitting) {
     isQuitting = true;
-    dialog.showErrorBox("DP Code failed to start", `Stage: ${stage}\n${message}${detail}`);
+    dialog.showErrorBox("JCode failed to start", `Stage: ${stage}\n${message}${detail}`);
   }
   stopBackend();
   restoreStdIoCapture?.();
@@ -823,7 +827,7 @@ async function checkForUpdatesFromMenu(): Promise<void> {
     void dialog.showMessageBox({
       type: "info",
       title: "You're up to date!",
-      message: `DP Code ${updateState.currentVersion} is currently the newest version available.`,
+      message: `JCode ${updateState.currentVersion} is currently the newest version available.`,
       buttons: ["OK"],
     });
   } else if (updateState.status === "error") {
@@ -1056,11 +1060,11 @@ function showDesktopNotification(input: {
  *
  * Electron derives the default userData path from `productName` in
  * package.json, which currently produces directories with spaces and
- * parentheses (e.g. `~/.config/DP Code (Alpha)` on Linux). This is
+ * parentheses (e.g. `~/.config/JCode (Alpha)` on Linux). This is
  * unfriendly for shell usage and violates Linux naming conventions.
  *
- * We override it to a clean lowercase DP Code name. Legacy T3 Code/early
- * DP Code Chromium profiles are intentionally left in place so both apps can
+ * We override it to a clean lowercase JCode name. Legacy T3 Code/early
+ * JCode Chromium profiles are intentionally left in place so both apps can
  * coexist without sharing renderer storage.
  */
 function resolveUserDataPath(): string {
@@ -1071,12 +1075,12 @@ function resolveUserDataPath(): string {
     legacyPaths: resolveLegacyDesktopUserDataPaths({ appDataBase, isDevelopment }),
   });
   if (seedResult.status === "seeded") {
-    console.info("[desktop] Seeded DP Code Electron profile from legacy profile", {
+    console.info("[desktop] Seeded JCode Electron profile from legacy profile", {
       sourcePath: seedResult.sourcePath,
       targetPath: seedResult.targetPath,
     });
   } else if (seedResult.status === "seed-failed") {
-    console.warn("[desktop] Failed to seed DP Code Electron profile from legacy profile", {
+    console.warn("[desktop] Failed to seed JCode Electron profile from legacy profile", {
       sourcePath: seedResult.sourcePath,
       targetPath: seedResult.targetPath,
       error: seedResult.error,
@@ -1422,6 +1426,13 @@ function configureAutoUpdater(): void {
 function backendEnv(): NodeJS.ProcessEnv {
   return {
     ...process.env,
+    JCODE_MODE: "desktop",
+    JCODE_NO_BROWSER: "1",
+    JCODE_PORT: String(backendPort),
+    JCODE_HOST: backendBindHost,
+    JCODE_HOME: BASE_DIR,
+    JCODE_AUTH_TOKEN: backendAuthToken,
+    [JCODE_BROWSER_USE_PIPE_ENV]: DPCODE_BROWSER_USE_PIPE_PATH,
     DPCODE_MODE: "desktop",
     DPCODE_NO_BROWSER: "1",
     DPCODE_PORT: String(backendPort),
@@ -1900,7 +1911,7 @@ function registerIpcHandlers(): void {
   registerDesktopVoiceTranscriptionHandler();
   startBrowserPerformanceLogging();
   void ensureBrowserUsePipeServer().catch((error) => {
-    console.warn("[DPCODE browser] Failed to start browser-use native pipe", error);
+    console.warn("[JCode browser] Failed to start browser-use native pipe", error);
   });
 
   registerBrowserIpcHandlers(ipcMain, browserManager);

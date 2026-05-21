@@ -5175,7 +5175,7 @@ export default function Sidebar() {
             toastManager.add({
               type: "info",
               title: "You're up to date",
-              description: `DP Code ${nextState.currentVersion} is already the newest version.`,
+              description: `JCode ${nextState.currentVersion} is already the newest version.`,
             });
             return;
           }

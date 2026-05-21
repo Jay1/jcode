@@ -2,7 +2,7 @@
  * Sanitize an arbitrary string into a valid, lowercase git branch fragment.
  * Strips quotes, collapses separators, limits to 64 chars.
  */
-export const WORKTREE_BRANCH_PREFIX = "dpcode";
+export const WORKTREE_BRANCH_PREFIX = "jcode";
 const TEMP_WORKTREE_BRANCH_PATTERN = new RegExp(`^${WORKTREE_BRANCH_PREFIX}\\/[0-9a-f]{8}$`);
 
 export function sanitizeBranchFragment(raw: string): string {
@@ -36,7 +36,7 @@ export function sanitizeFeatureBranchName(raw: string): string {
 }
 
 const AUTO_FEATURE_BRANCH_FALLBACK = "feature/update";
-const DPCODE_BRANCH_FALLBACK = "update";
+const JCODE_BRANCH_FALLBACK = "update";
 
 /**
  * Resolve a unique `feature/…` branch name that doesn't collide with
@@ -64,18 +64,19 @@ export function resolveAutoFeatureBranchName(
   return `${resolvedBase}-${suffix}`;
 }
 
-export function buildDpcodeBranchName(preferredBranch?: string | null): string {
-  const normalizedExisting = preferredBranch?.trim().replace(/^(codex|t3code|dpcode)\//i, "") ?? "";
+export function buildJcodeBranchName(preferredBranch?: string | null): string {
+  const normalizedExisting =
+    preferredBranch?.trim().replace(/^(codex|t3code|dpcode|jcode)\//i, "") ?? "";
   return `${WORKTREE_BRANCH_PREFIX}/${sanitizeBranchFragment(
-    normalizedExisting || DPCODE_BRANCH_FALLBACK,
+    normalizedExisting || JCODE_BRANCH_FALLBACK,
   )}`;
 }
 
-export function resolveUniqueDpcodeBranchName(
+export function resolveUniqueJcodeBranchName(
   existingBranchNames: readonly string[],
   preferredBranch?: string | null,
 ): string {
-  const resolvedBase = buildDpcodeBranchName(preferredBranch);
+  const resolvedBase = buildJcodeBranchName(preferredBranch);
   const existingNames = new Set(existingBranchNames.map((branch) => branch.toLowerCase()));
 
   if (!existingNames.has(resolvedBase)) {
@@ -89,6 +90,9 @@ export function resolveUniqueDpcodeBranchName(
 
   return `${resolvedBase}-${suffix}`;
 }
+
+export const buildDpcodeBranchName = buildJcodeBranchName;
+export const resolveUniqueDpcodeBranchName = resolveUniqueJcodeBranchName;
 
 export function isTemporaryWorktreeBranch(branch: string): boolean {
   return TEMP_WORKTREE_BRANCH_PATTERN.test(branch.trim().toLowerCase());

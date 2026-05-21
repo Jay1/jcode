@@ -1,17 +1,18 @@
 /**
  * FILE: homeMigration.ts
- * Purpose: Imports legacy ~/.t3 state into the new ~/.dpcode home on first startup.
+ * Purpose: Imports legacy DPCode/T3Code state into the new ~/.jcode home on first startup.
  * Layer: Startup utility
  * Depends on: config path derivation, Effect filesystem/path services, and sqlite snapshots
  */
 import { Data, Effect, FileSystem, Path } from "effect";
 
-import { deriveServerPaths } from "./config";
+import { deriveServerPaths, type ServerDerivedPaths } from "./config";
 
+export const JCODE_HOME_DIRNAME = ".jcode";
 export const DPCODE_HOME_DIRNAME = ".dpcode";
 export const LEGACY_T3_HOME_DIRNAME = ".t3";
 const MIGRATIONS_DIRNAME = "migrations";
-const LEGACY_IMPORT_MARKER_BASENAME = "import-from-t3-v1.json";
+const LEGACY_IMPORT_MARKER_BASENAME = "import-from-legacy-home-v1.json";
 
 export class HomeMigrationError extends Data.TaggedError("HomeMigrationError")<{
   readonly message: string;
@@ -153,7 +154,7 @@ const snapshotSqliteDatabase = (sourcePath: string, targetPath: string) =>
     },
     catch: (cause) =>
       new HomeMigrationError({
-        message: `Failed to snapshot legacy sqlite database from ${sourcePath} to ${targetPath}. Close other DP Code processes and retry.`,
+        message: `Failed to snapshot legacy sqlite database from ${sourcePath} to ${targetPath}. Close other JCode processes and retry.`,
         cause,
       }),
   });
@@ -202,7 +203,7 @@ const cleanUpStagingDir = (stagingBaseDir: string) =>
 export const migrateLegacyHomeIfNeeded = Effect.fn(function* (input: LegacyHomeMigrationInput) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const canonicalTargetBaseDir = path.resolve(path.join(input.homeDir, DPCODE_HOME_DIRNAME));
+  const canonicalTargetBaseDir = path.resolve(path.join(input.homeDir, JCODE_HOME_DIRNAME));
   if (path.resolve(input.baseDir) !== canonicalTargetBaseDir) {
     return {
       status: "skipped",
@@ -211,22 +212,7 @@ export const migrateLegacyHomeIfNeeded = Effect.fn(function* (input: LegacyHomeM
     };
   }
 
-  const legacyBaseDir = path.resolve(path.join(input.homeDir, LEGACY_T3_HOME_DIRNAME));
-  if (!(yield* fs.exists(legacyBaseDir))) {
-    return {
-      status: "skipped",
-      reason: "legacy-home-missing",
-      importedArtifacts: [],
-    };
-  }
-
-  const [sourcePaths, targetPaths] = yield* Effect.all(
-    [
-      deriveServerPaths(legacyBaseDir, input.devUrl),
-      deriveServerPaths(canonicalTargetBaseDir, input.devUrl),
-    ],
-    { concurrency: "unbounded" },
-  );
+  const targetPaths = yield* deriveServerPaths(canonicalTargetBaseDir, input.devUrl);
   const markerPath = yield* getLegacyImportMarkerPath(targetPaths.stateDir);
   const marker: MigrationMarker | undefined = yield* readMigrationMarker(markerPath);
   if (marker?.status === "completed") {
@@ -237,21 +223,63 @@ export const migrateLegacyHomeIfNeeded = Effect.fn(function* (input: LegacyHomeM
     };
   }
 
-  const sourceArtifacts = {
-    database: yield* fs.exists(sourcePaths.dbPath),
-    keybindings: yield* fs.exists(sourcePaths.keybindingsConfigPath),
-    attachments: yield* directoryHasEntries(sourcePaths.attachmentsDir),
-    anonymousId: yield* fs.exists(sourcePaths.anonymousIdPath),
-  } satisfies Record<(typeof IMPORTABLE_ARTIFACTS)[number], boolean>;
+  const sourceCandidates =
+    marker?.status === "in-progress" && marker.sourceBaseDir
+      ? [path.resolve(marker.sourceBaseDir)]
+      : [
+          path.resolve(path.join(input.homeDir, DPCODE_HOME_DIRNAME)),
+          path.resolve(path.join(input.homeDir, LEGACY_T3_HOME_DIRNAME)),
+        ];
+  const existingSourceCandidates = [];
+  for (const candidate of sourceCandidates) {
+    if (yield* fs.exists(candidate)) {
+      existingSourceCandidates.push(candidate);
+    }
+  }
+  if (existingSourceCandidates.length === 0) {
+    return {
+      status: "skipped",
+      reason: "legacy-home-missing",
+      importedArtifacts: [],
+    };
+  }
 
-  const importedArtifacts = IMPORTABLE_ARTIFACTS.filter((artifact) => sourceArtifacts[artifact]);
-  if (importedArtifacts.length === 0) {
+  let legacyBaseDir = "";
+  let sourcePaths: ServerDerivedPaths | undefined;
+  let sourceArtifacts:
+    | Record<(typeof IMPORTABLE_ARTIFACTS)[number], boolean>
+    | undefined;
+  let importedArtifacts: ReadonlyArray<(typeof IMPORTABLE_ARTIFACTS)[number]> = [];
+
+  for (const candidate of existingSourceCandidates) {
+    const candidatePaths = yield* deriveServerPaths(candidate, input.devUrl);
+    const candidateArtifacts = {
+      database: yield* fs.exists(candidatePaths.dbPath),
+      keybindings: yield* fs.exists(candidatePaths.keybindingsConfigPath),
+      attachments: yield* directoryHasEntries(candidatePaths.attachmentsDir),
+      anonymousId: yield* fs.exists(candidatePaths.anonymousIdPath),
+    } satisfies Record<(typeof IMPORTABLE_ARTIFACTS)[number], boolean>;
+    const candidateImportedArtifacts = IMPORTABLE_ARTIFACTS.filter(
+      (artifact) => candidateArtifacts[artifact],
+    );
+    if (candidateImportedArtifacts.length > 0) {
+      legacyBaseDir = candidate;
+      sourcePaths = candidatePaths;
+      sourceArtifacts = candidateArtifacts;
+      importedArtifacts = candidateImportedArtifacts;
+      break;
+    }
+  }
+
+  if (!sourcePaths || !sourceArtifacts || importedArtifacts.length === 0) {
     return {
       status: "skipped",
       reason: "legacy-state-missing",
       importedArtifacts: [],
     };
   }
+  const selectedSourcePaths = sourcePaths;
+  const selectedSourceArtifacts = sourceArtifacts;
 
   const targetArtifacts = {
     database: yield* fs.exists(targetPaths.dbPath),
@@ -273,7 +301,7 @@ export const migrateLegacyHomeIfNeeded = Effect.fn(function* (input: LegacyHomeM
 
   const stagingBaseDir = path.join(
     input.homeDir,
-    `.${DPCODE_HOME_DIRNAME.slice(1)}-migration-${process.pid}-${Date.now()}`,
+    `.${JCODE_HOME_DIRNAME.slice(1)}-migration-${process.pid}-${Date.now()}`,
   );
   const stagingPaths = yield* deriveServerPaths(stagingBaseDir, input.devUrl);
   yield* fs.makeDirectory(stagingPaths.stateDir, { recursive: true });
@@ -286,34 +314,37 @@ export const migrateLegacyHomeIfNeeded = Effect.fn(function* (input: LegacyHomeM
       status: "in-progress",
       sourceBaseDir: legacyBaseDir,
       targetBaseDir: canonicalTargetBaseDir,
-      sourceStateDir: sourcePaths.stateDir,
+      sourceStateDir: selectedSourcePaths.stateDir,
       targetStateDir: targetPaths.stateDir,
       importedArtifacts,
       startedAt: migrationStartedAt,
       migratedAt: marker?.migratedAt ?? migrationStartedAt,
       notes: [
-        "Legacy ~/.t3 data is being imported into ~/.dpcode.",
+        "Legacy DPCode/T3Code data is being imported into ~/.jcode.",
         "If startup stops midway, the next launch resumes this import instead of starting from scratch.",
       ],
     });
 
     const pendingArtifacts = new Set(
       IMPORTABLE_ARTIFACTS.filter(
-        (artifact) => sourceArtifacts[artifact] && !targetArtifacts[artifact],
+        (artifact) => selectedSourceArtifacts[artifact] && !targetArtifacts[artifact],
       ),
     );
 
     if (pendingArtifacts.has("database")) {
-      yield* snapshotSqliteDatabase(sourcePaths.dbPath, stagingPaths.dbPath);
+      yield* snapshotSqliteDatabase(selectedSourcePaths.dbPath, stagingPaths.dbPath);
     }
     if (pendingArtifacts.has("keybindings")) {
-      yield* stageFileCopy(sourcePaths.keybindingsConfigPath, stagingPaths.keybindingsConfigPath);
+      yield* stageFileCopy(
+        selectedSourcePaths.keybindingsConfigPath,
+        stagingPaths.keybindingsConfigPath,
+      );
     }
     if (pendingArtifacts.has("attachments")) {
-      yield* fs.copy(sourcePaths.attachmentsDir, stagingPaths.attachmentsDir);
+      yield* fs.copy(selectedSourcePaths.attachmentsDir, stagingPaths.attachmentsDir);
     }
     if (pendingArtifacts.has("anonymousId")) {
-      yield* stageFileCopy(sourcePaths.anonymousIdPath, stagingPaths.anonymousIdPath);
+      yield* stageFileCopy(selectedSourcePaths.anonymousIdPath, stagingPaths.anonymousIdPath);
     }
 
     // Merge imported state into the new home without touching any target logs already created.
@@ -338,19 +369,19 @@ export const migrateLegacyHomeIfNeeded = Effect.fn(function* (input: LegacyHomeM
       status: "completed",
       sourceBaseDir: legacyBaseDir,
       targetBaseDir: canonicalTargetBaseDir,
-      sourceStateDir: sourcePaths.stateDir,
+      sourceStateDir: selectedSourcePaths.stateDir,
       targetStateDir: targetPaths.stateDir,
       importedArtifacts,
       startedAt: migrationStartedAt,
       migratedAt: new Date().toISOString(),
       notes: [
-        "Legacy ~/.t3 data was imported into ~/.dpcode.",
+        "Legacy DPCode/T3Code data was imported into ~/.jcode.",
         "Existing legacy worktree directories were left in place and are still referenced by absolute path.",
       ],
     });
 
-    yield* Effect.logInfo("imported legacy T3 state into DP Code home", {
-      sourceStateDir: sourcePaths.stateDir,
+    yield* Effect.logInfo("imported legacy state into JCode home", {
+      sourceStateDir: selectedSourcePaths.stateDir,
       targetStateDir: targetPaths.stateDir,
       importedArtifacts,
     });
@@ -368,7 +399,7 @@ export const migrateLegacyHomeIfNeeded = Effect.fn(function* (input: LegacyHomeM
       error instanceof HomeMigrationError
         ? error
         : new HomeMigrationError({
-            message: "Failed to import legacy ~/.t3 state into ~/.dpcode.",
+            message: "Failed to import legacy state into ~/.jcode.",
             cause: error,
           }),
     ),

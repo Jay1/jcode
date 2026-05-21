@@ -1,6 +1,6 @@
 import type { AuthSessionRole } from "@t3tools/contracts";
 
-export const SAVED_CONNECTIONS_STORAGE_KEY = "dpcode:saved-connections:v1";
+export const SAVED_CONNECTIONS_STORAGE_KEY = "jcode:saved-connections:v1";
 
 export interface SavedConnectionProfile {
   readonly id: string;

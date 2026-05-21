@@ -129,10 +129,10 @@ function providerIconClassName(
 
 const SEARCHABLE_MODEL_PICKER_THRESHOLD = 15;
 const FAVORITE_MODEL_STORAGE_KEYS = {
-  cursor: "dpcode:cursor-favourite-models:v1",
-  kilo: "dpcode:kilo-favourite-models:v1",
-  opencode: "dpcode:opencode-favourite-models:v1",
-  pi: "dpcode:pi-favourite-models:v1",
+  cursor: "jcode:cursor-favourite-models:v1",
+  kilo: "jcode:kilo-favourite-models:v1",
+  opencode: "jcode:opencode-favourite-models:v1",
+  pi: "jcode:pi-favourite-models:v1",
 } as const;
 const FavoriteModelSlugs = Schema.Array(Schema.String);
 type FavoriteModelProvider = keyof typeof FAVORITE_MODEL_STORAGE_KEYS;

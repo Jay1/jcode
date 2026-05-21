@@ -262,7 +262,7 @@ describe("store pure functions", () => {
       makeState(initialThread),
       makeReadModel(
         makeReadModelThread({
-          branch: "dpcode/abc123ef",
+          branch: "jcode/abc123ef",
           updatedAt: "2026-02-27T00:05:00.000Z",
         }),
       ),
@@ -279,7 +279,7 @@ describe("store pure functions", () => {
     );
 
     const next = setThreadWorkspace(state, ThreadId.makeUnsafe("thread-1"), {
-      branch: "dpcode/abc123ef",
+      branch: "jcode/abc123ef",
     });
 
     expect(next.threads[0]?.branch).toBe("feature/semantic-branch");
@@ -291,11 +291,11 @@ describe("store pure functions", () => {
       makeState(
         makeThread({
           envMode: "worktree",
-          branch: "dpcode/tmp-working",
+          branch: "jcode/tmp-working",
           worktreePath: "/tmp/project/.worktrees/tmp-working",
           associatedWorktreePath: "/tmp/project/.worktrees/tmp-working",
-          associatedWorktreeBranch: "dpcode/tmp-working",
-          associatedWorktreeRef: "dpcode/tmp-working",
+          associatedWorktreeBranch: "jcode/tmp-working",
+          associatedWorktreeRef: "jcode/tmp-working",
         }),
       ),
       threadId,
@@ -309,11 +309,11 @@ describe("store pure functions", () => {
       makeReadModel(
         makeReadModelThread({
           envMode: "worktree",
-          branch: "dpcode/tmp-working",
+          branch: "jcode/tmp-working",
           worktreePath: "/tmp/project/.worktrees/tmp-working",
           associatedWorktreePath: "/tmp/project/.worktrees/tmp-working",
-          associatedWorktreeBranch: "dpcode/tmp-working",
-          associatedWorktreeRef: "dpcode/tmp-working",
+          associatedWorktreeBranch: "jcode/tmp-working",
+          associatedWorktreeRef: "jcode/tmp-working",
           createBranchFlowCompleted: false,
           updatedAt: "2026-02-27T00:05:00.000Z",
         }),
@@ -957,11 +957,11 @@ describe("store pure functions", () => {
       makeThread({
         title: "Old title",
         envMode: "worktree",
-        branch: "dpcode/tmp-working",
+        branch: "jcode/tmp-working",
         worktreePath: "/tmp/project/.worktrees/tmp-working",
         associatedWorktreePath: "/tmp/project/.worktrees/tmp-working",
-        associatedWorktreeBranch: "dpcode/tmp-working",
-        associatedWorktreeRef: "dpcode/tmp-working",
+        associatedWorktreeBranch: "jcode/tmp-working",
+        associatedWorktreeRef: "jcode/tmp-working",
         session: {
           provider: "codex",
           status: "ready",
@@ -976,22 +976,22 @@ describe("store pure functions", () => {
       makeDomainEvent("thread.meta-updated", {
         threadId: ThreadId.makeUnsafe("thread-1"),
         title: "New title",
-        branch: "dpcode/app-startup-crash",
+        branch: "jcode/app-startup-crash",
         worktreePath: "/tmp/project/.worktrees/app-startup-crash",
         associatedWorktreePath: "/tmp/project/.worktrees/app-startup-crash",
-        associatedWorktreeBranch: "dpcode/app-startup-crash",
-        associatedWorktreeRef: "dpcode/app-startup-crash",
+        associatedWorktreeBranch: "jcode/app-startup-crash",
+        associatedWorktreeRef: "jcode/app-startup-crash",
         updatedAt: "2026-02-27T00:01:00.000Z",
       }),
     ]);
 
     expect(next.threads[0]).toMatchObject({
       title: "New title",
-      branch: "dpcode/app-startup-crash",
+      branch: "jcode/app-startup-crash",
       worktreePath: "/tmp/project/.worktrees/app-startup-crash",
       associatedWorktreePath: "/tmp/project/.worktrees/app-startup-crash",
-      associatedWorktreeBranch: "dpcode/app-startup-crash",
-      associatedWorktreeRef: "dpcode/app-startup-crash",
+      associatedWorktreeBranch: "jcode/app-startup-crash",
+      associatedWorktreeRef: "jcode/app-startup-crash",
       session: null,
       updatedAt: "2026-02-27T00:01:00.000Z",
     });
@@ -2078,7 +2078,7 @@ describe("store read model sync", () => {
     const liveState = makeState(
       makeThread({
         id: threadId,
-        branch: "dpcode/tmp-working",
+        branch: "jcode/tmp-working",
         worktreePath: "/tmp/worktrees/thread-hot-path-branch-flow",
         createBranchFlowCompleted: true,
       }),
@@ -2088,7 +2088,7 @@ describe("store read model sync", () => {
       liveState,
       makeReadModelThread({
         id: threadId,
-        branch: "dpcode/tmp-working",
+        branch: "jcode/tmp-working",
         worktreePath: "/tmp/worktrees/thread-hot-path-branch-flow",
         createBranchFlowCompleted: false,
       }),
@@ -2725,7 +2725,7 @@ describe("store read model sync", () => {
       addEventListener: vi.fn(),
     };
     storage.set(
-      "dpcode:renderer-state:v8",
+      "jcode:renderer-state:v8",
       JSON.stringify({
         projectNamesByCwd: {
           "/tmp/project": "dpcode",
@@ -2813,7 +2813,7 @@ describe("store read model sync", () => {
       freshStore.useStore.getState().renameProjectLocally(projectId, "dpcode");
 
       expect(setItem).toHaveBeenCalled();
-      expect(JSON.parse(storage.get("dpcode:renderer-state:v8") ?? "{}")).toMatchObject({
+      expect(JSON.parse(storage.get("jcode:renderer-state:v8") ?? "{}")).toMatchObject({
         projectNamesByCwd: {
           "/tmp/project": "dpcode",
         },

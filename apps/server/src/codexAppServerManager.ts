@@ -263,7 +263,9 @@ export function resolveCodexBrowserUsePipePath(
 ): string {
   const env = input.env ?? process.env;
   const configured =
-    env.DPCODE_BROWSER_USE_PIPE_PATH?.trim() || env.T3CODE_BROWSER_USE_PIPE_PATH?.trim();
+    env.JCODE_BROWSER_USE_PIPE_PATH?.trim() ||
+    env.DPCODE_BROWSER_USE_PIPE_PATH?.trim() ||
+    env.T3CODE_BROWSER_USE_PIPE_PATH?.trim();
   if (configured) {
     return configured;
   }
@@ -638,7 +640,7 @@ The \`request_user_input\` tool is unavailable in Default mode. If you call it w
 In Default mode, strongly prefer making reasonable assumptions and executing the user's request rather than stopping to ask questions. If you absolutely must ask a question because the answer cannot be discovered from local context and a reasonable assumption would be risky, ask the user directly with a concise plain-text question. Never write a multiple choice question as a textual assistant message.
 </collaboration_mode>${CODEX_BROWSER_TOOL_ROUTING_INSTRUCTIONS}`;
 
-// Maps DP Code's simple runtime toggle to Codex thread-level permission overrides.
+// Maps JCode's simple runtime toggle to Codex thread-level permission overrides.
 function mapCodexRuntimeMode(runtimeMode: RuntimeMode): {
   readonly approvalPolicy: CodexApprovalPolicy;
   readonly sandbox: CodexSandboxMode;
@@ -735,7 +737,7 @@ export function buildCodexInitializeParams() {
   return {
     clientInfo: {
       name: "t3code_desktop",
-      title: "DP Code Desktop",
+      title: "JCode Desktop",
       version: "0.1.0",
     },
     capabilities: {
@@ -3319,7 +3321,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         return [];
       }
 
-      // Accept both DP Code's legacy string array and Remodex-style reasoning objects.
+      // Accept both JCode's legacy string array and Remodex-style reasoning objects.
       const supportedReasoningEfforts = Array.from(
         new Map(
           (

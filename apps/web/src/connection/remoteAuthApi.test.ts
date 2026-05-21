@@ -90,6 +90,34 @@ describe("remoteAuthApi", () => {
     ).resolves.toMatchObject({ environmentId: "env-1" });
 
     expect(fetchMock).toHaveBeenCalledWith(
+      "https://backend.example.com/.well-known/jcode/environment",
+      {
+        headers: {},
+        method: "GET",
+      },
+    );
+  });
+
+  it("falls back to the legacy T3 environment descriptor path", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("missing", { status: 404 }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          environmentId: "env-1",
+          label: "Remote",
+          platform: { os: "linux", arch: "x64" },
+          serverVersion: "0.0.0",
+          capabilities: { repositoryIdentity: true },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      fetchRemoteEnvironmentDescriptor({ httpBaseUrl: "https://backend.example.com/" }),
+    ).resolves.toMatchObject({ environmentId: "env-1" });
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
       "https://backend.example.com/.well-known/t3/environment",
       {
         headers: {},

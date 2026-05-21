@@ -15,7 +15,7 @@ describe("resolveDraftEnvModeAfterBranchChange", () => {
     expect(
       resolveDraftEnvModeAfterBranchChange({
         nextWorktreePath: null,
-        currentWorktreePath: "/repo/.dpcode/worktrees/feature-a",
+        currentWorktreePath: "/repo/.jcode/worktrees/feature-a",
         effectiveEnvMode: "worktree",
       }),
     ).toBe("local");
@@ -34,7 +34,7 @@ describe("resolveDraftEnvModeAfterBranchChange", () => {
   it("uses worktree mode when selecting a branch already attached to a worktree", () => {
     expect(
       resolveDraftEnvModeAfterBranchChange({
-        nextWorktreePath: "/repo/.dpcode/worktrees/feature-a",
+        nextWorktreePath: "/repo/.jcode/worktrees/feature-a",
         currentWorktreePath: null,
         effectiveEnvMode: "local",
       }),
@@ -93,7 +93,7 @@ describe("shouldSyncLocalThreadBranch", () => {
       shouldSyncLocalThreadBranch({
         envMode: "local",
         activeWorktreePath: null,
-        activeThreadBranch: "dpcode/pi",
+        activeThreadBranch: "jcode/pi",
         currentGitBranch: "main",
         isBranchActionPending: false,
       }),
@@ -105,7 +105,7 @@ describe("shouldSyncLocalThreadBranch", () => {
       shouldSyncLocalThreadBranch({
         envMode: "local",
         activeWorktreePath: null,
-        activeThreadBranch: "dpcode/pi",
+        activeThreadBranch: "jcode/pi",
         currentGitBranch: "main",
         isBranchActionPending: true,
       }),
@@ -132,13 +132,13 @@ describe("resolveAssociatedWorktreeMetadataAfterWorkspacePatch", () => {
         branch: "main",
         worktreePath: null,
         existingAssociatedWorktreePath: "/repo/.worktrees/dpcode-pi",
-        existingAssociatedWorktreeBranch: "dpcode/pi",
-        existingAssociatedWorktreeRef: "dpcode/pi",
+        existingAssociatedWorktreeBranch: "jcode/pi",
+        existingAssociatedWorktreeRef: "jcode/pi",
       }),
     ).toEqual({
       associatedWorktreePath: "/repo/.worktrees/dpcode-pi",
-      associatedWorktreeBranch: "dpcode/pi",
-      associatedWorktreeRef: "dpcode/pi",
+      associatedWorktreeBranch: "jcode/pi",
+      associatedWorktreeRef: "jcode/pi",
     });
   });
 
@@ -164,8 +164,8 @@ describe("resolveAssociatedWorktreeMetadataAfterWorkspacePatch", () => {
         branch: "main",
         worktreePath: null,
         existingAssociatedWorktreePath: "/repo/.worktrees/dpcode-pi",
-        existingAssociatedWorktreeBranch: "dpcode/pi",
-        existingAssociatedWorktreeRef: "dpcode/pi",
+        existingAssociatedWorktreeBranch: "jcode/pi",
+        existingAssociatedWorktreeRef: "jcode/pi",
         patchAssociatedWorktreeBranch: "feature/new-pair",
       }),
     ).toEqual({
@@ -304,15 +304,15 @@ describe("resolveBranchSelectionTarget", () => {
     expect(
       resolveBranchSelectionTarget({
         activeProjectCwd: "/repo",
-        activeWorktreePath: "/repo/.dpcode/worktrees/feature-a",
+        activeWorktreePath: "/repo/.jcode/worktrees/feature-a",
         branch: {
           isDefault: false,
-          worktreePath: "/repo/.dpcode/worktrees/feature-b",
+          worktreePath: "/repo/.jcode/worktrees/feature-b",
         },
       }),
     ).toEqual({
-      checkoutCwd: "/repo/.dpcode/worktrees/feature-b",
-      nextWorktreePath: "/repo/.dpcode/worktrees/feature-b",
+      checkoutCwd: "/repo/.jcode/worktrees/feature-b",
+      nextWorktreePath: "/repo/.jcode/worktrees/feature-b",
       reuseExistingWorktree: true,
     });
   });
@@ -321,7 +321,7 @@ describe("resolveBranchSelectionTarget", () => {
     expect(
       resolveBranchSelectionTarget({
         activeProjectCwd: "/repo",
-        activeWorktreePath: "/repo/.dpcode/worktrees/feature-a",
+        activeWorktreePath: "/repo/.jcode/worktrees/feature-a",
         branch: {
           isDefault: true,
           worktreePath: "/repo",
@@ -338,7 +338,7 @@ describe("resolveBranchSelectionTarget", () => {
     expect(
       resolveBranchSelectionTarget({
         activeProjectCwd: "/repo",
-        activeWorktreePath: "/repo/.dpcode/worktrees/feature-a",
+        activeWorktreePath: "/repo/.jcode/worktrees/feature-a",
         branch: {
           isDefault: true,
           worktreePath: null,
@@ -355,15 +355,15 @@ describe("resolveBranchSelectionTarget", () => {
     expect(
       resolveBranchSelectionTarget({
         activeProjectCwd: "/repo",
-        activeWorktreePath: "/repo/.dpcode/worktrees/feature-a",
+        activeWorktreePath: "/repo/.jcode/worktrees/feature-a",
         branch: {
           isDefault: false,
           worktreePath: null,
         },
       }),
     ).toEqual({
-      checkoutCwd: "/repo/.dpcode/worktrees/feature-a",
-      nextWorktreePath: "/repo/.dpcode/worktrees/feature-a",
+      checkoutCwd: "/repo/.jcode/worktrees/feature-a",
+      nextWorktreePath: "/repo/.jcode/worktrees/feature-a",
       reuseExistingWorktree: false,
     });
   });

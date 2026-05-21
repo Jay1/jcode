@@ -357,7 +357,7 @@ describe("buildCodexProcessEnv", () => {
     ).toBe("/tmp/codex-browser-use/t3.sock");
   });
 
-  it("disables the local dpcode-browser plugin in DP Code's Codex home overlay", () => {
+  it("disables the local dpcode-browser plugin in JCode's Codex home overlay", () => {
     const tempDir = mkdtempSync(path.join(os.tmpdir(), "t3-codex-env-"));
     const runtimeHome = mkdtempSync(path.join(os.tmpdir(), "t3-runtime-home-"));
     try {
@@ -524,7 +524,7 @@ describe("startSession", () => {
     expect(buildCodexInitializeParams()).toEqual({
       clientInfo: {
         name: "t3code_desktop",
-        title: "DP Code Desktop",
+        title: "JCode Desktop",
         version: "0.1.0",
       },
       capabilities: {
@@ -562,7 +562,7 @@ describe("startSession", () => {
       )
       .mockImplementation(() => {
         throw new Error(
-          "Codex CLI v0.36.0 is too old for DP Code. Upgrade to v0.37.0 or newer and restart DP Code.",
+          "Codex CLI v0.36.0 is too old for JCode. Upgrade to v0.37.0 or newer and restart JCode.",
         );
       });
 
@@ -574,7 +574,7 @@ describe("startSession", () => {
           runtimeMode: "full-access",
         }),
       ).rejects.toThrow(
-        "Codex CLI v0.36.0 is too old for DP Code. Upgrade to v0.37.0 or newer and restart DP Code.",
+        "Codex CLI v0.36.0 is too old for JCode. Upgrade to v0.37.0 or newer and restart JCode.",
       );
       expect(versionCheck).toHaveBeenCalledTimes(1);
       expect(events).toEqual([
@@ -582,7 +582,7 @@ describe("startSession", () => {
           method: "session/startFailed",
           kind: "error",
           message:
-            "Codex CLI v0.36.0 is too old for DP Code. Upgrade to v0.37.0 or newer and restart DP Code.",
+            "Codex CLI v0.36.0 is too old for JCode. Upgrade to v0.37.0 or newer and restart JCode.",
         },
       ]);
     } finally {

@@ -142,21 +142,21 @@ it.layer(testLayer)("server CLI command", (it) => {
   it.effect("uses env fallbacks when flags are not provided", () =>
     Effect.gen(function* () {
       yield* runCli([], {
-        T3CODE_MODE: "desktop",
-        T3CODE_PORT: "4999",
-        T3CODE_HOST: "100.88.10.4",
-        T3CODE_HOME: "/tmp/t3-env-home",
+        JCODE_MODE: "desktop",
+        JCODE_PORT: "4999",
+        JCODE_HOST: "100.88.10.4",
+        JCODE_HOME: "/tmp/jcode-env-home",
         VITE_DEV_SERVER_URL: "http://localhost:5173",
-        T3CODE_NO_BROWSER: "true",
-        T3CODE_AUTH_TOKEN: "env-token",
+        JCODE_NO_BROWSER: "true",
+        JCODE_AUTH_TOKEN: "env-token",
       });
 
       assert.equal(start.mock.calls.length, 1);
       assert.equal(resolvedConfig?.mode, "desktop");
       assert.equal(resolvedConfig?.port, 4999);
       assert.equal(resolvedConfig?.host, "100.88.10.4");
-      assert.equal(resolvedConfig?.baseDir, "/tmp/t3-env-home");
-      assert.equal(resolvedConfig?.stateDir, "/tmp/t3-env-home/dev");
+      assert.equal(resolvedConfig?.baseDir, "/tmp/jcode-env-home");
+      assert.equal(resolvedConfig?.stateDir, "/tmp/jcode-env-home/dev");
       assert.equal(resolvedConfig?.devUrl?.toString(), "http://localhost:5173/");
       assert.equal(resolvedConfig?.noBrowser, true);
       assert.equal(resolvedConfig?.authToken, "env-token");
@@ -164,6 +164,25 @@ it.layer(testLayer)("server CLI command", (it) => {
       assert.equal(resolvedConfig?.logProviderEvents, false);
       assert.equal(resolvedConfig?.logWebSocketEvents, false);
       assert.equal(findAvailablePort.mock.calls.length, 0);
+    }),
+  );
+
+  it.effect("prefers JCODE env values over JCode and legacy T3Code names", () =>
+    Effect.gen(function* () {
+      yield* runCli([], {
+        JCODE_PORT: "4999",
+        DPCODE_PORT: "4888",
+        T3CODE_PORT: "4777",
+        JCODE_HOME: "/tmp/jcode-env-home",
+        DPCODE_HOME: "/tmp/dpcode-env-home",
+        T3CODE_HOME: "/tmp/t3-env-home",
+        JCODE_NO_BROWSER: "true",
+      });
+
+      assert.equal(start.mock.calls.length, 1);
+      assert.equal(resolvedConfig?.port, 4999);
+      assert.equal(resolvedConfig?.baseDir, "/tmp/jcode-env-home");
+      assert.equal(resolvedConfig?.noBrowser, true);
     }),
   );
 

@@ -18,7 +18,8 @@ const BROWSER_USE_INITIAL_URL = "about:blank";
 const BROWSER_USE_PANEL_READY_TIMEOUT_MS = 2_000;
 const BROWSER_USE_PANEL_READY_POLL_MS = 50;
 const BROWSER_USE_PIPE_DIR = "codex-browser-use";
-const BROWSER_USE_PIPE_NAME_PREFIX = "dpcode-iab";
+const BROWSER_USE_PIPE_NAME_PREFIX = "jcode-iab";
+export const JCODE_BROWSER_USE_PIPE_ENV = "JCODE_BROWSER_USE_PIPE_PATH";
 export const DPCODE_BROWSER_USE_PIPE_ENV = "DPCODE_BROWSER_USE_PIPE_PATH";
 export const T3CODE_BROWSER_USE_PIPE_ENV = "T3CODE_BROWSER_USE_PIPE_PATH";
 
@@ -57,7 +58,9 @@ export function resolveConfiguredBrowserUsePipePath(
   platform = process.platform,
 ): string {
   const configured =
-    env[DPCODE_BROWSER_USE_PIPE_ENV]?.trim() || env[T3CODE_BROWSER_USE_PIPE_ENV]?.trim();
+    env[JCODE_BROWSER_USE_PIPE_ENV]?.trim() ||
+    env[DPCODE_BROWSER_USE_PIPE_ENV]?.trim() ||
+    env[T3CODE_BROWSER_USE_PIPE_ENV]?.trim();
   return configured || resolveDefaultBrowserUsePipePath(platform);
 }
 
@@ -267,7 +270,7 @@ export class BrowserUsePipeServer {
       case "getInfo":
         const sessionId = asString(asObject(params)?.session_id);
         return {
-          name: "DP Code In-app Browser",
+          name: "JCode In-app Browser",
           version: "0.1.0",
           type: "iab",
           ...(sessionId ? { metadata: { codexSessionId: sessionId } } : {}),
@@ -374,7 +377,7 @@ export class BrowserUsePipeServer {
   }> {
     const snapshot = await this.waitForActiveBrowserHostState();
     if (!snapshot) {
-      throw new Error("No active DP Code browser pane available");
+      throw new Error("No active JCode browser pane available");
     }
     const nextState = this.browserManager.newTab({
       threadId: snapshot.threadId,

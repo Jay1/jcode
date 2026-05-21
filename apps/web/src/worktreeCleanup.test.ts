@@ -82,7 +82,7 @@ describe("getOrphanedWorktreePathForThread", () => {
 describe("formatWorktreePathForDisplay", () => {
   it("shows only the last path segment for unix-like paths", () => {
     const result = formatWorktreePathForDisplay(
-      "/Users/julius/.dpcode/worktrees/t3code-mvp/t3code-4e609bb8",
+      "/Users/julius/.jcode/worktrees/t3code-mvp/t3code-4e609bb8",
     );
     expect(result).toBe("t3code-4e609bb8");
   });
@@ -101,7 +101,7 @@ describe("formatWorktreePathForDisplay", () => {
     expect(result).toBe("t3code-4e609bb8");
   });
 
-  it("uses the final segment even when outside ~/.dpcode/worktrees", () => {
+  it("uses the final segment even when outside ~/.jcode/worktrees", () => {
     const result = formatWorktreePathForDisplay("/tmp/custom-worktrees/my-worktree");
     expect(result).toBe("my-worktree");
   });

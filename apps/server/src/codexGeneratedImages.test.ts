@@ -117,11 +117,11 @@ describe("resolveCodexGeneratedImagesRoot(s)", () => {
   it("collapses to a single root when overlay equals source", () => {
     delete process.env.DPCODE_HOME;
     delete process.env.T3CODE_HOME;
-    // The overlay falls under `<dirname(source)>/.dpcode/runtime/codex-home-overlay`,
+    // The overlay falls under `<dirname(source)>/.jcode/runtime/codex-home-overlay`,
     // which is always distinct from `<source>` itself, so the helper still returns
     // both candidates; this test guards the dedupe path with an artificial home
     // whose dirname happens to equal the overlay root.
-    const homePath = "/runtime/.dpcode/runtime/codex-home-overlay";
+    const homePath = "/runtime/.jcode/runtime/codex-home-overlay";
     const roots = resolveCodexGeneratedImagesRoots(homePath);
     assert.ok(roots.length >= 1 && roots.length <= 2, `expected 1-2 roots, got ${roots.length}`);
     assert.ok(roots.includes(path.join(homePath, "generated_images")));

@@ -2372,7 +2372,7 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
         yield* executeGit(
           "GitCore.stashAndCheckout.stashPush",
           input.cwd,
-          ["stash", "push", "-u", "-m", `dpcode: stash before switching to ${input.branch}`],
+          ["stash", "push", "-u", "-m", `jcode: stash before switching to ${input.branch}`],
           {
             timeoutMs: 30_000,
             fallbackErrorMessage: "git stash failed",

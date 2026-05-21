@@ -301,7 +301,7 @@ describe("when: branch is clean, up to date, and has no open PR", () => {
   it("resolveQuickAction keeps disabled commit when the branch tracks the default branch", () => {
     const quick = resolveQuickAction(
       status({
-        branch: "dpcode/pi-cleanup",
+        branch: "jcode/pi-cleanup",
         upstreamBranch: "main",
         aheadCount: 0,
         behindCount: 0,
@@ -325,7 +325,7 @@ describe("when: branch is clean, up to date, and has no open PR", () => {
   it("resolveCreatePrActionAvailability blocks stale create-pr calls for default upstream", () => {
     const availability = resolveCreatePrActionAvailability({
       gitStatus: status({
-        branch: "dpcode/pi-cleanup",
+        branch: "jcode/pi-cleanup",
         upstreamBranch: "main",
         aheadCount: 0,
         behindCount: 0,
@@ -361,7 +361,7 @@ describe("when: branch is clean, up to date, and has no open PR", () => {
   it("buildMenuItems disables create PR when the branch tracks the default branch", () => {
     const items = buildMenuItems(
       status({
-        branch: "dpcode/pi-cleanup",
+        branch: "jcode/pi-cleanup",
         upstreamBranch: "main",
         aheadCount: 0,
         behindCount: 0,
@@ -1334,32 +1334,32 @@ describe("resolveAutoFeatureBranchName", () => {
 });
 
 describe("resolveDefaultCreateBranchName", () => {
-  it("uses dpcode as the default namespace", () => {
+  it("uses JCode as the default namespace", () => {
     const branch = resolveDefaultCreateBranchName(["main"], "fix toast copy");
-    assert.equal(branch, "dpcode/fix-toast-copy");
+    assert.equal(branch, "jcode/fix-toast-copy");
   });
 
-  it("keeps an existing dpcode namespace", () => {
-    const branch = resolveDefaultCreateBranchName(["main"], "dpcode/refine-toolbar-actions");
-    assert.equal(branch, "dpcode/refine-toolbar-actions");
+  it("keeps an existing JCode namespace", () => {
+    const branch = resolveDefaultCreateBranchName(["main"], "jcode/refine-toolbar-actions");
+    assert.equal(branch, "jcode/refine-toolbar-actions");
   });
 
-  it("preserves nested namespaces under dpcode", () => {
+  it("preserves nested namespaces under JCode", () => {
     const branch = resolveDefaultCreateBranchName(["main"], "feature/refine-toolbar-actions");
-    assert.equal(branch, "dpcode/feature/refine-toolbar-actions");
+    assert.equal(branch, "jcode/feature/refine-toolbar-actions");
   });
 
-  it("increments suffix when the dpcode branch already exists", () => {
+  it("increments suffix when the JCode branch already exists", () => {
     const branch = resolveDefaultCreateBranchName(
-      ["main", "dpcode/fix-toast-copy", "dpcode/fix-toast-copy-2"],
+      ["main", "jcode/fix-toast-copy", "jcode/fix-toast-copy-2"],
       "fix toast copy",
     );
-    assert.equal(branch, "dpcode/fix-toast-copy-3");
+    assert.equal(branch, "jcode/fix-toast-copy-3");
   });
 
-  it("falls back to dpcode/update when no preferred name is provided", () => {
+  it("falls back to jcode/update when no preferred name is provided", () => {
     const branch = resolveDefaultCreateBranchName(["main"]);
-    assert.equal(branch, "dpcode/update");
+    assert.equal(branch, "jcode/update");
   });
 });
 
@@ -1367,7 +1367,7 @@ describe("resolveLiveThreadBranchUpdate", () => {
   it("does not regress a semantic thread branch back to a temporary worktree branch", () => {
     const update = resolveLiveThreadBranchUpdate({
       threadBranch: "feature/semantic-branch",
-      gitStatus: status({ branch: "dpcode/deadbeef" }),
+      gitStatus: status({ branch: "jcode/deadbeef" }),
     });
 
     assert.equal(update, null);
@@ -1384,7 +1384,7 @@ describe("resolveLiveThreadBranchUpdate", () => {
 });
 
 describe("shouldOfferCreateBranchPrompt", () => {
-  const temporaryBranch = "dpcode/deadbeef";
+  const temporaryBranch = "jcode/deadbeef";
 
   it("shows the create-branch prompt for temporary worktree branches without upstream", () => {
     assert.isTrue(

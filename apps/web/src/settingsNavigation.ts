@@ -47,7 +47,7 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
   label: string;
 }> = [
   { id: "app", label: "App" },
-  { id: "dpcode", label: "DP Code" },
+  { id: "dpcode", label: "JCode" },
 ] as const;
 
 export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
@@ -87,7 +87,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     id: "worktrees",
     group: "app",
     label: "Worktrees",
-    description: "Review and clean up the worktrees created by DP Code.",
+    description: "Review and clean up the worktrees created by JCode.",
     icon: WorktreeIcon,
     eyebrow: "Workspace management",
   },

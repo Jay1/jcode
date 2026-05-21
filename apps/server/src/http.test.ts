@@ -170,7 +170,7 @@ const serverEnvironment: ServerEnvironmentShape = {
   getEnvironmentId: Effect.succeed("env-1" as never),
   getDescriptor: Effect.succeed({
     environmentId: "env-1" as never,
-    label: "DP Code Test",
+    label: "JCode Test",
     platform: { os: "linux", arch: "x64" },
     serverVersion: "0.0.0",
     capabilities: { repositoryIdentity: true },
@@ -236,14 +236,21 @@ describe("createHttpRequestHandler", () => {
     const handler = await makeHandler(config, undefined, serverEnvironment);
 
     await withServer(handler, async (origin) => {
-      const response = await fetch(`${origin}/.well-known/t3/environment`, { redirect: "manual" });
+      const response = await fetch(`${origin}/.well-known/jcode/environment`, {
+        redirect: "manual",
+      });
 
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("application/json");
       await expect(response.json()).resolves.toMatchObject({
         environmentId: "env-1",
-        label: "DP Code Test",
+        label: "JCode Test",
       });
+
+      const legacyResponse = await fetch(`${origin}/.well-known/t3/environment`, {
+        redirect: "manual",
+      });
+      expect(legacyResponse.status).toBe(200);
     });
   });
 

@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   DPCODE_BROWSER_USE_PIPE_ENV,
+  JCODE_BROWSER_USE_PIPE_ENV,
   resolveConfiguredBrowserUsePipePath,
   resolveDefaultBrowserUsePipePath,
   T3CODE_BROWSER_USE_PIPE_ENV,
@@ -19,18 +20,19 @@ describe("browser-use pipe path resolution", () => {
     const pipePath = resolveDefaultBrowserUsePipePath("darwin");
 
     expect(dirname(pipePath)).toBe(`${tmpdir()}/codex-browser-use`);
-    expect(basename(pipePath)).toMatch(/^dpcode-iab-\d+\.sock$/);
+    expect(basename(pipePath)).toMatch(/^jcode-iab-\d+\.sock$/);
   });
 
-  it("prefers an explicit desktop pipe path from the environment", () => {
+  it("prefers an explicit JCode desktop pipe path from the environment", () => {
     expect(
       resolveConfiguredBrowserUsePipePath(
         {
+          [JCODE_BROWSER_USE_PIPE_ENV]: "/tmp/codex-browser-use/jcode.sock",
           [DPCODE_BROWSER_USE_PIPE_ENV]: "/tmp/codex-browser-use/custom.sock",
           [T3CODE_BROWSER_USE_PIPE_ENV]: "/tmp/codex-browser-use/legacy.sock",
         },
         "darwin",
       ),
-    ).toBe("/tmp/codex-browser-use/custom.sock");
+    ).toBe("/tmp/codex-browser-use/jcode.sock");
   });
 });

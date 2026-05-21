@@ -76,7 +76,7 @@ export interface CliConfigShape {
  * CliConfig - Service tag for startup CLI/runtime helpers.
  */
 export class CliConfig extends ServiceMap.Service<CliConfig, CliConfigShape>()(
-  "t3/main/CliConfig",
+  "jcode/main/CliConfig",
 ) {
   static readonly layer = Layer.effect(
     CliConfig,
@@ -95,39 +95,52 @@ export class CliConfig extends ServiceMap.Service<CliConfig, CliConfigShape>()(
   );
 }
 
-const CliEnvConfig = Config.all({
-  mode: Config.string("T3CODE_MODE").pipe(
-    Config.option,
-    Config.map(
-      Option.match<RuntimeMode, string>({
-        onNone: () => "web",
-        onSome: (value) => (value === "desktop" ? "desktop" : "web"),
-      }),
+const firstDefined = <T>(values: ReadonlyArray<T | undefined>): T | undefined =>
+  values.find((value): value is T => value !== undefined);
+
+const optionalStringEnvConfig = (...names: ReadonlyArray<string>) =>
+  Config.all(
+    names.map((name) =>
+      Config.string(name).pipe(Config.option, Config.map(Option.getOrUndefined)),
     ),
+  ).pipe(Config.map(firstDefined));
+
+const optionalBooleanEnvConfig = (...names: ReadonlyArray<string>) =>
+  Config.all(
+    names.map((name) =>
+      Config.boolean(name).pipe(Config.option, Config.map(Option.getOrUndefined)),
+    ),
+  ).pipe(Config.map(firstDefined));
+
+const optionalPortEnvConfig = (...names: ReadonlyArray<string>) =>
+  Config.all(
+    names.map((name) => Config.port(name).pipe(Config.option, Config.map(Option.getOrUndefined))),
+  ).pipe(Config.map(firstDefined));
+
+const CliEnvConfig = Config.all({
+  mode: optionalStringEnvConfig("JCODE_MODE", "DPCODE_MODE", "T3CODE_MODE").pipe(
+    Config.map((value): RuntimeMode => (value === "desktop" ? "desktop" : "web")),
   ),
-  port: Config.port("T3CODE_PORT").pipe(Config.option, Config.map(Option.getOrUndefined)),
-  host: Config.string("T3CODE_HOST").pipe(Config.option, Config.map(Option.getOrUndefined)),
-  t3Home: Config.string("T3CODE_HOME").pipe(Config.option, Config.map(Option.getOrUndefined)),
+  port: optionalPortEnvConfig("JCODE_PORT", "DPCODE_PORT", "T3CODE_PORT"),
+  host: optionalStringEnvConfig("JCODE_HOST", "DPCODE_HOST", "T3CODE_HOST"),
+  t3Home: optionalStringEnvConfig("JCODE_HOME", "DPCODE_HOME", "T3CODE_HOME"),
   devUrl: Config.url("VITE_DEV_SERVER_URL").pipe(Config.option, Config.map(Option.getOrUndefined)),
-  noBrowser: Config.boolean("T3CODE_NO_BROWSER").pipe(
-    Config.option,
-    Config.map(Option.getOrUndefined),
+  noBrowser: optionalBooleanEnvConfig("JCODE_NO_BROWSER", "DPCODE_NO_BROWSER", "T3CODE_NO_BROWSER"),
+  authToken: optionalStringEnvConfig("JCODE_AUTH_TOKEN", "DPCODE_AUTH_TOKEN", "T3CODE_AUTH_TOKEN"),
+  autoBootstrapProjectFromCwd: optionalBooleanEnvConfig(
+    "JCODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD",
+    "DPCODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD",
+    "T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD",
   ),
-  authToken: Config.string("T3CODE_AUTH_TOKEN").pipe(
-    Config.option,
-    Config.map(Option.getOrUndefined),
+  logProviderEvents: optionalBooleanEnvConfig(
+    "JCODE_LOG_PROVIDER_EVENTS",
+    "DPCODE_LOG_PROVIDER_EVENTS",
+    "T3CODE_LOG_PROVIDER_EVENTS",
   ),
-  autoBootstrapProjectFromCwd: Config.boolean("T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD").pipe(
-    Config.option,
-    Config.map(Option.getOrUndefined),
-  ),
-  logProviderEvents: Config.boolean("T3CODE_LOG_PROVIDER_EVENTS").pipe(
-    Config.option,
-    Config.map(Option.getOrUndefined),
-  ),
-  logWebSocketEvents: Config.boolean("T3CODE_LOG_WS_EVENTS").pipe(
-    Config.option,
-    Config.map(Option.getOrUndefined),
+  logWebSocketEvents: optionalBooleanEnvConfig(
+    "JCODE_LOG_WS_EVENTS",
+    "DPCODE_LOG_WS_EVENTS",
+    "T3CODE_LOG_WS_EVENTS",
   ),
 });
 
@@ -164,7 +177,7 @@ const ServerConfigLive = (input: CliInput) =>
 
       const devUrl = Option.getOrElse(input.devUrl, () => env.devUrl);
       const baseDir = yield* resolveBaseDir(Option.getOrUndefined(input.t3Home) ?? env.t3Home);
-      // Import legacy ~/.t3 state before runtime paths are derived under ~/.dpcode.
+      // Import legacy JCode/T3Code state before runtime paths are derived under ~/.jcode.
       yield* migrateLegacyHomeIfNeeded({
         baseDir,
         homeDir: OS.homedir(),
@@ -173,7 +186,7 @@ const ServerConfigLive = (input: CliInput) =>
         Effect.mapError(
           (cause) =>
             new StartupError({
-              message: "Failed to migrate legacy T3 home directory",
+              message: "Failed to migrate legacy home directory",
               cause,
             }),
         ),
@@ -303,7 +316,7 @@ const makeServerProgram = (input: CliInput) =>
         ? `http://${formatHostForUrl(config.host)}:${config.port}`
         : localUrl;
     const { authToken, devUrl, ...safeConfig } = config;
-    yield* Effect.logInfo("DP Code running", {
+    yield* Effect.logInfo("JCode running", {
       ...safeConfig,
       devUrl: devUrl?.toString(),
       authEnabled: Boolean(authToken),
@@ -341,7 +354,7 @@ const hostFlag = Flag.string("host").pipe(
   Flag.optional,
 );
 const t3HomeFlag = Flag.string("home-dir").pipe(
-  Flag.withDescription("Base directory for all DP Code data (equivalent to T3CODE_HOME)."),
+  Flag.withDescription("Base directory for all JCode data (equivalent to JCODE_HOME)."),
   Flag.optional,
 );
 const devUrlFlag = Flag.string("dev-url").pipe(
@@ -366,19 +379,19 @@ const autoBootstrapProjectFromCwdFlag = Flag.boolean("auto-bootstrap-project-fro
 );
 const logProviderEventsFlag = Flag.boolean("log-provider-events").pipe(
   Flag.withDescription(
-    "Emit native/canonical provider NDJSON logs for debugging (equivalent to T3CODE_LOG_PROVIDER_EVENTS).",
+    "Emit native/canonical provider NDJSON logs for debugging (equivalent to JCODE_LOG_PROVIDER_EVENTS).",
   ),
   Flag.optional,
 );
 const logWebSocketEventsFlag = Flag.boolean("log-websocket-events").pipe(
   Flag.withDescription(
-    "Emit server-side logs for outbound WebSocket push traffic (equivalent to T3CODE_LOG_WS_EVENTS).",
+    "Emit server-side logs for outbound WebSocket push traffic (equivalent to JCODE_LOG_WS_EVENTS).",
   ),
   Flag.withAlias("log-ws-events"),
   Flag.optional,
 );
 
-export const t3Cli = Command.make("t3", {
+export const jcodeCli = Command.make("jcode", {
   mode: modeFlag,
   port: portFlag,
   host: hostFlag,
@@ -390,6 +403,8 @@ export const t3Cli = Command.make("t3", {
   logProviderEvents: logProviderEventsFlag,
   logWebSocketEvents: logWebSocketEventsFlag,
 }).pipe(
-  Command.withDescription("Run the DP Code server."),
+  Command.withDescription("Run the JCode server."),
   Command.withHandler((input) => Effect.scoped(makeServerProgram(input))),
 );
+
+export const t3Cli = jcodeCli;

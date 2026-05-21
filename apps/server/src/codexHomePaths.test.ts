@@ -29,6 +29,16 @@ describe("resolveBaseCodexHomePath", () => {
 });
 
 describe("resolveDpCodeCodexHomeOverlayPath", () => {
+  it("anchors the overlay under JCODE_HOME when set", () => {
+    assert.equal(
+      resolveDpCodeCodexHomeOverlayPath(
+        { JCODE_HOME: "/j/runtime", DPCODE_HOME: "/dp/runtime" },
+        "/users/me/.codex",
+      ),
+      path.join("/j/runtime", "codex-home-overlay"),
+    );
+  });
+
   it("anchors the overlay under DPCODE_HOME when set", () => {
     assert.equal(
       resolveDpCodeCodexHomeOverlayPath({ DPCODE_HOME: "/dp/runtime" }, "/users/me/.codex"),
@@ -46,7 +56,7 @@ describe("resolveDpCodeCodexHomeOverlayPath", () => {
   it("derives a default overlay sibling of the source home", () => {
     assert.equal(
       resolveDpCodeCodexHomeOverlayPath({}, "/users/me/.codex"),
-      path.join("/users/me", ".dpcode", "runtime", "codex-home-overlay"),
+      path.join("/users/me", ".jcode", "runtime", "codex-home-overlay"),
     );
   });
 });

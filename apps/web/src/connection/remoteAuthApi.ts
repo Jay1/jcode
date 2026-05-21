@@ -109,8 +109,13 @@ export function fetchRemoteEnvironmentDescriptor(input: {
 }): Promise<ExecutionEnvironmentDescriptor> {
   return fetchRemoteJson<ExecutionEnvironmentDescriptor>({
     httpBaseUrl: input.httpBaseUrl,
-    pathname: "/.well-known/t3/environment",
-  });
+    pathname: "/.well-known/jcode/environment",
+  }).catch(() =>
+    fetchRemoteJson<ExecutionEnvironmentDescriptor>({
+      httpBaseUrl: input.httpBaseUrl,
+      pathname: "/.well-known/t3/environment",
+    }),
+  );
 }
 
 export function issueRemoteWebSocketToken(input: {

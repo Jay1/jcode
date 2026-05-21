@@ -18,7 +18,7 @@ function readTrimmedString(record: Record<string, unknown>, key: string): string
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-// Imported instance ids may be runtime names rather than DP Code provider literals.
+// Imported instance ids may be runtime names rather than JCode provider literals.
 function inferProviderFromLabel(label: string): ModelProviderKind | undefined {
   const lowerLabel = label.toLowerCase();
   if (/(^|[^a-z0-9])pi([^a-z0-9]|$)/u.test(lowerLabel)) {
@@ -125,7 +125,7 @@ export function normalizePersistedModelSelection(input: unknown): unknown {
   }
 
   // Newer T3 Code writes provider-less selections as { instanceId, model } and
-  // option rows as [{ id, value }]; DP Code stores canonical provider/options objects.
+  // option rows as [{ id, value }]; JCode stores canonical provider/options objects.
   return normalizeLegacyModelSelection({
     provider: input.provider ?? input.instanceId,
     model,

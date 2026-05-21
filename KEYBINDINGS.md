@@ -1,8 +1,8 @@
 # Keybindings
 
-DP Code reads keybindings from:
+JCode reads keybindings from:
 
-- `~/.dpcode/userdata/keybindings.json`
+- `~/.jcode/userdata/keybindings.json`
 
 The file must be a JSON array of rules:
 

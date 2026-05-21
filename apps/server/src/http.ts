@@ -267,13 +267,14 @@ const authEffectRouteLayer = HttpRouter.add(
   ),
 );
 
-const environmentDescriptorEffectRouteLayer = HttpRouter.add(
-  "GET",
-  "/.well-known/t3/environment",
-  Effect.gen(function* () {
-    const serverEnvironment = yield* ServerEnvironment;
-    return HttpServerResponse.jsonUnsafe(yield* serverEnvironment.getDescriptor);
-  }),
+const environmentDescriptorEffect = Effect.gen(function* () {
+  const serverEnvironment = yield* ServerEnvironment;
+  return HttpServerResponse.jsonUnsafe(yield* serverEnvironment.getDescriptor);
+});
+
+const environmentDescriptorEffectRouteLayer = Layer.mergeAll(
+  HttpRouter.add("GET", "/.well-known/jcode/environment", environmentDescriptorEffect),
+  HttpRouter.add("GET", "/.well-known/t3/environment", environmentDescriptorEffect),
 );
 
 const projectFaviconEffectRouteLayer = HttpRouter.add(
@@ -557,7 +558,10 @@ export function createHttpRequestHandler({
           return;
         }
 
-        if (url.pathname === "/.well-known/t3/environment") {
+        if (
+          url.pathname === "/.well-known/jcode/environment" ||
+          url.pathname === "/.well-known/t3/environment"
+        ) {
           if (!serverEnvironment) {
             respond(503, { "Content-Type": "text/plain" }, "Environment service unavailable");
             return;
