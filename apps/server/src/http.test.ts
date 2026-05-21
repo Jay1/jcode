@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createHttpRequestHandler, isLegacyTokenAuthorized } from "./http";
 import type { ServerAuthShape } from "./auth/Services/ServerAuth";
 import { deriveServerPaths, type ServerConfigShape } from "./config";
+import type { ServerEnvironmentShape } from "./environment/Services/ServerEnvironment";
 import type { ProjectFaviconResolverShape } from "./project/Services/ProjectFaviconResolver";
 import type { ServerReadiness } from "./server/readiness";
 
@@ -73,6 +74,7 @@ async function makeHandler(
     readonly serverAuth: ServerAuthShape;
     readonly cookieName: string;
   },
+  serverEnvironment?: ServerEnvironmentShape,
 ): Promise<http.RequestListener> {
   const services = await Effect.runPromise(
     Effect.gen(function* () {
@@ -94,6 +96,7 @@ async function makeHandler(
           sessionCredentials: { cookieName: auth.cookieName },
         }
       : {}),
+    ...(serverEnvironment ? { serverEnvironment } : {}),
   });
 }
 
@@ -163,6 +166,17 @@ function makeFakeServerAuth(overrides: Partial<ServerAuthShape> = {}): ServerAut
   } satisfies ServerAuthShape;
 }
 
+const serverEnvironment: ServerEnvironmentShape = {
+  getEnvironmentId: Effect.succeed("env-1" as never),
+  getDescriptor: Effect.succeed({
+    environmentId: "env-1" as never,
+    label: "DP Code Test",
+    platform: { os: "linux", arch: "x64" },
+    serverVersion: "0.0.0",
+    capabilities: { repositoryIdentity: true },
+  }),
+};
+
 async function withServer<T>(
   handler: http.RequestListener,
   run: (origin: string) => Promise<T>,
@@ -213,6 +227,22 @@ describe("createHttpRequestHandler", () => {
         status: "ok",
         startupReady: false,
         pushBusReady: true,
+      });
+    });
+  });
+
+  it("serves the public environment descriptor before dev/static fallback", async () => {
+    const config = await makeConfig({ devUrl: new URL("http://localhost:5173/") });
+    const handler = await makeHandler(config, undefined, serverEnvironment);
+
+    await withServer(handler, async (origin) => {
+      const response = await fetch(`${origin}/.well-known/t3/environment`, { redirect: "manual" });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("application/json");
+      await expect(response.json()).resolves.toMatchObject({
+        environmentId: "env-1",
+        label: "DP Code Test",
       });
     });
   });

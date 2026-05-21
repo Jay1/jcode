@@ -30,6 +30,7 @@ __screenshots__/
 /.pi/
 /.tmp/
 /~/
+/.brainstorm/
 /bootstrap.js
 /preload.js
 /browser-sidebar-comment-preload.js

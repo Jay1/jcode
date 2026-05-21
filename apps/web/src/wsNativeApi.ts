@@ -31,6 +31,12 @@ import {
 } from "@t3tools/contracts";
 
 import { showConfirmDialogFallback } from "./confirmDialogFallback";
+import { getActiveSavedConnectionWebSocketUrl } from "./connection/savedConnectionManager";
+import {
+  readActiveSavedConnectionProfileId,
+  readSavedConnectionProfile,
+  readSavedConnectionSecret,
+} from "./connection/savedConnections";
 import { showContextMenuFallback } from "./contextMenuFallback";
 import { WsTransport } from "./wsTransport";
 
@@ -120,15 +126,24 @@ async function requestAuthJson<T>(
   } = {},
 ): Promise<T> {
   const hasBody = options.body !== undefined;
-  const response = await fetch(path, {
+  const activeProfileId = readActiveSavedConnectionProfileId();
+  const activeProfile = activeProfileId ? readSavedConnectionProfile(activeProfileId) : null;
+  const bearerToken = activeProfileId ? readSavedConnectionSecret(activeProfileId) : null;
+  const remoteUrl = activeProfile ? new URL(path, activeProfile.httpBaseUrl).toString() : path;
+  const response = await fetch(remoteUrl, {
     method: options.method ?? "GET",
-    credentials: "same-origin",
+    ...(activeProfile ? {} : { credentials: "same-origin" as const }),
     ...(hasBody
       ? {
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
+          },
           body: JSON.stringify(options.body),
         }
-      : {}),
+      : bearerToken
+        ? { headers: { Authorization: `Bearer ${bearerToken}` } }
+        : {}),
   });
   const payload = (await response.json().catch(() => null)) as unknown;
   if (!response.ok) {
@@ -331,7 +346,7 @@ export function createWsNativeApi(): NativeApi {
     instance = null;
   }
 
-  const transport = new WsTransport();
+  const transport = new WsTransport(() => getActiveSavedConnectionWebSocketUrl());
 
   transport.subscribe(WS_CHANNELS.serverWelcome, (message) => {
     const payload = message.data;

@@ -23,6 +23,8 @@ import type { SessionCredentialServiceShape } from "./auth/Services/SessionCrede
 import { SessionCredentialService } from "./auth/Services/SessionCredentialService";
 import { deriveAuthClientMetadata } from "./auth/utils";
 import { ServerConfig, type ServerConfigShape } from "./config";
+import { ServerEnvironment } from "./environment/Services/ServerEnvironment";
+import type { ServerEnvironmentShape } from "./environment/Services/ServerEnvironment";
 import { LOCAL_IMAGE_ROUTE_PATH, resolveAllowedLocalImageFile } from "./localImageFiles.ts";
 import type { ProjectFaviconResolverShape } from "./project/Services/ProjectFaviconResolver";
 import { ProjectFaviconResolver } from "./project/Services/ProjectFaviconResolver";
@@ -58,6 +60,7 @@ export function makeEffectHttpRouteLayer(readiness: ServerReadiness) {
       ),
     ),
     authEffectRouteLayer,
+    environmentDescriptorEffectRouteLayer,
     projectFaviconEffectRouteLayer,
     localImageEffectRouteLayer,
     attachmentsEffectRouteLayer,
@@ -262,6 +265,15 @@ const authEffectRouteLayer = HttpRouter.add(
       ),
     ),
   ),
+);
+
+const environmentDescriptorEffectRouteLayer = HttpRouter.add(
+  "GET",
+  "/.well-known/t3/environment",
+  Effect.gen(function* () {
+    const serverEnvironment = yield* ServerEnvironment;
+    return HttpServerResponse.jsonUnsafe(yield* serverEnvironment.getDescriptor);
+  }),
 );
 
 const projectFaviconEffectRouteLayer = HttpRouter.add(
@@ -499,6 +511,7 @@ export interface HttpRequestHandlerOptions {
   readonly path: Path.Path;
   readonly serverAuth?: ServerAuthShape;
   readonly sessionCredentials?: Pick<SessionCredentialServiceShape, "cookieName">;
+  readonly serverEnvironment?: ServerEnvironmentShape;
 }
 
 function makeResponder(res: http.ServerResponse): Respond {
@@ -516,6 +529,7 @@ export function createHttpRequestHandler({
   path,
   serverAuth,
   sessionCredentials,
+  serverEnvironment,
 }: HttpRequestHandlerOptions): http.RequestListener {
   const { port, staticDir, devUrl } = serverConfig;
 
@@ -539,6 +553,19 @@ export function createHttpRequestHandler({
               terminalSubscriptionsReady: readinessSnapshot.terminalSubscriptionsReady,
               orchestrationSubscriptionsReady: readinessSnapshot.orchestrationSubscriptionsReady,
             }),
+          );
+          return;
+        }
+
+        if (url.pathname === "/.well-known/t3/environment") {
+          if (!serverEnvironment) {
+            respond(503, { "Content-Type": "text/plain" }, "Environment service unavailable");
+            return;
+          }
+          respond(
+            200,
+            { "Content-Type": "application/json; charset=utf-8" },
+            JSON.stringify(yield* serverEnvironment.getDescriptor),
           );
           return;
         }

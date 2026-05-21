@@ -29,6 +29,7 @@ type RpcClientInstance =
   RpcClientEffect extends Effect.Effect<infer Client, any, any> ? Client : never;
 
 type TransportState = "connecting" | "open" | "closed" | "disposed";
+type WsUrlResolver = () => Promise<string | null> | string | null;
 
 export interface WsTransportTestDriver {
   readonly request?: (method: string, params: unknown) => Promise<unknown> | unknown;
@@ -125,6 +126,7 @@ export function shouldKeepServerLifecycleStream(activeChannels: ReadonlySet<stri
 
 export class WsTransport {
   private readonly explicitUrl: string | null;
+  private readonly urlResolver: WsUrlResolver | null;
   private readonly testDriver: WsTransportTestDriver | null;
   private readonly listeners = new Map<string, Set<(message: WsPush) => void>>();
   private readonly latestPushByChannel = new Map<string, WsPush>();
@@ -141,8 +143,9 @@ export class WsTransport {
   private shellSubscribed = false;
   private readonly threadSubscriptions = new Map<string, unknown>();
 
-  constructor(url?: string) {
-    this.explicitUrl = url ?? null;
+  constructor(url?: string | WsUrlResolver) {
+    this.explicitUrl = typeof url === "string" ? url : null;
+    this.urlResolver = typeof url === "function" ? url : null;
     this.testDriver =
       typeof window !== "undefined" ? (window.__T3_WS_TRANSPORT_TEST_DRIVER__ ?? null) : null;
     if (this.testDriver) {
@@ -291,6 +294,31 @@ export class WsTransport {
   }
 
   private createSession() {
+    if (this.urlResolver) {
+      const clientPromise = Promise.resolve()
+        .then(async () => {
+          const resolvedUrl = await this.urlResolver?.();
+          if (this.disposed) throw new Error("Transport disposed");
+
+          const runtime = ManagedRuntime.make(
+            makeProtocolLayer(makeSocketUrl(resolvedUrl ?? this.explicitUrl)),
+          );
+          const clientScope = runtime.runSync(Scope.make());
+          this.runtime = runtime;
+          this.clientScope = clientScope;
+          return runtime.runPromise(Scope.provide(clientScope)(makeRpcClient));
+        })
+        .then((client) => {
+          this.state = "open";
+          return client;
+        })
+        .catch((error) => {
+          if (!this.disposed) this.state = "closed";
+          throw error;
+        });
+      return { runtime: null, clientScope: null, clientPromise };
+    }
+
     const runtime = ManagedRuntime.make(makeProtocolLayer(makeSocketUrl(this.explicitUrl)));
     const clientScope = runtime.runSync(Scope.make());
     const clientPromise = runtime
@@ -300,7 +328,7 @@ export class WsTransport {
         return client;
       })
       .catch((error) => {
-        this.state = "closed";
+        if (!this.disposed) this.state = "closed";
         throw error;
       });
     return { runtime, clientScope, clientPromise };
@@ -320,7 +348,7 @@ export class WsTransport {
 
   private reconnect(): Promise<RpcClientInstance> {
     if (this.reconnectPromise) return this.reconnectPromise;
-    if (!this.runtime || !this.clientScope) {
+    if ((this.runtime && !this.clientScope) || (!this.runtime && this.clientScope)) {
       return Promise.reject(new Error("Transport client unavailable"));
     }
 
@@ -332,9 +360,11 @@ export class WsTransport {
 
     this.state = "connecting";
 
-    void oldRuntime.runPromise(Scope.close(oldClientScope, Exit.void)).finally(() => {
-      oldRuntime.dispose();
-    });
+    if (oldRuntime && oldClientScope) {
+      void oldRuntime.runPromise(Scope.close(oldClientScope, Exit.void)).finally(() => {
+        oldRuntime.dispose();
+      });
+    }
 
     this.reconnectPromise = this.openReconnectSession().finally(() => {
       this.reconnectPromise = null;

@@ -124,4 +124,16 @@ describe("WsTransport", () => {
 
     transport.dispose();
   });
+
+  it("supports async websocket URL resolution", async () => {
+    const resolver = vi.fn().mockResolvedValue("wss://backend.example.com/?wsToken=issued");
+    const transport = new WsTransport(resolver);
+
+    await vi.waitFor(() => {
+      expect(sockets[0]?.url).toBe("wss://backend.example.com/ws?wsToken=issued");
+    });
+    expect(resolver).toHaveBeenCalledTimes(1);
+
+    transport.dispose();
+  });
 });

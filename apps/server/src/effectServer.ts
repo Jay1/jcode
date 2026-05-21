@@ -12,6 +12,7 @@ import {
 } from "./serverRuntimeState";
 import { resolveListeningPort } from "./startupAccess";
 import { ServerConfig } from "./config";
+import { ServerEnvironment } from "./environment/Services/ServerEnvironment";
 import { patchBunWebSocketCloseEventCompatibility } from "./bunWebSocketCompatibility";
 import { makeEffectHttpRouteLayer } from "./http";
 import { Keybindings } from "./keybindings";
@@ -30,6 +31,7 @@ export interface ServerShape {
     ServerLifecycleError | ServerSettingsError,
     | Scope.Scope
     | ServerConfig
+    | ServerEnvironment
     | FileSystem.FileSystem
     | Path.Path
     | Keybindings

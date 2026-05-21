@@ -43,6 +43,7 @@ import {
 } from "../appSettings";
 import { APP_VERSION } from "../branding";
 import { SidebarHeaderNavigationControls } from "../components/SidebarHeaderNavigationControls";
+import { ConnectionsSettingsPanel } from "../components/ConnectionsSettingsPanel";
 import {
   ClaudeAI,
   CursorIcon,
@@ -3068,6 +3069,8 @@ function SettingsRouteView() {
         return renderBehaviorPanel();
       case "worktrees":
         return renderWorktreesPanel();
+      case "connections":
+        return <ConnectionsSettingsPanel />;
       case "archived":
         return renderArchivedPanel();
       case "models":
