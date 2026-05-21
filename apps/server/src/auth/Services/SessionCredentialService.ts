@@ -79,4 +79,4 @@ export interface SessionCredentialServiceShape {
 export class SessionCredentialService extends ServiceMap.Service<
   SessionCredentialService,
   SessionCredentialServiceShape
->()("t3/auth/Services/SessionCredentialService") {}
+>()("jcode/auth/Services/SessionCredentialService") {}

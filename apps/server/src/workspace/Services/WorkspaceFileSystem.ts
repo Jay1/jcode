@@ -30,4 +30,4 @@ export interface WorkspaceFileSystemShape {
 export class WorkspaceFileSystem extends ServiceMap.Service<
   WorkspaceFileSystem,
   WorkspaceFileSystemShape
->()("t3/workspace/Services/WorkspaceFileSystem") {}
+>()("jcode/workspace/Services/WorkspaceFileSystem") {}

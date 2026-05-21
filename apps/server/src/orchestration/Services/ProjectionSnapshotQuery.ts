@@ -122,4 +122,4 @@ export interface ProjectionSnapshotQueryShape {
 export class ProjectionSnapshotQuery extends ServiceMap.Service<
   ProjectionSnapshotQuery,
   ProjectionSnapshotQueryShape
->()("t3/orchestration/Services/ProjectionSnapshotQuery") {}
+>()("jcode/orchestration/Services/ProjectionSnapshotQuery") {}

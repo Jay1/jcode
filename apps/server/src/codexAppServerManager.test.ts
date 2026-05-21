@@ -535,7 +535,7 @@ describe("startSession", () => {
   it("enables Codex experimental api capabilities during initialize", () => {
     expect(buildCodexInitializeParams()).toEqual({
       clientInfo: {
-        name: "t3code_desktop",
+        name: "jcode_desktop",
         title: "JCode Desktop",
         version: "0.1.0",
       },
@@ -547,7 +547,7 @@ describe("startSession", () => {
 
   it("uses an isolated scratch workspace path when no cwd is provided", () => {
     const cwd = ensureIsolatedScratchWorkspace(asThreadId("thread-1"));
-    expect(cwd).toContain(`${path.sep}dpcode-codex-workspaces${path.sep}thread-1`);
+    expect(cwd).toContain(`${path.sep}jcode-codex-workspaces${path.sep}thread-1`);
   });
 
   it("fails fast with an upgrade message when codex is below the minimum supported version", async () => {

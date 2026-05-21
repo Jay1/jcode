@@ -11,7 +11,7 @@ import { TextGeneration } from "../Services/TextGeneration.ts";
 const CodexTextGenerationTestLayer = CodexTextGenerationLive.pipe(
   Layer.provideMerge(
     ServerConfig.layerTest(process.cwd(), {
-      prefix: "t3code-codex-text-generation-test-",
+      prefix: "jcode-codex-text-generation-test-",
     }),
   ),
   Layer.provideMerge(NodeServices.layer),
@@ -149,7 +149,7 @@ function withFakeCodexEnv<A, E, R>(
     Effect.gen(function* () {
       const releaseLock = yield* acquireCodexEnvLock();
       const fs = yield* FileSystem.FileSystem;
-      const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3code-codex-text-" });
+      const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "jcode-codex-text-" });
       const binDir = yield* makeFakeCodexBinary(tempDir);
       const previousPath = process.env.PATH;
       const previousOutput = process.env.T3_FAKE_CODEX_OUTPUT_B64;
@@ -715,9 +715,9 @@ it.layer(CodexTextGenerationTestLayer)("CodexTextGenerationLive", (it) => {
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
-        const wrongCodexHome = yield* fs.makeTempDirectoryScoped({ prefix: "t3code-wrong-codex-" });
+        const wrongCodexHome = yield* fs.makeTempDirectoryScoped({ prefix: "jcode-wrong-codex-" });
         const customCodexHome = yield* fs.makeTempDirectoryScoped({
-          prefix: "t3code-custom-codex-",
+          prefix: "jcode-custom-codex-",
         });
         const previousCodexHome = process.env.CODEX_HOME;
         const previousAzureApiKey = process.env.AZURE_OPENAI_API_KEY;

@@ -66,7 +66,7 @@ interface CurrentRpcAuthSessionShape {
 }
 
 const CurrentRpcAuthSession = ServiceMap.Service<CurrentRpcAuthSessionShape>(
-  "t3/wsRpc/CurrentRpcAuthSession",
+  "jcode/wsRpc/CurrentRpcAuthSession",
 );
 
 interface ProcessTableRow {

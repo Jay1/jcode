@@ -133,7 +133,7 @@ function resolvePullRequestWorktreeLocalBranchName(
 
   const sanitizedHeadBranch = sanitizeBranchFragment(pullRequest.headBranch).trim();
   const suffix = sanitizedHeadBranch.length > 0 ? sanitizedHeadBranch : "head";
-  return `t3code/pr-${pullRequest.number}/${suffix}`;
+  return `jcode/pr-${pullRequest.number}/${suffix}`;
 }
 
 function parseGitHubRepositoryNameWithOwnerFromRemoteUrl(url: string | null): string | null {
@@ -1399,7 +1399,7 @@ export const makeGitManager = Effect.gen(function* () {
         ...(model ? { model } : {}),
       });
 
-      const bodyFile = path.join(tempDir, `t3code-pr-body-${process.pid}-${randomUUID()}.md`);
+      const bodyFile = path.join(tempDir, `jcode-pr-body-${process.pid}-${randomUUID()}.md`);
       yield* fileSystem
         .writeFileString(bodyFile, generated.body)
         .pipe(
@@ -2115,11 +2115,11 @@ The local stash entry was kept for recovery.`,
 
       const preservedLocalStash = yield* stashWorkingTree(
         input.cwd,
-        `dpcode preserve local handoff ${randomUUID()}`,
+        `jcode preserve local handoff ${randomUUID()}`,
       );
       const sourceStash = yield* stashWorkingTree(
         input.worktreePath,
-        `dpcode handoff to local ${randomUUID()}`,
+        `jcode handoff to local ${randomUUID()}`,
       );
 
       yield* gitCore
@@ -2282,7 +2282,7 @@ The local stash entry was kept for recovery.`,
 
     const sourceStash = yield* stashWorkingTree(
       input.cwd,
-      `dpcode handoff to worktree ${randomUUID()}`,
+      `jcode handoff to worktree ${randomUUID()}`,
     );
     const sourceBranch = currentLocalStatus.branch ?? input.currentBranch ?? null;
     const sourceHeadRef = yield* readHeadRef(input.cwd);

@@ -9,4 +9,4 @@ export interface ServerEnvironmentShape {
 export class ServerEnvironment extends ServiceMap.Service<
   ServerEnvironment,
   ServerEnvironmentShape
->()("t3/environment/Services/ServerEnvironment") {}
+>()("jcode/environment/Services/ServerEnvironment") {}

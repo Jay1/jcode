@@ -688,7 +688,7 @@ function mapCodexRuntimeModeToTurnOverrides(runtimeMode: RuntimeMode): {
 }
 
 export function ensureIsolatedScratchWorkspace(threadId: ThreadId): string {
-  const workspaceRoot = path.join(tmpdir(), "dpcode-codex-workspaces");
+  const workspaceRoot = path.join(tmpdir(), "jcode-codex-workspaces");
   const workspaceDir = path.join(workspaceRoot, String(threadId));
   mkdirSync(workspaceDir, { recursive: true });
   return workspaceDir;
@@ -743,7 +743,7 @@ export function normalizeCodexModelSlug(
 export function buildCodexInitializeParams() {
   return {
     clientInfo: {
-      name: "t3code_desktop",
+      name: "jcode_desktop",
       title: "JCode Desktop",
       version: "0.1.0",
     },
