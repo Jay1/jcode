@@ -972,9 +972,9 @@ function resolveNotificationIconPath(): string | null {
     return null;
   }
   if (process.platform === "win32") {
-    return resolveResourcePath("dpcode.png") ?? resolveIconPath("ico");
+    return resolveResourcePath("jcode.png") ?? resolveResourcePath("dpcode.png") ?? resolveIconPath("ico");
   }
-  return resolveResourcePath("dpcode.png") ?? resolveIconPath("png");
+  return resolveResourcePath("jcode.png") ?? resolveResourcePath("dpcode.png") ?? resolveIconPath("png");
 }
 
 // Keep the app badge aligned with desktop notifications that arrive off-focus.

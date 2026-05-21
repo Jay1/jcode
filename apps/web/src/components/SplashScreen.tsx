@@ -18,7 +18,7 @@ export function SplashScreen({
           alt="JCode"
           className="size-24 rounded-[26px] object-cover"
           draggable={false}
-          src="/dpcode.png"
+          src="/jcode.png"
         />
 
         {errorMessage ? (

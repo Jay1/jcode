@@ -8076,7 +8076,7 @@ export default function ChatView({
                       className="size-12 rounded-lg object-contain"
                       draggable={false}
                       height={96}
-                      src="/dpcode-hero.png"
+                      src="/jcode-hero.png"
                       width={96}
                     />
                     <h2 className="text-[26px] font-normal leading-[1.15] tracking-[-0.015em] text-foreground/95 sm:text-[30px]">

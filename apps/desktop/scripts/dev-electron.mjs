@@ -48,7 +48,7 @@ function cleanupStaleDevApps() {
     return;
   }
 
-  spawnSync("pkill", ["-f", "--", `--t3code-dev-root=${desktopDir}`], { stdio: "ignore" });
+  spawnSync("pkill", ["-f", "--", `--jcode-dev-root=${desktopDir}`], { stdio: "ignore" });
 }
 
 function listStaleComputerUsePids() {
@@ -139,7 +139,7 @@ function startApp() {
 
   const app = spawn(
     resolveElectronPath(),
-    [`--t3code-dev-root=${desktopDir}`, "dist-electron/main.js"],
+    [`--jcode-dev-root=${desktopDir}`, "dist-electron/main.js"],
     {
       cwd: desktopDir,
       env: {

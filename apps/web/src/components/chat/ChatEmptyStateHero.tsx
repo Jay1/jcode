@@ -17,7 +17,7 @@ export const ChatEmptyStateHero = memo(function ChatEmptyStateHero({
         className="size-14 rounded-lg object-contain"
         draggable={false}
         height={112}
-        src="/dpcode-hero.png"
+        src="/jcode-hero.png"
         width={112}
       />
 
