@@ -1,28 +1,61 @@
-# DP Code
+# JCode
 
-DP Code is a minimal web GUI for coding agents (currently Claude Code, Codex, Gemini, Kilo Code, OpenCode, more coming soon).
+JCode is a small personal code cockpit built around OpenCode.
 
-This project started as a clone of [T3Code](https://github.com/pingdotgg/t3code), and has since been customized into its own product with different branding, packaging, release wiring, and product-level behavior.
+It is seeded from a known-good DPCode state and keeps T3Code/DPCode as
+attributed source lineages and cherry-pick sources. The goal is not to compete
+as a product. The goal is to keep a useful daily coding surface that can move
+at Jay's pace without depending on any single fast-moving UI project.
 
-![DP Code screenshot](./assets/prod/readme-screenshot.png)
+## Status
 
-## How to use
+This repository is early and pragmatic:
 
-> [!WARNING]
-> You need to have [Codex CLI](https://github.com/openai/codex) installed and authorized for DP Code to work.
+- OpenCode is the engine boundary.
+- DPCode is the current source baseline.
+- T3Code and DPCode are parts bins for deliberate cherry-picks.
+- Local deployment details should stay in ignored overlays or documented
+  templates, not hard-coded into public defaults.
 
-You can also just install the desktop app. It's cooler.
+## Repository Shape
 
-Install the [desktop app from the Releases page](https://github.com/Emanuele-web04/dpcode/releases)
+Recommended remotes:
 
-## Some notes
+```bash
+git remote add upstream-dpcode https://github.com/Emanuele-web04/dpcode.git
+git remote add upstream-t3code https://github.com/pingdotgg/t3code.git
+```
 
-We are very very early in this project. Expect bugs.
+Recommended branches:
 
-We are not accepting contributions yet.
+- `main`: current stable JCode source.
+- `canary`: upstream pull/cherry-pick testing.
+- short feature branches for local changes before promotion.
 
-## If you REALLY want to contribute still.... read this first
+Known baseline tag:
 
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening an issue or PR.
+```bash
+jcode-baseline-2026-05-21
+```
 
-Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
+## Development
+
+This is still the inherited monorepo shape. Avoid broad package renames until
+the deployment path is boring and rollback is obvious.
+
+Common inherited commands:
+
+```bash
+bun install
+bun run build
+bun run typecheck
+bun run dev
+```
+
+## Credits
+
+Built from [DPCode](https://github.com/Emanuele-web04/dpcode) and
+[T3Code](https://github.com/pingdotgg/t3code), with love. Powered by
+[OpenCode](https://opencode.ai/).
+
+See [CREDITS.md](./CREDITS.md) for lineage and attribution notes.
