@@ -7,7 +7,8 @@ export function resolveSessionCookieName(input: {
   readonly mode: "web" | "desktop";
   readonly port: number;
 }): string {
-  return input.mode === "desktop" ? `${SESSION_COOKIE_NAME}_${input.port}` : SESSION_COOKIE_NAME;
+  // Keep multiple browser-served canaries on the same host from sharing auth cookies.
+  return `${SESSION_COOKIE_NAME}_${input.port}`;
 }
 
 export function base64UrlEncode(input: string | Uint8Array): string {
