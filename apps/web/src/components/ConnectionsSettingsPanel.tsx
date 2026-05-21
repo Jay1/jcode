@@ -3,6 +3,8 @@ import type {
   AuthClientSession,
   AuthPairingLink,
   AuthSessionState,
+  DesktopAdvertisedEndpoint,
+  DesktopServerExposureState,
 } from "@t3tools/contracts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -28,8 +30,11 @@ function formatDate(value: unknown): string {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
 }
 
-function pairingUrlForCredential(credential: string): string {
-  const base = new URL("/pair", window.location.origin).toString();
+function pairingUrlForCredential(
+  credential: string,
+  endpoint: DesktopAdvertisedEndpoint | null,
+): string {
+  const base = new URL("/pair", endpoint?.httpBaseUrl ?? window.location.origin).toString();
   return setPairingTokenOnUrl(base, credential).toString();
 }
 
@@ -107,6 +112,11 @@ export function ConnectionsSettingsPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatingPairing, setIsCreatingPairing] = useState(false);
   const [isPairingRemote, setIsPairingRemote] = useState(false);
+  const [isUpdatingExposure, setIsUpdatingExposure] = useState(false);
+  const [serverExposure, setServerExposure] = useState<DesktopServerExposureState | null>(null);
+  const [advertisedEndpoints, setAdvertisedEndpoints] = useState<
+    ReadonlyArray<DesktopAdvertisedEndpoint>
+  >([]);
   const [remoteHost, setRemoteHost] = useState("");
   const [remotePairingCode, setRemotePairingCode] = useState("");
   const [remotePairingUrl, setRemotePairingUrl] = useState("");
@@ -160,6 +170,28 @@ export function ConnectionsSettingsPanel() {
     () => savedProfiles.find((profile) => profile.id === activeProfileId) ?? null,
     [activeProfileId, savedProfiles],
   );
+  const preferredAdvertisedEndpoint = useMemo(
+    () =>
+      advertisedEndpoints.find((endpoint) => endpoint.isDefault) ??
+      advertisedEndpoints[0] ??
+      null,
+    [advertisedEndpoints],
+  );
+
+  const refreshDesktopExposure = useCallback(async () => {
+    const bridge = window.desktopBridge;
+    if (!bridge?.getServerExposureState || !bridge.getAdvertisedEndpoints) return;
+    const [exposure, endpoints] = await Promise.all([
+      bridge.getServerExposureState(),
+      bridge.getAdvertisedEndpoints(),
+    ]);
+    setServerExposure(exposure);
+    setAdvertisedEndpoints(endpoints);
+  }, []);
+
+  useEffect(() => {
+    void refreshDesktopExposure().catch(() => undefined);
+  }, [refreshDesktopExposure]);
 
   const createPairingCredential = async () => {
     setIsCreatingPairing(true);
@@ -167,7 +199,7 @@ export function ConnectionsSettingsPanel() {
       const result = await ensureNativeApi().server.createAuthPairingToken({
         label: "In-app pairing",
       });
-      const url = pairingUrlForCredential(result.credential);
+      const url = pairingUrlForCredential(result.credential, preferredAdvertisedEndpoint);
       setCreatedPairing({ credential: result.credential, url });
       await refreshAccess();
     } catch (error) {
@@ -244,6 +276,36 @@ export function ConnectionsSettingsPanel() {
     refreshSavedProfiles();
   };
 
+  const setDesktopExposureMode = async (mode: "local-only" | "network-accessible") => {
+    const bridge = window.desktopBridge;
+    if (!bridge?.setServerExposureMode) return;
+    setIsUpdatingExposure(true);
+    try {
+      const nextExposure = await bridge.setServerExposureMode(mode);
+      setServerExposure(nextExposure);
+      if (bridge.getAdvertisedEndpoints) {
+        setAdvertisedEndpoints(await bridge.getAdvertisedEndpoints());
+      }
+      toastManager.add({
+        type: "success",
+        title: nextExposure.requiresRestart
+          ? "Network access saved"
+          : "Network access updated",
+        description: nextExposure.requiresRestart
+          ? "Restart JCode to apply the backend bind change."
+          : undefined,
+      });
+    } catch (error) {
+      toastManager.add({
+        type: "error",
+        title: "Network access update failed",
+        description: (error as Error).message,
+      });
+    } finally {
+      setIsUpdatingExposure(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <section className="space-y-3">
@@ -283,6 +345,75 @@ export function ConnectionsSettingsPanel() {
             ) : null}
           </div>
         </div>
+
+        {serverExposure ? (
+          <div className="rounded-lg border border-border/70 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-medium">Desktop network access</div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {serverExposure.mode === "network-accessible"
+                    ? serverExposure.endpointUrl
+                      ? `Advertising ${serverExposure.endpointUrl}`
+                      : "Network access requested, but no LAN address was detected."
+                    : "Only this machine can reach the desktop backend."}
+                </div>
+                {serverExposure.requiresRestart ? (
+                  <div className="mt-2 text-xs text-amber-600 dark:text-amber-300">
+                    Restart JCode to apply this backend bind change.
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={serverExposure.mode === "local-only" ? "default" : "outline"}
+                  disabled={isUpdatingExposure}
+                  onClick={() => void setDesktopExposureMode("local-only")}
+                >
+                  Local only
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={serverExposure.mode === "network-accessible" ? "default" : "outline"}
+                  disabled={isUpdatingExposure}
+                  onClick={() => void setDesktopExposureMode("network-accessible")}
+                >
+                  Network
+                </Button>
+              </div>
+            </div>
+            {advertisedEndpoints.length > 0 ? (
+              <div className="mt-4 space-y-2">
+                {advertisedEndpoints.map((endpoint) => (
+                  <div
+                    key={endpoint.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/30 px-3 py-2 text-xs"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium text-foreground">
+                        {endpoint.label}
+                        {endpoint.isDefault ? " · default" : ""}
+                      </div>
+                      <div className="truncate text-muted-foreground">{endpoint.httpBaseUrl}</div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="outline"
+                      onClick={() => void copyValue(endpoint.httpBaseUrl, `${endpoint.label} URL`)}
+                    >
+                      <CopyIcon className="mr-1 size-3" />
+                      Copy
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       <section className="space-y-3">

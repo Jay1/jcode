@@ -26,6 +26,7 @@ import {
 import type { FileFilter, IpcMainEvent, MenuItemConstructorOptions } from "electron";
 import * as Effect from "effect/Effect";
 import type {
+  DesktopServerExposureMode,
   DesktopLocalEnvironmentBootstrap,
   DesktopTheme,
   DesktopUpdateActionResult,
@@ -70,6 +71,10 @@ import {
 import { isArm64HostRunningIntelBuild, resolveDesktopRuntimeInfo } from "./runtimeArch";
 import { DesktopBrowserManager } from "./browserManager";
 import { DesktopConnectionSecretStore } from "./desktopConnectionSecrets";
+import {
+  DesktopServerExposureStore,
+  resolveDesktopServerBindHost,
+} from "./desktopServerExposure";
 import { BROWSER_IPC_CHANNELS, registerBrowserIpcHandlers, sendBrowserState } from "./browserIpc";
 import {
   BrowserUsePipeServer,
@@ -78,10 +83,13 @@ import {
   T3CODE_BROWSER_USE_PIPE_ENV,
 } from "./browserUsePipeServer";
 import {
+  DESKTOP_ADVERTISED_ENDPOINTS_CHANNEL,
   DESKTOP_CONNECTION_SECRET_READ_CHANNEL,
   DESKTOP_CONNECTION_SECRET_REMOVE_CHANNEL,
   DESKTOP_CONNECTION_SECRET_WRITE_CHANNEL,
   DESKTOP_LOCAL_ENVIRONMENT_BOOTSTRAP_CHANNEL,
+  DESKTOP_SERVER_EXPOSURE_SET_MODE_CHANNEL,
+  DESKTOP_SERVER_EXPOSURE_STATE_CHANNEL,
   DESKTOP_WS_URL_CHANNEL,
   normalizeDesktopWsUrl,
   resolveDesktopWsUrlFromEnv,
@@ -147,6 +155,8 @@ let backendPort = 0;
 let backendAuthToken = "";
 let backendHttpUrl = "";
 let backendWsUrl = "";
+let backendExposureActiveMode: DesktopServerExposureMode = "local-only";
+let backendBindHost = "127.0.0.1";
 let backendReadinessAbortController: AbortController | null = null;
 let backendInitialWindowOpenInFlight: Promise<void> | null = null;
 let backendListeningDetector: ServerListeningDetector | null = null;
@@ -162,6 +172,7 @@ let unreadBackgroundNotificationCount = 0;
 let browserPerfInterval: ReturnType<typeof setInterval> | null = null;
 const browserManager = new DesktopBrowserManager();
 const connectionSecretStore = new DesktopConnectionSecretStore(STATE_DIR);
+const serverExposureStore = new DesktopServerExposureStore(STATE_DIR);
 let browserUsePipeServer: BrowserUsePipeServer | null = null;
 let configuredGitHubUpdateSource: ReturnType<typeof resolveGitHubUpdateSource> = null;
 let configuredGitHubUpdateToken = "";
@@ -342,11 +353,15 @@ async function reserveBackendEndpoint(reason: string): Promise<void> {
     Effect.provide(NetService.layer),
     Effect.runPromise,
   );
+  backendExposureActiveMode = serverExposureStore.readMode();
+  backendBindHost = resolveDesktopServerBindHost(backendExposureActiveMode);
   backendHttpUrl = `http://127.0.0.1:${backendPort}`;
   backendWsUrl = `ws://127.0.0.1:${backendPort}/?token=${encodeURIComponent(backendAuthToken)}`;
   process.env.DPCODE_DESKTOP_WS_URL = backendWsUrl;
   process.env.T3CODE_DESKTOP_WS_URL = backendWsUrl;
-  writeDesktopLogHeader(`${reason} resolved backend endpoint port=${backendPort}`);
+  writeDesktopLogHeader(
+    `${reason} resolved backend endpoint port=${backendPort} bindHost=${backendBindHost} exposure=${backendExposureActiveMode}`,
+  );
 }
 
 function getLocalEnvironmentBootstrap(): DesktopLocalEnvironmentBootstrap | null {
@@ -1410,12 +1425,14 @@ function backendEnv(): NodeJS.ProcessEnv {
     DPCODE_MODE: "desktop",
     DPCODE_NO_BROWSER: "1",
     DPCODE_PORT: String(backendPort),
+    DPCODE_HOST: backendBindHost,
     DPCODE_HOME: BASE_DIR,
     DPCODE_AUTH_TOKEN: backendAuthToken,
     [DPCODE_BROWSER_USE_PIPE_ENV]: DPCODE_BROWSER_USE_PIPE_PATH,
     T3CODE_MODE: "desktop",
     T3CODE_NO_BROWSER: "1",
     T3CODE_PORT: String(backendPort),
+    T3CODE_HOST: backendBindHost,
     T3CODE_HOME: BASE_DIR,
     T3CODE_AUTH_TOKEN: backendAuthToken,
     [T3CODE_BROWSER_USE_PIPE_ENV]: DPCODE_BROWSER_USE_PIPE_PATH,
@@ -1629,6 +1646,31 @@ function registerIpcHandlers(): void {
   ipcMain.handle(DESKTOP_CONNECTION_SECRET_REMOVE_CHANNEL, async (_event, profileId: unknown) => {
     connectionSecretStore.remove(profileId);
   });
+
+  ipcMain.removeHandler(DESKTOP_SERVER_EXPOSURE_STATE_CHANNEL);
+  ipcMain.handle(DESKTOP_SERVER_EXPOSURE_STATE_CHANNEL, async () =>
+    serverExposureStore.getState({
+      port: backendPort,
+      activeMode: backendExposureActiveMode,
+    }),
+  );
+
+  ipcMain.removeHandler(DESKTOP_SERVER_EXPOSURE_SET_MODE_CHANNEL);
+  ipcMain.handle(DESKTOP_SERVER_EXPOSURE_SET_MODE_CHANNEL, async (_event, mode: unknown) => {
+    serverExposureStore.writeMode(mode);
+    return serverExposureStore.getState({
+      port: backendPort,
+      activeMode: backendExposureActiveMode,
+    });
+  });
+
+  ipcMain.removeHandler(DESKTOP_ADVERTISED_ENDPOINTS_CHANNEL);
+  ipcMain.handle(DESKTOP_ADVERTISED_ENDPOINTS_CHANNEL, async () =>
+    serverExposureStore.getAdvertisedEndpoints({
+      port: backendPort,
+      activeMode: backendExposureActiveMode,
+    }),
+  );
 
   ipcMain.removeHandler(PICK_FOLDER_CHANNEL);
   ipcMain.handle(PICK_FOLDER_CHANNEL, async () => {

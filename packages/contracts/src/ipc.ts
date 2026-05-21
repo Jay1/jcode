@@ -261,9 +261,36 @@ export interface DesktopLocalEnvironmentBootstrap {
   bootstrapToken: string;
 }
 
+export type DesktopServerExposureMode = "local-only" | "network-accessible";
+
+export interface DesktopServerExposureState {
+  mode: DesktopServerExposureMode;
+  activeMode: DesktopServerExposureMode;
+  endpointUrl: string | null;
+  advertisedHost: string | null;
+  bindHost: string;
+  port: number;
+  requiresRestart: boolean;
+}
+
+export interface DesktopAdvertisedEndpoint {
+  id: string;
+  label: string;
+  httpBaseUrl: string;
+  wsBaseUrl: string;
+  reachability: "loopback" | "lan";
+  isDefault: boolean;
+  description: string;
+}
+
 export interface DesktopBridge {
   getWsUrl: () => string | null;
   getLocalEnvironmentBootstrap?: () => Promise<DesktopLocalEnvironmentBootstrap | null>;
+  getServerExposureState?: () => Promise<DesktopServerExposureState>;
+  setServerExposureMode?: (
+    mode: DesktopServerExposureMode,
+  ) => Promise<DesktopServerExposureState>;
+  getAdvertisedEndpoints?: () => Promise<ReadonlyArray<DesktopAdvertisedEndpoint>>;
   connectionSecrets?: {
     read: (profileId: string) => Promise<string | null>;
     write: (input: { profileId: string; secret: string }) => Promise<boolean>;

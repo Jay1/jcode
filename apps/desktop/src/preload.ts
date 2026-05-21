@@ -5,7 +5,10 @@ import {
   DESKTOP_CONNECTION_SECRET_READ_CHANNEL,
   DESKTOP_CONNECTION_SECRET_REMOVE_CHANNEL,
   DESKTOP_CONNECTION_SECRET_WRITE_CHANNEL,
+  DESKTOP_ADVERTISED_ENDPOINTS_CHANNEL,
   DESKTOP_LOCAL_ENVIRONMENT_BOOTSTRAP_CHANNEL,
+  DESKTOP_SERVER_EXPOSURE_SET_MODE_CHANNEL,
+  DESKTOP_SERVER_EXPOSURE_STATE_CHANNEL,
   DESKTOP_WS_URL_CHANNEL,
   normalizeDesktopWsUrl,
   resolveDesktopWsUrlFromEnv,
@@ -41,8 +44,13 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   getWsUrl: getDesktopWsUrl,
   getLocalEnvironmentBootstrap: () =>
     ipcRenderer.invoke(DESKTOP_LOCAL_ENVIRONMENT_BOOTSTRAP_CHANNEL),
+  getServerExposureState: () => ipcRenderer.invoke(DESKTOP_SERVER_EXPOSURE_STATE_CHANNEL),
+  setServerExposureMode: (mode) =>
+    ipcRenderer.invoke(DESKTOP_SERVER_EXPOSURE_SET_MODE_CHANNEL, mode),
+  getAdvertisedEndpoints: () => ipcRenderer.invoke(DESKTOP_ADVERTISED_ENDPOINTS_CHANNEL),
   connectionSecrets: {
-    read: (profileId: string) => ipcRenderer.invoke(DESKTOP_CONNECTION_SECRET_READ_CHANNEL, profileId),
+    read: (profileId: string) =>
+      ipcRenderer.invoke(DESKTOP_CONNECTION_SECRET_READ_CHANNEL, profileId),
     write: (input) => ipcRenderer.invoke(DESKTOP_CONNECTION_SECRET_WRITE_CHANNEL, input),
     remove: (profileId: string) =>
       ipcRenderer.invoke(DESKTOP_CONNECTION_SECRET_REMOVE_CHANNEL, profileId),

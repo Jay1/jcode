@@ -1,6 +1,11 @@
 import "../index.css";
 
-import type { AuthAccessStreamEvent, NativeApi } from "@t3tools/contracts";
+import type {
+  AuthAccessStreamEvent,
+  DesktopAdvertisedEndpoint,
+  DesktopServerExposureState,
+  NativeApi,
+} from "@t3tools/contracts";
 import { page } from "vitest/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
@@ -11,6 +16,8 @@ import { ConnectionsSettingsPanel } from "./ConnectionsSettingsPanel";
 const NOW_ISO = "2026-05-21T12:00:00.000Z";
 
 let authAccessListener: ((event: AuthAccessStreamEvent) => void) | null = null;
+let desktopExposureState: DesktopServerExposureState;
+let desktopAdvertisedEndpoints: ReadonlyArray<DesktopAdvertisedEndpoint>;
 const nativeApi = {
   server: {
     getAuthSession: vi.fn(async () => ({
@@ -45,15 +52,54 @@ const nativeApi = {
 describe("ConnectionsSettingsPanel", () => {
   beforeEach(() => {
     authAccessListener = null;
+    desktopExposureState = {
+      mode: "network-accessible",
+      activeMode: "local-only",
+      endpointUrl: "http://192.168.1.44:58090",
+      advertisedHost: "192.168.1.44",
+      bindHost: "0.0.0.0",
+      port: 58090,
+      requiresRestart: true,
+    };
+    desktopAdvertisedEndpoints = [
+      {
+        id: "desktop-loopback:58090",
+        label: "This machine",
+        httpBaseUrl: "http://127.0.0.1:58090",
+        wsBaseUrl: "ws://127.0.0.1:58090",
+        reachability: "loopback",
+        isDefault: false,
+        description: "Loopback endpoint",
+      },
+      {
+        id: "desktop-lan:192.168.1.44:58090",
+        label: "Local network",
+        httpBaseUrl: "http://192.168.1.44:58090",
+        wsBaseUrl: "ws://192.168.1.44:58090",
+        reachability: "lan",
+        isDefault: true,
+        description: "LAN endpoint",
+      },
+    ];
     for (const method of Object.values(nativeApi.server)) {
       if (typeof method === "function" && "mockClear" in method) method.mockClear();
     }
     window.nativeApi = nativeApi;
+    window.desktopBridge = {
+      getWsUrl: () => null,
+      getServerExposureState: vi.fn(async () => desktopExposureState),
+      setServerExposureMode: vi.fn(async (mode) => {
+        desktopExposureState = { ...desktopExposureState, mode };
+        return desktopExposureState;
+      }),
+      getAdvertisedEndpoints: vi.fn(async () => desktopAdvertisedEndpoints),
+    } as typeof window.desktopBridge;
     window.localStorage.removeItem(SAVED_CONNECTIONS_STORAGE_KEY);
   });
 
   afterEach(() => {
     Reflect.deleteProperty(window, "nativeApi");
+    Reflect.deleteProperty(window, "desktopBridge");
     window.localStorage.removeItem(SAVED_CONNECTIONS_STORAGE_KEY);
     document.body.innerHTML = "";
   });
@@ -71,7 +117,27 @@ describe("ConnectionsSettingsPanel", () => {
         label: "In-app pairing",
       });
       expect(document.body.textContent).toContain("PAIR-CODE");
-      expect(document.body.textContent).toContain("/pair#token=PAIR-CODE");
+      expect(document.body.textContent).toContain(
+        "http://192.168.1.44:58090/pair#token=PAIR-CODE",
+      );
+    });
+
+    await screen.unmount();
+  });
+
+  it("shows desktop advertised endpoints and updates exposure mode", async () => {
+    const screen = await render(<ConnectionsSettingsPanel />);
+
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("Desktop network access");
+      expect(document.body.textContent).toContain("http://192.168.1.44:58090");
+      expect(document.body.textContent).toContain("Restart JCode to apply");
+    });
+
+    await page.getByRole("button", { name: "Local only" }).click();
+
+    await vi.waitFor(() => {
+      expect(window.desktopBridge?.setServerExposureMode).toHaveBeenCalledWith("local-only");
     });
 
     await screen.unmount();
