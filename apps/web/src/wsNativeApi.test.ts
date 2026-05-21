@@ -314,6 +314,32 @@ describe("wsNativeApi", () => {
     expect(lateListener).toHaveBeenCalledWith(payload);
   });
 
+  it("delivers and caches auth access updates", async () => {
+    const { createWsNativeApi, onAuthAccess } = await import("./wsNativeApi");
+
+    createWsNativeApi();
+    const listener = vi.fn();
+    onAuthAccess(listener);
+
+    const payload = {
+      type: "snapshot",
+      revision: 1,
+      access: {
+        pairingLinks: [],
+        clientSessions: [],
+      },
+    } as const;
+    emitPush(WS_CHANNELS.authAccess, payload);
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith(payload);
+
+    const lateListener = vi.fn();
+    onAuthAccess(lateListener);
+    expect(lateListener).toHaveBeenCalledTimes(1);
+    expect(lateListener).toHaveBeenCalledWith(payload);
+  });
+
   it("forwards valid terminal and orchestration events", async () => {
     const { createWsNativeApi } = await import("./wsNativeApi");
 

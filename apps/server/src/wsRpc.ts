@@ -3,6 +3,9 @@ import { realpathSync } from "node:fs";
 
 import {
   CommandId,
+  type AuthAccessStreamEvent,
+  type AuthClientSession,
+  type AuthSessionId,
   ORCHESTRATION_WS_METHODS,
   ThreadId,
   WS_METHODS,
@@ -17,11 +20,12 @@ import {
   type ServerLifecycleStreamEvent,
 } from "@t3tools/contracts";
 import { clamp } from "effect/Number";
-import { Effect, FileSystem, Layer, Option, Path, Queue, Schema, Stream } from "effect";
+import { Effect, FileSystem, Layer, Option, Path, Queue, Ref, Schema, ServiceMap, Stream } from "effect";
 import { HttpRouter, HttpServerRequest } from "effect/unstable/http";
 import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
 
 import { authErrorResponse, makeEffectAuthRequest } from "./auth/http";
+import { BootstrapCredentialService } from "./auth/Services/BootstrapCredentialService";
 import { ServerAuth } from "./auth/Services/ServerAuth";
 import { SessionCredentialService } from "./auth/Services/SessionCredentialService";
 import { CheckpointDiffQuery } from "./checkpointing/Services/CheckpointDiffQuery";
@@ -50,6 +54,14 @@ import { WorkspaceFileSystem } from "./workspace/Services/WorkspaceFileSystem";
 
 const MAX_DIAGNOSTIC_CHILD_PROCESSES = 80;
 const MAX_DIAGNOSTIC_ARGS_CHARS = 500;
+
+interface CurrentRpcAuthSessionShape {
+  readonly sessionId: AuthSessionId | null;
+}
+
+const CurrentRpcAuthSession = ServiceMap.Service<CurrentRpcAuthSessionShape>(
+  "t3/wsRpc/CurrentRpcAuthSession",
+);
 
 interface ProcessTableRow {
   readonly pid: number;
@@ -167,10 +179,21 @@ function isThreadDetailEvent(event: OrchestrationEvent): event is Extract<
   );
 }
 
+function withCurrentClientSession(
+  clientSession: AuthClientSession,
+  currentSessionId: AuthSessionId | null,
+): AuthClientSession {
+  return {
+    ...clientSession,
+    current: currentSessionId !== null && clientSession.sessionId === currentSessionId,
+  };
+}
+
 export const makeWsRpcLayer = () =>
   WsRpcGroup.toLayer(
     Effect.gen(function* () {
       const checkpointDiffQuery = yield* CheckpointDiffQuery;
+      const bootstrapCredentials = yield* BootstrapCredentialService;
       const config = yield* ServerConfig;
       const fileSystem = yield* FileSystem.FileSystem;
       const git = yield* GitCore;
@@ -189,6 +212,7 @@ export const makeWsRpcLayer = () =>
       const runtimeStartup = yield* ServerRuntimeStartup;
       const serverEnvironment = yield* ServerEnvironment;
       const serverSettings = yield* ServerSettingsService;
+      const sessionCredentials = yield* SessionCredentialService;
       const terminalManager = yield* TerminalManager;
       const workspaceEntries = yield* WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem;
@@ -692,6 +716,81 @@ export const makeWsRpcLayer = () =>
           providerHealth.streamChanges.pipe(Stream.map((providers) => ({ providers }))),
         [WS_METHODS.subscribeServerSettings]: () =>
           serverSettings.streamChanges.pipe(Stream.map((settings) => ({ settings }))),
+        [WS_METHODS.subscribeAuthAccess]: () =>
+          Stream.unwrap(
+            Effect.gen(function* () {
+              const currentAuthSession = yield* Effect.serviceOption(CurrentRpcAuthSession);
+              const currentSessionId = Option.isSome(currentAuthSession)
+                ? currentAuthSession.value.sessionId
+                : null;
+              const revisionRef = yield* Ref.make(0);
+              const nextRevision = Ref.updateAndGet(revisionRef, (revision) => revision + 1);
+
+              const snapshotStream = Stream.fromEffect(
+                Effect.gen(function* () {
+                  const revision = yield* nextRevision;
+                  const [pairingLinks, clientSessions] = yield* Effect.all(
+                    [bootstrapCredentials.listActive(), sessionCredentials.listActive()],
+                    { concurrency: 2 },
+                  );
+                  return {
+                    type: "snapshot",
+                    revision,
+                    access: {
+                      pairingLinks,
+                      clientSessions: clientSessions.map((clientSession) =>
+                        withCurrentClientSession(clientSession, currentSessionId),
+                      ),
+                    },
+                  } satisfies AuthAccessStreamEvent;
+                }),
+              );
+
+              const pairingLinkChanges = bootstrapCredentials.streamChanges.pipe(
+                Stream.mapEffect((event) =>
+                  Effect.map(nextRevision, (revision) =>
+                    event.type === "pairingLinkUpserted"
+                      ? ({
+                          type: "pairingLinkUpserted",
+                          revision,
+                          pairingLink: event.pairingLink,
+                        } satisfies AuthAccessStreamEvent)
+                      : ({
+                          type: "pairingLinkRemoved",
+                          revision,
+                          id: event.id,
+                        } satisfies AuthAccessStreamEvent),
+                  ),
+                ),
+              );
+
+              const clientChanges = sessionCredentials.streamChanges.pipe(
+                Stream.mapEffect((event) =>
+                  Effect.map(nextRevision, (revision) =>
+                    event.type === "clientUpserted"
+                      ? ({
+                          type: "clientUpserted",
+                          revision,
+                          clientSession: withCurrentClientSession(
+                            event.clientSession,
+                            currentSessionId,
+                          ),
+                        } satisfies AuthAccessStreamEvent)
+                      : ({
+                          type: "clientRemoved",
+                          revision,
+                          sessionId: event.sessionId,
+                        } satisfies AuthAccessStreamEvent),
+                  ),
+                ),
+              );
+
+              return Stream.concat(
+                snapshotStream,
+                Stream.merge(pairingLinkChanges, clientChanges),
+              );
+            }),
+          ).pipe(Stream.mapError((cause) => toWsRpcError(cause, "Auth access stream failed"))),
 
         [WS_METHODS.providerGetComposerCapabilities]: (input) =>
           rpcEffect(
@@ -749,7 +848,10 @@ export const websocketRpcRouteLayer = Layer.effectDiscard(
 
         return yield* Effect.acquireUseRelease(
           sessions.markConnected(authenticatedSession.sessionId),
-          () => rpcWebSocketHttpEffect,
+          () =>
+            Effect.provideService(rpcWebSocketHttpEffect, CurrentRpcAuthSession, {
+              sessionId: authenticatedSession.sessionId,
+            }),
           () => sessions.markDisconnected(authenticatedSession.sessionId),
         );
       }).pipe(Effect.catchTag("AuthError", (error) => Effect.succeed(authErrorResponse(error)))),

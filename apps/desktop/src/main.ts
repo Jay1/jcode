@@ -26,6 +26,7 @@ import {
 import type { FileFilter, IpcMainEvent, MenuItemConstructorOptions } from "electron";
 import * as Effect from "effect/Effect";
 import type {
+  DesktopLocalEnvironmentBootstrap,
   DesktopTheme,
   DesktopUpdateActionResult,
   DesktopUpdateState,
@@ -68,6 +69,7 @@ import {
 } from "./githubUpdateFeed";
 import { isArm64HostRunningIntelBuild, resolveDesktopRuntimeInfo } from "./runtimeArch";
 import { DesktopBrowserManager } from "./browserManager";
+import { DesktopConnectionSecretStore } from "./desktopConnectionSecrets";
 import { BROWSER_IPC_CHANNELS, registerBrowserIpcHandlers, sendBrowserState } from "./browserIpc";
 import {
   BrowserUsePipeServer,
@@ -76,6 +78,10 @@ import {
   T3CODE_BROWSER_USE_PIPE_ENV,
 } from "./browserUsePipeServer";
 import {
+  DESKTOP_CONNECTION_SECRET_READ_CHANNEL,
+  DESKTOP_CONNECTION_SECRET_REMOVE_CHANNEL,
+  DESKTOP_CONNECTION_SECRET_WRITE_CHANNEL,
+  DESKTOP_LOCAL_ENVIRONMENT_BOOTSTRAP_CHANNEL,
   DESKTOP_WS_URL_CHANNEL,
   normalizeDesktopWsUrl,
   resolveDesktopWsUrlFromEnv,
@@ -155,6 +161,7 @@ let restoreStdIoCapture: (() => void) | null = null;
 let unreadBackgroundNotificationCount = 0;
 let browserPerfInterval: ReturnType<typeof setInterval> | null = null;
 const browserManager = new DesktopBrowserManager();
+const connectionSecretStore = new DesktopConnectionSecretStore(STATE_DIR);
 let browserUsePipeServer: BrowserUsePipeServer | null = null;
 let configuredGitHubUpdateSource: ReturnType<typeof resolveGitHubUpdateSource> = null;
 let configuredGitHubUpdateToken = "";
@@ -340,6 +347,25 @@ async function reserveBackendEndpoint(reason: string): Promise<void> {
   process.env.DPCODE_DESKTOP_WS_URL = backendWsUrl;
   process.env.T3CODE_DESKTOP_WS_URL = backendWsUrl;
   writeDesktopLogHeader(`${reason} resolved backend endpoint port=${backendPort}`);
+}
+
+function getLocalEnvironmentBootstrap(): DesktopLocalEnvironmentBootstrap | null {
+  const httpBaseUrl = normalizeDesktopWsUrl(backendHttpUrl);
+  const webSocketUrl = normalizeDesktopWsUrl(backendWsUrl) ?? resolveDesktopWsUrlFromEnv(process.env);
+  if (!httpBaseUrl || !webSocketUrl || !backendAuthToken) return null;
+
+  const wsUrl = new URL(webSocketUrl);
+  wsUrl.search = "";
+  wsUrl.hash = "";
+  wsUrl.pathname = "/";
+
+  return {
+    label: APP_DISPLAY_NAME,
+    httpBaseUrl,
+    wsBaseUrl: wsUrl.toString(),
+    webSocketUrl,
+    bootstrapToken: backendAuthToken,
+  };
 }
 
 async function waitForBackendWindowReady(baseUrl: string): Promise<"listening" | "http"> {
@@ -1582,6 +1608,26 @@ function registerIpcHandlers(): void {
     // live URL instead of trusting build-time or inherited renderer env.
     event.returnValue =
       normalizeDesktopWsUrl(backendWsUrl) ?? resolveDesktopWsUrlFromEnv(process.env);
+  });
+
+  ipcMain.removeHandler(DESKTOP_LOCAL_ENVIRONMENT_BOOTSTRAP_CHANNEL);
+  ipcMain.handle(DESKTOP_LOCAL_ENVIRONMENT_BOOTSTRAP_CHANNEL, async () =>
+    getLocalEnvironmentBootstrap(),
+  );
+
+  ipcMain.removeHandler(DESKTOP_CONNECTION_SECRET_READ_CHANNEL);
+  ipcMain.handle(DESKTOP_CONNECTION_SECRET_READ_CHANNEL, async (_event, profileId: unknown) =>
+    connectionSecretStore.read(profileId),
+  );
+
+  ipcMain.removeHandler(DESKTOP_CONNECTION_SECRET_WRITE_CHANNEL);
+  ipcMain.handle(DESKTOP_CONNECTION_SECRET_WRITE_CHANNEL, async (_event, input: unknown) =>
+    connectionSecretStore.write(input),
+  );
+
+  ipcMain.removeHandler(DESKTOP_CONNECTION_SECRET_REMOVE_CHANNEL);
+  ipcMain.handle(DESKTOP_CONNECTION_SECRET_REMOVE_CHANNEL, async (_event, profileId: unknown) => {
+    connectionSecretStore.remove(profileId);
   });
 
   ipcMain.removeHandler(PICK_FOLDER_CHANNEL);

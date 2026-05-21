@@ -6,13 +6,13 @@ import {
   resolveRemoteWebSocketConnectionUrl,
 } from "./remoteAuthApi";
 import {
-  clearSavedConnectionSecret,
+  clearSavedConnectionSecretAsync,
   readActiveSavedConnectionProfileId,
   readSavedConnectionProfile,
-  readSavedConnectionSecret,
+  readSavedConnectionSecretAsync,
   setActiveSavedConnectionProfileId,
   upsertSavedConnectionProfile,
-  writeSavedConnectionSecret,
+  writeSavedConnectionSecretAsync,
   type SavedConnectionProfile,
 } from "./savedConnections";
 
@@ -52,7 +52,7 @@ export async function addSavedConnectionFromPairing(
   };
 
   upsertSavedConnectionProfile(profile);
-  writeSavedConnectionSecret(profile.id, session.sessionToken);
+  await writeSavedConnectionSecretAsync(profile.id, session.sessionToken);
   setActiveSavedConnectionProfileId(profile.id);
   return profile;
 }
@@ -62,7 +62,7 @@ export async function getActiveSavedConnectionWebSocketUrl(): Promise<string | n
   if (!activeProfileId) return null;
 
   const profile = readSavedConnectionProfile(activeProfileId);
-  const bearerToken = readSavedConnectionSecret(activeProfileId);
+  const bearerToken = await readSavedConnectionSecretAsync(activeProfileId);
   if (!profile || !bearerToken) return null;
 
   try {
@@ -73,7 +73,7 @@ export async function getActiveSavedConnectionWebSocketUrl(): Promise<string | n
     });
   } catch (error) {
     if (isRemoteAuthHttpError(error) && error.status === 401) {
-      clearSavedConnectionSecret(profile.id);
+      await clearSavedConnectionSecretAsync(profile.id);
       throw new Error("Saved connection credential expired. Pair this backend again.", {
         cause: error,
       });

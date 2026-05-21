@@ -144,6 +144,13 @@ export function readSavedConnectionSecret(id: string): string | null {
   return readDocument().profiles.find((candidate) => candidate.id === id)?.bearerToken ?? null;
 }
 
+export async function readSavedConnectionSecretAsync(id: string): Promise<string | null> {
+  const bridgeSecret = await globalThis.window?.desktopBridge?.connectionSecrets
+    ?.read(id)
+    .catch(() => null);
+  return bridgeSecret ?? readSavedConnectionSecret(id);
+}
+
 export function writeSavedConnectionSecret(id: string, secret: string): boolean {
   const document = readDocument();
   let found = false;
@@ -159,6 +166,17 @@ export function writeSavedConnectionSecret(id: string, secret: string): boolean 
   return found;
 }
 
+export async function writeSavedConnectionSecretAsync(
+  id: string,
+  secret: string,
+): Promise<boolean> {
+  const bridge = globalThis.window?.desktopBridge?.connectionSecrets;
+  if (bridge) {
+    return await bridge.write({ profileId: id, secret }).catch(() => false);
+  }
+  return writeSavedConnectionSecret(id, secret);
+}
+
 export function clearSavedConnectionSecret(id: string): void {
   const document = readDocument();
   writeDocument({
@@ -170,4 +188,9 @@ export function clearSavedConnectionSecret(id: string): void {
       return publicFields;
     }),
   });
+}
+
+export async function clearSavedConnectionSecretAsync(id: string): Promise<void> {
+  await globalThis.window?.desktopBridge?.connectionSecrets?.remove(id).catch(() => undefined);
+  clearSavedConnectionSecret(id);
 }

@@ -38,7 +38,7 @@ function hasRemoteHost(url: string): boolean {
   }
 }
 
-function PairRoute() {
+export function PairRoute() {
   const navigate = useNavigate();
   const initialCredential = useMemo(() => getPairingTokenFromUrl(window.location.href) ?? "", []);
   const [credential, setCredential] = useState(initialCredential);

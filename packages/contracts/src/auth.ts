@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 
-import { AuthSessionId, TrimmedNonEmptyString } from "./baseSchemas";
+import { AuthSessionId, NonNegativeInt, TrimmedNonEmptyString } from "./baseSchemas";
 
 export const ServerAuthPolicy = Schema.Literals([
   "desktop-managed-local",
@@ -115,6 +115,38 @@ export const AuthAccessSnapshot = Schema.Struct({
   clientSessions: Schema.Array(AuthClientSession),
 });
 export type AuthAccessSnapshot = typeof AuthAccessSnapshot.Type;
+
+export const AuthAccessStreamRevision = NonNegativeInt;
+export type AuthAccessStreamRevision = typeof AuthAccessStreamRevision.Type;
+
+export const AuthAccessStreamEvent = Schema.Union([
+  Schema.Struct({
+    type: Schema.Literal("snapshot"),
+    revision: AuthAccessStreamRevision,
+    access: AuthAccessSnapshot,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("pairingLinkUpserted"),
+    revision: AuthAccessStreamRevision,
+    pairingLink: AuthPairingLink,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("pairingLinkRemoved"),
+    revision: AuthAccessStreamRevision,
+    id: TrimmedNonEmptyString,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("clientUpserted"),
+    revision: AuthAccessStreamRevision,
+    clientSession: AuthClientSession,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("clientRemoved"),
+    revision: AuthAccessStreamRevision,
+    sessionId: AuthSessionId,
+  }),
+]);
+export type AuthAccessStreamEvent = typeof AuthAccessStreamEvent.Type;
 
 export const AuthRevokePairingLinkInput = Schema.Struct({
   id: TrimmedNonEmptyString,

@@ -1,5 +1,6 @@
 import type {
   AuthBearerBootstrapResult,
+  AuthAccessStreamEvent,
   AuthBootstrapInput,
   AuthBootstrapResult,
   AuthClientSession,
@@ -252,8 +253,22 @@ export interface DesktopNotificationInput {
   threadId?: ThreadId;
 }
 
+export interface DesktopLocalEnvironmentBootstrap {
+  label: string;
+  httpBaseUrl: string;
+  wsBaseUrl: string;
+  webSocketUrl: string;
+  bootstrapToken: string;
+}
+
 export interface DesktopBridge {
   getWsUrl: () => string | null;
+  getLocalEnvironmentBootstrap?: () => Promise<DesktopLocalEnvironmentBootstrap | null>;
+  connectionSecrets?: {
+    read: (profileId: string) => Promise<string | null>;
+    write: (input: { profileId: string; secret: string }) => Promise<boolean>;
+    remove: (profileId: string) => Promise<void>;
+  };
   pickFolder: () => Promise<string | null>;
   saveFile?: (input: {
     defaultFilename: string;
@@ -397,6 +412,7 @@ export interface NativeApi {
     listAuthClients: () => Promise<ReadonlyArray<AuthClientSession>>;
     revokeAuthClient: (input: AuthRevokeClientSessionInput) => Promise<{ revoked: boolean }>;
     revokeOtherAuthClients: () => Promise<{ revokedCount: number }>;
+    onAuthAccess: (callback: (event: AuthAccessStreamEvent) => void) => () => void;
     refreshProviders: () => Promise<ServerRefreshProvidersResult>;
     updateProvider: (input: ServerProviderUpdateInput) => Promise<ServerProviderUpdateResult>;
     listWorktrees: () => Promise<ServerListWorktreesResult>;

@@ -2,6 +2,10 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { DesktopBridge } from "@t3tools/contracts";
 import { BROWSER_IPC_CHANNELS } from "./browserIpc";
 import {
+  DESKTOP_CONNECTION_SECRET_READ_CHANNEL,
+  DESKTOP_CONNECTION_SECRET_REMOVE_CHANNEL,
+  DESKTOP_CONNECTION_SECRET_WRITE_CHANNEL,
+  DESKTOP_LOCAL_ENVIRONMENT_BOOTSTRAP_CHANNEL,
   DESKTOP_WS_URL_CHANNEL,
   normalizeDesktopWsUrl,
   resolveDesktopWsUrlFromEnv,
@@ -35,6 +39,14 @@ function getDesktopWsUrl(): string | null {
 
 contextBridge.exposeInMainWorld("desktopBridge", {
   getWsUrl: getDesktopWsUrl,
+  getLocalEnvironmentBootstrap: () =>
+    ipcRenderer.invoke(DESKTOP_LOCAL_ENVIRONMENT_BOOTSTRAP_CHANNEL),
+  connectionSecrets: {
+    read: (profileId: string) => ipcRenderer.invoke(DESKTOP_CONNECTION_SECRET_READ_CHANNEL, profileId),
+    write: (input) => ipcRenderer.invoke(DESKTOP_CONNECTION_SECRET_WRITE_CHANNEL, input),
+    remove: (profileId: string) =>
+      ipcRenderer.invoke(DESKTOP_CONNECTION_SECRET_REMOVE_CHANNEL, profileId),
+  },
   pickFolder: () => ipcRenderer.invoke(PICK_FOLDER_CHANNEL),
   saveFile: (input) => ipcRenderer.invoke(SAVE_FILE_CHANNEL, input),
   confirm: (message) => ipcRenderer.invoke(CONFIRM_CHANNEL, message),

@@ -4,6 +4,7 @@ import {
   WS_CHANNELS,
   WS_METHODS,
   WsRpcGroup,
+  type AuthAccessStreamEvent,
   type GitActionProgressEvent,
   type GitRunStackedActionResult,
   type OrchestrationEvent,
@@ -458,6 +459,13 @@ export class WsTransport {
               this.emit(WS_CHANNELS.serverSettingsUpdated, payload),
             restartChannel,
           );
+        } else if (channel === WS_CHANNELS.authAccess) {
+          this.startStream(
+            "server.authAccess",
+            client[WS_METHODS.subscribeAuthAccess]({}),
+            (event: AuthAccessStreamEvent) => this.emit(WS_CHANNELS.authAccess, event),
+            restartChannel,
+          );
         } else if (channel === WS_CHANNELS.terminalEvent) {
           this.startStream(
             "terminal.events",
@@ -493,6 +501,7 @@ export class WsTransport {
     else if (channel === WS_CHANNELS.serverProviderStatusesUpdated)
       this.stopStream("server.providers");
     else if (channel === WS_CHANNELS.serverSettingsUpdated) this.stopStream("server.settings");
+    else if (channel === WS_CHANNELS.authAccess) this.stopStream("server.authAccess");
     else if (channel === WS_CHANNELS.terminalEvent) this.stopStream("terminal.events");
     else if (channel === ORCHESTRATION_WS_CHANNELS.domainEvent)
       this.stopStream("orchestration.domain");

@@ -1,5 +1,6 @@
 import { Schema, Struct } from "effect";
 import { NonNegativeInt, ProjectId, ThreadId, TrimmedNonEmptyString } from "./baseSchemas";
+import { AuthAccessStreamEvent } from "./auth";
 
 import {
   ClientOrchestrationCommand,
@@ -144,6 +145,7 @@ export const WS_METHODS = {
   subscribeServerConfig: "server.subscribeConfig",
   subscribeServerProviderStatuses: "server.subscribeProviderStatuses",
   subscribeServerSettings: "server.subscribeSettings",
+  subscribeAuthAccess: "server.subscribeAuthAccess",
 
   // Streaming subscriptions
   subscribeTerminalEvents: "terminal.subscribeEvents",
@@ -171,6 +173,7 @@ export const WS_CHANNELS = {
   serverConfigUpdated: "server.configUpdated",
   serverProviderStatusesUpdated: "server.providerStatusesUpdated",
   serverSettingsUpdated: "server.settingsUpdated",
+  authAccess: "server.authAccess",
 } as const;
 
 // -- Tagged Union of all request body schemas ─────────────────────────
@@ -256,6 +259,7 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(WS_METHODS.serverGetDiagnostics, Schema.Struct({})),
   tagRequestBody(WS_METHODS.serverTranscribeVoice, ServerVoiceTranscriptionInput),
   tagRequestBody(WS_METHODS.serverUpsertKeybinding, KeybindingRule),
+  tagRequestBody(WS_METHODS.subscribeAuthAccess, Schema.Struct({})),
 
   // Provider discovery
   tagRequestBody(WS_METHODS.providerGetComposerCapabilities, ProviderGetComposerCapabilitiesInput),
@@ -303,6 +307,7 @@ export interface WsPushPayloadByChannel {
   readonly [WS_CHANNELS.serverConfigUpdated]: typeof ServerConfigUpdatedPayload.Type;
   readonly [WS_CHANNELS.serverProviderStatusesUpdated]: typeof ServerProviderStatusesUpdatedPayload.Type;
   readonly [WS_CHANNELS.serverSettingsUpdated]: typeof ServerSettingsUpdatedPayload.Type;
+  readonly [WS_CHANNELS.authAccess]: AuthAccessStreamEvent;
   readonly [WS_CHANNELS.gitActionProgress]: typeof GitActionProgressEvent.Type;
   readonly [WS_CHANNELS.terminalEvent]: typeof TerminalEvent.Type;
   readonly [ORCHESTRATION_WS_CHANNELS.domainEvent]: OrchestrationEvent;
@@ -341,6 +346,7 @@ export const WsPushServerSettingsUpdated = makeWsPushSchema(
   WS_CHANNELS.serverSettingsUpdated,
   ServerSettingsUpdatedPayload,
 );
+export const WsPushAuthAccess = makeWsPushSchema(WS_CHANNELS.authAccess, AuthAccessStreamEvent);
 export const WsPushGitActionProgress = makeWsPushSchema(
   WS_CHANNELS.gitActionProgress,
   GitActionProgressEvent,
@@ -366,6 +372,7 @@ export const WsPushChannelSchema = Schema.Literals([
   WS_CHANNELS.serverConfigUpdated,
   WS_CHANNELS.serverProviderStatusesUpdated,
   WS_CHANNELS.serverSettingsUpdated,
+  WS_CHANNELS.authAccess,
   WS_CHANNELS.terminalEvent,
   ORCHESTRATION_WS_CHANNELS.domainEvent,
   ORCHESTRATION_WS_CHANNELS.shellEvent,
@@ -379,6 +386,7 @@ export const WsPush = Schema.Union([
   WsPushServerConfigUpdated,
   WsPushServerProviderStatusesUpdated,
   WsPushServerSettingsUpdated,
+  WsPushAuthAccess,
   WsPushGitActionProgress,
   WsPushTerminalEvent,
   WsPushOrchestrationDomainEvent,

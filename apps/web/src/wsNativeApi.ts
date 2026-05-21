@@ -1,4 +1,5 @@
 import {
+  type AuthAccessStreamEvent,
   type AuthBearerBootstrapResult,
   type AuthBootstrapInput,
   type AuthBootstrapResult,
@@ -35,7 +36,7 @@ import { getActiveSavedConnectionWebSocketUrl } from "./connection/savedConnecti
 import {
   readActiveSavedConnectionProfileId,
   readSavedConnectionProfile,
-  readSavedConnectionSecret,
+  readSavedConnectionSecretAsync,
 } from "./connection/savedConnections";
 import { showContextMenuFallback } from "./contextMenuFallback";
 import { WsTransport } from "./wsTransport";
@@ -48,6 +49,7 @@ const serverProviderStatusesUpdatedListeners = new Set<
 >();
 const serverMaintenanceUpdatedListeners = new Set<(payload: ServerLifecycleStreamEvent) => void>();
 const serverSettingsUpdatedListeners = new Set<(payload: ServerSettingsUpdatedPayload) => void>();
+const authAccessListeners = new Set<(payload: AuthAccessStreamEvent) => void>();
 const gitActionProgressListeners = new Set<(payload: GitActionProgressEvent) => void>();
 
 function omitNullUserInputAnswers(
@@ -81,6 +83,7 @@ function clearWsNativeApiListeners(): void {
   serverProviderStatusesUpdatedListeners.clear();
   serverMaintenanceUpdatedListeners.clear();
   serverSettingsUpdatedListeners.clear();
+  authAccessListeners.clear();
   gitActionProgressListeners.clear();
   terminalEventListeners.clear();
   orchestrationDomainEventListeners.clear();
@@ -128,7 +131,7 @@ async function requestAuthJson<T>(
   const hasBody = options.body !== undefined;
   const activeProfileId = readActiveSavedConnectionProfileId();
   const activeProfile = activeProfileId ? readSavedConnectionProfile(activeProfileId) : null;
-  const bearerToken = activeProfileId ? readSavedConnectionSecret(activeProfileId) : null;
+  const bearerToken = activeProfileId ? await readSavedConnectionSecretAsync(activeProfileId) : null;
   const remoteUrl = activeProfile ? new URL(path, activeProfile.httpBaseUrl).toString() : path;
   const response = await fetch(remoteUrl, {
     method: options.method ?? "GET",
@@ -338,6 +341,23 @@ export function onServerSettingsUpdated(
   };
 }
 
+export function onAuthAccess(listener: (payload: AuthAccessStreamEvent) => void): () => void {
+  authAccessListeners.add(listener);
+
+  const latest = instance?.transport.getLatestPush(WS_CHANNELS.authAccess)?.data ?? null;
+  if (latest) {
+    try {
+      listener(latest);
+    } catch {
+      // Swallow listener errors
+    }
+  }
+
+  return () => {
+    authAccessListeners.delete(listener);
+  };
+}
+
 export function createWsNativeApi(): NativeApi {
   if (instance) {
     if (instance.transport.getState() !== "disposed") {
@@ -391,6 +411,16 @@ export function createWsNativeApi(): NativeApi {
   transport.subscribe(WS_CHANNELS.serverSettingsUpdated, (message) => {
     const payload = message.data;
     for (const listener of serverSettingsUpdatedListeners) {
+      try {
+        listener(payload);
+      } catch {
+        // Swallow listener errors
+      }
+    }
+  });
+  transport.subscribe(WS_CHANNELS.authAccess, (message) => {
+    const payload = message.data;
+    for (const listener of authAccessListeners) {
       try {
         listener(payload);
       } catch {
@@ -607,6 +637,7 @@ export function createWsNativeApi(): NativeApi {
         requestAuthJson<{ revokedCount: number }>("/api/auth/clients/revoke-others", {
           method: "POST",
         }),
+      onAuthAccess,
       refreshProviders: () => transport.request(WS_METHODS.serverRefreshProviders),
       updateProvider: (input) => transport.request(WS_METHODS.serverUpdateProvider, input),
       listWorktrees: () => transport.request(WS_METHODS.serverListWorktrees),

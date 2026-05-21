@@ -1,4 +1,9 @@
-import type { AuthClientSession, AuthPairingLink, AuthSessionState } from "@t3tools/contracts";
+import type {
+  AuthAccessStreamEvent,
+  AuthClientSession,
+  AuthPairingLink,
+  AuthSessionState,
+} from "@t3tools/contracts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { addSavedConnectionFromPairing } from "../connection/savedConnectionManager";
@@ -31,6 +36,63 @@ function pairingUrlForCredential(credential: string): string {
 async function copyValue(value: string, label: string): Promise<void> {
   await copyTextToClipboard(value);
   toastManager.add({ type: "success", title: `${label} copied` });
+}
+
+function sortPairingLinks(links: ReadonlyArray<AuthPairingLink>) {
+  return [...links].toSorted((left, right) =>
+    String(left.expiresAt).localeCompare(String(right.expiresAt)),
+  );
+}
+
+function sortClientSessions(sessions: ReadonlyArray<AuthClientSession>) {
+  return [...sessions].toSorted((left, right) =>
+    String(left.expiresAt).localeCompare(String(right.expiresAt)),
+  );
+}
+
+function applyAuthAccessEvent(
+  event: AuthAccessStreamEvent,
+  setters: {
+    readonly setPairingLinks: (links: ReadonlyArray<AuthPairingLink>) => void;
+    readonly setClientSessions: (clients: ReadonlyArray<AuthClientSession>) => void;
+    readonly updatePairingLinks: (
+      update: (links: ReadonlyArray<AuthPairingLink>) => ReadonlyArray<AuthPairingLink>,
+    ) => void;
+    readonly updateClientSessions: (
+      update: (clients: ReadonlyArray<AuthClientSession>) => ReadonlyArray<AuthClientSession>,
+    ) => void;
+  },
+) {
+  switch (event.type) {
+    case "snapshot":
+      setters.setPairingLinks(sortPairingLinks(event.access.pairingLinks));
+      setters.setClientSessions(sortClientSessions(event.access.clientSessions));
+      return;
+    case "pairingLinkUpserted":
+      setters.updatePairingLinks((current) =>
+        sortPairingLinks([
+          ...current.filter((link) => link.id !== event.pairingLink.id),
+          event.pairingLink,
+        ]),
+      );
+      return;
+    case "pairingLinkRemoved":
+      setters.updatePairingLinks((current) => current.filter((link) => link.id !== event.id));
+      return;
+    case "clientUpserted":
+      setters.updateClientSessions((current) =>
+        sortClientSessions([
+          ...current.filter((client) => client.sessionId !== event.clientSession.sessionId),
+          event.clientSession,
+        ]),
+      );
+      return;
+    case "clientRemoved":
+      setters.updateClientSessions((current) =>
+        current.filter((client) => client.sessionId !== event.sessionId),
+      );
+      return;
+  }
 }
 
 export function ConnectionsSettingsPanel() {
@@ -81,6 +143,18 @@ export function ConnectionsSettingsPanel() {
   useEffect(() => {
     void refreshAccess();
   }, [refreshAccess]);
+
+  useEffect(() => {
+    const api = ensureNativeApi();
+    return api.server.onAuthAccess((event) => {
+      applyAuthAccessEvent(event, {
+        setPairingLinks,
+        setClientSessions,
+        updatePairingLinks: setPairingLinks,
+        updateClientSessions: setClientSessions,
+      });
+    });
+  }, []);
 
   const activeProfile = useMemo(
     () => savedProfiles.find((profile) => profile.id === activeProfileId) ?? null,

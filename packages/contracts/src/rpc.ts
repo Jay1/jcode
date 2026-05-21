@@ -2,6 +2,7 @@ import { Schema } from "effect";
 import * as Rpc from "effect/unstable/rpc/Rpc";
 import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 
+import { AuthAccessStreamEvent } from "./auth";
 import { OpenInEditorInput } from "./editor";
 import { FilesystemBrowseInput, FilesystemBrowseResult } from "./filesystem";
 import {
@@ -508,6 +509,13 @@ export const WsSubscribeServerSettingsRpc = Rpc.make(WS_METHODS.subscribeServerS
   stream: true,
 });
 
+export const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess, {
+  payload: Schema.Struct({}),
+  success: AuthAccessStreamEvent,
+  error: WsRpcError,
+  stream: true,
+});
+
 export const WsProviderGetComposerCapabilitiesRpc = Rpc.make(
   WS_METHODS.providerGetComposerCapabilities,
   {
@@ -620,6 +628,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribeServerConfigRpc,
   WsSubscribeServerProviderStatusesRpc,
   WsSubscribeServerSettingsRpc,
+  WsSubscribeAuthAccessRpc,
   WsProviderGetComposerCapabilitiesRpc,
   WsProviderCompactThreadRpc,
   WsProviderListCommandsRpc,
