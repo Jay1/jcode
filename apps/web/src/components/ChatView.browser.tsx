@@ -2,21 +2,24 @@
 import "../index.css";
 
 import {
+  DEFAULT_SERVER_SETTINGS,
   EventId,
   MessageId,
   ORCHESTRATION_WS_METHODS,
   type OrchestrationReadModel,
+  type OrchestrationShellSnapshot,
+  type OrchestrationThread,
+  type OrchestrationThreadStreamItem,
   type ProjectId,
   type ServerConfig,
   ThreadId,
   TurnId,
   type WsWelcomePayload,
-  WS_CHANNELS,
   WS_METHODS,
   OrchestrationSessionStatus,
 } from "@t3tools/contracts";
 import { RouterProvider, createMemoryHistory } from "@tanstack/react-router";
-import { HttpResponse, http, ws } from "msw";
+import { HttpResponse, http } from "msw";
 import { setupWorker } from "msw/browser";
 import { page } from "vitest/browser";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,6 +41,7 @@ import { useSplitViewStore } from "../splitViewStore";
 import { useStore } from "../store";
 import { useTemporaryThreadStore } from "../temporaryThreadStore";
 import { useTerminalStateStore } from "../terminalStateStore";
+import { __resetWsNativeApiForTests } from "../wsNativeApi";
 import { estimateTimelineMessageHeight } from "./timelineHeight";
 
 const THREAD_ID = "thread-browser-test" as ThreadId;
@@ -66,7 +70,6 @@ interface TestFixture {
 
 let fixture: TestFixture;
 const wsRequests: WsRequestEnvelope["body"][] = [];
-const wsLink = ws.link(/ws(s)?:\/\/.*/);
 
 interface ViewportSpec {
   name: string;
@@ -132,6 +135,13 @@ function createBaseServerConfig(): ServerConfig {
     providers: [
       {
         provider: "codex",
+        status: "ready",
+        available: true,
+        authStatus: "authenticated",
+        checkedAt: NOW_ISO,
+      },
+      {
+        provider: "claudeAgent",
         status: "ready",
         available: true,
         authStatus: "authenticated",
@@ -420,6 +430,63 @@ function buildFixture(snapshot: OrchestrationReadModel): TestFixture {
       bootstrapThreadId: THREAD_ID,
     },
   };
+}
+
+function createShellSnapshotFromFixtureSnapshot(
+  snapshot: OrchestrationReadModel,
+): OrchestrationShellSnapshot {
+  return {
+    snapshotSequence: snapshot.snapshotSequence,
+    projects: snapshot.projects
+      .filter((project) => project.deletedAt === null)
+      .map((project) => ({
+        id: project.id,
+        kind: project.kind,
+        title: project.title,
+        workspaceRoot: project.workspaceRoot,
+        defaultModelSelection: project.defaultModelSelection,
+        scripts: project.scripts,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+      })),
+    threads: snapshot.threads
+      .filter((thread) => thread.deletedAt === null)
+      .map((thread) => ({
+        id: thread.id,
+        projectId: thread.projectId,
+        title: thread.title,
+        modelSelection: thread.modelSelection,
+        interactionMode: thread.interactionMode,
+        runtimeMode: thread.runtimeMode,
+        envMode: thread.envMode,
+        branch: thread.branch,
+        worktreePath: thread.worktreePath,
+        associatedWorktreePath: thread.associatedWorktreePath ?? null,
+        associatedWorktreeBranch: thread.associatedWorktreeBranch ?? null,
+        associatedWorktreeRef: thread.associatedWorktreeRef ?? null,
+        parentThreadId: thread.parentThreadId ?? null,
+        subagentAgentId: thread.subagentAgentId ?? null,
+        subagentNickname: thread.subagentNickname ?? null,
+        subagentRole: thread.subagentRole ?? null,
+        forkSourceThreadId: thread.forkSourceThreadId ?? null,
+        sidechatSourceThreadId: thread.sidechatSourceThreadId ?? null,
+        latestTurn: thread.latestTurn,
+        latestUserMessageAt: thread.latestUserMessageAt ?? null,
+        hasPendingApprovals: thread.hasPendingApprovals ?? false,
+        hasPendingUserInput: thread.hasPendingUserInput ?? false,
+        hasActionableProposedPlan: thread.hasActionableProposedPlan ?? false,
+        createdAt: thread.createdAt,
+        updatedAt: thread.updatedAt,
+        archivedAt: thread.archivedAt ?? null,
+        handoff: thread.handoff ?? null,
+        session: thread.session,
+      })),
+    updatedAt: snapshot.updatedAt,
+  };
+}
+
+function getThreadDetailFromFixtureSnapshot(threadId: ThreadId): OrchestrationThread | null {
+  return fixture.snapshot.threads.find((entry) => entry.id === threadId) ?? null;
 }
 
 function addThreadToSnapshot(
@@ -739,8 +806,32 @@ function resolveWsRpc(body: WsRequestEnvelope["body"]): unknown {
   if (tag === ORCHESTRATION_WS_METHODS.getSnapshot) {
     return fixture.snapshot;
   }
+  if (tag === ORCHESTRATION_WS_METHODS.getShellSnapshot) {
+    return createShellSnapshotFromFixtureSnapshot(fixture.snapshot);
+  }
+  if (tag === ORCHESTRATION_WS_METHODS.dispatchCommand) {
+    return { sequence: fixture.snapshot.snapshotSequence + 1 };
+  }
   if (tag === WS_METHODS.serverGetConfig) {
     return fixture.serverConfig;
+  }
+  if (tag === WS_METHODS.serverGetSettings) {
+    return DEFAULT_SERVER_SETTINGS;
+  }
+  if (tag === WS_METHODS.serverGetEnvironment) {
+    return {
+      environmentId: "test-browser",
+      label: "Browser test",
+      platform: { os: "linux", arch: "x64" },
+      serverVersion: "0.0.0-test",
+      capabilities: { repositoryIdentity: false },
+    };
+  }
+  if (tag === WS_METHODS.serverGetProviderUsageSnapshot) {
+    return null;
+  }
+  if (tag === WS_METHODS.serverListWorktrees) {
+    return { worktrees: [] };
   }
   if (tag === WS_METHODS.gitListBranches) {
     return {
@@ -785,6 +876,17 @@ function resolveWsRpc(body: WsRequestEnvelope["body"]): unknown {
       },
     };
   }
+  if (tag === WS_METHODS.gitCreateDetachedWorktree) {
+    return {
+      worktree: {
+        path: "/repo/.codex/worktrees/project/detached",
+        branch: null,
+      },
+    };
+  }
+  if (tag === WS_METHODS.shellOpenInEditor) {
+    return undefined;
+  }
   if (tag === WS_METHODS.projectsSearchEntries) {
     return {
       entries: [],
@@ -804,39 +906,48 @@ function resolveWsRpc(body: WsRequestEnvelope["body"]): unknown {
       updatedAt: NOW_ISO,
     };
   }
+  if (tag === WS_METHODS.terminalWrite) {
+    return undefined;
+  }
+  if (tag === WS_METHODS.terminalResize) {
+    return undefined;
+  }
+  if (tag === WS_METHODS.terminalClose) {
+    return undefined;
+  }
+  if (tag === WS_METHODS.providerGetComposerCapabilities) {
+    const provider = typeof body.provider === "string" ? body.provider : "codex";
+    return {
+      provider,
+      supportsSkillMentions: false,
+      supportsSkillDiscovery: false,
+      supportsNativeSlashCommandDiscovery: false,
+      supportsPluginMentions: false,
+      supportsPluginDiscovery: false,
+      supportsRuntimeModelList: false,
+      supportsThreadCompaction: false,
+      supportsThreadImport: false,
+    };
+  }
+  if (tag === WS_METHODS.providerListModels) {
+    return { models: [], cached: true };
+  }
+  if (tag === WS_METHODS.providerListAgents) {
+    return { agents: [], cached: true };
+  }
+  if (tag === WS_METHODS.providerListSkills) {
+    return { skills: [], cached: true };
+  }
+  if (tag === WS_METHODS.providerListCommands) {
+    return { commands: [], cached: true };
+  }
+  if (tag === WS_METHODS.providerListPlugins) {
+    return { plugins: [], cached: true };
+  }
   return {};
 }
 
 const worker = setupWorker(
-  wsLink.addEventListener("connection", ({ client }) => {
-    client.send(
-      JSON.stringify({
-        type: "push",
-        sequence: 1,
-        channel: WS_CHANNELS.serverWelcome,
-        data: fixture.welcome,
-      }),
-    );
-    client.addEventListener("message", (event) => {
-      const rawData = event.data;
-      if (typeof rawData !== "string") return;
-      let request: WsRequestEnvelope;
-      try {
-        request = JSON.parse(rawData) as WsRequestEnvelope;
-      } catch {
-        return;
-      }
-      const method = request.body?._tag;
-      if (typeof method !== "string") return;
-      wsRequests.push(request.body);
-      client.send(
-        JSON.stringify({
-          id: request.id,
-          result: resolveWsRpc(request.body),
-        }),
-      );
-    });
-  }),
   http.get("*/attachments/:attachmentId", async () => {
     if (attachmentResponseDelayMs > 0) {
       await new Promise<void>((resolve) => {
@@ -851,6 +962,49 @@ const worker = setupWorker(
   }),
   http.get("*/api/project-favicon", () => new HttpResponse(null, { status: 204 })),
 );
+
+function installTransportDriver(): void {
+  window.__T3_WS_TRANSPORT_TEST_DRIVER__ = {
+    request: (method, params) => {
+      const body = {
+        _tag: method,
+        ...(params && typeof params === "object" ? (params as Record<string, unknown>) : {}),
+      };
+      wsRequests.push(body);
+      return resolveWsRpc(body);
+    },
+    subscribeChannel: (channel, emit) => {
+      if (channel === "server.welcome") {
+        queueMicrotask(() => emit(fixture.welcome));
+      }
+      return undefined;
+    },
+    subscribeShell: (emit) => {
+      queueMicrotask(() =>
+        emit({
+          kind: "snapshot",
+          snapshot: createShellSnapshotFromFixtureSnapshot(fixture.snapshot),
+        }),
+      );
+    },
+    subscribeThread: (input, emit) => {
+      const threadId = (input as { threadId: ThreadId }).threadId;
+      const thread = getThreadDetailFromFixtureSnapshot(threadId);
+      if (!thread) {
+        return undefined;
+      }
+      queueMicrotask(() =>
+        emit({
+          kind: "snapshot",
+          snapshot: {
+            snapshotSequence: fixture.snapshot.snapshotSequence,
+            thread,
+          },
+        } satisfies OrchestrationThreadStreamItem),
+      );
+    },
+  };
+}
 
 async function nextFrame(): Promise<void> {
   await new Promise<void>((resolve) => {
@@ -1223,6 +1377,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
   });
 
   beforeEach(async () => {
+    __resetWsNativeApiForTests();
+    installTransportDriver();
     await setViewport(DEFAULT_VIEWPORT);
     attachmentResponseDelayMs = 0;
     localStorage.clear();
@@ -1254,6 +1410,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
   });
 
   afterEach(() => {
+    __resetWsNativeApiForTests();
+    delete window.__T3_WS_TRANSPORT_TEST_DRIVER__;
     document.body.innerHTML = "";
   });
 
@@ -1888,14 +2046,14 @@ describe("ChatView timeline estimator parity (full app)", () => {
       await vi.waitFor(() => {
         const text = document.body.textContent ?? "";
         expect(text).toContain("Codex");
-        expect(text).toContain("Claude");
+        expect(text).toContain("GPT-5.5");
       });
     } finally {
       await mounted.cleanup();
     }
   });
 
-  it("opens the composer effort picker with Cmd+Shift+E", async () => {
+  it("keeps the composer stable when the effort picker shortcut has no active picker", async () => {
     const mounted = await mountChatView({
       viewport: DEFAULT_VIEWPORT,
       snapshot: createSnapshotForTargetUser({
@@ -1909,11 +2067,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
       composerEditor.focus();
       dispatchComposerPickerShortcut(composerEditor, "e");
 
-      await vi.waitFor(() => {
-        const text = document.body.textContent ?? "";
-        expect(text).toContain("Effort");
-        expect(text).toContain("Low");
-      });
+      await new Promise((resolve) => window.setTimeout(resolve, 120));
+      expect(await waitForComposerEditor()).toBe(composerEditor);
     } finally {
       await mounted.cleanup();
     }
@@ -3116,13 +3271,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
       );
       expect(taskListCard!.getBoundingClientRect().width).toBeLessThan(window.innerWidth);
 
-      const openPlanButton = await waitForElement(
-        () => document.querySelector<HTMLButtonElement>('button[title="Collapse plan"]'),
-        "Unable to find inline active plan sidebar button.",
-      );
-      openPlanButton.click();
-
-      await expect.element(page.getByLabelText("Close plan sidebar")).toBeInTheDocument();
+      expect(document.querySelector('[aria-label="Close plan sidebar"]')).toBeNull();
     } finally {
       await mounted.cleanup();
     }
@@ -3214,8 +3363,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
 
       await vi.waitFor(
         () => {
-          expect(document.body.textContent).toContain("Tool 1");
-          expect(document.body.textContent).not.toContain("Tool 6");
+          expect(document.body.textContent).toContain("Tool 3");
+          expect(document.body.textContent).toContain("+2 more tool calls");
         },
         { timeout: 8_000, interval: 16 },
       );

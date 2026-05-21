@@ -30,6 +30,27 @@ type RpcClientInstance =
 
 type TransportState = "connecting" | "open" | "closed" | "disposed";
 
+export interface WsTransportTestDriver {
+  readonly request?: (method: string, params: unknown) => Promise<unknown> | unknown;
+  readonly subscribeChannel?: (
+    channel: WsPushChannel,
+    emit: (data: unknown) => void,
+  ) => (() => void) | void;
+  readonly subscribeShell?: (
+    emit: (event: OrchestrationShellStreamItem) => void,
+  ) => (() => void) | void;
+  readonly subscribeThread?: (
+    input: unknown,
+    emit: (event: OrchestrationThreadStreamItem) => void,
+  ) => (() => void) | void;
+}
+
+declare global {
+  interface Window {
+    __T3_WS_TRANSPORT_TEST_DRIVER__?: WsTransportTestDriver;
+  }
+}
+
 class WsTransportRpcError extends Data.TaggedError("WsTransportRpcError")<{
   readonly message: string;
   readonly cause?: unknown;
@@ -104,14 +125,15 @@ export function shouldKeepServerLifecycleStream(activeChannels: ReadonlySet<stri
 
 export class WsTransport {
   private readonly explicitUrl: string | null;
+  private readonly testDriver: WsTransportTestDriver | null;
   private readonly listeners = new Map<string, Set<(message: WsPush) => void>>();
   private readonly latestPushByChannel = new Map<string, WsPush>();
   private sequence = 0;
   private state: TransportState = "connecting";
   private disposed = false;
-  private runtime: ManagedRuntime.ManagedRuntime<RpcClient.Protocol, never>;
-  private clientScope: Scope.Closeable;
-  private clientPromise: Promise<RpcClientInstance>;
+  private runtime: ManagedRuntime.ManagedRuntime<RpcClient.Protocol, never> | null;
+  private clientScope: Scope.Closeable | null;
+  private clientPromise: Promise<RpcClientInstance> | null;
   private reconnectPromise: Promise<RpcClientInstance> | null = null;
   private reconnectFailures = 0;
   private readonly streamCleanups = new Map<string, () => void>();
@@ -121,10 +143,19 @@ export class WsTransport {
 
   constructor(url?: string) {
     this.explicitUrl = url ?? null;
-    const session = this.createSession();
-    this.runtime = session.runtime;
-    this.clientScope = session.clientScope;
-    this.clientPromise = session.clientPromise;
+    this.testDriver =
+      typeof window !== "undefined" ? (window.__T3_WS_TRANSPORT_TEST_DRIVER__ ?? null) : null;
+    if (this.testDriver) {
+      this.state = "open";
+      this.runtime = null;
+      this.clientScope = null;
+      this.clientPromise = null;
+    } else {
+      const session = this.createSession();
+      this.runtime = session.runtime;
+      this.clientScope = session.clientScope;
+      this.clientPromise = session.clientPromise;
+    }
   }
 
   async request<T = unknown>(
@@ -133,6 +164,33 @@ export class WsTransport {
     _options?: { readonly timeoutMs?: number | null },
   ): Promise<T> {
     if (this.disposed) throw new Error("Transport disposed");
+
+    if (this.testDriver) {
+      if (method === ORCHESTRATION_WS_METHODS.subscribeShell) {
+        this.shellSubscribed = true;
+        this.startTestShellStream();
+        return undefined as T;
+      }
+      if (method === ORCHESTRATION_WS_METHODS.unsubscribeShell) {
+        this.shellSubscribed = false;
+        this.stopStream("orchestration.shell");
+        return undefined as T;
+      }
+      if (method === ORCHESTRATION_WS_METHODS.subscribeThread) {
+        const threadId = (params as { threadId: string }).threadId;
+        this.threadSubscriptions.set(threadId, params);
+        this.startTestThreadStream(threadId, params);
+        return undefined as T;
+      }
+      if (method === ORCHESTRATION_WS_METHODS.unsubscribeThread) {
+        const threadId = (params as { threadId: string }).threadId;
+        this.threadSubscriptions.delete(threadId);
+        this.stopStream(`orchestration.thread:${threadId}`);
+        return undefined as T;
+      }
+      return (await this.testDriver.request?.(method, params ?? {})) as T;
+    }
+
     const client = await this.getClient();
 
     if (method === WS_METHODS.gitRunStackedAction) {
@@ -186,7 +244,11 @@ export class WsTransport {
     if (!channelListeners) {
       channelListeners = new Set<(message: WsPush) => void>();
       this.listeners.set(channel, channelListeners);
-      this.startChannelStream(channel);
+      if (this.testDriver) {
+        this.startTestChannelStream(channel);
+      } else {
+        this.startChannelStream(channel);
+      }
     }
 
     const wrappedListener = (message: WsPush) => listener(message as WsPushMessage<C>);
@@ -220,9 +282,12 @@ export class WsTransport {
     this.state = "disposed";
     for (const cleanup of this.streamCleanups.values()) cleanup();
     this.streamCleanups.clear();
-    void this.runtime.runPromise(Scope.close(this.clientScope, Exit.void)).finally(() => {
-      this.runtime.dispose();
-    });
+    if (this.runtime && this.clientScope) {
+      const runtime = this.runtime;
+      void runtime.runPromise(Scope.close(this.clientScope, Exit.void)).finally(() => {
+        runtime.dispose();
+      });
+    }
   }
 
   private createSession() {
@@ -242,6 +307,9 @@ export class WsTransport {
   }
 
   private async getClient(): Promise<RpcClientInstance> {
+    if (!this.clientPromise) {
+      throw new Error("Transport client unavailable");
+    }
     try {
       return await this.clientPromise;
     } catch {
@@ -252,6 +320,9 @@ export class WsTransport {
 
   private reconnect(): Promise<RpcClientInstance> {
     if (this.reconnectPromise) return this.reconnectPromise;
+    if (!this.runtime || !this.clientScope) {
+      return Promise.reject(new Error("Transport client unavailable"));
+    }
 
     const oldRuntime = this.runtime;
     const oldClientScope = this.clientScope;
@@ -382,6 +453,10 @@ export class WsTransport {
   }
 
   private stopChannelStream(channel: WsPushChannel): void {
+    if (this.testDriver) {
+      this.stopStream(`channel:${channel}`);
+      return;
+    }
     if (isServerLifecyclePushChannel(channel)) {
       if (!this.shouldKeepLifecycleStream()) this.stopStream("server.lifecycle");
     } else if (channel === WS_CHANNELS.serverConfigUpdated) this.stopStream("server.config");
@@ -391,6 +466,33 @@ export class WsTransport {
     else if (channel === WS_CHANNELS.terminalEvent) this.stopStream("terminal.events");
     else if (channel === ORCHESTRATION_WS_CHANNELS.domainEvent)
       this.stopStream("orchestration.domain");
+  }
+
+  private startTestChannelStream(channel: WsPushChannel): void {
+    const key = `channel:${channel}`;
+    if (this.streamCleanups.has(key)) return;
+    const cleanup = this.testDriver?.subscribeChannel?.(channel, (data) => {
+      this.emit(channel, data as never);
+    });
+    this.streamCleanups.set(key, cleanup ?? (() => undefined));
+  }
+
+  private startTestShellStream(): void {
+    const key = "orchestration.shell";
+    this.stopStream(key);
+    const cleanup = this.testDriver?.subscribeShell?.((event) => {
+      this.emit(ORCHESTRATION_WS_CHANNELS.shellEvent, event);
+    });
+    this.streamCleanups.set(key, cleanup ?? (() => undefined));
+  }
+
+  private startTestThreadStream(threadId: string, input: unknown): void {
+    const key = `orchestration.thread:${threadId}`;
+    this.stopStream(key);
+    const cleanup = this.testDriver?.subscribeThread?.(input, (event) => {
+      this.emit(ORCHESTRATION_WS_CHANNELS.threadEvent, event);
+    });
+    this.streamCleanups.set(key, cleanup ?? (() => undefined));
   }
 
   private shouldKeepLifecycleStream(): boolean {

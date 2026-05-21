@@ -12,6 +12,7 @@ import { ServerSecretStoreLive } from "./ServerSecretStore";
 import { SessionCredentialServiceLive } from "./SessionCredentialService";
 import { BootstrapCredentialError } from "../Services/BootstrapCredentialService";
 import { AuthError, ServerAuth, type AuthRequest } from "../Services/ServerAuth";
+import { resolveSessionCookieName } from "../utils";
 
 const sessionCredentialLayer = SessionCredentialServiceLive.pipe(
   Layer.provide(ServerSecretStoreLive),
@@ -42,11 +43,13 @@ const requestMetadata = {
   ipAddress: "192.168.1.23",
 };
 
+const TEST_SESSION_COOKIE_NAME = resolveSessionCookieName({ mode: "web", port: 0 });
+
 function makeCookieRequest(sessionToken: string): AuthRequest {
   return {
     headers: {},
     cookies: {
-      t3_session: sessionToken,
+      [TEST_SESSION_COOKIE_NAME]: sessionToken,
     },
   };
 }

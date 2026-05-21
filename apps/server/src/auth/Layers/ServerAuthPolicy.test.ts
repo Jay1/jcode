@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { ServerConfig, type ServerConfigShape } from "../../config";
 import { ServerAuthPolicy } from "../Services/ServerAuthPolicy";
+import { resolveSessionCookieName } from "../utils";
 import { ServerAuthPolicyLive } from "./ServerAuthPolicy";
 
 const makeLayer = (overrides: Partial<ServerConfigShape>) =>
@@ -41,7 +42,9 @@ describe("ServerAuthPolicyLive", () => {
 
     expect(descriptor.policy).toBe("desktop-managed-local");
     expect(descriptor.bootstrapMethods).toEqual(["desktop-bootstrap"]);
-    expect(descriptor.sessionCookieName).toBe("t3_session_3773");
+    expect(descriptor.sessionCookieName).toBe(
+      resolveSessionCookieName({ mode: "desktop", port: 3773 }),
+    );
   });
 
   it("uses remote-reachable policy for wildcard desktop mode", async () => {
@@ -64,7 +67,7 @@ describe("ServerAuthPolicyLive", () => {
 
     expect(descriptor.policy).toBe("loopback-browser");
     expect(descriptor.bootstrapMethods).toEqual(["one-time-token"]);
-    expect(descriptor.sessionCookieName).toBe("t3_session");
+    expect(descriptor.sessionCookieName).toBe(resolveSessionCookieName({ mode: "web", port: 0 }));
   });
 
   it("uses remote-reachable policy for non-loopback web mode", async () => {

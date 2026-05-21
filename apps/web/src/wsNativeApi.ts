@@ -69,6 +69,27 @@ const orchestrationThreadEventListeners = new Set<
 const fallbackBrowserStateListeners = new Set<(state: ThreadBrowserState) => void>();
 const fallbackBrowserStates = new Map<ThreadId, ThreadBrowserState>();
 
+function clearWsNativeApiListeners(): void {
+  welcomeListeners.clear();
+  serverConfigUpdatedListeners.clear();
+  serverProviderStatusesUpdatedListeners.clear();
+  serverMaintenanceUpdatedListeners.clear();
+  serverSettingsUpdatedListeners.clear();
+  gitActionProgressListeners.clear();
+  terminalEventListeners.clear();
+  orchestrationDomainEventListeners.clear();
+  orchestrationShellEventListeners.clear();
+  orchestrationThreadEventListeners.clear();
+  fallbackBrowserStateListeners.clear();
+}
+
+export function __resetWsNativeApiForTests(): void {
+  instance?.transport.dispose();
+  instance = null;
+  clearWsNativeApiListeners();
+  fallbackBrowserStates.clear();
+}
+
 function defaultBrowserState(threadId: ThreadId): ThreadBrowserState {
   return {
     threadId,
@@ -804,15 +825,6 @@ if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     instance?.transport.dispose();
     instance = null;
-    welcomeListeners.clear();
-    serverConfigUpdatedListeners.clear();
-    serverProviderStatusesUpdatedListeners.clear();
-    serverSettingsUpdatedListeners.clear();
-    gitActionProgressListeners.clear();
-    terminalEventListeners.clear();
-    orchestrationDomainEventListeners.clear();
-    orchestrationShellEventListeners.clear();
-    orchestrationThreadEventListeners.clear();
-    fallbackBrowserStateListeners.clear();
+    clearWsNativeApiListeners();
   });
 }

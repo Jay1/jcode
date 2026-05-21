@@ -38,6 +38,11 @@
       "dependsOn": ["^build"],
       "cache": false,
       "outputs": []
+    },
+    "test:browser": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "outputs": []
     }
   }
 }

@@ -1,9 +1,9 @@
 import "../index.css";
 
 import {
+  DEFAULT_SERVER_SETTINGS,
   EventId,
   MessageId,
-  ORCHESTRATION_WS_CHANNELS,
   ORCHESTRATION_WS_METHODS,
   ProjectId,
   ThreadId,
@@ -13,13 +13,14 @@ import {
   type OrchestrationShellStreamEvent,
   type OrchestrationShellSnapshot,
   type OrchestrationThread,
+  type OrchestrationThreadStreamItem,
   type ServerConfig,
   type WsWelcomePayload,
   WS_CHANNELS,
   WS_METHODS,
 } from "@t3tools/contracts";
 import { RouterProvider, createMemoryHistory } from "@tanstack/react-router";
-import { HttpResponse, http, ws } from "msw";
+import { HttpResponse, http } from "msw";
 import { setupWorker } from "msw/browser";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
@@ -29,6 +30,7 @@ import { getRouter } from "../router";
 import { useStore } from "../store";
 import { getThreadFromState } from "../threadDerivation";
 import { useWorkspaceStore } from "../workspaceStore";
+import { __resetWsNativeApiForTests } from "../wsNativeApi";
 
 const THREAD_ID = ThreadId.makeUnsafe("thread-root-browser-test");
 const OTHER_THREAD_ID = ThreadId.makeUnsafe("thread-other-browser-test");
@@ -42,16 +44,14 @@ interface TestFixture {
 }
 
 let fixture: TestFixture;
-let wsClient: { send: (data: string) => void } | null = null;
-let pushSequence = 1;
 let delayNextThreadSnapshot = false;
 let subscribeShellRequestCount = 0;
 const subscribeThreadRequestCountById = new Map<ThreadId, number>();
 let subscribeThreadRequests: ThreadId[] = [];
 let replayEvents: OrchestrationEvent[] = [];
 let replayRequestCursors: number[] = [];
-
-const wsLink = ws.link(/ws(s)?:\/\/.*/);
+let emitShellStreamEvent: ((event: OrchestrationShellStreamEvent) => void) | null = null;
+let emitThreadStreamEvent: ((event: OrchestrationThreadStreamItem) => void) | null = null;
 
 function createBaseServerConfig(): ServerConfig {
   return {
@@ -220,6 +220,9 @@ function resolveWsRpc(tag: string, body?: unknown): unknown {
   if (tag === ORCHESTRATION_WS_METHODS.getSnapshot) {
     return fixture.snapshot;
   }
+  if (tag === ORCHESTRATION_WS_METHODS.getShellSnapshot) {
+    return createShellSnapshotFromFixtureSnapshot(fixture.snapshot);
+  }
   if (tag === ORCHESTRATION_WS_METHODS.replayEvents) {
     const request = body as { readonly fromSequenceExclusive?: unknown } | null;
     const fromSequenceExclusive =
@@ -229,6 +232,24 @@ function resolveWsRpc(tag: string, body?: unknown): unknown {
   }
   if (tag === WS_METHODS.serverGetConfig) {
     return fixture.serverConfig;
+  }
+  if (tag === WS_METHODS.serverGetSettings) {
+    return DEFAULT_SERVER_SETTINGS;
+  }
+  if (tag === WS_METHODS.serverGetEnvironment) {
+    return {
+      environmentId: "test-browser",
+      label: "Browser test",
+      platform: { os: "linux", arch: "x64" },
+      serverVersion: "0.0.0-test",
+      capabilities: { repositoryIdentity: false },
+    };
+  }
+  if (tag === WS_METHODS.serverGetProviderUsageSnapshot) {
+    return null;
+  }
+  if (tag === WS_METHODS.serverListWorktrees) {
+    return { worktrees: [] };
   }
   if (tag === WS_METHODS.gitListBranches) {
     return {
@@ -251,88 +272,95 @@ function resolveWsRpc(tag: string, body?: unknown): unknown {
   if (tag === WS_METHODS.projectsSearchEntries) {
     return { entries: [], truncated: false };
   }
+  if (tag === WS_METHODS.providerGetComposerCapabilities) {
+    return {
+      provider: "codex",
+      supportsSkillMentions: false,
+      supportsSkillDiscovery: false,
+      supportsNativeSlashCommandDiscovery: false,
+      supportsPluginMentions: false,
+      supportsPluginDiscovery: false,
+      supportsRuntimeModelList: false,
+      supportsThreadCompaction: false,
+      supportsThreadImport: false,
+    };
+  }
+  if (tag === WS_METHODS.providerListModels) {
+    return { models: [], cached: true };
+  }
+  if (tag === WS_METHODS.providerListAgents) {
+    return { agents: [], cached: true };
+  }
+  if (tag === WS_METHODS.providerListSkills) {
+    return { skills: [], cached: true };
+  }
+  if (tag === WS_METHODS.providerListCommands) {
+    return { commands: [], cached: true };
+  }
+  if (tag === WS_METHODS.providerListPlugins) {
+    return { plugins: [], cached: true };
+  }
   return {};
 }
 
 const worker = setupWorker(
-  wsLink.addEventListener("connection", ({ client }) => {
-    wsClient = client;
-    pushSequence = 1;
-    client.send(
-      JSON.stringify({
-        type: "push",
-        sequence: pushSequence++,
-        channel: WS_CHANNELS.serverWelcome,
-        data: fixture.welcome,
-      }),
-    );
-    client.addEventListener("message", (event) => {
-      if (typeof event.data !== "string") {
-        return;
-      }
-      let request: { id: string; body: { _tag: string } };
-      try {
-        request = JSON.parse(event.data);
-      } catch {
-        return;
-      }
-      const method = request.body?._tag;
-      if (typeof method !== "string") {
-        return;
-      }
-      if (method === ORCHESTRATION_WS_METHODS.subscribeShell) {
-        subscribeShellRequestCount += 1;
-      }
-      client.send(
-        JSON.stringify({
-          id: request.id,
-          result: resolveWsRpc(method, request.body),
-        }),
-      );
-      if (method === ORCHESTRATION_WS_METHODS.subscribeShell) {
-        client.send(
-          JSON.stringify({
-            type: "push",
-            sequence: pushSequence++,
-            channel: ORCHESTRATION_WS_CHANNELS.shellEvent,
-            data: {
-              kind: "snapshot",
-              snapshot: createShellSnapshotFromFixtureSnapshot(fixture.snapshot),
-            },
-          }),
-        );
-      }
-      if (method === ORCHESTRATION_WS_METHODS.subscribeThread && "threadId" in request.body) {
-        const threadId = request.body.threadId as ThreadId;
-        subscribeThreadRequestCountById.set(
-          threadId,
-          (subscribeThreadRequestCountById.get(threadId) ?? 0) + 1,
-        );
-        subscribeThreadRequests.push(threadId);
-        if (delayNextThreadSnapshot) {
-          delayNextThreadSnapshot = false;
-          return;
-        }
-        client.send(
-          JSON.stringify({
-            type: "push",
-            sequence: pushSequence++,
-            channel: ORCHESTRATION_WS_CHANNELS.threadEvent,
-            data: {
-              kind: "snapshot",
-              snapshot: {
-                snapshotSequence: fixture.snapshot.snapshotSequence,
-                thread: getThreadDetailFromFixtureSnapshot(threadId),
-              },
-            },
-          }),
-        );
-      }
-    });
-  }),
   http.get("*/attachments/:attachmentId", () => new HttpResponse(null, { status: 204 })),
   http.get("*/api/project-favicon", () => new HttpResponse(null, { status: 204 })),
 );
+
+function installTransportDriver(): void {
+  window.__T3_WS_TRANSPORT_TEST_DRIVER__ = {
+    request: (method, params) => resolveWsRpc(method, params),
+    subscribeChannel: (channel, emit) => {
+      if (channel === WS_CHANNELS.serverWelcome) {
+        queueMicrotask(() => emit(fixture.welcome));
+      }
+      return undefined;
+    },
+    subscribeShell: (emit) => {
+      subscribeShellRequestCount += 1;
+      emitShellStreamEvent = emit;
+      queueMicrotask(() =>
+        emit({
+          kind: "snapshot",
+          snapshot: createShellSnapshotFromFixtureSnapshot(fixture.snapshot),
+        }),
+      );
+      return () => {
+        if (emitShellStreamEvent === emit) {
+          emitShellStreamEvent = null;
+        }
+      };
+    },
+    subscribeThread: (input, emit) => {
+      const threadId = (input as { threadId: ThreadId }).threadId;
+      subscribeThreadRequestCountById.set(
+        threadId,
+        (subscribeThreadRequestCountById.get(threadId) ?? 0) + 1,
+      );
+      subscribeThreadRequests.push(threadId);
+      emitThreadStreamEvent = emit;
+      if (delayNextThreadSnapshot) {
+        delayNextThreadSnapshot = false;
+        return undefined;
+      }
+      queueMicrotask(() =>
+        emit({
+          kind: "snapshot",
+          snapshot: {
+            snapshotSequence: fixture.snapshot.snapshotSequence,
+            thread: getThreadDetailFromFixtureSnapshot(threadId),
+          },
+        }),
+      );
+      return () => {
+        if (emitThreadStreamEvent === emit) {
+          emitThreadStreamEvent = null;
+        }
+      };
+    },
+  };
+}
 
 async function mountApp(options?: {
   routeThreadId?: ThreadId;
@@ -374,54 +402,24 @@ async function mountApp(options?: {
 }
 
 function sendThreadEventPush(event: OrchestrationEvent) {
-  if (!wsClient) {
-    throw new Error("WebSocket client not connected");
-  }
-  wsClient.send(
-    JSON.stringify({
-      type: "push",
-      sequence: pushSequence++,
-      channel: ORCHESTRATION_WS_CHANNELS.threadEvent,
-      data: {
-        kind: "event",
-        event,
-      },
-    }),
-  );
+  if (!emitThreadStreamEvent) throw new Error("Thread stream not connected");
+  emitThreadStreamEvent({ kind: "event", event });
 }
 
 function sendThreadSnapshotPush(threadId: ThreadId, snapshotSequence: number) {
-  if (!wsClient) {
-    throw new Error("WebSocket client not connected");
-  }
-  wsClient.send(
-    JSON.stringify({
-      type: "push",
-      sequence: pushSequence++,
-      channel: ORCHESTRATION_WS_CHANNELS.threadEvent,
-      data: {
-        kind: "snapshot",
-        snapshot: {
-          snapshotSequence,
-          thread: getThreadDetailFromFixtureSnapshot(threadId),
-        },
-      },
-    }),
-  );
+  if (!emitThreadStreamEvent) throw new Error("Thread stream not connected");
+  emitThreadStreamEvent({
+    kind: "snapshot",
+    snapshot: {
+      snapshotSequence,
+      thread: getThreadDetailFromFixtureSnapshot(threadId),
+    },
+  });
 }
 
 function sendShellEventPush(event: OrchestrationShellStreamEvent) {
-  if (!wsClient) {
-    throw new Error("WebSocket client not connected");
-  }
-  wsClient.send(
-    JSON.stringify({
-      type: "push",
-      sequence: pushSequence++,
-      channel: ORCHESTRATION_WS_CHANNELS.shellEvent,
-      data: event,
-    }),
-  );
+  if (!emitShellStreamEvent) throw new Error("Shell stream not connected");
+  emitShellStreamEvent(event);
 }
 
 describe("EventRouter scoped orchestration sync", () => {
@@ -440,8 +438,9 @@ describe("EventRouter scoped orchestration sync", () => {
 
   beforeEach(() => {
     fixture = buildFixture();
+    __resetWsNativeApiForTests();
+    installTransportDriver();
     document.body.innerHTML = "";
-    pushSequence = 1;
     delayNextThreadSnapshot = false;
     localStorage.clear();
     useComposerDraftStore.setState({
@@ -487,6 +486,8 @@ describe("EventRouter scoped orchestration sync", () => {
   });
 
   afterEach(() => {
+    __resetWsNativeApiForTests();
+    delete window.__T3_WS_TRANSPORT_TEST_DRIVER__;
     document.body.innerHTML = "";
   });
 

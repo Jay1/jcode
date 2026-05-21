@@ -361,18 +361,33 @@ function toCanonicalUserInputAnswers(
     return {};
   }
 
-  const result: Record<string, string | ReadonlyArray<string> | null> = {};
-  for (const [questionId, value] of Object.entries(answers)) {
+  const normalizeAnswer = (value: unknown): string | ReadonlyArray<string> | null | undefined => {
     if (typeof value === "string") {
-      result[questionId] = value;
-      continue;
+      return value;
+    }
+
+    if (value === null) {
+      return null;
     }
 
     if (Array.isArray(value)) {
       const normalized = value.filter((entry): entry is string => typeof entry === "string");
-      if (normalized.length === 0) continue;
-      result[questionId] = normalized.length === 1 ? normalized[0]! : normalized;
-      continue;
+      return normalized.length === 1 ? normalized[0]! : normalized;
+    }
+
+    const nested = asObject(value);
+    if (nested && "answers" in nested) {
+      return normalizeAnswer(nested.answers);
+    }
+
+    return undefined;
+  };
+
+  const result: ProviderUserInputAnswers = {};
+  for (const [questionId, value] of Object.entries(answers)) {
+    const normalized = normalizeAnswer(value);
+    if (normalized !== undefined) {
+      result[questionId] = normalized;
     }
   }
   return result;

@@ -1,18 +1,22 @@
 import "../index.css";
 
 import {
+  DEFAULT_SERVER_SETTINGS,
   ORCHESTRATION_WS_METHODS,
   type MessageId,
   type OrchestrationReadModel,
+  type OrchestrationShellSnapshot,
+  type OrchestrationThread,
   type ProjectId,
   type ServerConfig,
+  type ServerConfigUpdatedPayload,
   type ThreadId,
   type WsWelcomePayload,
   WS_CHANNELS,
   WS_METHODS,
 } from "@t3tools/contracts";
 import { RouterProvider, createMemoryHistory } from "@tanstack/react-router";
-import { ws, http, HttpResponse } from "msw";
+import { http, HttpResponse } from "msw";
 import { setupWorker } from "msw/browser";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
@@ -20,6 +24,7 @@ import { render } from "vitest-browser-react";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { getRouter } from "../router";
 import { useStore } from "../store";
+import { __resetWsNativeApiForTests } from "../wsNativeApi";
 
 const THREAD_ID = "thread-kb-toast-test" as ThreadId;
 const PROJECT_ID = "project-1" as ProjectId;
@@ -32,10 +37,7 @@ interface TestFixture {
 }
 
 let fixture: TestFixture;
-let wsClient: { send: (data: string) => void } | null = null;
-let pushSequence = 1;
-
-const wsLink = ws.link(/ws(s)?:\/\/.*/);
+let emitServerConfigUpdated: ((payload: ServerConfigUpdatedPayload) => void) | null = null;
 
 function createBaseServerConfig(): ServerConfig {
   return {
@@ -138,12 +140,118 @@ function buildFixture(): TestFixture {
   };
 }
 
+function createShellSnapshotFromFixtureSnapshot(
+  snapshot: OrchestrationReadModel,
+): OrchestrationShellSnapshot {
+  return {
+    snapshotSequence: snapshot.snapshotSequence,
+    projects: snapshot.projects.map((project) => ({
+      id: project.id,
+      kind: project.kind,
+      title: project.title,
+      workspaceRoot: project.workspaceRoot,
+      defaultModelSelection: project.defaultModelSelection,
+      scripts: project.scripts,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    })),
+    threads: snapshot.threads.map((thread) => ({
+      id: thread.id,
+      projectId: thread.projectId,
+      title: thread.title,
+      modelSelection: thread.modelSelection,
+      interactionMode: thread.interactionMode,
+      runtimeMode: thread.runtimeMode,
+      envMode: thread.envMode,
+      branch: thread.branch,
+      worktreePath: thread.worktreePath,
+      associatedWorktreePath: thread.associatedWorktreePath ?? null,
+      associatedWorktreeBranch: thread.associatedWorktreeBranch ?? null,
+      associatedWorktreeRef: thread.associatedWorktreeRef ?? null,
+      parentThreadId: thread.parentThreadId ?? null,
+      subagentAgentId: thread.subagentAgentId ?? null,
+      subagentNickname: thread.subagentNickname ?? null,
+      subagentRole: thread.subagentRole ?? null,
+      forkSourceThreadId: thread.forkSourceThreadId ?? null,
+      sidechatSourceThreadId: thread.sidechatSourceThreadId ?? null,
+      latestTurn: thread.latestTurn,
+      latestUserMessageAt: thread.latestUserMessageAt ?? null,
+      hasPendingApprovals: thread.hasPendingApprovals ?? false,
+      hasPendingUserInput: thread.hasPendingUserInput ?? false,
+      hasActionableProposedPlan: thread.hasActionableProposedPlan ?? false,
+      createdAt: thread.createdAt,
+      updatedAt: thread.updatedAt,
+      archivedAt: thread.archivedAt ?? null,
+      handoff: thread.handoff ?? null,
+      session: thread.session,
+    })),
+    updatedAt: snapshot.updatedAt,
+  };
+}
+
+function getThreadDetailFromFixtureSnapshot(threadId: ThreadId): OrchestrationThread {
+  const thread = fixture.snapshot.threads.find((entry) => entry.id === threadId);
+  if (!thread) {
+    throw new Error(`Missing thread fixture for ${threadId}`);
+  }
+  return thread;
+}
+
 function resolveWsRpc(tag: string): unknown {
   if (tag === ORCHESTRATION_WS_METHODS.getSnapshot) {
     return fixture.snapshot;
   }
+  if (tag === ORCHESTRATION_WS_METHODS.getShellSnapshot) {
+    return createShellSnapshotFromFixtureSnapshot(fixture.snapshot);
+  }
   if (tag === WS_METHODS.serverGetConfig) {
     return fixture.serverConfig;
+  }
+  if (tag === WS_METHODS.serverGetSettings) {
+    return DEFAULT_SERVER_SETTINGS;
+  }
+  if (tag === WS_METHODS.serverGetEnvironment) {
+    return {
+      environmentId: "test-browser",
+      label: "Browser test",
+      platform: { os: "linux", arch: "x64" },
+      serverVersion: "0.0.0-test",
+      capabilities: { repositoryIdentity: false },
+    };
+  }
+  if (tag === WS_METHODS.serverGetProviderUsageSnapshot) {
+    return null;
+  }
+  if (tag === WS_METHODS.serverListWorktrees) {
+    return { worktrees: [] };
+  }
+  if (tag === WS_METHODS.providerGetComposerCapabilities) {
+    return {
+      provider: "codex",
+      supportsSkillMentions: false,
+      supportsSkillDiscovery: false,
+      supportsNativeSlashCommandDiscovery: false,
+      supportsPluginMentions: false,
+      supportsPluginDiscovery: false,
+      supportsRuntimeModelList: false,
+      supportsThreadCompaction: false,
+      supportsThreadImport: false,
+    };
+  }
+  if (tag === WS_METHODS.providerListModels) {
+    return { models: [], cached: true };
+  }
+  if (tag === WS_METHODS.providerListAgents) {
+    return { agents: [], cached: true };
+  }
+  if (tag === WS_METHODS.providerListSkills) {
+    return { skills: [], cached: true };
+  }
+  if (tag === WS_METHODS.providerListCommands) {
+    return { commands: [], cached: true };
+  }
+  if (tag === WS_METHODS.providerListPlugins) {
+    return { plugins: [], cached: true };
   }
   if (tag === WS_METHODS.gitListBranches) {
     return {
@@ -170,53 +278,56 @@ function resolveWsRpc(tag: string): unknown {
 }
 
 const worker = setupWorker(
-  wsLink.addEventListener("connection", ({ client }) => {
-    wsClient = client;
-    pushSequence = 1;
-    client.send(
-      JSON.stringify({
-        type: "push",
-        sequence: pushSequence++,
-        channel: WS_CHANNELS.serverWelcome,
-        data: fixture.welcome,
-      }),
-    );
-    client.addEventListener("message", (event) => {
-      const rawData = event.data;
-      if (typeof rawData !== "string") return;
-      let request: { id: string; body: { _tag: string; [key: string]: unknown } };
-      try {
-        request = JSON.parse(rawData);
-      } catch {
-        return;
-      }
-      const method = request.body?._tag;
-      if (typeof method !== "string") return;
-      client.send(
-        JSON.stringify({
-          id: request.id,
-          result: resolveWsRpc(method),
-        }),
-      );
-    });
-  }),
   http.get("*/attachments/:attachmentId", () => new HttpResponse(null, { status: 204 })),
   http.get("*/api/project-favicon", () => new HttpResponse(null, { status: 204 })),
 );
 
+function installTransportDriver(): void {
+  window.__T3_WS_TRANSPORT_TEST_DRIVER__ = {
+    request: (method) => resolveWsRpc(method),
+    subscribeChannel: (channel, emit) => {
+      if (channel === WS_CHANNELS.serverWelcome) {
+        queueMicrotask(() => emit(fixture.welcome));
+      }
+      if (channel === WS_CHANNELS.serverConfigUpdated) {
+        emitServerConfigUpdated = emit as (payload: ServerConfigUpdatedPayload) => void;
+        return () => {
+          if (emitServerConfigUpdated === emit) {
+            emitServerConfigUpdated = null;
+          }
+        };
+      }
+      return undefined;
+    },
+    subscribeShell: (emit) => {
+      queueMicrotask(() =>
+        emit({
+          kind: "snapshot",
+          snapshot: createShellSnapshotFromFixtureSnapshot(fixture.snapshot),
+        }),
+      );
+    },
+    subscribeThread: (input, emit) => {
+      const threadId = (input as { threadId: ThreadId }).threadId;
+      queueMicrotask(() =>
+        emit({
+          kind: "snapshot",
+          snapshot: {
+            snapshotSequence: fixture.snapshot.snapshotSequence,
+            thread: getThreadDetailFromFixtureSnapshot(threadId),
+          },
+        }),
+      );
+    },
+  };
+}
+
 function sendServerConfigUpdatedPush(issues: Array<{ kind: string; message: string }>) {
-  if (!wsClient) throw new Error("WebSocket client not connected");
-  wsClient.send(
-    JSON.stringify({
-      type: "push",
-      sequence: pushSequence++,
-      channel: WS_CHANNELS.serverConfigUpdated,
-      data: {
-        issues,
-        providers: fixture.serverConfig.providers,
-      },
-    }),
-  );
+  if (!emitServerConfigUpdated) throw new Error("Server config stream not connected");
+  emitServerConfigUpdated({
+    issues,
+    providers: fixture.serverConfig.providers,
+  });
 }
 
 function queryToastTitles(): string[] {
@@ -304,9 +415,11 @@ describe("Keybindings update toast", () => {
   });
 
   beforeEach(() => {
+    fixture = buildFixture();
+    __resetWsNativeApiForTests();
+    installTransportDriver();
     localStorage.clear();
     document.body.innerHTML = "";
-    pushSequence = 1;
     useComposerDraftStore.setState({
       draftsByThreadId: {},
       draftThreadsByThreadId: {},
@@ -321,6 +434,8 @@ describe("Keybindings update toast", () => {
   });
 
   afterEach(() => {
+    __resetWsNativeApiForTests();
+    delete window.__T3_WS_TRANSPORT_TEST_DRIVER__;
     document.body.innerHTML = "";
   });
 

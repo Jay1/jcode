@@ -19,6 +19,10 @@ release/
 apps/web/.playwright
 apps/web/playwright-report
 .playwright-cli/
+coverage/
+apps/*/coverage/
+packages/*/coverage/
+scripts/coverage/
 apps/web/src/components/__screenshots__
 .vitest-*
 __screenshots__/
