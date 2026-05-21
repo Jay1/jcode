@@ -73,7 +73,7 @@ import {
   useAppSettings,
 } from "../appSettings";
 import { isElectron } from "../env";
-import { APP_VERSION } from "../branding";
+import { APP_VERSION, APP_WORDMARK_PREFIX, APP_WORDMARK_SUFFIX } from "../branding";
 import { showConfirmDialogFallback } from "../confirmDialogFallback";
 import { isMacPlatform, newCommandId, newProjectId, newThreadId, randomUUID } from "../lib/utils";
 import { persistAppStateNow, useStore } from "../store";
@@ -807,10 +807,13 @@ function prStatusIndicator(pr: ThreadPr): PrStatusIndicator | null {
   return null;
 }
 
-function T3Wordmark() {
+function AppWordmarkPrefix() {
   return (
-    <span aria-label="DP" className="shrink-0 text-[14px] font-semibold text-foreground">
-      DP
+    <span
+      aria-label={APP_WORDMARK_PREFIX}
+      className="shrink-0 text-[14px] font-semibold text-foreground"
+    >
+      {APP_WORDMARK_PREFIX}
     </span>
   );
 }
@@ -5290,9 +5293,11 @@ export default function Sidebar() {
       <TooltipTrigger
         render={
           <div className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 font-system-ui">
-            <div className="flex min-w-0 items-center gap-1">
-              <T3Wordmark />
-              <span className="truncate text-[14px] font-normal text-foreground/89">Code</span>
+            <div className="flex min-w-0 items-center gap-0">
+              <AppWordmarkPrefix />
+              <span className="truncate text-[14px] font-normal text-foreground/89">
+                {APP_WORDMARK_SUFFIX}
+              </span>
             </div>
           </div>
         }
