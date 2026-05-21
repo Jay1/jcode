@@ -17,10 +17,10 @@ import type {
   ServerProviderStatus,
   ServerProviderStatusState,
   ServerProviderUpdateState,
-} from "@t3tools/contracts";
-import { ServerProviderUpdateError } from "@t3tools/contracts";
-import { parseCodexConfigModelProvider } from "@t3tools/shared/codexConfig";
-import { decodeJsonResult } from "@t3tools/shared/schemaJson";
+} from "@jcode/contracts";
+import { ServerProviderUpdateError } from "@jcode/contracts";
+import { parseCodexConfigModelProvider } from "@jcode/shared/codexConfig";
+import { decodeJsonResult } from "@jcode/shared/schemaJson";
 import { query as claudeQuery, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import {

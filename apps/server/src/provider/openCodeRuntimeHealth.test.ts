@@ -1,5 +1,5 @@
-import type { ServerSettings } from "@t3tools/contracts";
-import { DEFAULT_SERVER_SETTINGS } from "@t3tools/contracts";
+import type { ServerSettings } from "@jcode/contracts";
+import { DEFAULT_SERVER_SETTINGS } from "@jcode/contracts";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 

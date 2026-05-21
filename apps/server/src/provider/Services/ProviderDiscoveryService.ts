@@ -13,7 +13,7 @@ import type {
   ProviderListSkillsResult,
   ProviderReadPluginInput,
   ProviderReadPluginResult,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 

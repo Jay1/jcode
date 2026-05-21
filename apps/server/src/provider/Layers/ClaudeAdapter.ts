@@ -53,7 +53,7 @@ import {
   type ProviderListAgentsResult,
   type ProviderListModelsResult,
   getAgentMentionAliases,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import {
   getDefaultContextWindow,
   hasEffortLevel,
@@ -62,8 +62,8 @@ import {
   getModelCapabilities,
   resolveApiModelId,
   trimOrNull,
-} from "@t3tools/shared/model";
-import { buildClaudeSubagentPrompt } from "@t3tools/shared/agentMentions";
+} from "@jcode/shared/model";
+import { buildClaudeSubagentPrompt } from "@jcode/shared/agentMentions";
 import {
   Cause,
   DateTime,

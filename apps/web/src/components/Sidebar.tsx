@@ -60,10 +60,10 @@ import {
   ThreadId,
   type GitStatusResult,
   type ResolvedKeybindingsConfig,
-} from "@t3tools/contracts";
-import { isGenericChatThreadTitle } from "@t3tools/shared/chatThreads";
-import { getDefaultModel } from "@t3tools/shared/model";
-import { resolveThreadWorkspaceCwd } from "@t3tools/shared/threadEnvironment";
+} from "@jcode/contracts";
+import { isGenericChatThreadTitle } from "@jcode/shared/chatThreads";
+import { getDefaultModel } from "@jcode/shared/model";
+import { resolveThreadWorkspaceCwd } from "@jcode/shared/threadEnvironment";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { renderToStaticMarkup } from "react-dom/server";

@@ -7,7 +7,7 @@ import type {
   OpenCodeRuntimeMismatchSeverity,
   OpenCodeRuntimeModelCapabilitySummary,
   ServerSettings,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { Cause, Effect, Exit } from "effect";
 
 import {

@@ -3,10 +3,10 @@ import { randomUUID } from "node:crypto";
 import { Effect, FileSystem, Layer, Option, Path, Schema, Stream } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
-import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "@t3tools/contracts";
-import { sanitizeGeneratedThreadTitle } from "@t3tools/shared/chatThreads";
-import { resolveCodexHome } from "@t3tools/shared/codexConfig";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@t3tools/shared/git";
+import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "@jcode/contracts";
+import { sanitizeGeneratedThreadTitle } from "@jcode/shared/chatThreads";
+import { resolveCodexHome } from "@jcode/shared/codexConfig";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@jcode/shared/git";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { buildCodexProcessEnv } from "../../codexAppServerManager.ts";

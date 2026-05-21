@@ -1,4 +1,4 @@
-import { ThreadId, TurnId, type OrchestrationReadModel } from "@t3tools/contracts";
+import { ThreadId, TurnId, type OrchestrationReadModel } from "@jcode/contracts";
 import { Effect, Exit, Layer, Scope, Stream } from "effect";
 import { describe, expect, it, vi } from "vitest";
 

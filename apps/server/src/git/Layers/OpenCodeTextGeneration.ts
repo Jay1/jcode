@@ -7,10 +7,10 @@ import type {
   OpenCodeModelSelection,
   OpenCodeModelOptions,
   ProviderStartOptions,
-} from "@t3tools/contracts";
-import { sanitizeGeneratedThreadTitle } from "@t3tools/shared/chatThreads";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@t3tools/shared/git";
-import { getModelSelectionStringOptionValue } from "@t3tools/shared/model";
+} from "@jcode/contracts";
+import { sanitizeGeneratedThreadTitle } from "@jcode/shared/chatThreads";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@jcode/shared/git";
+import { getModelSelectionStringOptionValue } from "@jcode/shared/model";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { ServerConfig } from "../../config.ts";

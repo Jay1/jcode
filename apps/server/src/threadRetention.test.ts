@@ -3,7 +3,7 @@
 // Layer: Server maintenance tests
 // Exports: Vitest coverage for threadRetention helpers.
 
-import { ProjectId, ThreadId, type OrchestrationReadModel } from "@t3tools/contracts";
+import { ProjectId, ThreadId, type OrchestrationReadModel } from "@jcode/contracts";
 import { it as effectIt } from "@effect/vitest";
 import { Effect } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";

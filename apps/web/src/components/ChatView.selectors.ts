@@ -7,7 +7,7 @@ import {
   ThreadId,
   type ThreadId as ThreadIdType,
   type TurnId,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 
 import type { AppState } from "../store";
 import { getThreadFromState } from "../threadDerivation";

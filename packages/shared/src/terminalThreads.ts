@@ -9,8 +9,20 @@ export type TerminalIconKey = "terminal" | "openai" | "claude";
 export type TerminalActivityState = "running" | "attention" | "review";
 export type TerminalVisualState = "idle" | TerminalActivityState;
 export type TerminalAgentHookEventType = "Start" | "Stop" | "PermissionRequest";
-export const T3CODE_TERMINAL_CLI_KIND_ENV_KEY = "T3CODE_TERMINAL_CLI_KIND";
-export const T3CODE_TERMINAL_HOOK_OSC_PREFIX = "633;T3CODE_AGENT_EVENT=";
+export const JCODE_TERMINAL_CLI_KIND_ENV_KEY = "JCODE_TERMINAL_CLI_KIND";
+export const JCODE_TERMINAL_HOOK_OSC_PREFIX = "633;JCODE_AGENT_EVENT=";
+export const LEGACY_T3CODE_TERMINAL_CLI_KIND_ENV_KEY = "T3CODE_TERMINAL_CLI_KIND";
+export const LEGACY_T3CODE_TERMINAL_HOOK_OSC_PREFIX = "633;T3CODE_AGENT_EVENT=";
+export const TERMINAL_CLI_KIND_ENV_KEYS = [
+  JCODE_TERMINAL_CLI_KIND_ENV_KEY,
+  LEGACY_T3CODE_TERMINAL_CLI_KIND_ENV_KEY,
+] as const;
+export const TERMINAL_HOOK_OSC_PREFIXES = [
+  JCODE_TERMINAL_HOOK_OSC_PREFIX,
+  LEGACY_T3CODE_TERMINAL_HOOK_OSC_PREFIX,
+] as const;
+export const T3CODE_TERMINAL_CLI_KIND_ENV_KEY = LEGACY_T3CODE_TERMINAL_CLI_KIND_ENV_KEY;
+export const T3CODE_TERMINAL_HOOK_OSC_PREFIX = LEGACY_T3CODE_TERMINAL_HOOK_OSC_PREFIX;
 export const MANAGED_TERMINAL_COMMAND_NAME_BY_CLI_KIND: Record<TerminalCliKind, string> = {
   codex: "codex",
   claude: "claude",

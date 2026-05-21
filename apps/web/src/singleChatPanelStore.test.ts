@@ -1,4 +1,4 @@
-import { ThreadId, TurnId } from "@t3tools/contracts";
+import { ThreadId, TurnId } from "@jcode/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createDefaultSingleChatPanelState,

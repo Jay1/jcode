@@ -3,7 +3,7 @@
 // Exports: resolveDiffPanelThread
 // Depends on: ChatView.logic draft-thread normalization.
 
-import { DEFAULT_MODEL_BY_PROVIDER, type ModelSelection, type ThreadId } from "@t3tools/contracts";
+import { DEFAULT_MODEL_BY_PROVIDER, type ModelSelection, type ThreadId } from "@jcode/contracts";
 
 import type { DraftThreadState } from "../composerDraftStore";
 import type { Thread } from "../types";

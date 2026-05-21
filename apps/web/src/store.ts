@@ -14,10 +14,10 @@ import {
   type OrchestrationShellStreamEvent,
   type OrchestrationSessionStatus,
   type TurnId,
-} from "@t3tools/contracts";
-import { resolveThreadBranchRegressionGuard } from "@t3tools/shared/git";
-import { normalizeModelSlug } from "@t3tools/shared/model";
-import { normalizeWorkspaceRootForComparison } from "@t3tools/shared/threadWorkspace";
+} from "@jcode/contracts";
+import { resolveThreadBranchRegressionGuard } from "@jcode/shared/git";
+import { normalizeModelSlug } from "@jcode/shared/model";
+import { normalizeWorkspaceRootForComparison } from "@jcode/shared/threadWorkspace";
 import { create } from "zustand";
 import {
   type ChatAttachment,
@@ -32,7 +32,7 @@ import {
 } from "./types";
 import { Debouncer } from "@tanstack/react-pacer";
 import { hasLiveTurnTailWork } from "./session-logic";
-import { deriveThreadSummaryMetadata } from "@t3tools/shared/threadSummary";
+import { deriveThreadSummaryMetadata } from "@jcode/shared/threadSummary";
 import { getThreadFromState, getThreadsFromState } from "./threadDerivation";
 import { toAttachmentPreviewUrl } from "./lib/wsHttpUrl";
 

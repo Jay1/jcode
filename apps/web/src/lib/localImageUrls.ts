@@ -3,13 +3,13 @@
 // Layer: Web utility
 // Exports: local image URL detection and builders
 // Depends on: wsHttpUrl (so desktop requests carry the legacy startup token used by attachments)
-//             and @t3tools/shared/localImage for the canonical route + extension allowlist.
+//             and @jcode/shared/localImage for the canonical route + extension allowlist.
 
 import {
   LOCAL_IMAGE_ROUTE_PATH,
   SUPPORTED_LOCAL_IMAGE_EXTENSION_REGEX,
-} from "@t3tools/shared/localImage";
-import { isWindowsAbsolutePath } from "@t3tools/shared/path";
+} from "@jcode/shared/localImage";
+import { isWindowsAbsolutePath } from "@jcode/shared/path";
 
 import { resolveWsHttpUrl } from "./wsHttpUrl";
 

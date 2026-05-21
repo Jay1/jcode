@@ -7,7 +7,7 @@
  * @module AnalyticsServiceLive
  */
 
-import { Config, DateTime, Effect, Layer, Ref } from "effect";
+import { Config, DateTime, Effect, Layer, Option, Ref } from "effect";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
 
 import { ServerConfig } from "../../config.ts";
@@ -21,17 +21,49 @@ interface BufferedAnalyticsEvent {
   readonly capturedAt: string;
 }
 
+const firstDefined = <T>(values: ReadonlyArray<T | undefined>): T | undefined =>
+  values.find((value): value is T => value !== undefined);
+const optionalStringConfig = (name: string): Config.Config<string | undefined> =>
+  Config.string(name).pipe(
+    Config.option,
+    Config.map((value) => Option.getOrUndefined(value)),
+  );
+const optionalBooleanConfig = (name: string): Config.Config<boolean | undefined> =>
+  Config.boolean(name).pipe(
+    Config.option,
+    Config.map((value) => Option.getOrUndefined(value)),
+  );
+const optionalNumberConfig = (name: string): Config.Config<number | undefined> =>
+  Config.number(name).pipe(
+    Config.option,
+    Config.map((value) => Option.getOrUndefined(value)),
+  );
+const optionalStringEnvConfig = (...names: ReadonlyArray<string>) =>
+  Config.all(names.map(optionalStringConfig)).pipe(Config.map(firstDefined));
+const optionalBooleanEnvConfig = (...names: ReadonlyArray<string>) =>
+  Config.all(names.map(optionalBooleanConfig)).pipe(Config.map(firstDefined));
+const optionalNumberEnvConfig = (...names: ReadonlyArray<string>) =>
+  Config.all(names.map(optionalNumberConfig)).pipe(Config.map(firstDefined));
+
 const TelemetryEnvConfig = Config.all({
-  posthogKey: Config.string("T3CODE_POSTHOG_KEY").pipe(
-    Config.withDefault("phc_XOWci4oZP4VvLiEyrFqkFjP4CZn55mjYYBMREK5Wd6m"),
+  posthogKey: optionalStringEnvConfig("JCODE_POSTHOG_KEY", "T3CODE_POSTHOG_KEY").pipe(
+    Config.map((value) => value ?? "phc_XOWci4oZP4VvLiEyrFqkFjP4CZn55mjYYBMREK5Wd6m"),
   ),
-  posthogHost: Config.string("T3CODE_POSTHOG_HOST").pipe(
-    Config.withDefault("https://us.i.posthog.com"),
+  posthogHost: optionalStringEnvConfig("JCODE_POSTHOG_HOST", "T3CODE_POSTHOG_HOST").pipe(
+    Config.map((value) => value ?? "https://us.i.posthog.com"),
   ),
-  enabled: Config.boolean("T3CODE_TELEMETRY_ENABLED").pipe(Config.withDefault(true)),
-  flushBatchSize: Config.number("T3CODE_TELEMETRY_FLUSH_BATCH_SIZE").pipe(Config.withDefault(20)),
-  maxBufferedEvents: Config.number("T3CODE_TELEMETRY_MAX_BUFFERED_EVENTS").pipe(
-    Config.withDefault(1_000),
+  enabled: optionalBooleanEnvConfig("JCODE_TELEMETRY_ENABLED", "T3CODE_TELEMETRY_ENABLED").pipe(
+    Config.map((value) => value ?? true),
+  ),
+  flushBatchSize: optionalNumberEnvConfig(
+    "JCODE_TELEMETRY_FLUSH_BATCH_SIZE",
+    "T3CODE_TELEMETRY_FLUSH_BATCH_SIZE",
+  ).pipe(Config.map((value) => value ?? 20)),
+  maxBufferedEvents: optionalNumberEnvConfig(
+    "JCODE_TELEMETRY_MAX_BUFFERED_EVENTS",
+    "T3CODE_TELEMETRY_MAX_BUFFERED_EVENTS",
+  ).pipe(
+    Config.map((value) => value ?? 1_000),
   ),
 });
 

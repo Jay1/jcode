@@ -8,7 +8,7 @@ import {
   resolveTerminalVisualIdentity,
   type ResolvedTerminalVisualIdentity,
   type TerminalCliKind,
-} from "@t3tools/shared/terminalThreads";
+} from "@jcode/shared/terminalThreads";
 
 import {
   collectTerminalIdsFromLayout,

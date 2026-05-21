@@ -1,4 +1,4 @@
-import type { ProjectId } from "@t3tools/contracts";
+import type { ProjectId } from "@jcode/contracts";
 
 import type { Project } from "../types";
 

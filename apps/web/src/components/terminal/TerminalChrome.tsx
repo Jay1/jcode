@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import type {
   ResolvedTerminalVisualIdentity,
   TerminalVisualState,
-} from "@t3tools/shared/terminalThreads";
+} from "@jcode/shared/terminalThreads";
 
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { XIcon } from "~/lib/icons";

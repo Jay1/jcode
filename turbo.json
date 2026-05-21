@@ -11,13 +11,19 @@
     "JCODE_NO_BROWSER",
     "JCODE_HOME",
     "JCODE_AUTH_TOKEN",
+    "JCODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD",
     "JCODE_LOG_PROVIDER_EVENTS",
     "JCODE_LOG_WS_EVENTS",
     "JCODE_DESKTOP_WS_URL",
+    "JCODE_DESKTOP_MOCK_UPDATES",
+    "JCODE_DISABLE_AUTO_UPDATE",
     "DPCODE_PORT",
     "DPCODE_NO_BROWSER",
     "DPCODE_HOME",
     "DPCODE_AUTH_TOKEN",
+    "DPCODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD",
+    "DPCODE_LOG_PROVIDER_EVENTS",
+    "DPCODE_LOG_WS_EVENTS",
     "DPCODE_DESKTOP_WS_URL",
     "T3CODE_LOG_WS_EVENTS",
     "T3CODE_MODE",
@@ -25,6 +31,8 @@
     "T3CODE_NO_BROWSER",
     "T3CODE_HOME",
     "T3CODE_AUTH_TOKEN",
+    "T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD",
+    "T3CODE_LOG_PROVIDER_EVENTS",
     "T3CODE_DESKTOP_WS_URL"
   ],
   "tasks": {
@@ -33,7 +41,7 @@
       "outputs": ["dist/**", "dist-electron/**"]
     },
     "dev": {
-      "dependsOn": ["@t3tools/contracts#build"],
+      "dependsOn": ["@jcode/contracts#build"],
       "cache": false,
       "persistent": true
     },

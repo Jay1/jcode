@@ -3,7 +3,7 @@
 // Layer: Route UI logic helpers.
 // Exports: thread title fallback, deep-link bootstrap replay handling, and panel toggle helpers.
 
-import type { ThreadId, TurnId } from "@t3tools/contracts";
+import type { ThreadId, TurnId } from "@jcode/contracts";
 
 import type { ChatRightPanel, DiffRouteSearch } from "../diffRouteSearch";
 

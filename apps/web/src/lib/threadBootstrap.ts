@@ -13,7 +13,7 @@ import {
   type RuntimeMode,
   type ThreadEnvironmentMode,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import {
   type ComposerThreadDraftState,
   type DraftThreadEnvMode,

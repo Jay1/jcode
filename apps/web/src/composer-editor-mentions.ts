@@ -7,8 +7,8 @@ import {
   createComposerMentionTokenRegex,
   extractComposerMentionPath,
 } from "./lib/composerMentions";
-import { resolveAgentAlias } from "@t3tools/contracts";
-import type { ProviderMentionReference } from "@t3tools/contracts";
+import { resolveAgentAlias } from "@jcode/contracts";
+import type { ProviderMentionReference } from "@jcode/contracts";
 
 export type ComposerPromptSegment =
   | {

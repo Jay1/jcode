@@ -6,7 +6,7 @@ import type {
   DesktopAdvertisedEndpoint,
   DesktopServerExposureMode,
   DesktopServerExposureState,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 
 const LOOPBACK_HOST = "127.0.0.1";
 const LAN_BIND_HOST = "0.0.0.0";

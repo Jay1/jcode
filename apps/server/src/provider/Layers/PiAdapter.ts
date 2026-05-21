@@ -35,7 +35,7 @@ import {
   ThreadId,
   type ThreadTokenUsageSnapshot,
   TurnId,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { Effect, FileSystem, Layer, Queue, Stream } from "effect";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";

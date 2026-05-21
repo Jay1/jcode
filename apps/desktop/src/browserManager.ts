@@ -28,7 +28,7 @@ import type {
   BrowserThreadInput,
   ThreadBrowserState,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 
 const ABOUT_BLANK_URL = "about:blank";
 const BROWSER_SESSION_PARTITION = "persist:jcode-browser";

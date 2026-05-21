@@ -7,13 +7,13 @@ import type {
   GitActionProgressPhase,
   GitStackedAction,
   ProviderStartOptions,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import {
   resolveAutoFeatureBranchName,
   sanitizeBranchFragment,
   sanitizeFeatureBranchName,
-} from "@t3tools/shared/git";
-import { resolveWorktreeHandoffIntent } from "@t3tools/shared/worktreeHandoff";
+} from "@jcode/shared/git";
+import { resolveWorktreeHandoffIntent } from "@jcode/shared/worktreeHandoff";
 
 import { GitManagerError } from "../Errors.ts";
 import {

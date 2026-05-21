@@ -1,4 +1,4 @@
-import { MessageId, TurnId } from "@t3tools/contracts";
+import { MessageId, TurnId } from "@jcode/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { formatShortTimestamp } from "../../timestampFormat";

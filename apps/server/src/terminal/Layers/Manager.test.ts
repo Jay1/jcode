@@ -7,7 +7,7 @@ import {
   type TerminalEvent,
   type TerminalOpenInput,
   type TerminalRestartInput,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -461,6 +461,80 @@ describe("TerminalManager", () => {
     manager.dispose();
   });
 
+  it("uses JCode managed terminal hook events for agent activity", async () => {
+    const { manager, ptyAdapter } = makeManager();
+    const events: TerminalEvent[] = [];
+    manager.on("event", (event) => {
+      events.push(event);
+    });
+
+    await manager.open(openInput());
+    const process = ptyAdapter.processes[0];
+    expect(process).toBeDefined();
+    if (!process) return;
+
+    process.emitData("\u001b]633;JCODE_AGENT_EVENT=Start\u001b\\visible\n");
+    await waitFor(() =>
+      events.some(
+        (event) =>
+          event.type === "activity" &&
+          event.hasRunningSubprocess === true &&
+          event.agentState === "running",
+      ),
+    );
+
+    process.emitData("\u001b]633;JCODE_AGENT_EVENT=PermissionRequest\u001b\\");
+    await waitFor(() =>
+      events.some(
+        (event) =>
+          event.type === "activity" &&
+          event.hasRunningSubprocess === true &&
+          event.agentState === "attention",
+      ),
+    );
+
+    process.emitData("\u001b]633;JCODE_AGENT_EVENT=Stop\u001b\\");
+    await waitFor(() =>
+      events.some(
+        (event) =>
+          event.type === "activity" &&
+          event.hasRunningSubprocess === false &&
+          event.agentState === "review",
+      ),
+    );
+
+    await manager.close({ threadId: "thread-1" });
+    const reopened = await manager.open(openInput());
+    expect(reopened.history).toBe("visible\n");
+
+    manager.dispose();
+  });
+
+  it("still accepts legacy T3Code managed terminal hook events", async () => {
+    const { manager, ptyAdapter } = makeManager();
+    const events: TerminalEvent[] = [];
+    manager.on("event", (event) => {
+      events.push(event);
+    });
+
+    await manager.open(openInput());
+    const process = ptyAdapter.processes[0];
+    expect(process).toBeDefined();
+    if (!process) return;
+
+    process.emitData("\u001b]633;T3CODE_AGENT_EVENT=Start\u001b\\");
+    await waitFor(() =>
+      events.some(
+        (event) =>
+          event.type === "activity" &&
+          event.hasRunningSubprocess === true &&
+          event.agentState === "running",
+      ),
+    );
+
+    manager.dispose();
+  });
+
   it("caps persisted history to configured line limit", async () => {
     const { manager, ptyAdapter } = makeManager(3);
     await manager.open(openInput());
@@ -777,7 +851,9 @@ describe("TerminalManager", () => {
     };
 
     setEnv("PORT", "5173");
-    setEnv("T3CODE_PORT", "3773");
+    setEnv("JCODE_PORT", "3773");
+    setEnv("DPCODE_PORT", "3774");
+    setEnv("T3CODE_PORT", "3775");
     setEnv("VITE_DEV_SERVER_URL", "http://localhost:5173");
     setEnv("TEST_TERMINAL_KEEP", "keep-me");
 
@@ -789,6 +865,8 @@ describe("TerminalManager", () => {
       if (!spawnInput) return;
 
       expect(spawnInput.env.PORT).toBeUndefined();
+      expect(spawnInput.env.JCODE_PORT).toBeUndefined();
+      expect(spawnInput.env.DPCODE_PORT).toBeUndefined();
       expect(spawnInput.env.T3CODE_PORT).toBeUndefined();
       expect(spawnInput.env.VITE_DEV_SERVER_URL).toBeUndefined();
       expect(spawnInput.env.TEST_TERMINAL_KEEP).toBe("keep-me");
@@ -817,6 +895,29 @@ describe("TerminalManager", () => {
     expect(spawnInput.env.T3CODE_PROJECT_ROOT).toBe("/repo");
     expect(spawnInput.env.T3CODE_WORKTREE_PATH).toBe("/repo/worktree-a");
     expect(spawnInput.env.CUSTOM_FLAG).toBe("1");
+
+    manager.dispose();
+  });
+
+  it("detects terminal CLI kind from JCode runtime env first", async () => {
+    const { manager } = makeManager();
+    const events: TerminalEvent[] = [];
+    manager.on("event", (event) => {
+      events.push(event);
+    });
+
+    await manager.open(
+      openInput({
+        env: {
+          JCODE_TERMINAL_CLI_KIND: "codex",
+          T3CODE_TERMINAL_CLI_KIND: "claude",
+        },
+      }),
+    );
+
+    expect(
+      events.some((event) => event.type === "activity" && event.cliKind === "codex"),
+    ).toBe(true);
 
     manager.dispose();
   });

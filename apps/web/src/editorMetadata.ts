@@ -3,7 +3,7 @@
 // Layer: Web UI metadata
 // Exports: editor option builders used by the chat header and open-in picker.
 
-import { EDITORS, type EditorId } from "@t3tools/contracts";
+import { EDITORS, type EditorId } from "@jcode/contracts";
 import type { Icon } from "./components/Icons";
 import {
   AntigravityIcon,

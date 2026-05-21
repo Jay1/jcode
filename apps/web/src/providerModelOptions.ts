@@ -1,4 +1,4 @@
-import { formatModelDisplayName, geminiModelOptionsFromEffortValue } from "@t3tools/shared/model";
+import { formatModelDisplayName, geminiModelOptionsFromEffortValue } from "@jcode/shared/model";
 import type {
   ClaudeModelOptions,
   ClaudeModelSelection,
@@ -16,7 +16,7 @@ import type {
   PiModelSelection,
   ProviderKind,
   ProviderModelOptions,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 
 export type ProviderOptions = ProviderModelOptions[ProviderKind];
 

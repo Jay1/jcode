@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ServerProviderStatus } from "@t3tools/contracts";
+import type { ServerProviderStatus } from "@jcode/contracts";
 import {
   isProviderUsable,
   normalizeProviderStatusForLocalConfig,

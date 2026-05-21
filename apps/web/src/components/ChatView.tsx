@@ -28,25 +28,25 @@ import {
   OrchestrationThreadActivity,
   ProviderInteractionMode,
   RuntimeMode,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import {
   applyClaudePromptEffortPrefix,
   getModelCapabilities,
   normalizeModelSlug,
-} from "@t3tools/shared/model";
-import { resolveTailUserMessageEditTarget } from "@t3tools/shared/conversationEdit";
-import { buildTemporaryWorktreeBranchName } from "@t3tools/shared/git";
+} from "@jcode/shared/model";
+import { resolveTailUserMessageEditTarget } from "@jcode/shared/conversationEdit";
+import { buildTemporaryWorktreeBranchName } from "@jcode/shared/git";
 import {
   buildPromptThreadTitleFallback,
   GENERIC_CHAT_THREAD_TITLE,
-} from "@t3tools/shared/chatThreads";
+} from "@jcode/shared/chatThreads";
 import {
   resolveThreadWorkspaceState,
   resolveThreadBranchSourceCwd,
   resolveThreadWorkspaceCwd as resolveSharedThreadWorkspaceCwd,
-} from "@t3tools/shared/threadEnvironment";
-import { deriveTerminalCommandIdentity } from "@t3tools/shared/terminalThreads";
-import { deriveAssociatedWorktreeMetadata } from "@t3tools/shared/threadWorkspace";
+} from "@jcode/shared/threadEnvironment";
+import { deriveTerminalCommandIdentity } from "@jcode/shared/terminalThreads";
+import { deriveAssociatedWorktreeMetadata } from "@jcode/shared/threadWorkspace";
 import {
   useCallback,
   useEffect,

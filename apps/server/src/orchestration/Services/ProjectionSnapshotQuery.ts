@@ -18,7 +18,7 @@ import type {
   ProjectId,
   ThreadId,
   ThreadEnvironmentMode,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { ServiceMap } from "effect";
 import type { Effect, Option } from "effect";
 

@@ -1,4 +1,4 @@
-import { TurnId } from "@t3tools/contracts";
+import { TurnId } from "@jcode/contracts";
 
 export type ChatRightPanel = "browser" | "diff";
 

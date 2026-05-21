@@ -7,11 +7,11 @@ import {
   type OrchestrationImportThreadInput,
   type ThreadHandoffImportedMessage,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import {
   deriveAssociatedWorktreeMetadata,
   workspaceRootsEqual,
-} from "@t3tools/shared/threadWorkspace";
+} from "@jcode/shared/threadWorkspace";
 import type { FileSystem, Path } from "effect";
 import { Data, Effect } from "effect";
 

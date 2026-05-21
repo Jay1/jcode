@@ -11,7 +11,7 @@ import type {
   ServerProviderUpdateInput,
   ServerProviderUpdateResult,
   ServerProviderUpdateError,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";
 

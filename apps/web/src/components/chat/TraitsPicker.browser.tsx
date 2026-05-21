@@ -9,7 +9,7 @@ import {
   type ProviderModelDescriptor,
   ProjectId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { page } from "vitest/browser";
 import { useCallback } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";

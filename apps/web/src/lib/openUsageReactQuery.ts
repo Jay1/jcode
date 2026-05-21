@@ -1,16 +1,25 @@
-import type { ProviderKind } from "@t3tools/contracts";
+import type { ProviderKind } from "@jcode/contracts";
 import { queryOptions } from "@tanstack/react-query";
 
 import { openUsageProviderIdForProvider } from "./openUsageRateLimits";
 
 const OPEN_USAGE_BASE_URL = "http://127.0.0.1:6736";
-const OPEN_USAGE_ENABLED_STORAGE_KEY = "t3code.openUsage.enabled";
+const OPEN_USAGE_ENABLED_STORAGE_KEY = "jcode.openUsage.enabled";
+const LEGACY_OPEN_USAGE_ENABLED_STORAGE_KEYS = [
+  "dpcode.openUsage.enabled",
+  "t3code.openUsage.enabled",
+] as const;
 
 function isOpenUsagePollingEnabled(): boolean {
   if (typeof window === "undefined") {
     return false;
   }
-  return window.localStorage.getItem(OPEN_USAGE_ENABLED_STORAGE_KEY) === "true";
+  if (window.localStorage.getItem(OPEN_USAGE_ENABLED_STORAGE_KEY) === "true") {
+    return true;
+  }
+  return LEGACY_OPEN_USAGE_ENABLED_STORAGE_KEYS.some(
+    (key) => window.localStorage.getItem(key) === "true",
+  );
 }
 
 export const openUsageQueryKeys = {

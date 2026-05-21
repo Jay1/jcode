@@ -192,7 +192,7 @@ interface StagePackageJson {
   readonly name: string;
   readonly version: string;
   readonly buildVersion: string;
-  readonly t3codeCommitHash: string;
+  readonly jcodeCommitHash: string;
   readonly private: true;
   readonly description: string;
   readonly author: string;
@@ -219,18 +219,65 @@ const AzureTrustedSigningOptionsConfig = Config.all({
   ),
 });
 
+const firstDefined = <T>(values: ReadonlyArray<T | undefined>): T | undefined =>
+  values.find((value): value is T => value !== undefined);
+const optionalStringConfig = (name: string): Config.Config<string | undefined> =>
+  Config.string(name).pipe(
+    Config.option,
+    Config.map((value) => Option.getOrUndefined(value)),
+  );
+const optionalBooleanConfig = (name: string): Config.Config<boolean | undefined> =>
+  Config.boolean(name).pipe(
+    Config.option,
+    Config.map((value) => Option.getOrUndefined(value)),
+  );
+const optionalBuildPlatformConfig = (
+  name: string,
+): Config.Config<typeof BuildPlatform.Type | undefined> =>
+  Config.schema(BuildPlatform, name).pipe(
+    Config.option,
+    Config.map((value) => Option.getOrUndefined(value)),
+  );
+const optionalBuildArchConfig = (name: string): Config.Config<typeof BuildArch.Type | undefined> =>
+  Config.schema(BuildArch, name).pipe(
+    Config.option,
+    Config.map((value) => Option.getOrUndefined(value)),
+  );
+const optionalStringEnvConfig = (...names: ReadonlyArray<string>) =>
+  Config.all(names.map(optionalStringConfig)).pipe(Config.map(firstDefined));
+const optionalBooleanEnvConfig = (...names: ReadonlyArray<string>) =>
+  Config.all(names.map(optionalBooleanConfig)).pipe(Config.map(firstDefined));
+const optionalBuildPlatformEnvConfig = (...names: ReadonlyArray<string>) =>
+  Config.all(names.map(optionalBuildPlatformConfig)).pipe(Config.map(firstDefined));
+const optionalBuildArchEnvConfig = (...names: ReadonlyArray<string>) =>
+  Config.all(names.map(optionalBuildArchConfig)).pipe(Config.map(firstDefined));
+
 const BuildEnvConfig = Config.all({
-  platform: Config.schema(BuildPlatform, "T3CODE_DESKTOP_PLATFORM").pipe(Config.option),
-  target: Config.string("T3CODE_DESKTOP_TARGET").pipe(Config.option),
-  arch: Config.schema(BuildArch, "T3CODE_DESKTOP_ARCH").pipe(Config.option),
-  version: Config.string("T3CODE_DESKTOP_VERSION").pipe(Config.option),
-  outputDir: Config.string("T3CODE_DESKTOP_OUTPUT_DIR").pipe(Config.option),
-  skipBuild: Config.boolean("T3CODE_DESKTOP_SKIP_BUILD").pipe(Config.withDefault(false)),
-  keepStage: Config.boolean("T3CODE_DESKTOP_KEEP_STAGE").pipe(Config.withDefault(false)),
-  signed: Config.boolean("T3CODE_DESKTOP_SIGNED").pipe(Config.withDefault(false)),
-  verbose: Config.boolean("T3CODE_DESKTOP_VERBOSE").pipe(Config.withDefault(false)),
-  mockUpdates: Config.boolean("T3CODE_DESKTOP_MOCK_UPDATES").pipe(Config.withDefault(false)),
-  mockUpdateServerPort: Config.string("T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(Config.option),
+  platform: optionalBuildPlatformEnvConfig("JCODE_DESKTOP_PLATFORM", "T3CODE_DESKTOP_PLATFORM"),
+  target: optionalStringEnvConfig("JCODE_DESKTOP_TARGET", "T3CODE_DESKTOP_TARGET"),
+  arch: optionalBuildArchEnvConfig("JCODE_DESKTOP_ARCH", "T3CODE_DESKTOP_ARCH"),
+  version: optionalStringEnvConfig("JCODE_DESKTOP_VERSION", "T3CODE_DESKTOP_VERSION"),
+  outputDir: optionalStringEnvConfig("JCODE_DESKTOP_OUTPUT_DIR", "T3CODE_DESKTOP_OUTPUT_DIR"),
+  skipBuild: optionalBooleanEnvConfig("JCODE_DESKTOP_SKIP_BUILD", "T3CODE_DESKTOP_SKIP_BUILD").pipe(
+    Config.map((value) => value ?? false),
+  ),
+  keepStage: optionalBooleanEnvConfig("JCODE_DESKTOP_KEEP_STAGE", "T3CODE_DESKTOP_KEEP_STAGE").pipe(
+    Config.map((value) => value ?? false),
+  ),
+  signed: optionalBooleanEnvConfig("JCODE_DESKTOP_SIGNED", "T3CODE_DESKTOP_SIGNED").pipe(
+    Config.map((value) => value ?? false),
+  ),
+  verbose: optionalBooleanEnvConfig("JCODE_DESKTOP_VERBOSE", "T3CODE_DESKTOP_VERBOSE").pipe(
+    Config.map((value) => value ?? false),
+  ),
+  mockUpdates: optionalBooleanEnvConfig(
+    "JCODE_DESKTOP_MOCK_UPDATES",
+    "T3CODE_DESKTOP_MOCK_UPDATES",
+  ).pipe(Config.map((value) => value ?? false)),
+  mockUpdateServerPort: optionalStringEnvConfig(
+    "JCODE_DESKTOP_MOCK_UPDATE_SERVER_PORT",
+    "T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT",
+  ),
 });
 
 const resolveBooleanFlag = (flag: Option.Option<boolean>, envValue: boolean) =>
@@ -247,7 +294,7 @@ export const resolveBuildOptions = Effect.fn("resolveBuildOptions")(function* (
 
   const platform = mergeOptions(
     input.platform,
-    env.platform,
+    Option.fromNullable(env.platform),
     detectHostBuildPlatform(process.platform),
   );
 
@@ -257,15 +304,19 @@ export const resolveBuildOptions = Effect.fn("resolveBuildOptions")(function* (
     });
   }
 
-  const target = mergeOptions(input.target, env.target, PLATFORM_CONFIG[platform].defaultTarget);
-  const arch = mergeOptions(input.arch, env.arch, getDefaultArch(platform));
-  const version = mergeOptions(input.buildVersion, env.version, undefined);
+  const target = mergeOptions(
+    input.target,
+    Option.fromNullable(env.target),
+    PLATFORM_CONFIG[platform].defaultTarget,
+  );
+  const arch = mergeOptions(input.arch, Option.fromNullable(env.arch), getDefaultArch(platform));
+  const version = mergeOptions(input.buildVersion, Option.fromNullable(env.version), undefined);
   const releaseDir = resolveBooleanFlag(input.mockUpdates, env.mockUpdates)
     ? "release-mock"
     : "release";
   const outputDir = path.resolve(
     repoRoot,
-    mergeOptions(input.outputDir, env.outputDir, releaseDir),
+    mergeOptions(input.outputDir, Option.fromNullable(env.outputDir), releaseDir),
   );
 
   const skipBuild = resolveBooleanFlag(input.skipBuild, env.skipBuild);
@@ -275,7 +326,7 @@ export const resolveBuildOptions = Effect.fn("resolveBuildOptions")(function* (
   const mockUpdates = resolveBooleanFlag(input.mockUpdates, env.mockUpdates);
   const mockUpdateServerPort = mergeOptions(
     input.mockUpdateServerPort,
-    env.mockUpdateServerPort,
+    Option.fromNullable(env.mockUpdateServerPort),
     undefined,
   );
 
@@ -368,7 +419,7 @@ function stageMacIcons(stageResourcesDir: string, verbose: boolean) {
     const hasComposerIcon = yield* fs.exists(composerIconSource);
 
     const tmpRoot = yield* fs.makeTempDirectoryScoped({
-      prefix: "t3code-icon-build-",
+      prefix: "jcode-icon-build-",
     });
 
     const iconPngPath = path.join(stageResourcesDir, "icon.png");
@@ -488,6 +539,7 @@ function resolveGitHubPublishConfig():
     }
   | undefined {
   const rawRepo =
+    process.env.JCODE_DESKTOP_UPDATE_REPOSITORY?.trim() ||
     process.env.T3CODE_DESKTOP_UPDATE_REPOSITORY?.trim() ||
     process.env.GITHUB_REPOSITORY?.trim() ||
     "";
@@ -643,7 +695,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   const commitHash = resolveGitCommitHash(repoRoot);
   const mkdir = options.keepStage ? fs.makeTempDirectory : fs.makeTempDirectoryScoped;
   const stageRoot = yield* mkdir({
-    prefix: `t3code-desktop-${options.platform}-stage-`,
+    prefix: `jcode-desktop-${options.platform}-stage-`,
   });
 
   const stageAppDir = path.join(stageRoot, "app");
@@ -717,7 +769,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     name: "jcode-desktop",
     version: appVersion,
     buildVersion: appVersion,
-    t3codeCommitHash: commitHash,
+    jcodeCommitHash: commitHash,
     private: true,
     description: "JCode desktop build",
     author: "Jay",
@@ -828,53 +880,53 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
 
 const buildDesktopArtifactCli = Command.make("build-desktop-artifact", {
   platform: Flag.choice("platform", BuildPlatform.literals).pipe(
-    Flag.withDescription("Build platform (env: T3CODE_DESKTOP_PLATFORM)."),
+    Flag.withDescription("Build platform (env: JCODE_DESKTOP_PLATFORM)."),
     Flag.optional,
   ),
   target: Flag.string("target").pipe(
     Flag.withDescription(
-      "Artifact target, for example dmg/AppImage/nsis (env: T3CODE_DESKTOP_TARGET).",
+      "Artifact target, for example dmg/AppImage/nsis (env: JCODE_DESKTOP_TARGET).",
     ),
     Flag.optional,
   ),
   arch: Flag.choice("arch", BuildArch.literals).pipe(
-    Flag.withDescription("Build arch, for example arm64/x64/universal (env: T3CODE_DESKTOP_ARCH)."),
+    Flag.withDescription("Build arch, for example arm64/x64/universal (env: JCODE_DESKTOP_ARCH)."),
     Flag.optional,
   ),
   buildVersion: Flag.string("build-version").pipe(
-    Flag.withDescription("Artifact version metadata (env: T3CODE_DESKTOP_VERSION)."),
+    Flag.withDescription("Artifact version metadata (env: JCODE_DESKTOP_VERSION)."),
     Flag.optional,
   ),
   outputDir: Flag.string("output-dir").pipe(
-    Flag.withDescription("Output directory for artifacts (env: T3CODE_DESKTOP_OUTPUT_DIR)."),
+    Flag.withDescription("Output directory for artifacts (env: JCODE_DESKTOP_OUTPUT_DIR)."),
     Flag.optional,
   ),
   skipBuild: Flag.boolean("skip-build").pipe(
     Flag.withDescription(
-      "Skip `bun run build:desktop` and use existing dist artifacts (env: T3CODE_DESKTOP_SKIP_BUILD).",
+      "Skip `bun run build:desktop` and use existing dist artifacts (env: JCODE_DESKTOP_SKIP_BUILD).",
     ),
     Flag.optional,
   ),
   keepStage: Flag.boolean("keep-stage").pipe(
-    Flag.withDescription("Keep temporary staging files (env: T3CODE_DESKTOP_KEEP_STAGE)."),
+    Flag.withDescription("Keep temporary staging files (env: JCODE_DESKTOP_KEEP_STAGE)."),
     Flag.optional,
   ),
   signed: Flag.boolean("signed").pipe(
     Flag.withDescription(
-      "Enable signing/notarization discovery; Windows uses Azure Trusted Signing (env: T3CODE_DESKTOP_SIGNED).",
+      "Enable signing/notarization discovery; Windows uses Azure Trusted Signing (env: JCODE_DESKTOP_SIGNED).",
     ),
     Flag.optional,
   ),
   verbose: Flag.boolean("verbose").pipe(
-    Flag.withDescription("Stream subprocess stdout (env: T3CODE_DESKTOP_VERBOSE)."),
+    Flag.withDescription("Stream subprocess stdout (env: JCODE_DESKTOP_VERBOSE)."),
     Flag.optional,
   ),
   mockUpdates: Flag.boolean("mock-updates").pipe(
-    Flag.withDescription("Enable mock updates (env: T3CODE_DESKTOP_MOCK_UPDATES)."),
+    Flag.withDescription("Enable mock updates (env: JCODE_DESKTOP_MOCK_UPDATES)."),
     Flag.optional,
   ),
   mockUpdateServerPort: Flag.string("mock-update-server-port").pipe(
-    Flag.withDescription("Mock update server port (env: T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT)."),
+    Flag.withDescription("Mock update server port (env: JCODE_DESKTOP_MOCK_UPDATE_SERVER_PORT)."),
     Flag.optional,
   ),
 }).pipe(

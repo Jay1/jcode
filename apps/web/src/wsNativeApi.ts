@@ -29,7 +29,7 @@ import {
   WS_CHANNELS,
   WS_METHODS,
   type WsWelcomePayload,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 
 import { showConfirmDialogFallback } from "./confirmDialogFallback";
 import { getActiveSavedConnectionWebSocketUrl } from "./connection/savedConnectionManager";

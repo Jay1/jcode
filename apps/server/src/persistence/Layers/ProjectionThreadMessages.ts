@@ -6,7 +6,7 @@ import {
   ProviderMentionReference,
   ProviderSkillReference,
   TurnDispatchMode,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 
 import { toPersistenceSqlError } from "../Errors.ts";
 import {

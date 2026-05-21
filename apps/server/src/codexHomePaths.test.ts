@@ -6,8 +6,8 @@ import {
   resolveActiveCodexHomeWritePath,
   resolveBaseCodexHomePath,
   resolveCodexHomeAllowlistCandidates,
-  resolveDpCodeCodexHomeOverlayPath,
-  shouldDisableDpCodeBrowserPlugin,
+  resolveJCodeCodexHomeOverlayPath,
+  shouldDisableJCodeBrowserPlugin,
 } from "./codexHomePaths.ts";
 
 describe("resolveBaseCodexHomePath", () => {
@@ -28,10 +28,10 @@ describe("resolveBaseCodexHomePath", () => {
   });
 });
 
-describe("resolveDpCodeCodexHomeOverlayPath", () => {
+describe("resolveJCodeCodexHomeOverlayPath", () => {
   it("anchors the overlay under JCODE_HOME when set", () => {
     assert.equal(
-      resolveDpCodeCodexHomeOverlayPath(
+      resolveJCodeCodexHomeOverlayPath(
         { JCODE_HOME: "/j/runtime", DPCODE_HOME: "/dp/runtime" },
         "/users/me/.codex",
       ),
@@ -41,34 +41,41 @@ describe("resolveDpCodeCodexHomeOverlayPath", () => {
 
   it("anchors the overlay under DPCODE_HOME when set", () => {
     assert.equal(
-      resolveDpCodeCodexHomeOverlayPath({ DPCODE_HOME: "/dp/runtime" }, "/users/me/.codex"),
+      resolveJCodeCodexHomeOverlayPath({ DPCODE_HOME: "/dp/runtime" }, "/users/me/.codex"),
       path.join("/dp/runtime", "codex-home-overlay"),
     );
   });
 
   it("honours the legacy T3CODE_HOME variable", () => {
     assert.equal(
-      resolveDpCodeCodexHomeOverlayPath({ T3CODE_HOME: "/t3/runtime" }, "/users/me/.codex"),
+      resolveJCodeCodexHomeOverlayPath({ T3CODE_HOME: "/t3/runtime" }, "/users/me/.codex"),
       path.join("/t3/runtime", "codex-home-overlay"),
     );
   });
 
   it("derives a default overlay sibling of the source home", () => {
     assert.equal(
-      resolveDpCodeCodexHomeOverlayPath({}, "/users/me/.codex"),
+      resolveJCodeCodexHomeOverlayPath({}, "/users/me/.codex"),
       path.join("/users/me", ".jcode", "runtime", "codex-home-overlay"),
     );
   });
 });
 
-describe("shouldDisableDpCodeBrowserPlugin", () => {
+describe("shouldDisableJCodeBrowserPlugin", () => {
   it("disables the plugin (overlay active) by default", () => {
-    assert.equal(shouldDisableDpCodeBrowserPlugin({}), true);
+    assert.equal(shouldDisableJCodeBrowserPlugin({}), true);
   });
 
-  it("respects the explicit '0' opt-out", () => {
+  it("respects the explicit JCode '0' opt-out", () => {
     assert.equal(
-      shouldDisableDpCodeBrowserPlugin({ DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN: "0" }),
+      shouldDisableJCodeBrowserPlugin({ JCODE_DISABLE_CODEX_BROWSER_PLUGIN: "0" }),
+      false,
+    );
+  });
+
+  it("respects the legacy DPCode '0' opt-out", () => {
+    assert.equal(
+      shouldDisableJCodeBrowserPlugin({ DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN: "0" }),
       false,
     );
   });

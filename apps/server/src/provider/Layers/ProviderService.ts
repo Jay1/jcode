@@ -26,7 +26,7 @@ import {
   ProviderStartOptions,
   type ProviderRuntimeEvent,
   type ProviderSession,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { Cause, Effect, Layer, Option, PubSub, Schema, SchemaIssue, Stream } from "effect";
 
 import { ProviderValidationError } from "../Errors.ts";

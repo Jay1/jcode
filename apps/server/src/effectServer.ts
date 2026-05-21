@@ -1,7 +1,7 @@
 import http from "node:http";
 
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer";
-import type { ServerSettingsError } from "@t3tools/contracts";
+import type { ServerSettingsError } from "@jcode/contracts";
 import { Effect, Exit, FileSystem, Layer, Path, Schema, Scope, ServiceMap } from "effect";
 import { HttpRouter } from "effect/unstable/http";
 

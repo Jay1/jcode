@@ -11,7 +11,7 @@ import {
   type OrchestrationReadModel,
   type OrchestrationShellStreamEvent,
   type OrchestrationThreadActivity,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { describe, expect, it, vi } from "vitest";
 
 import {

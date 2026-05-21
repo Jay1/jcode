@@ -1,5 +1,5 @@
-import type { OpenCodeRuntimeProfile, OpenCodeRuntimeConfigMode } from "@t3tools/contracts";
-import type { ServerSettings } from "@t3tools/contracts";
+import type { OpenCodeRuntimeProfile, OpenCodeRuntimeConfigMode } from "@jcode/contracts";
+import type { ServerSettings } from "@jcode/contracts";
 
 import type { OpenCodeCompatibleCliSpec } from "./opencodeRuntime.ts";
 

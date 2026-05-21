@@ -2,9 +2,9 @@
 // Purpose: Normalizes generic tool-call titles and humanizes command executions for timeline rows.
 // Layer: UI utility
 // Exports: deriveReadableToolTitle, deriveReadableCommandDisplay, deriveInlineCommandCall, normalizeCompactToolLabel
-// Depends on: @t3tools/contracts tool lifecycle item types
+// Depends on: @jcode/contracts tool lifecycle item types
 
-import type { ToolLifecycleItemType } from "@t3tools/contracts";
+import type { ToolLifecycleItemType } from "@jcode/contracts";
 
 export function normalizeCompactToolLabel(value: string): string {
   return value

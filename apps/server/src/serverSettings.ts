@@ -13,9 +13,9 @@ import {
   ServerSettings,
   ServerSettingsError,
   type ServerSettingsPatch,
-} from "@t3tools/contracts";
-import { deepMerge, type DeepPartial } from "@t3tools/shared/Struct";
-import { applyServerSettingsPatch } from "@t3tools/shared/serverSettings";
+} from "@jcode/contracts";
+import { deepMerge, type DeepPartial } from "@jcode/shared/Struct";
+import { applyServerSettingsPatch } from "@jcode/shared/serverSettings";
 import {
   Cause,
   Deferred,

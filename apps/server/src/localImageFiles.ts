@@ -8,7 +8,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { LOCAL_IMAGE_ROUTE_PATH, isSupportedLocalImagePath } from "@t3tools/shared/localImage";
+import { LOCAL_IMAGE_ROUTE_PATH, isSupportedLocalImagePath } from "@jcode/shared/localImage";
 
 import { resolveCodexGeneratedImagesRoots } from "./codexGeneratedImages.ts";
 

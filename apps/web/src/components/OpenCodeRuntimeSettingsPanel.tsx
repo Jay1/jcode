@@ -1,4 +1,4 @@
-import type { OpenCodeRuntimeHealth } from "@t3tools/contracts";
+import type { OpenCodeRuntimeHealth } from "@jcode/contracts";
 import { useCallback, useEffect, useState } from "react";
 
 import { Loader2Icon, RefreshCwIcon } from "../lib/icons";

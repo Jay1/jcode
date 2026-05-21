@@ -13,7 +13,7 @@ import {
   defaultTerminalTitleForCliKind,
   consumeTerminalIdentityInput,
   deriveTerminalOutputIdentity,
-} from "@t3tools/shared/terminalThreads";
+} from "@jcode/shared/terminalThreads";
 import { Terminal } from "@xterm/xterm";
 
 import { readNativeApi } from "~/nativeApi";

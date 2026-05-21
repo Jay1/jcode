@@ -3,8 +3,8 @@ import type {
   RuntimeContentStreamKind,
   ThreadTokenUsageSnapshot,
   ToolLifecycleItemType,
-} from "@t3tools/contracts";
-import { summarizeToolRawOutput } from "@t3tools/shared/toolOutputSummary";
+} from "@jcode/contracts";
+import { summarizeToolRawOutput } from "@jcode/shared/toolOutputSummary";
 
 type AcpTextStreamKind = Extract<RuntimeContentStreamKind, "assistant_text" | "reasoning_text">;
 

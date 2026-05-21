@@ -55,7 +55,7 @@ import {
   INLINE_TERMINAL_CONTEXT_PLACEHOLDER,
   type TerminalContextDraft,
 } from "~/lib/terminalContext";
-import type { ProviderMentionReference } from "@t3tools/contracts";
+import type { ProviderMentionReference } from "@jcode/contracts";
 import { cn } from "~/lib/utils";
 import {
   ComposerMentionNode,

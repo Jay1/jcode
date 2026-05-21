@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { DesktopBridge } from "@t3tools/contracts";
+import type { DesktopBridge } from "@jcode/contracts";
 import { BROWSER_IPC_CHANNELS } from "./browserIpc";
 import {
   DESKTOP_CONNECTION_SECRET_READ_CHANNEL,

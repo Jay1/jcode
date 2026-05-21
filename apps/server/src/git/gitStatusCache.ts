@@ -2,7 +2,7 @@ import type {
   GitStatusLocalResult,
   GitStatusRemoteResult,
   GitStatusResult,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 
 import type { GitStatusDetails } from "./Services/GitCore";
 

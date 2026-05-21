@@ -3,7 +3,7 @@
 // Layer: Browser storage helper
 // Exports: sidebar UI state read/write helpers.
 
-import { normalizeWorkspaceRootForComparison } from "@t3tools/shared/threadWorkspace";
+import { normalizeWorkspaceRootForComparison } from "@jcode/shared/threadWorkspace";
 import type { LastThreadRoute } from "../chatRouteRestore";
 
 const SIDEBAR_UI_STATE_STORAGE_KEY = "jcode:sidebar-ui:v1";

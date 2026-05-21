@@ -1,4 +1,4 @@
-import { PROVIDER_DISPLAY_NAMES, type ServerProviderStatus } from "@t3tools/contracts";
+import { PROVIDER_DISPLAY_NAMES, type ServerProviderStatus } from "@jcode/contracts";
 import { memo } from "react";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";

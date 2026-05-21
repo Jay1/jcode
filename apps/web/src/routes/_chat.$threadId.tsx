@@ -9,7 +9,7 @@ import {
   ThreadId,
   type ThreadId as ThreadIdType,
   type TurnId,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Suspense,

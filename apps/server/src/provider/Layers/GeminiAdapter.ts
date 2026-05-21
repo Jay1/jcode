@@ -31,14 +31,14 @@ import {
   ThreadId,
   type ThreadTokenUsageSnapshot,
   TurnId,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import {
   getModelCapabilities,
   getGeminiThinkingConfigKind,
   getGeminiThinkingModelAlias,
   hasEffortLevel,
   resolveGeminiApiModelId,
-} from "@t3tools/shared/model";
+} from "@jcode/shared/model";
 import { Effect, FileSystem, Layer, Queue, Stream } from "effect";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";

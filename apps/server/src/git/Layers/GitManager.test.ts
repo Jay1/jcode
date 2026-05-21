@@ -6,8 +6,8 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import { Effect, FileSystem, Layer, PlatformError, Scope } from "effect";
 import { expect } from "vitest";
-import type { GitActionProgressEvent } from "@t3tools/contracts";
-import type { ModelSelection, ProviderStartOptions } from "@t3tools/contracts";
+import type { GitActionProgressEvent } from "@jcode/contracts";
+import type { ModelSelection, ProviderStartOptions } from "@jcode/contracts";
 
 import { GitCommandError, GitHubCliError, TextGenerationError } from "../Errors.ts";
 import { type GitManagerShape } from "../Services/GitManager.ts";

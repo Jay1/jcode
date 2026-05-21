@@ -8,7 +8,7 @@
  */
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
-import type { ChatAttachment, ModelSelection, ProviderStartOptions } from "@t3tools/contracts";
+import type { ChatAttachment, ModelSelection, ProviderStartOptions } from "@jcode/contracts";
 
 import type { TextGenerationError } from "../Errors.ts";
 

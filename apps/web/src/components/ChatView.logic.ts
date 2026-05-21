@@ -5,11 +5,11 @@ import {
   type ProviderKind,
   type ServerProviderAuthStatus,
   type ThreadId as ThreadIdType,
-} from "@t3tools/contracts";
-import { normalizeModelSlug } from "@t3tools/shared/model";
-import { buildJcodeBranchName } from "@t3tools/shared/git";
-import { isGenericChatThreadTitle } from "@t3tools/shared/chatThreads";
-import { isGenericTerminalThreadTitle } from "@t3tools/shared/terminalThreads";
+} from "@jcode/contracts";
+import { normalizeModelSlug } from "@jcode/shared/model";
+import { buildJcodeBranchName } from "@jcode/shared/git";
+import { isGenericChatThreadTitle } from "@jcode/shared/chatThreads";
+import { isGenericTerminalThreadTitle } from "@jcode/shared/terminalThreads";
 import {
   type ChatAssistantSelectionAttachment,
   type ChatMessage,

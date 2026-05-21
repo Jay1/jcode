@@ -3,7 +3,7 @@
 // Layer: Routing
 // Depends on: sidebar UI persistence plus shared new-chat handler for the empty-state fallback.
 
-import { ThreadId } from "@t3tools/contracts";
+import { ThreadId } from "@jcode/contracts";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 

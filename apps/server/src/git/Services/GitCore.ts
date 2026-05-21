@@ -27,7 +27,7 @@ import type {
   GitStashInfoResult,
   GitStatusInput,
   GitStatusResult,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 
 import type { GitCheckoutDirtyWorktreeError, GitCommandError } from "../Errors.ts";
 

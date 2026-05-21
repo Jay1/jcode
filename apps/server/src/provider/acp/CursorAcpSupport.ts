@@ -1,5 +1,5 @@
-import { type CursorModelOptions, type ProviderModelDescriptor } from "@t3tools/contracts";
-import { formatModelDisplayName } from "@t3tools/shared/model";
+import { type CursorModelOptions, type ProviderModelDescriptor } from "@jcode/contracts";
+import { formatModelDisplayName } from "@jcode/shared/model";
 import { Effect, Layer, Scope, ServiceMap } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import type * as EffectAcpErrors from "effect-acp/errors";

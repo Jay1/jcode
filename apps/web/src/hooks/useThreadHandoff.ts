@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { type ProviderKind } from "@t3tools/contracts";
+import { type ProviderKind } from "@jcode/contracts";
 import { getCustomBinaryPathForProvider, useAppSettings } from "../appSettings";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { serverConfigQueryOptions } from "../lib/serverReactQuery";

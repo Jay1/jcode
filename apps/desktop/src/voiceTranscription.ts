@@ -10,7 +10,7 @@ import { app, ipcMain, net } from "electron";
 import type {
   ServerVoiceTranscriptionInput,
   ServerVoiceTranscriptionResult,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 
 export const SERVER_TRANSCRIBE_VOICE_CHANNEL = "desktop:server-transcribe-voice";
 

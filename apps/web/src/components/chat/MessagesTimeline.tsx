@@ -3,8 +3,8 @@
 // Layer: Web chat presentation component
 // Exports: MessagesTimeline
 
-import { type MessageId, ThreadId, type TurnId } from "@t3tools/contracts";
-import { resolveLatestTailUserMessageEditTarget } from "@t3tools/shared/conversationEdit";
+import { type MessageId, ThreadId, type TurnId } from "@jcode/contracts";
+import { resolveLatestTailUserMessageEditTarget } from "@jcode/shared/conversationEdit";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import {
   memo,

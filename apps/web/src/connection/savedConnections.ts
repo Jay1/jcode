@@ -1,4 +1,4 @@
-import type { AuthSessionRole } from "@t3tools/contracts";
+import type { AuthSessionRole } from "@jcode/contracts";
 
 export const SAVED_CONNECTIONS_STORAGE_KEY = "jcode:saved-connections:v1";
 

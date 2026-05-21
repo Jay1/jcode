@@ -8,7 +8,7 @@ import {
   readPathFromLaunchctl,
   readEnvironmentFromLoginShell,
   type ShellEnvironmentReader,
-} from "@t3tools/shared/shell";
+} from "@jcode/shared/shell";
 
 const LOGIN_SHELL_ENV_NAMES = [
   "PATH",

@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/desktop",
+  "name": "@jcode/desktop",
   "version": "0.0.47",
   "private": true,
   "main": "dist-electron/main.js",
@@ -19,8 +19,8 @@
     "electron-updater": "^6.6.2"
   },
   "devDependencies": {
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/shared": "workspace:*",
+    "@jcode/contracts": "workspace:*",
+    "@jcode/shared": "workspace:*",
     "@types/node": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",

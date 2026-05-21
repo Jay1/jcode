@@ -9,7 +9,7 @@ import type {
   ProjectSearchEntriesResult,
   ProjectSearchLocalEntriesInput,
   ProjectSearchLocalEntriesResult,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 
 export interface WorkspaceEntriesShape {
   readonly browse: (

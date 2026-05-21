@@ -47,14 +47,14 @@ import {
   ProviderInteractionMode,
   type ServerVoiceTranscriptionInput,
   type ServerVoiceTranscriptionResult,
-} from "@t3tools/contracts";
-import { readActiveCodexProviderEnvKey } from "@t3tools/shared/codexConfig";
-import { getModelSelectionBooleanOptionValue, normalizeModelSlug } from "@t3tools/shared/model";
+} from "@jcode/contracts";
+import { readActiveCodexProviderEnvKey } from "@jcode/shared/codexConfig";
+import { getModelSelectionBooleanOptionValue, normalizeModelSlug } from "@jcode/shared/model";
 import {
   readEnvironmentFromLoginShell,
   resolveLoginShell,
   type ShellEnvironmentReader,
-} from "@t3tools/shared/shell";
+} from "@jcode/shared/shell";
 import { Effect, ServiceMap } from "effect";
 
 import {
@@ -65,8 +65,8 @@ import {
 import { isNonFatalCodexErrorMessage } from "./codexErrorClassification.ts";
 import {
   resolveBaseCodexHomePath,
-  resolveDpCodeCodexHomeOverlayPath,
-  shouldDisableDpCodeBrowserPlugin,
+  resolveJCodeCodexHomeOverlayPath,
+  shouldDisableJCodeBrowserPlugin,
 } from "./codexHomePaths.ts";
 import { transcribeVoiceWithChatGptSession } from "./voiceTranscription.ts";
 
@@ -253,7 +253,8 @@ const CODEX_SPARK_DISABLED_PLAN_TYPES = new Set<CodexPlanType>(["free", "go", "p
 const CODEX_PROCESS_SHELL_ENV_NAMES = ["PATH", "SSH_AUTH_SOCK"] as const;
 const CODEX_DISCOVERY_SESSION_IDLE_MS = 10 * 60 * 1000;
 const NODE_REPL_SANDBOX_ALLOWED_UNIX_SOCKETS = "NODE_REPL_SANDBOX_ALLOWED_UNIX_SOCKETS";
-const DPCODE_BROWSER_PLUGIN_CONFIG_HEADER = '[plugins."dpcode-browser@local"]';
+const JCODE_BROWSER_PLUGIN_CONFIG_HEADER = '[plugins."jcode-browser@local"]';
+const LEGACY_DPCODE_BROWSER_PLUGIN_CONFIG_HEADER = '[plugins."dpcode-browser@local"]';
 
 export function resolveCodexBrowserUsePipePath(
   input: {
@@ -274,11 +275,11 @@ export function resolveCodexBrowserUsePipePath(
     : "/tmp/codex-browser-use.sock";
 }
 
-export function disableDpCodeBrowserPluginInCodexConfig(config: string): string {
+export function disableJCodeBrowserPluginInCodexConfig(config: string): string {
   const lines = config.split(/\r?\n/);
   const output: string[] = [];
   let inTargetSection = false;
-  let sawTargetSection = false;
+  let sawJCodeSection = false;
   let targetSectionHasEnabled = false;
 
   const closeTargetSection = () => {
@@ -291,8 +292,10 @@ export function disableDpCodeBrowserPluginInCodexConfig(config: string): string 
     const trimmed = line.trim();
     if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
       closeTargetSection();
-      inTargetSection = trimmed === DPCODE_BROWSER_PLUGIN_CONFIG_HEADER;
-      sawTargetSection ||= inTargetSection;
+      inTargetSection =
+        trimmed === JCODE_BROWSER_PLUGIN_CONFIG_HEADER ||
+        trimmed === LEGACY_DPCODE_BROWSER_PLUGIN_CONFIG_HEADER;
+      sawJCodeSection ||= trimmed === JCODE_BROWSER_PLUGIN_CONFIG_HEADER;
       targetSectionHasEnabled = false;
       output.push(line);
       continue;
@@ -309,22 +312,26 @@ export function disableDpCodeBrowserPluginInCodexConfig(config: string): string 
 
   closeTargetSection();
 
-  if (!sawTargetSection) {
+  if (!sawJCodeSection) {
     if (output.length > 0 && output.at(-1)?.trim()) {
       output.push("");
     }
-    output.push(DPCODE_BROWSER_PLUGIN_CONFIG_HEADER, "enabled = false");
+    output.push(JCODE_BROWSER_PLUGIN_CONFIG_HEADER, "enabled = false");
   }
 
   return output.join("\n");
 }
 
-function prepareDpCodeCodexHomeOverlay(input: {
+export function disableDpCodeBrowserPluginInCodexConfig(config: string): string {
+  return disableJCodeBrowserPluginInCodexConfig(config);
+}
+
+function prepareJCodeCodexHomeOverlay(input: {
   readonly env: NodeJS.ProcessEnv;
   readonly homePath?: string;
 }): string | undefined {
   const sourceHomePath = resolveBaseCodexHomePath(input.env, input.homePath);
-  const overlayHomePath = resolveDpCodeCodexHomeOverlayPath(input.env, sourceHomePath);
+  const overlayHomePath = resolveJCodeCodexHomeOverlayPath(input.env, sourceHomePath);
   if (path.resolve(sourceHomePath) === path.resolve(overlayHomePath)) {
     return undefined;
   }
@@ -353,7 +360,7 @@ function prepareDpCodeCodexHomeOverlay(input: {
   const sourceConfig = existsSync(sourceConfigPath) ? readFileSync(sourceConfigPath, "utf8") : "";
   writeFileSync(
     path.join(overlayHomePath, "config.toml"),
-    disableDpCodeBrowserPluginInCodexConfig(sourceConfig),
+    disableJCodeBrowserPluginInCodexConfig(sourceConfig),
     "utf8",
   );
 
@@ -380,8 +387,8 @@ export function buildCodexProcessEnv(
   } = {},
 ): NodeJS.ProcessEnv {
   const baseEnv = { ...(input.env ?? process.env) };
-  const overlayHomePath = shouldDisableDpCodeBrowserPlugin(baseEnv)
-    ? prepareDpCodeCodexHomeOverlay({
+  const overlayHomePath = shouldDisableJCodeBrowserPlugin(baseEnv)
+    ? prepareJCodeCodexHomeOverlay({
         env: baseEnv,
         ...(input.homePath ? { homePath: input.homePath } : {}),
       })

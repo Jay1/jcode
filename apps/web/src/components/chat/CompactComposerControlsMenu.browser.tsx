@@ -1,5 +1,5 @@
-import { ModelSelection, ThreadId } from "@t3tools/contracts";
-import { getDefaultModel } from "@t3tools/shared/model";
+import { ModelSelection, ThreadId } from "@jcode/contracts";
+import { getDefaultModel } from "@jcode/shared/model";
 import "../../index.css";
 
 import { page } from "vitest/browser";

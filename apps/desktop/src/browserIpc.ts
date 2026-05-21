@@ -16,7 +16,7 @@ import type {
   BrowserTabInput,
   BrowserThreadInput,
   ThreadBrowserState,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 
 import type { DesktopBrowserManager } from "./browserManager";
 

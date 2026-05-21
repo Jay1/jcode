@@ -8,7 +8,7 @@ import * as Net from "node:net";
 import * as OS from "node:os";
 import * as Path from "node:path";
 
-import type { BrowserExecuteCdpInput, ThreadBrowserState, ThreadId } from "@t3tools/contracts";
+import type { BrowserExecuteCdpInput, ThreadBrowserState, ThreadId } from "@jcode/contracts";
 
 import type { DesktopBrowserManager } from "./browserManager";
 

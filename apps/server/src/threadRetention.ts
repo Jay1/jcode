@@ -3,7 +3,7 @@
 // Layer: Server maintenance
 // Exports: retention constants, stale-thread selection, and scoped job startup.
 
-import { CommandId, type OrchestrationReadModel, type ThreadId } from "@t3tools/contracts";
+import { CommandId, type OrchestrationReadModel, type ThreadId } from "@jcode/contracts";
 import { Effect } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { randomUUID } from "node:crypto";

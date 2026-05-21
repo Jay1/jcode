@@ -7,8 +7,8 @@ import {
   type OrchestrationThread,
   type ServerConfig,
   type ServerProviderStatus,
-} from "@t3tools/contracts";
-import { defaultTerminalTitleForCliKind } from "@t3tools/shared/terminalThreads";
+} from "@jcode/contracts";
+import { defaultTerminalTitleForCliKind } from "@jcode/shared/terminalThreads";
 import {
   Outlet,
   createRootRouteWithContext,

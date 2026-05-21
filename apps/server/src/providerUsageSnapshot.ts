@@ -12,7 +12,7 @@ import type {
   ServerGetProviderUsageSnapshotResult,
   ServerProviderUsageLimit,
   ServerProviderUsageLine,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { Effect } from "effect";
 
 import { ServerConfig } from "./config";

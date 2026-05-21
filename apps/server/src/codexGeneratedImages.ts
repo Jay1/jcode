@@ -11,8 +11,8 @@ import {
   type CodexGeneratedImageArtifact,
   type ProviderRuntimeEvent,
   type ThreadId,
-} from "@t3tools/contracts";
-import { isSupportedLocalImagePath as isSupportedLocalImagePathShared } from "@t3tools/shared/localImage";
+} from "@jcode/contracts";
+import { isSupportedLocalImagePath as isSupportedLocalImagePathShared } from "@jcode/shared/localImage";
 
 import {
   resolveActiveCodexHomeWritePath,
@@ -70,7 +70,7 @@ export const isSupportedLocalImagePath = isSupportedLocalImagePathShared;
 /**
  * Resolves the home directory the codex app-server child process actually
  * writes images under for the current process env. When JCode wraps Codex
- * with the dpcode-browser overlay (production default), this is the overlay
+ * with the JCode browser overlay (production default), this is the overlay
  * home — not the user's `~/.codex`.
  */
 export function resolveCodexHomePath(homePath?: string): string {

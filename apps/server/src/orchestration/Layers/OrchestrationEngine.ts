@@ -3,8 +3,8 @@ import type {
   OrchestrationReadModel,
   ProjectId,
   ThreadId,
-} from "@t3tools/contracts";
-import { OrchestrationCommand, ORCHESTRATION_WS_METHODS } from "@t3tools/contracts";
+} from "@jcode/contracts";
+import { OrchestrationCommand, ORCHESTRATION_WS_METHODS } from "@jcode/contracts";
 import {
   Cause,
   Deferred,

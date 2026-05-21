@@ -13,15 +13,15 @@ import {
   type OrchestrationReadModel,
   type ProviderRuntimeEvent,
   type RuntimeMode,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { Cache, Cause, Duration, Effect, Layer, Option, Ref, Stream } from "effect";
-import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
+import { makeDrainableWorker } from "@jcode/shared/DrainableWorker";
 import {
   buildSubagentIdentityDirectory,
   collectSubagentProviderThreadIds,
   extractSubagentIdentityHints,
   resolveSubagentIdentityFromDirectory,
-} from "@t3tools/shared/subagents";
+} from "@jcode/shared/subagents";
 
 import {
   generatedImageMarkdown,

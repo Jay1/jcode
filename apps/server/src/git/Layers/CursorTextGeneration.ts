@@ -1,9 +1,9 @@
 import { Effect, Layer, Option, Ref, Schema } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 
-import type { CursorModelSelection, ProviderStartOptions } from "@t3tools/contracts";
-import { sanitizeGeneratedThreadTitle } from "@t3tools/shared/chatThreads";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@t3tools/shared/git";
+import type { CursorModelSelection, ProviderStartOptions } from "@jcode/contracts";
+import { sanitizeGeneratedThreadTitle } from "@jcode/shared/chatThreads";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@jcode/shared/git";
 
 import {
   applyCursorAcpModelSelection,

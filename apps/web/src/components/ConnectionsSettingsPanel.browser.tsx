@@ -5,7 +5,7 @@ import type {
   DesktopAdvertisedEndpoint,
   DesktopServerExposureState,
   NativeApi,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { page } from "vitest/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";

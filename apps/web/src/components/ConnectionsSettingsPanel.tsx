@@ -5,7 +5,7 @@ import type {
   AuthSessionState,
   DesktopAdvertisedEndpoint,
   DesktopServerExposureState,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { addSavedConnectionFromPairing } from "../connection/savedConnectionManager";

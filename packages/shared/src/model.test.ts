@@ -5,7 +5,7 @@ import {
   MODEL_OPTIONS,
   MODEL_OPTIONS_BY_PROVIDER,
   CODEX_REASONING_EFFORT_OPTIONS,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 
 import {
   applyClaudePromptEffortPrefix,
@@ -494,6 +494,15 @@ describe("normalizeGeminiModelOptions", () => {
 });
 
 describe("getGeminiThinkingModelAlias", () => {
+  it("uses JCode-prefixed Gemini thinking aliases", () => {
+    expect(getGeminiThinkingModelAlias("gemini-2.5-pro", { thinkingBudget: -1 })).toBe(
+      "jcode-gemini-gemini-2-5-pro-thinking-budget-dynamic",
+    );
+    expect(getGeminiThinkingModelAlias("gemini-2.5-flash-lite", { thinkingBudget: 512 })).toBe(
+      "jcode-gemini-gemini-2-5-flash-lite-thinking-budget-512",
+    );
+  });
+
   it("refuses unsupported Gemini 2.5 off aliases", () => {
     expect(getGeminiThinkingModelAlias("gemini-2.5-pro", { thinkingBudget: 0 })).toBeNull();
     expect(resolveGeminiApiModelId("gemini-2.5-pro", { thinkingBudget: 0 })).toBe("gemini-2.5-pro");

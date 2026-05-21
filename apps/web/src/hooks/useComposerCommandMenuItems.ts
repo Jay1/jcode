@@ -5,8 +5,8 @@ import type {
   ProviderMentionReference,
   ProviderPluginDescriptor,
   ProviderSkillDescriptor,
-} from "@t3tools/contracts";
-import { getAgentMentionAutocompleteAliases } from "@t3tools/contracts";
+} from "@jcode/contracts";
+import { getAgentMentionAutocompleteAliases } from "@jcode/contracts";
 import { useMemo } from "react";
 import {
   buildCommandSearchBlob,

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { ApprovalRequestId, ThreadId } from "@t3tools/contracts";
+import { ApprovalRequestId, ThreadId } from "@jcode/contracts";
 
 import {
   buildCodexProcessEnv,
@@ -12,7 +12,7 @@ import {
   CODEX_PLAN_MODE_DEVELOPER_INSTRUCTIONS,
   CodexAppServerManager,
   classifyCodexStderrLine,
-  disableDpCodeBrowserPluginInCodexConfig,
+  disableJCodeBrowserPluginInCodexConfig,
   ensureIsolatedScratchWorkspace,
   isRecoverableThreadResumeError,
   normalizeCodexModelSlug,
@@ -292,9 +292,9 @@ describe("buildCodexProcessEnv", () => {
 
       const env = buildCodexProcessEnv({
         env: {
-          SHELL: "/bin/zsh",
-          PATH: "/usr/bin",
-          DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN: "0",
+        SHELL: "/bin/zsh",
+        PATH: "/usr/bin",
+        JCODE_DISABLE_CODEX_BROWSER_PLUGIN: "0",
         },
         homePath: tempDir,
         platform: "darwin",
@@ -323,7 +323,7 @@ describe("buildCodexProcessEnv", () => {
         PATH: "/usr/bin",
         CODEX_HOME: "/tmp/.codex",
         AZURE_OPENAI_API_KEY: "existing-secret",
-        DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN: "0",
+        JCODE_DISABLE_CODEX_BROWSER_PLUGIN: "0",
       },
       platform: "darwin",
       readEnvironment,
@@ -336,19 +336,25 @@ describe("buildCodexProcessEnv", () => {
   it("allows the configured desktop browser-use socket in the Codex sandbox", () => {
     const env = buildCodexProcessEnv({
       env: {
-        DPCODE_BROWSER_USE_PIPE_PATH: "/tmp/codex-browser-use/dpcode.sock",
+        JCODE_BROWSER_USE_PIPE_PATH: "/tmp/codex-browser-use/jcode.sock",
         NODE_REPL_SANDBOX_ALLOWED_UNIX_SOCKETS: "/tmp/existing.sock",
-        DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN: "0",
+        JCODE_DISABLE_CODEX_BROWSER_PLUGIN: "0",
       },
       platform: "darwin",
     });
 
     expect(env.NODE_REPL_SANDBOX_ALLOWED_UNIX_SOCKETS).toBe(
-      "/tmp/existing.sock,/tmp/codex-browser-use/dpcode.sock",
+      "/tmp/existing.sock,/tmp/codex-browser-use/jcode.sock",
     );
   });
 
   it("resolves the browser-use pipe path from desktop env aliases", () => {
+    expect(
+      resolveCodexBrowserUsePipePath({
+        env: { JCODE_BROWSER_USE_PIPE_PATH: "/tmp/codex-browser-use/jcode.sock" },
+        platform: "darwin",
+      }),
+    ).toBe("/tmp/codex-browser-use/jcode.sock");
     expect(
       resolveCodexBrowserUsePipePath({
         env: { T3CODE_BROWSER_USE_PIPE_PATH: "/tmp/codex-browser-use/t3.sock" },
@@ -357,7 +363,7 @@ describe("buildCodexProcessEnv", () => {
     ).toBe("/tmp/codex-browser-use/t3.sock");
   });
 
-  it("disables the local dpcode-browser plugin in JCode's Codex home overlay", () => {
+  it("disables local JCode and legacy DPCode browser plugins in JCode's Codex home overlay", () => {
     const tempDir = mkdtempSync(path.join(os.tmpdir(), "t3-codex-env-"));
     const runtimeHome = mkdtempSync(path.join(os.tmpdir(), "t3-runtime-home-"));
     try {
@@ -365,6 +371,9 @@ describe("buildCodexProcessEnv", () => {
         path.join(tempDir, "config.toml"),
         [
           '[plugins."github@openai-curated"]',
+          "enabled = true",
+          "",
+          '[plugins."jcode-browser@local"]',
           "enabled = true",
           "",
           '[plugins."dpcode-browser@local"]',
@@ -385,6 +394,9 @@ describe("buildCodexProcessEnv", () => {
         throw new Error("Expected CODEX_HOME to be set.");
       }
       expect(readFileSync(path.join(codexHome, "config.toml"), "utf8")).toContain(
+        '[plugins."jcode-browser@local"]\nenabled = false',
+      );
+      expect(readFileSync(path.join(codexHome, "config.toml"), "utf8")).toContain(
         '[plugins."dpcode-browser@local"]\nenabled = false',
       );
     } finally {
@@ -393,9 +405,9 @@ describe("buildCodexProcessEnv", () => {
     }
   });
 
-  it("adds a disabled dpcode-browser plugin section when Codex config does not contain one", () => {
-    expect(disableDpCodeBrowserPluginInCodexConfig('model = "gpt-5.5"')).toContain(
-      '[plugins."dpcode-browser@local"]\nenabled = false',
+  it("adds a disabled jcode-browser plugin section when Codex config does not contain one", () => {
+    expect(disableJCodeBrowserPluginInCodexConfig('model = "gpt-5.5"')).toContain(
+      '[plugins."jcode-browser@local"]\nenabled = false',
     );
   });
 });

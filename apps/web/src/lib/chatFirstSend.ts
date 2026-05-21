@@ -1,5 +1,5 @@
-import { DEFAULT_MODEL_BY_PROVIDER, type ModelSelection } from "@t3tools/contracts";
-import { workspaceRootsEqual } from "@t3tools/shared/threadWorkspace";
+import { DEFAULT_MODEL_BY_PROVIDER, type ModelSelection } from "@jcode/contracts";
+import { workspaceRootsEqual } from "@jcode/shared/threadWorkspace";
 
 import type { Project } from "../types";
 

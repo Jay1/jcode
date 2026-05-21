@@ -9,7 +9,7 @@ import {
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -63,7 +63,7 @@ const BROWSER_BOUNDS_SYNC_STABLE_FRAME_TARGET = 2;
 const BROWSER_WEBVIEW_PARTITION = "persist:jcode-browser";
 const BROWSER_BLANK_URL = "about:blank";
 const BROWSER_PERF_SAMPLE_INTERVAL_MS = 5_000;
-const DPCODE_BROWSER_LABEL = "JCode browser";
+const JCODE_BROWSER_LABEL = "JCode browser";
 const PANEL_RESIZE_OVERLAY_SYNC_EVENT = "jcode:panel-resize-overlay-sync";
 const IMAGE_SIZE_LIMIT_LABEL = `${Math.round(PROVIDER_SEND_TURN_MAX_IMAGE_BYTES / (1024 * 1024))}MB`;
 const NATIVE_BROWSER_OBSCURING_OVERLAY_SELECTOR = [
@@ -535,7 +535,7 @@ export function BrowserPanel({ mode, threadId, onClosePanel }: BrowserPanelProps
     }
 
     const intervalId = window.setInterval(() => {
-      console.info(`[${DPCODE_BROWSER_LABEL} panel perf]`, {
+      console.info(`[${JCODE_BROWSER_LABEL} panel perf]`, {
         threadId,
         ...perfCountersRef.current,
       });

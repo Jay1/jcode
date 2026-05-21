@@ -5,7 +5,7 @@ import type {
   AuthPairingCredentialResult,
   AuthSessionState,
   AuthWebSocketTokenResult,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { DateTime, Effect, Layer } from "effect";
 
 import { AuthControlPlane } from "../Services/AuthControlPlane";

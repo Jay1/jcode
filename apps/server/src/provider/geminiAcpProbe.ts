@@ -6,13 +6,13 @@ import type {
   ProviderModelDescriptor,
   ServerProviderAuthStatus,
   ServerProviderStatusState,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import {
   DEFAULT_GEMINI_MODEL_CAPABILITIES,
   GEMINI_2_5_MODEL_CAPABILITIES,
   GEMINI_3_MODEL_CAPABILITIES,
   geminiCapabilitiesForModel,
-} from "@t3tools/shared/model";
+} from "@jcode/shared/model";
 import { Effect } from "effect";
 import { asNumber, asRecord, trimToUndefined } from "./geminiValue.ts";
 

@@ -7,12 +7,12 @@ import path from "node:path";
 
 import {
   defaultTerminalTitleForCliKind,
+  JCODE_TERMINAL_CLI_KIND_ENV_KEY,
+  JCODE_TERMINAL_HOOK_OSC_PREFIX,
   managedTerminalCommandNameForCliKind,
-  T3CODE_TERMINAL_HOOK_OSC_PREFIX,
-  T3CODE_TERMINAL_CLI_KIND_ENV_KEY,
   type TerminalAgentHookEventType,
   type TerminalCliKind,
-} from "@t3tools/shared/terminalThreads";
+} from "@jcode/shared/terminalThreads";
 
 export interface ManagedTerminalWrapperState {
   binDir: string | null;
@@ -83,56 +83,56 @@ function resolveExecutableOnPath(commandName: string, env: NodeJS.ProcessEnv): s
 }
 
 function buildHookOscSequence(eventType: TerminalAgentHookEventType): string {
-  return `\\033]${T3CODE_TERMINAL_HOOK_OSC_PREFIX}${eventType}\\007`;
+  return `\\033]${JCODE_TERMINAL_HOOK_OSC_PREFIX}${eventType}\\007`;
 }
 
 function buildNotifyHookScript(): string {
   return `#!/bin/sh
 set -eu
 if [ "$#" -gt 0 ]; then
-  _t3code_hook_input="$1"
+  _jcode_hook_input="$1"
 else
-  _t3code_hook_input="$(cat)"
+  _jcode_hook_input="$(cat)"
 fi
 
-_t3code_extract_event() {
-  printf '%s' "$_t3code_hook_input" | sed -n "s/.*\\\"$1\\\"[[:space:]]*:[[:space:]]*\\\"\\([^\\\"]*\\)\\\".*/\\1/p" | head -n 1
+_jcode_extract_event() {
+  printf '%s' "$_jcode_hook_input" | sed -n "s/.*\\\"$1\\\"[[:space:]]*:[[:space:]]*\\\"\\([^\\\"]*\\)\\\".*/\\1/p" | head -n 1
 }
 
-_t3code_event="$(_t3code_extract_event hook_event_name)"
-if [ -z "$_t3code_event" ]; then
-  _t3code_type="$(_t3code_extract_event type)"
-  case "$_t3code_type" in
+_jcode_event="$(_jcode_extract_event hook_event_name)"
+if [ -z "$_jcode_event" ]; then
+  _jcode_type="$(_jcode_extract_event type)"
+  case "$_jcode_type" in
     task_started|userPromptSubmitted|user_prompt_submit)
-      _t3code_event="Start"
+      _jcode_event="Start"
       ;;
     task_complete|agent-turn-complete|stop|session_end|sessionEnd)
-      _t3code_event="Stop"
+      _jcode_event="Stop"
       ;;
     exec_approval_request|apply_patch_approval_request|request_user_input)
-      _t3code_event="PermissionRequest"
+      _jcode_event="PermissionRequest"
       ;;
   esac
 fi
 
-_t3code_emit_osc() {
-  _t3code_sequence="$1"
+_jcode_emit_osc() {
+  _jcode_sequence="$1"
   if [ -w /dev/tty ]; then
-    printf '%b' "$_t3code_sequence" > /dev/tty 2>/dev/null || printf '%b' "$_t3code_sequence"
+    printf '%b' "$_jcode_sequence" > /dev/tty 2>/dev/null || printf '%b' "$_jcode_sequence"
     return
   fi
-  printf '%b' "$_t3code_sequence"
+  printf '%b' "$_jcode_sequence"
 }
 
-case "$_t3code_event" in
+case "$_jcode_event" in
   UserPromptSubmit|PostToolUse|PostToolUseFailure|Start)
-    _t3code_emit_osc '${buildHookOscSequence("Start")}'
+    _jcode_emit_osc '${buildHookOscSequence("Start")}'
     ;;
   Stop)
-    _t3code_emit_osc '${buildHookOscSequence("Stop")}'
+    _jcode_emit_osc '${buildHookOscSequence("Stop")}'
     ;;
   PermissionRequest|PreToolUse|Notification)
-    _t3code_emit_osc '${buildHookOscSequence("PermissionRequest")}'
+    _jcode_emit_osc '${buildHookOscSequence("PermissionRequest")}'
     ;;
 esac
 `;
@@ -244,13 +244,13 @@ function buildCodexWrapperScript(input: {
     "      esac",
     "    done",
     "  ) &",
-    "  T3CODE_CODEX_START_WATCHER_PID=$!",
+    "  JCODE_CODEX_START_WATCHER_PID=$!",
     "fi",
     `${shellQuote(targetPath)} --enable codex_hooks -c ${shellQuote(`notify=["bash",${JSON.stringify(notifyHookPath)}]`)} "$@"`,
     "_t3code_status=$?",
-    'if [ -n "${T3CODE_CODEX_START_WATCHER_PID:-}" ]; then',
-    '  kill "$T3CODE_CODEX_START_WATCHER_PID" >/dev/null 2>&1 || true',
-    '  wait "$T3CODE_CODEX_START_WATCHER_PID" 2>/dev/null || true',
+    'if [ -n "${JCODE_CODEX_START_WATCHER_PID:-}" ]; then',
+    '  kill "$JCODE_CODEX_START_WATCHER_PID" >/dev/null 2>&1 || true',
+    '  wait "$JCODE_CODEX_START_WATCHER_PID" 2>/dev/null || true',
     "fi",
     'exit "$_t3code_status"',
   ].join("\n");
@@ -272,9 +272,9 @@ function buildWrapperScript(input: {
       : buildCodexWrapperScript({ codexHomeDir, notifyHookPath, targetPath });
   return [
     "#!/bin/sh",
-    `# Managed ${commandName} wrapper injected by t3code terminal sessions.`,
+    `# Managed ${commandName} wrapper injected by JCode terminal sessions.`,
     `printf '\\033]0;%s\\007' ${shellQuote(title)}`,
-    `export ${T3CODE_TERMINAL_CLI_KIND_ENV_KEY}=${shellQuote(cliKind)}`,
+    `export ${JCODE_TERMINAL_CLI_KIND_ENV_KEY}=${shellQuote(cliKind)}`,
     commandBody,
     "",
   ].join("\n");
@@ -294,40 +294,41 @@ function writeFileIfChanged(filePath: string, content: string, mode: number): vo
 
 function buildManagedZshRc(quotedZshDir: string): string {
   return `# JCode zsh rc wrapper
-_t3code_home="\${T3CODE_ORIGINAL_ZDOTDIR:-$HOME}"
-export ZDOTDIR="$_t3code_home"
-[[ -f "$_t3code_home/.zshrc" ]] && source "$_t3code_home/.zshrc"
+_jcode_home="\${JCODE_ORIGINAL_ZDOTDIR:-\${T3CODE_ORIGINAL_ZDOTDIR:-$HOME}}"
+export ZDOTDIR="$_jcode_home"
+[[ -f "$_jcode_home/.zshrc" ]] && source "$_jcode_home/.zshrc"
 export ZDOTDIR=${quotedZshDir}
-if [ -n "\${T3CODE_MANAGED_BIN_DIR:-}" ] && [ -d "\${T3CODE_MANAGED_BIN_DIR}" ]; then
+_jcode_managed_bin_dir="\${JCODE_MANAGED_BIN_DIR:-\${T3CODE_MANAGED_BIN_DIR:-}}"
+if [ -n "$_jcode_managed_bin_dir" ] && [ -d "$_jcode_managed_bin_dir" ]; then
   case ":$PATH:" in
-    *:\${T3CODE_MANAGED_BIN_DIR}:*) ;;
-    *) export PATH="\${T3CODE_MANAGED_BIN_DIR}:$PATH" ;;
+    *:$_jcode_managed_bin_dir:*) ;;
+    *) export PATH="$_jcode_managed_bin_dir:$PATH" ;;
   esac
   unalias claude 2>/dev/null || true
   claude() {
-    if [ -x "\${T3CODE_MANAGED_BIN_DIR}/claude" ] && [ ! -d "\${T3CODE_MANAGED_BIN_DIR}/claude" ]; then
-      "\${T3CODE_MANAGED_BIN_DIR}/claude" "$@"
+    if [ -x "$_jcode_managed_bin_dir/claude" ] && [ ! -d "$_jcode_managed_bin_dir/claude" ]; then
+      "$_jcode_managed_bin_dir/claude" "$@"
     else
       command claude "$@"
     fi
   }
   unalias codex 2>/dev/null || true
   codex() {
-    if [ -x "\${T3CODE_MANAGED_BIN_DIR}/codex" ] && [ ! -d "\${T3CODE_MANAGED_BIN_DIR}/codex" ]; then
-      "\${T3CODE_MANAGED_BIN_DIR}/codex" "$@"
+    if [ -x "$_jcode_managed_bin_dir/codex" ] && [ ! -d "$_jcode_managed_bin_dir/codex" ]; then
+      "$_jcode_managed_bin_dir/codex" "$@"
     else
       command codex "$@"
     fi
   }
   typeset -ga precmd_functions 2>/dev/null || true
-  _t3code_ensure_managed_bin() {
+  _jcode_ensure_managed_bin() {
     case ":$PATH:" in
-      *:\${T3CODE_MANAGED_BIN_DIR}:*) ;;
-      *) PATH="\${T3CODE_MANAGED_BIN_DIR}:$PATH" ;;
+      *:$_jcode_managed_bin_dir:*) ;;
+      *) PATH="$_jcode_managed_bin_dir:$PATH" ;;
     esac
   }
   {
-    precmd_functions=(\${precmd_functions:#_t3code_ensure_managed_bin} _t3code_ensure_managed_bin)
+    precmd_functions=(\${precmd_functions:#_jcode_ensure_managed_bin} _jcode_ensure_managed_bin)
   } 2>/dev/null || true
 fi
 `;
@@ -339,9 +340,9 @@ function ensureManagedZshWrappers(zshDir: string): void {
   writeFileIfChanged(
     path.join(zshDir, ".zshenv"),
     `# JCode zsh env wrapper
-_t3code_home="\${T3CODE_ORIGINAL_ZDOTDIR:-$HOME}"
-export ZDOTDIR="$_t3code_home"
-[[ -f "$_t3code_home/.zshenv" ]] && source "$_t3code_home/.zshenv"
+_jcode_home="\${JCODE_ORIGINAL_ZDOTDIR:-\${T3CODE_ORIGINAL_ZDOTDIR:-$HOME}}"
+export ZDOTDIR="$_jcode_home"
+[[ -f "$_jcode_home/.zshenv" ]] && source "$_jcode_home/.zshenv"
 export ZDOTDIR=${quotedZshDir}
 `,
     0o644,
@@ -349,9 +350,9 @@ export ZDOTDIR=${quotedZshDir}
   writeFileIfChanged(
     path.join(zshDir, ".zprofile"),
     `# JCode zsh profile wrapper
-_t3code_home="\${T3CODE_ORIGINAL_ZDOTDIR:-$HOME}"
-export ZDOTDIR="$_t3code_home"
-[[ -f "$_t3code_home/.zprofile" ]] && source "$_t3code_home/.zprofile"
+_jcode_home="\${JCODE_ORIGINAL_ZDOTDIR:-\${T3CODE_ORIGINAL_ZDOTDIR:-$HOME}}"
+export ZDOTDIR="$_jcode_home"
+[[ -f "$_jcode_home/.zprofile" ]] && source "$_jcode_home/.zprofile"
 export ZDOTDIR=${quotedZshDir}
 `,
     0o644,
@@ -460,8 +461,8 @@ function applyManagedTerminalWrapperEnvState(
 
   return {
     ...env,
-    T3CODE_MANAGED_BIN_DIR: wrapperState.binDir,
-    T3CODE_ORIGINAL_ZDOTDIR: env.ZDOTDIR ?? env.HOME ?? "",
+    JCODE_MANAGED_BIN_DIR: wrapperState.binDir,
+    JCODE_ORIGINAL_ZDOTDIR: env.ZDOTDIR ?? env.HOME ?? "",
     ...(wrapperState.zshDir ? { ZDOTDIR: wrapperState.zshDir } : {}),
     [envPathKey]: currentEntries.join(path.delimiter),
   };

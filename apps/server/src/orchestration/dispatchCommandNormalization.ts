@@ -2,7 +2,7 @@ import {
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
   type ClientOrchestrationCommand,
   type OrchestrationCommand,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import type { FileSystem, Path } from "effect";
 import { Effect } from "effect";
 

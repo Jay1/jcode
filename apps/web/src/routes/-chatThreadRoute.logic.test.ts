@@ -1,4 +1,4 @@
-import { ThreadId, TurnId } from "@t3tools/contracts";
+import { ThreadId, TurnId } from "@jcode/contracts";
 import { describe, expect, it } from "vitest";
 
 import {

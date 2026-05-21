@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { afterEach, describe, it } from "vitest";
 
-import type { ProviderRuntimeEvent } from "@t3tools/contracts";
+import type { ProviderRuntimeEvent } from "@jcode/contracts";
 
 import {
   CODEX_GENERATED_IMAGE_ARTIFACT_KIND,
@@ -73,32 +73,41 @@ describe("generatedImagePathFromRuntimeEvent", () => {
 });
 
 describe("resolveCodexGeneratedImagesRoot(s)", () => {
+  const previousJcodeHome = process.env.JCODE_HOME;
   const previousDpcodeHome = process.env.DPCODE_HOME;
   const previousT3codeHome = process.env.T3CODE_HOME;
+  const previousJcodeDisableFlag = process.env.JCODE_DISABLE_CODEX_BROWSER_PLUGIN;
   const previousDisableFlag = process.env.DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN;
 
   afterEach(() => {
+    if (previousJcodeHome === undefined) delete process.env.JCODE_HOME;
+    else process.env.JCODE_HOME = previousJcodeHome;
     if (previousDpcodeHome === undefined) delete process.env.DPCODE_HOME;
     else process.env.DPCODE_HOME = previousDpcodeHome;
     if (previousT3codeHome === undefined) delete process.env.T3CODE_HOME;
     else process.env.T3CODE_HOME = previousT3codeHome;
+    if (previousJcodeDisableFlag === undefined) {
+      delete process.env.JCODE_DISABLE_CODEX_BROWSER_PLUGIN;
+    } else {
+      process.env.JCODE_DISABLE_CODEX_BROWSER_PLUGIN = previousJcodeDisableFlag;
+    }
     if (previousDisableFlag === undefined)
       delete process.env.DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN;
     else process.env.DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN = previousDisableFlag;
   });
 
   it("returns the overlay generated_images directory as the active write root by default", () => {
-    process.env.DPCODE_HOME = "/dpcode-test/runtime";
-    delete process.env.DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN;
+    process.env.JCODE_HOME = "/jcode-test/runtime";
+    delete process.env.JCODE_DISABLE_CODEX_BROWSER_PLUGIN;
     assert.equal(
       resolveCodexGeneratedImagesRoot("/codex-test/.codex"),
-      path.join("/dpcode-test/runtime", "codex-home-overlay", "generated_images"),
+      path.join("/jcode-test/runtime", "codex-home-overlay", "generated_images"),
     );
   });
 
-  it("returns the source generated_images directory when the dpcode-browser plugin is enabled", () => {
-    process.env.DPCODE_HOME = "/dpcode-test/runtime";
-    process.env.DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN = "0";
+  it("returns the source generated_images directory when the JCode browser plugin is enabled", () => {
+    process.env.JCODE_HOME = "/jcode-test/runtime";
+    process.env.JCODE_DISABLE_CODEX_BROWSER_PLUGIN = "0";
     assert.equal(
       resolveCodexGeneratedImagesRoot("/codex-test/.codex"),
       path.join("/codex-test/.codex", "generated_images"),
@@ -106,11 +115,11 @@ describe("resolveCodexGeneratedImagesRoot(s)", () => {
   });
 
   it("returns both source and overlay generated_images roots for the allowlist", () => {
-    process.env.DPCODE_HOME = "/dpcode-test/runtime";
-    delete process.env.DPCODE_DISABLE_CODEX_DPCODE_BROWSER_PLUGIN;
+    process.env.JCODE_HOME = "/jcode-test/runtime";
+    delete process.env.JCODE_DISABLE_CODEX_BROWSER_PLUGIN;
     assert.deepEqual(resolveCodexGeneratedImagesRoots("/codex-test/.codex"), [
       path.join("/codex-test/.codex", "generated_images"),
-      path.join("/dpcode-test/runtime", "codex-home-overlay", "generated_images"),
+      path.join("/jcode-test/runtime", "codex-home-overlay", "generated_images"),
     ]);
   });
 

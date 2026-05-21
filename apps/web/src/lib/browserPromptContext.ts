@@ -3,7 +3,7 @@ import {
   type BrowserCaptureScreenshotResult,
   type NativeApi,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 
 import type { ComposerImageAttachment } from "../composerDraftStore";
 

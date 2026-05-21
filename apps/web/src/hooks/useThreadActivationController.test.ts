@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ProjectId, ThreadId } from "@t3tools/contracts";
+import { ProjectId, ThreadId } from "@jcode/contracts";
 import type { SplitView } from "../splitViewStore";
 import {
   activateThreadFromSidebarIntent,

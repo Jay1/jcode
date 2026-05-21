@@ -18,7 +18,7 @@ import {
   type ServerConfigStreamEvent,
   type ServerDiagnosticsResult,
   type ServerLifecycleStreamEvent,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import { clamp } from "effect/Number";
 import { Effect, FileSystem, Layer, Option, Path, Queue, Ref, Schema, ServiceMap, Stream } from "effect";
 import { HttpRouter, HttpServerRequest } from "effect/unstable/http";

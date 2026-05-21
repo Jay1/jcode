@@ -1,8 +1,8 @@
-import type { GitBranch } from "@t3tools/contracts";
+import type { GitBranch } from "@jcode/contracts";
 import {
   deriveAssociatedWorktreeMetadata,
   type AssociatedWorktreeMetadata,
-} from "@t3tools/shared/threadWorkspace";
+} from "@jcode/shared/threadWorkspace";
 import { Schema } from "effect";
 
 export const EnvMode = Schema.Literals(["local", "worktree"]);

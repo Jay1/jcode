@@ -4,7 +4,7 @@ import {
   EventId,
   type OrchestrationEvent,
   type OrchestrationThreadActivity,
-} from "@t3tools/contracts";
+} from "@jcode/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Effect, FileSystem, Layer, Option, Path, Stream } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
@@ -66,7 +66,7 @@ import {
   parseThreadSegmentFromAttachmentId,
   toSafeThreadAttachmentSegment,
 } from "../../attachmentStore.ts";
-import { deriveThreadSummaryState } from "@t3tools/shared/threadSummary";
+import { deriveThreadSummaryState } from "@jcode/shared/threadSummary";
 
 export const ORCHESTRATION_PROJECTOR_NAMES = {
   projects: "projection.projects",
