@@ -1272,7 +1272,9 @@ export const makeCheckOpenCodeProviderStatus = (
           : "OpenCode CLI is installed but failed to run.",
       } satisfies ServerProviderStatus;
     }
-    const parsedVersion = parseGenericCliVersion(`${version.stdout}\n${version.stderr}`);
+    const parsedVersion =
+      parseGenericCliVersion(executable) ??
+      parseGenericCliVersion(`${version.stdout}\n${version.stderr}`);
 
     return {
       provider: OPENCODE_PROVIDER,
