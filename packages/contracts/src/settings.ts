@@ -2,6 +2,7 @@ import { Schema } from "effect";
 import { TrimmedString } from "./baseSchemas";
 import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "./model";
 import { ModelSelection, ProviderKind, ThreadEnvironmentMode } from "./orchestration";
+import { OpenCodeRuntimeProfile } from "./providerDiscovery";
 
 const StringSetting = TrimmedString.check(Schema.isMaxLength(4096));
 const CustomModels = Schema.Array(Schema.String.check(Schema.isMaxLength(256))).pipe(
@@ -48,6 +49,8 @@ export const OpenCodeServerProviderSettings = Schema.Struct({
   binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "opencode")),
   serverUrl: StringSetting.pipe(Schema.withDecodingDefault(() => "")),
   serverPassword: StringSetting.pipe(Schema.withDecodingDefault(() => "")),
+  runtimeProfiles: Schema.Array(OpenCodeRuntimeProfile).pipe(Schema.withDecodingDefault(() => [])),
+  activeRuntimeProfileId: StringSetting.pipe(Schema.withDecodingDefault(() => "")),
 });
 export type OpenCodeServerProviderSettings = typeof OpenCodeServerProviderSettings.Type;
 
@@ -140,6 +143,8 @@ export const ServerSettingsPatch = Schema.Struct({
           ...ProviderSettingsBasePatch,
           serverUrl: Schema.optionalKey(StringSetting),
           serverPassword: Schema.optionalKey(StringSetting),
+          runtimeProfiles: Schema.optionalKey(Schema.Array(OpenCodeRuntimeProfile)),
+          activeRuntimeProfileId: Schema.optionalKey(StringSetting),
         }),
       ),
       pi: Schema.optionalKey(

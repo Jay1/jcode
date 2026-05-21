@@ -1446,12 +1446,16 @@ export default function ChatView({
     providerModelsQueryOptions({
       provider: "opencode",
       binaryPath: settings.openCodeBinaryPath || null,
+      serverUrl: settings.openCodeServerUrl || null,
+      serverPassword: settings.openCodeServerPassword || null,
     }),
   );
   const kiloDynamicModelsQuery = useQuery(
     providerModelsQueryOptions({
       provider: "kilo",
       binaryPath: settings.kiloBinaryPath || null,
+      serverUrl: settings.kiloServerUrl || null,
+      serverPassword: settings.kiloServerPassword || null,
       enabled: selectedProvider === "kilo" || lockedProvider === "kilo" || isModelPickerOpen,
     }),
   );
@@ -1467,8 +1471,22 @@ export default function ChatView({
     providerAgentsQueryOptions({ provider: "claudeAgent" }),
   );
   const codexDynamicAgentsQuery = useQuery(providerAgentsQueryOptions({ provider: "codex" }));
-  const openCodeDynamicAgentsQuery = useQuery(providerAgentsQueryOptions({ provider: "opencode" }));
-  const kiloDynamicAgentsQuery = useQuery(providerAgentsQueryOptions({ provider: "kilo" }));
+  const openCodeDynamicAgentsQuery = useQuery(
+    providerAgentsQueryOptions({
+      provider: "opencode",
+      binaryPath: settings.openCodeBinaryPath || null,
+      serverUrl: settings.openCodeServerUrl || null,
+      serverPassword: settings.openCodeServerPassword || null,
+    }),
+  );
+  const kiloDynamicAgentsQuery = useQuery(
+    providerAgentsQueryOptions({
+      provider: "kilo",
+      binaryPath: settings.kiloBinaryPath || null,
+      serverUrl: settings.kiloServerUrl || null,
+      serverPassword: settings.kiloServerPassword || null,
+    }),
+  );
   const cursorRuntimeModels = useMemo(
     () =>
       showExpandedCursorModelVariants

@@ -43,6 +43,12 @@ import { ProviderDiscoveryService } from "./provider/Services/ProviderDiscoveryS
 import { ProviderAdapterRegistry } from "./provider/Services/ProviderAdapterRegistry";
 import { ProviderHealth } from "./provider/Services/ProviderHealth";
 import { ProviderService } from "./provider/Services/ProviderService";
+import {
+  OPENCODE_CLI_SPEC,
+  OpenCodeRuntime,
+  OpenCodeRuntimeLive,
+} from "./provider/opencodeRuntime";
+import { checkOpenCodeRuntimeHealth } from "./provider/openCodeRuntimeHealth";
 import { getProviderUsageSnapshot } from "./providerUsageSnapshot";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment";
 import { ServerLifecycleEvents } from "./serverLifecycleEvents";
@@ -216,6 +222,24 @@ export const makeWsRpcLayer = () =>
       const terminalManager = yield* TerminalManager;
       const workspaceEntries = yield* WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem;
+
+      const getOpenCodeRuntimeHealth = (input: {
+        readonly provider: "opencode";
+        readonly profileId?: string;
+        readonly cwd?: string;
+      }) =>
+        Effect.gen(function* () {
+          const settings = yield* serverSettings.getSettings;
+          const runtime = yield* OpenCodeRuntime;
+          return yield* checkOpenCodeRuntimeHealth({
+            settings,
+            runtime,
+            cliSpec: OPENCODE_CLI_SPEC,
+            defaultBinaryPath: OPENCODE_CLI_SPEC.defaultBinaryPath,
+            profileId: input.profileId,
+            cwd: input.cwd,
+          });
+        }).pipe(Effect.provide(OpenCodeRuntimeLive));
 
       const canonicalizeProjectWorkspaceRoot = Effect.fnUntraced(function* (
         workspaceRoot: string,
@@ -797,6 +821,8 @@ export const makeWsRpcLayer = () =>
             providerDiscoveryService.getComposerCapabilities(input),
             "Failed to get composer capabilities",
           ),
+        [WS_METHODS.providerGetRuntimeHealth]: (input) =>
+          rpcEffect(getOpenCodeRuntimeHealth(input), "Failed to get runtime health"),
         [WS_METHODS.providerCompactThread]: (input) =>
           rpcEffect(providerService.compactThread(input), "Failed to compact thread"),
         [WS_METHODS.providerListCommands]: (input) =>

@@ -105,6 +105,7 @@ import type { ThreadId } from "./baseSchemas";
 import type {
   ProviderComposerCapabilities,
   ProviderGetComposerCapabilitiesInput,
+  ProviderGetRuntimeHealthInput,
   ProviderListAgentsInput,
   ProviderListAgentsResult,
   ProviderListCommandsInput,
@@ -117,6 +118,7 @@ import type {
   ProviderListSkillsResult,
   ProviderReadPluginInput,
   ProviderReadPluginResult,
+  OpenCodeRuntimeHealth,
 } from "./providerDiscovery";
 import type { ProviderCompactThreadInput } from "./provider";
 
@@ -456,6 +458,7 @@ export interface NativeApi {
     getComposerCapabilities: (
       input: ProviderGetComposerCapabilitiesInput,
     ) => Promise<ProviderComposerCapabilities>;
+    getRuntimeHealth: (input: ProviderGetRuntimeHealthInput) => Promise<OpenCodeRuntimeHealth>;
     compactThread: (input: ProviderCompactThreadInput) => Promise<void>;
     listCommands: (input: ProviderListCommandsInput) => Promise<ProviderListCommandsResult>;
     listSkills: (input: ProviderListSkillsInput) => Promise<ProviderListSkillsResult>;

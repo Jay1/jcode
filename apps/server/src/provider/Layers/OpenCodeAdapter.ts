@@ -3973,6 +3973,8 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
       const withDiscoveryInventory = <A>(
         input: {
           readonly binaryPath?: string | null;
+          readonly serverUrl?: string | null;
+          readonly serverPassword?: string | null;
         },
         fn: (input: {
           readonly client: OpencodeClient;
@@ -4004,12 +4006,16 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
                 .connectToOpenCodeServer({
                   binaryPath: input.binaryPath?.trim() || adapterConfig.defaultBinaryPath,
                   cliSpec: adapterConfig.cliSpec,
+                  ...(input.serverUrl?.trim() ? { serverUrl: input.serverUrl.trim() } : {}),
                 })
                 .pipe(Effect.mapError(toAdapterRequestError));
               const client = openCodeRuntime.createOpenCodeSdkClient({
                 baseUrl: server.url,
                 directory: serverConfig.cwd,
                 cliSpec: adapterConfig.cliSpec,
+                ...(server.external && input.serverPassword?.trim()
+                  ? { serverPassword: input.serverPassword.trim() }
+                  : {}),
               });
               const inventory = yield* openCodeRuntime
                 .loadOpenCodeInventory(client)
@@ -4027,8 +4033,10 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
       const listModels: NonNullable<OpenCodeAdapterShape["listModels"]> = (input) => {
         const binaryPath = input.binaryPath?.trim() || adapterConfig.defaultBinaryPath;
         const freeOnlyProviderID = adapterConfig.provider === "kilo" ? "kilo" : undefined;
-        return withDiscoveryInventory({ binaryPath }, ({ inventory, credentialProviderIDs }) =>
-          Effect.gen(function* () {
+        return withDiscoveryInventory(
+          { binaryPath, serverUrl: input.serverUrl, serverPassword: input.serverPassword },
+          ({ inventory, credentialProviderIDs }) =>
+            Effect.gen(function* () {
             const preferredProviderIDs = new Set(
               resolvePreferredOpenCodeModelProviders({
                 inventory,
@@ -4068,29 +4076,35 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
                   : adapterConfig.fallbackModelSource,
               cached: false,
             };
-          }).pipe(
-            Effect.catch(() =>
-              Effect.succeed({
-                models: flattenOpenCodeModels({
-                  inventory,
-                  credentialProviderIDs,
-                  ...(freeOnlyProviderID ? { freeOnlyProviderID } : {}),
+            }).pipe(
+              Effect.catch(() =>
+                Effect.succeed({
+                  models: flattenOpenCodeModels({
+                    inventory,
+                    credentialProviderIDs,
+                    ...(freeOnlyProviderID ? { freeOnlyProviderID } : {}),
+                  }),
+                  source: adapterConfig.fallbackModelSource,
+                  cached: false,
                 }),
-                source: adapterConfig.fallbackModelSource,
-                cached: false,
-              }),
+              ),
             ),
-          ),
         );
       };
 
-      const listAgents: NonNullable<OpenCodeAdapterShape["listAgents"]> = () =>
-        withDiscoveryInventory({}, ({ inventory }) =>
-          Effect.succeed({
-            agents: flattenOpenCodeAgents(inventory.agents),
-            source: adapterConfig.fallbackModelSource,
-            cached: false,
-          }),
+      const listAgents: NonNullable<OpenCodeAdapterShape["listAgents"]> = (input) =>
+        withDiscoveryInventory(
+          {
+            binaryPath: input.binaryPath,
+            serverUrl: input.serverUrl,
+            serverPassword: input.serverPassword,
+          },
+          ({ inventory }) =>
+            Effect.succeed({
+              agents: flattenOpenCodeAgents(inventory.agents),
+              source: adapterConfig.fallbackModelSource,
+              cached: false,
+            }),
         );
 
       const getComposerCapabilities: NonNullable<

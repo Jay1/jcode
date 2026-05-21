@@ -53,6 +53,7 @@ import { ProviderCompactThreadInput } from "./provider";
 import {
   ProviderGetComposerCapabilitiesInput,
   ProviderComposerCapabilities,
+  ProviderGetRuntimeHealthInput,
   ProviderListAgentsInput,
   ProviderListAgentsResult,
   ProviderListCommandsInput,
@@ -65,6 +66,7 @@ import {
   ProviderListSkillsResult,
   ProviderReadPluginInput,
   ProviderReadPluginResult,
+  OpenCodeRuntimeHealth,
 } from "./providerDiscovery";
 import {
   ProjectListDirectoriesInput,
@@ -525,6 +527,12 @@ export const WsProviderGetComposerCapabilitiesRpc = Rpc.make(
   },
 );
 
+export const WsProviderGetRuntimeHealthRpc = Rpc.make(WS_METHODS.providerGetRuntimeHealth, {
+  payload: ProviderGetRuntimeHealthInput,
+  success: OpenCodeRuntimeHealth,
+  error: WsRpcError,
+});
+
 export const WsProviderCompactThreadRpc = Rpc.make(WS_METHODS.providerCompactThread, {
   payload: ProviderCompactThreadInput,
   success: Schema.Void,
@@ -630,6 +638,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribeServerSettingsRpc,
   WsSubscribeAuthAccessRpc,
   WsProviderGetComposerCapabilitiesRpc,
+  WsProviderGetRuntimeHealthRpc,
   WsProviderCompactThreadRpc,
   WsProviderListCommandsRpc,
   WsProviderListSkillsRpc,

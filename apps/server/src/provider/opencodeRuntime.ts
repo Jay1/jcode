@@ -76,6 +76,17 @@ export interface OpenCodeServerConnection {
   readonly external: boolean;
 }
 
+export type OpenCodeRuntimeConfigMode = "inherit" | "generated" | "blank";
+
+export interface OpenCodeServerLaunchConfig {
+  readonly configMode?: OpenCodeRuntimeConfigMode;
+  readonly configContent?: unknown;
+  readonly homePath?: string;
+  readonly xdgConfigHome?: string;
+  readonly extraEnv?: Readonly<Record<string, string>>;
+  readonly cwd?: string;
+}
+
 const OPENCODE_RUNTIME_ERROR_TAG = "OpenCodeRuntimeError";
 export class OpenCodeRuntimeError extends Data.TaggedError(OPENCODE_RUNTIME_ERROR_TAG)<{
   readonly operation: string;
@@ -165,7 +176,11 @@ export interface OpenCodeRuntimeShape {
     readonly port?: number;
     readonly hostname?: string;
     readonly timeoutMs?: number;
-  }) => Effect.Effect<OpenCodeServerProcess, OpenCodeRuntimeError, Scope.Scope>;
+  } & OpenCodeServerLaunchConfig) => Effect.Effect<
+    OpenCodeServerProcess,
+    OpenCodeRuntimeError,
+    Scope.Scope
+  >;
   readonly connectToOpenCodeServer: (input: {
     readonly binaryPath: string;
     readonly cliSpec?: OpenCodeCompatibleCliSpec;
@@ -173,7 +188,11 @@ export interface OpenCodeRuntimeShape {
     readonly port?: number;
     readonly hostname?: string;
     readonly timeoutMs?: number;
-  }) => Effect.Effect<OpenCodeServerConnection, OpenCodeRuntimeError, Scope.Scope>;
+  } & OpenCodeServerLaunchConfig) => Effect.Effect<
+    OpenCodeServerConnection,
+    OpenCodeRuntimeError,
+    Scope.Scope
+  >;
   readonly runOpenCodeCommand: (input: {
     readonly binaryPath: string;
     readonly cliSpec?: OpenCodeCompatibleCliSpec;
@@ -235,6 +254,32 @@ function trimToNull(value: unknown): string | null {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+export function buildOpenCodeServerProcessEnv(input: {
+  readonly cliSpec?: OpenCodeCompatibleCliSpec;
+  readonly configMode?: OpenCodeRuntimeConfigMode;
+  readonly configContent?: unknown;
+  readonly homePath?: string;
+  readonly xdgConfigHome?: string;
+  readonly extraEnv?: Readonly<Record<string, string>>;
+  readonly baseEnv?: NodeJS.ProcessEnv;
+}): NodeJS.ProcessEnv {
+  const cliSpec = input.cliSpec ?? OPENCODE_CLI_SPEC;
+  const configMode = input.configMode ?? "inherit";
+  return {
+    ...(input.baseEnv ?? process.env),
+    ...(configMode === "inherit"
+      ? {}
+      : {
+          [cliSpec.configContentEnvVar]: JSON.stringify(
+            configMode === "blank" ? {} : (input.configContent ?? {}),
+          ),
+        }),
+    ...(input.homePath?.trim() ? { HOME: input.homePath.trim() } : {}),
+    ...(input.xdgConfigHome?.trim() ? { XDG_CONFIG_HOME: input.xdgConfigHome.trim() } : {}),
+    ...(input.extraEnv ?? {}),
+  };
 }
 
 function fallbackOpenCodeModelName(slug: string, parsedSlug: ParsedOpenCodeModelSlug): string {
@@ -761,14 +806,20 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
         ));
       const timeoutMs = input.timeoutMs ?? DEFAULT_OPENCODE_SERVER_TIMEOUT_MS;
       const args = ["serve", `--hostname=${hostname}`, `--port=${port}`];
+      const configMode = input.configMode ?? "inherit";
 
       const child = yield* spawner
         .spawn(
           ChildProcess.make(input.binaryPath, args, {
-            env: {
-              ...process.env,
-              [cliSpec.configContentEnvVar]: JSON.stringify({}),
-            },
+            env: buildOpenCodeServerProcessEnv({
+              cliSpec,
+              configMode,
+              configContent: input.configContent,
+              homePath: input.homePath,
+              xdgConfigHome: input.xdgConfigHome,
+              extraEnv: input.extraEnv,
+            }),
+            ...(input.cwd?.trim() ? { cwd: input.cwd.trim() } : {}),
             detached: false,
             killSignal: "SIGKILL",
             forceKillAfter: "1500 millis",
@@ -789,6 +840,15 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
         runtimeScope,
         child.kill({ killSignal: "SIGKILL", forceKillAfter: "1500 millis" }).pipe(Effect.ignore),
       );
+      yield* Effect.logDebug(`${cliSpec.displayName} server process started`, {
+        binaryPath: input.binaryPath,
+        hostname,
+        port,
+        configMode,
+        homePath: input.homePath?.trim() || null,
+        xdgConfigHome: input.xdgConfigHome?.trim() || null,
+        cwd: input.cwd?.trim() || null,
+      });
 
       const stdoutRef = yield* Ref.make("");
       const stderrRef = yield* Ref.make("");
@@ -894,6 +954,12 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
       ...(input.port !== undefined ? { port: input.port } : {}),
       ...(input.hostname !== undefined ? { hostname: input.hostname } : {}),
       ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {}),
+      ...(input.configMode !== undefined ? { configMode: input.configMode } : {}),
+      ...(input.configContent !== undefined ? { configContent: input.configContent } : {}),
+      ...(input.homePath !== undefined ? { homePath: input.homePath } : {}),
+      ...(input.xdgConfigHome !== undefined ? { xdgConfigHome: input.xdgConfigHome } : {}),
+      ...(input.extraEnv !== undefined ? { extraEnv: input.extraEnv } : {}),
+      ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
     }).pipe(
       Effect.map((server) => ({
         url: server.url,

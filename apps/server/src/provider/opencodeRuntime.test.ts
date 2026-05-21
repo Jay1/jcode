@@ -1,9 +1,52 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildOpenCodeServerProcessEnv,
   parseOpenCodeCliModelsOutput,
   parseOpenCodeCredentialProviderIDs,
 } from "./opencodeRuntime.ts";
+
+describe("buildOpenCodeServerProcessEnv", () => {
+  it("inherits OpenCode config by default", () => {
+    const env = buildOpenCodeServerProcessEnv({
+      baseEnv: { PATH: "/bin", OPENCODE_CONFIG_CONTENT: "real-config" },
+    });
+
+    expect(env.OPENCODE_CONFIG_CONTENT).toBe("real-config");
+  });
+
+  it("does not force blank config unless explicitly requested", () => {
+    const env = buildOpenCodeServerProcessEnv({
+      configMode: "inherit",
+      baseEnv: { PATH: "/bin" },
+    });
+
+    expect(env.OPENCODE_CONFIG_CONTENT).toBeUndefined();
+  });
+
+  it("supports explicit blank config for isolated runtimes", () => {
+    const env = buildOpenCodeServerProcessEnv({
+      configMode: "blank",
+      baseEnv: { PATH: "/bin", OPENCODE_CONFIG_CONTENT: "real-config" },
+    });
+
+    expect(env.OPENCODE_CONFIG_CONTENT).toBe("{}");
+  });
+
+  it("supports generated config and safe path overrides", () => {
+    const env = buildOpenCodeServerProcessEnv({
+      configMode: "generated",
+      configContent: { mode: "test" },
+      homePath: "/tmp/jcode-home",
+      xdgConfigHome: "/tmp/jcode-config",
+      baseEnv: { PATH: "/bin" },
+    });
+
+    expect(env.OPENCODE_CONFIG_CONTENT).toBe(JSON.stringify({ mode: "test" }));
+    expect(env.HOME).toBe("/tmp/jcode-home");
+    expect(env.XDG_CONFIG_HOME).toBe("/tmp/jcode-config");
+  });
+});
 
 describe("parseOpenCodeCliModelsOutput", () => {
   it("parses verbose OpenCode model output with metadata blocks", () => {

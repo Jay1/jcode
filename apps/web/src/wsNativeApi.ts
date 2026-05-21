@@ -655,6 +655,7 @@ export function createWsNativeApi(): NativeApi {
     provider: {
       getComposerCapabilities: (input) =>
         transport.request(WS_METHODS.providerGetComposerCapabilities, input),
+      getRuntimeHealth: (input) => transport.request(WS_METHODS.providerGetRuntimeHealth, input),
       compactThread: (input) => transport.request(WS_METHODS.providerCompactThread, input),
       listCommands: (input) => transport.request(WS_METHODS.providerListCommands, input),
       listSkills: (input) => transport.request(WS_METHODS.providerListSkills, input),

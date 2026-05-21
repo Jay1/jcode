@@ -73,6 +73,7 @@ import {
 } from "./server";
 import {
   ProviderListCommandsInput,
+  ProviderGetRuntimeHealthInput,
   ProviderGetComposerCapabilitiesInput,
   ProviderListPluginsInput,
   ProviderListModelsInput,
@@ -154,6 +155,7 @@ export const WS_METHODS = {
 
   // Provider discovery
   providerGetComposerCapabilities: "provider.getComposerCapabilities",
+  providerGetRuntimeHealth: "provider.getRuntimeHealth",
   providerCompactThread: "provider.compactThread",
   providerListCommands: "provider.listCommands",
   providerListSkills: "provider.listSkills",
@@ -263,6 +265,7 @@ const WebSocketRequestBody = Schema.Union([
 
   // Provider discovery
   tagRequestBody(WS_METHODS.providerGetComposerCapabilities, ProviderGetComposerCapabilitiesInput),
+  tagRequestBody(WS_METHODS.providerGetRuntimeHealth, ProviderGetRuntimeHealthInput),
   tagRequestBody(WS_METHODS.providerCompactThread, ProviderCompactThreadInput),
   tagRequestBody(WS_METHODS.providerListCommands, ProviderListCommandsInput),
   tagRequestBody(WS_METHODS.providerListSkills, ProviderListSkillsInput),

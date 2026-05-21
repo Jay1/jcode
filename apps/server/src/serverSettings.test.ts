@@ -27,6 +27,8 @@ describe("ServerSettingsService", () => {
 
     expect(settings.providers.codex.binaryPath).toBe("codex");
     expect(settings.defaultThreadEnvMode).toBe("local");
+    expect(settings.providers.opencode.runtimeProfiles).toEqual([]);
+    expect(settings.providers.opencode.activeRuntimeProfileId).toBe("");
   });
 
   it("persists updates and reloads them", async () => {
@@ -86,5 +88,42 @@ describe("ServerSettingsService", () => {
 
     expect(settings.textGenerationModelSelection.provider).toBe("codex");
     expect(settings.textGenerationModelSelection.model).toBe(DEFAULT_MODEL_BY_PROVIDER.codex);
+  });
+
+  it("persists OpenCode runtime profiles", async () => {
+    const settings = await runWithSettings(
+      Effect.gen(function* () {
+        const service = yield* ServerSettingsService;
+        yield* service.start;
+        return yield* service.updateSettings({
+          providers: {
+            opencode: {
+              activeRuntimeProfileId: "external-opencode",
+              runtimeProfiles: [
+                {
+                  id: "external-opencode",
+                  label: "External OpenCode",
+                  provider: "opencode",
+                  mode: "external",
+                  serverUrl: "http://127.0.0.1:4096",
+                  capabilityPolicy: "warn",
+                  requiredSkills: ["superpowers"],
+                },
+              ],
+            },
+          },
+        });
+      }),
+    );
+
+    expect(settings.providers.opencode.activeRuntimeProfileId).toBe("external-opencode");
+    expect(settings.providers.opencode.runtimeProfiles).toMatchObject([
+      {
+        id: "external-opencode",
+        mode: "external",
+        serverUrl: "http://127.0.0.1:4096",
+        requiredSkills: ["superpowers"],
+      },
+    ]);
   });
 });

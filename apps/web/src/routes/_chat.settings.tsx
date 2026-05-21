@@ -44,6 +44,7 @@ import {
 import { APP_VERSION } from "../branding";
 import { SidebarHeaderNavigationControls } from "../components/SidebarHeaderNavigationControls";
 import { ConnectionsSettingsPanel } from "../components/ConnectionsSettingsPanel";
+import { OpenCodeRuntimeSettingsPanel } from "../components/OpenCodeRuntimeSettingsPanel";
 import {
   ClaudeAI,
   CursorIcon,
@@ -2416,6 +2417,14 @@ function SettingsRouteView() {
   const renderProvidersPanel = () => (
     <div className="space-y-6">
       {renderProviderUpdatesSection()}
+      <SettingsSection title="OpenCode runtime">
+        <SettingsRow
+          title="Runtime health"
+          description="Check whether OpenCode is reachable and exposing the expected runtime capabilities before starting work."
+        >
+          <OpenCodeRuntimeSettingsPanel />
+        </SettingsRow>
+      </SettingsSection>
       <SettingsSection title="Provider picker">
         <div className="space-y-2">
           <SettingsRow

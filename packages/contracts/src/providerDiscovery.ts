@@ -226,6 +226,8 @@ export const ProviderListModelsInput = Schema.Struct({
   binaryPath: Schema.optional(TrimmedNonEmptyString),
   apiEndpoint: Schema.optional(TrimmedNonEmptyString),
   agentDir: Schema.optional(TrimmedNonEmptyString),
+  serverUrl: Schema.optional(TrimmedNonEmptyString),
+  serverPassword: Schema.optional(TrimmedNonEmptyString),
 });
 export type ProviderListModelsInput = typeof ProviderListModelsInput.Type;
 
@@ -269,6 +271,9 @@ export type ProviderListModelsResult = typeof ProviderListModelsResult.Type;
 
 export const ProviderListAgentsInput = Schema.Struct({
   provider: ProviderDiscoveryKind,
+  binaryPath: Schema.optional(TrimmedNonEmptyString),
+  serverUrl: Schema.optional(TrimmedNonEmptyString),
+  serverPassword: Schema.optional(TrimmedNonEmptyString),
 });
 export type ProviderListAgentsInput = typeof ProviderListAgentsInput.Type;
 
@@ -286,3 +291,168 @@ export const ProviderListAgentsResult = Schema.Struct({
   cached: Schema.optional(Schema.Boolean),
 });
 export type ProviderListAgentsResult = typeof ProviderListAgentsResult.Type;
+
+export const ProviderRuntimeMode = Schema.Literals(["managed", "external", "remote"]);
+export type ProviderRuntimeMode = typeof ProviderRuntimeMode.Type;
+
+export const OpenCodeRuntimeConfigMode = Schema.Literals(["inherit", "generated", "blank"]);
+export type OpenCodeRuntimeConfigMode = typeof OpenCodeRuntimeConfigMode.Type;
+
+export const OpenCodeRuntimeCapabilityPolicy = Schema.Literals([
+  "warn",
+  "blockNewThreads",
+  "blockAll",
+]);
+export type OpenCodeRuntimeCapabilityPolicy = typeof OpenCodeRuntimeCapabilityPolicy.Type;
+
+export const OpenCodeRuntimeMismatchSeverity = Schema.Literals([
+  "info",
+  "warning",
+  "error",
+  "blocking",
+]);
+export type OpenCodeRuntimeMismatchSeverity = typeof OpenCodeRuntimeMismatchSeverity.Type;
+
+export const OpenCodeRuntimeHealthStatus = Schema.Literals([
+  "unknown",
+  "checking",
+  "healthy",
+  "degraded",
+  "unreachable",
+  "misconfigured",
+]);
+export type OpenCodeRuntimeHealthStatus = typeof OpenCodeRuntimeHealthStatus.Type;
+
+export const OpenCodeRuntimeCapabilityRequirement = Schema.Struct({
+  kind: Schema.Literals(["command", "skill", "plugin", "agent", "model", "env", "path"]),
+  name: TrimmedNonEmptyString,
+  severity: OpenCodeRuntimeMismatchSeverity.pipe(Schema.withDecodingDefault(() => "error" as const)),
+});
+export type OpenCodeRuntimeCapabilityRequirement =
+  typeof OpenCodeRuntimeCapabilityRequirement.Type;
+
+export const OpenCodeRuntimeProfile = Schema.Struct({
+  id: TrimmedNonEmptyString,
+  label: TrimmedNonEmptyString,
+  provider: Schema.Literal("opencode").pipe(Schema.withDecodingDefault(() => "opencode" as const)),
+  mode: ProviderRuntimeMode,
+  configMode: OpenCodeRuntimeConfigMode.pipe(
+    Schema.withDecodingDefault(() => "inherit" as const),
+  ),
+  serverUrl: Schema.optional(TrimmedNonEmptyString),
+  binaryPath: Schema.optional(TrimmedNonEmptyString),
+  cwdDefault: Schema.optional(TrimmedNonEmptyString),
+  homePath: Schema.optional(TrimmedNonEmptyString),
+  configHome: Schema.optional(TrimmedNonEmptyString),
+  opencodeConfigDir: Schema.optional(TrimmedNonEmptyString),
+  opencodeDataDir: Schema.optional(TrimmedNonEmptyString),
+  skillRoots: Schema.Array(TrimmedNonEmptyString).pipe(Schema.withDecodingDefault(() => [])),
+  pluginRoots: Schema.Array(TrimmedNonEmptyString).pipe(Schema.withDecodingDefault(() => [])),
+  requiredCommands: Schema.Array(TrimmedNonEmptyString).pipe(Schema.withDecodingDefault(() => [])),
+  requiredSkills: Schema.Array(TrimmedNonEmptyString).pipe(Schema.withDecodingDefault(() => [])),
+  requiredPlugins: Schema.Array(TrimmedNonEmptyString).pipe(Schema.withDecodingDefault(() => [])),
+  requiredAgents: Schema.Array(TrimmedNonEmptyString).pipe(Schema.withDecodingDefault(() => [])),
+  requiredModels: Schema.Array(TrimmedNonEmptyString).pipe(Schema.withDecodingDefault(() => [])),
+  requiredEnv: Schema.Array(TrimmedNonEmptyString).pipe(Schema.withDecodingDefault(() => [])),
+  requirements: Schema.Array(OpenCodeRuntimeCapabilityRequirement).pipe(
+    Schema.withDecodingDefault(() => []),
+  ),
+  capabilityPolicy: OpenCodeRuntimeCapabilityPolicy.pipe(
+    Schema.withDecodingDefault(() => "warn" as const),
+  ),
+  notes: Schema.optional(Schema.String.check(Schema.isMaxLength(4096))),
+});
+export type OpenCodeRuntimeProfile = typeof OpenCodeRuntimeProfile.Type;
+
+export const OpenCodeRuntimeProfilePatch = Schema.Struct({
+  id: Schema.optionalKey(TrimmedNonEmptyString),
+  label: Schema.optionalKey(TrimmedNonEmptyString),
+  provider: Schema.optionalKey(Schema.Literal("opencode")),
+  mode: Schema.optionalKey(ProviderRuntimeMode),
+  configMode: Schema.optionalKey(OpenCodeRuntimeConfigMode),
+  serverUrl: Schema.optionalKey(TrimmedNonEmptyString),
+  binaryPath: Schema.optionalKey(TrimmedNonEmptyString),
+  cwdDefault: Schema.optionalKey(TrimmedNonEmptyString),
+  homePath: Schema.optionalKey(TrimmedNonEmptyString),
+  configHome: Schema.optionalKey(TrimmedNonEmptyString),
+  opencodeConfigDir: Schema.optionalKey(TrimmedNonEmptyString),
+  opencodeDataDir: Schema.optionalKey(TrimmedNonEmptyString),
+  skillRoots: Schema.optionalKey(Schema.Array(TrimmedNonEmptyString)),
+  pluginRoots: Schema.optionalKey(Schema.Array(TrimmedNonEmptyString)),
+  requiredCommands: Schema.optionalKey(Schema.Array(TrimmedNonEmptyString)),
+  requiredSkills: Schema.optionalKey(Schema.Array(TrimmedNonEmptyString)),
+  requiredPlugins: Schema.optionalKey(Schema.Array(TrimmedNonEmptyString)),
+  requiredAgents: Schema.optionalKey(Schema.Array(TrimmedNonEmptyString)),
+  requiredModels: Schema.optionalKey(Schema.Array(TrimmedNonEmptyString)),
+  requiredEnv: Schema.optionalKey(Schema.Array(TrimmedNonEmptyString)),
+  requirements: Schema.optionalKey(Schema.Array(OpenCodeRuntimeCapabilityRequirement)),
+  capabilityPolicy: Schema.optionalKey(OpenCodeRuntimeCapabilityPolicy),
+  notes: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(4096))),
+});
+export type OpenCodeRuntimeProfilePatch = typeof OpenCodeRuntimeProfilePatch.Type;
+
+export const OpenCodeRuntimeResolvedPaths = Schema.Struct({
+  home: Schema.optional(TrimmedNonEmptyString),
+  xdgConfigHome: Schema.optional(TrimmedNonEmptyString),
+  opencodeConfigDir: Schema.optional(TrimmedNonEmptyString),
+  opencodeDataDir: Schema.optional(TrimmedNonEmptyString),
+  cwdDefault: Schema.optional(TrimmedNonEmptyString),
+});
+export type OpenCodeRuntimeResolvedPaths = typeof OpenCodeRuntimeResolvedPaths.Type;
+
+export const OpenCodeRuntimeCapabilitySummary = Schema.Struct({
+  count: Schema.Number,
+  names: Schema.Array(TrimmedNonEmptyString),
+});
+export type OpenCodeRuntimeCapabilitySummary = typeof OpenCodeRuntimeCapabilitySummary.Type;
+
+export const OpenCodeRuntimeModelCapabilitySummary = Schema.Struct({
+  count: Schema.Number,
+  slugs: Schema.Array(TrimmedNonEmptyString),
+});
+export type OpenCodeRuntimeModelCapabilitySummary =
+  typeof OpenCodeRuntimeModelCapabilitySummary.Type;
+
+export const OpenCodeRuntimeMismatch = Schema.Struct({
+  id: TrimmedNonEmptyString,
+  severity: OpenCodeRuntimeMismatchSeverity,
+  message: TrimmedNonEmptyString,
+  expected: Schema.optional(Schema.Unknown),
+  actual: Schema.optional(Schema.Unknown),
+});
+export type OpenCodeRuntimeMismatch = typeof OpenCodeRuntimeMismatch.Type;
+
+export const OpenCodeRuntimeHealth = Schema.Struct({
+  provider: Schema.Literal("opencode"),
+  profileId: TrimmedNonEmptyString,
+  profileLabel: TrimmedNonEmptyString,
+  mode: ProviderRuntimeMode,
+  configMode: OpenCodeRuntimeConfigMode,
+  status: OpenCodeRuntimeHealthStatus,
+  serverUrl: Schema.optional(TrimmedNonEmptyString),
+  external: Schema.Boolean,
+  version: Schema.optional(TrimmedNonEmptyString),
+  binaryPath: Schema.optional(TrimmedNonEmptyString),
+  resolvedPaths: Schema.optional(OpenCodeRuntimeResolvedPaths),
+  capabilities: Schema.Struct({
+    commands: Schema.optional(OpenCodeRuntimeCapabilitySummary),
+    skills: Schema.optional(OpenCodeRuntimeCapabilitySummary),
+    plugins: Schema.optional(OpenCodeRuntimeCapabilitySummary),
+    agents: Schema.optional(OpenCodeRuntimeCapabilitySummary),
+    models: Schema.optional(OpenCodeRuntimeModelCapabilitySummary),
+  }),
+  mismatches: Schema.Array(OpenCodeRuntimeMismatch),
+  checkedAt: TrimmedNonEmptyString,
+});
+export type OpenCodeRuntimeHealth = typeof OpenCodeRuntimeHealth.Type;
+
+export const OpenCodeRuntimeProbeResult = OpenCodeRuntimeHealth;
+export type OpenCodeRuntimeProbeResult = typeof OpenCodeRuntimeProbeResult.Type;
+
+export const ProviderGetRuntimeHealthInput = Schema.Struct({
+  provider: Schema.Literal("opencode"),
+  profileId: Schema.optional(TrimmedNonEmptyString),
+  cwd: Schema.optional(TrimmedNonEmptyString),
+  forceRefresh: Schema.optional(Schema.Boolean),
+});
+export type ProviderGetRuntimeHealthInput = typeof ProviderGetRuntimeHealthInput.Type;
