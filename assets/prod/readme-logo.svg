@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 180" role="img" aria-labelledby="title desc">
+  <title id="title">JCode logo</title>
+  <desc id="desc">White hacker glider logo on a dark rounded panel.</desc>
+  <rect width="420" height="180" rx="32" fill="#09090b"/>
+  <g transform="translate(127 7) scale(.6)">
+    <circle fill="#fff" cx="336.7" cy="249.5" r="25.3"/>
+    <circle fill="#fff" cx="336.7" cy="336.5" r="25.3"/>
+    <circle fill="#fff" cx="249" cy="336.2" r="25.3"/>
+    <ellipse fill="#fff" transform="matrix(0.3827 -0.9239 0.9239 0.3827 -211.055 356.6175)" cx="161.3" cy="336.2" rx="25.3" ry="25.3"/>
+    <ellipse fill="#fff" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -45.6615 224.6646)" cx="248.4" cy="167.5" rx="25.3" ry="25.3"/>
+    <path fill="#fff" d="M383.7,203.8h-89.9v-86.7h-7v86.7h-76.3v-86.7h-7v86.7h-87.2v7h87.2v77.4h-87.2v7h87.2v87.8h7v-87.8h76.3v87.8h7v-87.8h89.9v-7h-89.9v-77.4h89.9V203.8z M286.9,288.2h-76.3v-77.4h76.3V288.2z"/>
+  </g>
+</svg>

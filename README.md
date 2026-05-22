@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/prod/readme-logo.svg" alt="JCode logo" width="210" />
+</p>
+
 # JCode
 
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/Jay1/jcode/actions/workflows/ci.yml)
