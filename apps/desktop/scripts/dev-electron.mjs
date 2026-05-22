@@ -116,11 +116,9 @@ function warnIfProdAppRunning() {
     return;
   }
 
-  const result = spawnSync(
-    "pgrep",
-    ["-fal", "/Applications/JCode\\.app/Contents/MacOS/JCode"],
-    { encoding: "utf8" },
-  );
+  const result = spawnSync("pgrep", ["-fal", "/Applications/JCode\\.app/Contents/MacOS/JCode"], {
+    encoding: "utf8",
+  });
   const output = typeof result.stdout === "string" ? result.stdout.trim() : "";
   if (!output) {
     return;

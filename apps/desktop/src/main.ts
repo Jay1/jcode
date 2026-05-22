@@ -71,10 +71,7 @@ import {
 import { isArm64HostRunningIntelBuild, resolveDesktopRuntimeInfo } from "./runtimeArch";
 import { DesktopBrowserManager } from "./browserManager";
 import { DesktopConnectionSecretStore } from "./desktopConnectionSecrets";
-import {
-  DesktopServerExposureStore,
-  resolveDesktopServerBindHost,
-} from "./desktopServerExposure";
+import { DesktopServerExposureStore, resolveDesktopServerBindHost } from "./desktopServerExposure";
 import { BROWSER_IPC_CHANNELS, registerBrowserIpcHandlers, sendBrowserState } from "./browserIpc";
 import {
   BrowserUsePipeServer,
@@ -149,7 +146,8 @@ const BROWSER_PERF_SAMPLE_INTERVAL_MS = 5_000;
 const JCODE_BROWSER_LABEL = "JCode browser";
 const browserPerfLoggingEnabled =
   process.env.JCODE_BROWSER_PERF === "1" ||
-  process.env.DPCODE_BROWSER_PERF === "1" || process.env.T3CODE_BROWSER_PERF === "1";
+  process.env.DPCODE_BROWSER_PERF === "1" ||
+  process.env.T3CODE_BROWSER_PERF === "1";
 
 type DesktopUpdateErrorContext = DesktopUpdateState["errorContext"];
 
@@ -371,7 +369,8 @@ async function reserveBackendEndpoint(reason: string): Promise<void> {
 
 function getLocalEnvironmentBootstrap(): DesktopLocalEnvironmentBootstrap | null {
   const httpBaseUrl = normalizeDesktopWsUrl(backendHttpUrl);
-  const webSocketUrl = normalizeDesktopWsUrl(backendWsUrl) ?? resolveDesktopWsUrlFromEnv(process.env);
+  const webSocketUrl =
+    normalizeDesktopWsUrl(backendWsUrl) ?? resolveDesktopWsUrlFromEnv(process.env);
   if (!httpBaseUrl || !webSocketUrl || !backendAuthToken) return null;
 
   const wsUrl = new URL(webSocketUrl);
@@ -973,9 +972,15 @@ function resolveNotificationIconPath(): string | null {
     return null;
   }
   if (process.platform === "win32") {
-    return resolveResourcePath("jcode.png") ?? resolveResourcePath("dpcode.png") ?? resolveIconPath("ico");
+    return (
+      resolveResourcePath("jcode.png") ??
+      resolveResourcePath("dpcode.png") ??
+      resolveIconPath("ico")
+    );
   }
-  return resolveResourcePath("jcode.png") ?? resolveResourcePath("dpcode.png") ?? resolveIconPath("png");
+  return (
+    resolveResourcePath("jcode.png") ?? resolveResourcePath("dpcode.png") ?? resolveIconPath("png")
+  );
 }
 
 // Keep the app badge aligned with desktop notifications that arrive off-focus.
