@@ -14,6 +14,7 @@ import type {
   ProviderForkThreadInput,
   ProviderForkThreadResult,
   ProviderKind,
+  ProviderListAgentsInput,
   ProviderListAgentsResult,
   ProviderListCommandsInput,
   ProviderListCommandsResult,

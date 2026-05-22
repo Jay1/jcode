@@ -6,6 +6,7 @@ import type {
   DesktopAdvertisedEndpoint,
   DesktopServerExposureState,
 } from "@jcode/contracts";
+import { AuthSessionId } from "@jcode/contracts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { addSavedConnectionFromPairing } from "../connection/savedConnectionManager";
@@ -254,7 +255,7 @@ export function ConnectionsSettingsPanel() {
 
   const revokeClientSession = async (sessionId: string) => {
     try {
-      await ensureNativeApi().server.revokeAuthClient({ sessionId });
+      await ensureNativeApi().server.revokeAuthClient({ sessionId: AuthSessionId.makeUnsafe(sessionId) });
       await refreshAccess();
       toastManager.add({ type: "success", title: "Client session revoked" });
     } catch (error) {

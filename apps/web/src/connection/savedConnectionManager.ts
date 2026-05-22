@@ -36,7 +36,7 @@ export async function addSavedConnectionFromPairing(
     fetchRemoteEnvironmentDescriptor({ httpBaseUrl: target.httpBaseUrl }),
     bootstrapRemoteBearerSession({
       httpBaseUrl: target.httpBaseUrl,
-      credential: target.pairingCode,
+      credential: target.credential,
     }),
   ]);
   const existing = readSavedConnectionProfile(descriptor.environmentId);

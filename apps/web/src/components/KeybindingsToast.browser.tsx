@@ -322,7 +322,7 @@ function installTransportDriver(): void {
   };
 }
 
-function sendServerConfigUpdatedPush(issues: Array<{ kind: string; message: string }>) {
+function sendServerConfigUpdatedPush(issues: ServerConfigUpdatedPayload["issues"]) {
   if (!emitServerConfigUpdated) throw new Error("Server config stream not connected");
   emitServerConfigUpdated({
     issues,

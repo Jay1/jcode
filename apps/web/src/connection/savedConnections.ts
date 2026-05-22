@@ -60,6 +60,10 @@ function writeDocument(document: SavedConnectionsDocument): void {
   storage()?.setItem(SAVED_CONNECTIONS_STORAGE_KEY, JSON.stringify(document));
 }
 
+function activeProfileIdForWrite(document: SavedConnectionsDocument): string | null {
+  return document.activeProfileId ?? null;
+}
+
 function isStoredProfile(value: unknown): value is StoredSavedConnectionProfile {
   if (!isObject(value)) return false;
   return (
@@ -123,7 +127,7 @@ export function upsertSavedConnectionProfile(profile: SavedConnectionProfile): v
   };
   writeDocument({
     version: 1,
-    activeProfileId: document.activeProfileId,
+    activeProfileId: activeProfileIdForWrite(document),
     profiles: [
       ...document.profiles.filter((candidate) => candidate.id !== profile.id),
       nextProfile,
@@ -135,7 +139,7 @@ export function removeSavedConnectionProfile(id: string): void {
   const document = readDocument();
   writeDocument({
     version: 1,
-    activeProfileId: document.activeProfileId === id ? null : document.activeProfileId,
+    activeProfileId: document.activeProfileId === id ? null : activeProfileIdForWrite(document),
     profiles: document.profiles.filter((candidate) => candidate.id !== id),
   });
 }
@@ -156,7 +160,7 @@ export function writeSavedConnectionSecret(id: string, secret: string): boolean 
   let found = false;
   writeDocument({
     version: 1,
-    activeProfileId: document.activeProfileId,
+    activeProfileId: activeProfileIdForWrite(document),
     profiles: document.profiles.map((profile) => {
       if (profile.id !== id) return profile;
       found = true;
@@ -181,7 +185,7 @@ export function clearSavedConnectionSecret(id: string): void {
   const document = readDocument();
   writeDocument({
     version: 1,
-    activeProfileId: document.activeProfileId,
+    activeProfileId: activeProfileIdForWrite(document),
     profiles: document.profiles.map((profile) => {
       if (profile.id !== id) return profile;
       const { bearerToken: _bearerToken, ...publicFields } = profile;

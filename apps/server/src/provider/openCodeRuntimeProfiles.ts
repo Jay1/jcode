@@ -112,11 +112,12 @@ export function resolveOpenCodeRuntimeConnectionConfig(input: {
   const profile = input.resolved.profile;
   const binaryPath = trimToNull(profile.binaryPath) ?? input.defaultBinaryPath;
   const cwd = trimToNull(input.cwd) ?? trimToNull(profile.cwdDefault);
+  const serverUrl = trimToNull(profile.serverUrl);
   return {
     binaryPath,
     cliSpec: input.cliSpec,
     ...(profile.mode === "external" || profile.mode === "remote"
-      ? { serverUrl: profile.serverUrl }
+      ? serverUrl ? { serverUrl } : {}
       : {}),
     ...(input.resolved.serverPassword ? { serverPassword: input.resolved.serverPassword } : {}),
     configMode: profile.configMode,

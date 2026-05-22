@@ -6,6 +6,7 @@ import type {
   DesktopServerExposureState,
   NativeApi,
 } from "@jcode/contracts";
+import { AuthSessionId } from "@jcode/contracts";
 import { page } from "vitest/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
@@ -14,6 +15,8 @@ import { SAVED_CONNECTIONS_STORAGE_KEY } from "../connection/savedConnections";
 import { ConnectionsSettingsPanel } from "./ConnectionsSettingsPanel";
 
 const NOW_ISO = "2026-05-21T12:00:00.000Z";
+const NOW_UTC = NOW_ISO as never;
+const SESSION_ID = AuthSessionId.makeUnsafe("session-1");
 
 let authAccessListener: ((event: AuthAccessStreamEvent) => void) | null = null;
 let desktopExposureState: DesktopServerExposureState;
@@ -82,7 +85,9 @@ describe("ConnectionsSettingsPanel", () => {
       },
     ];
     for (const method of Object.values(nativeApi.server)) {
-      if (typeof method === "function" && "mockClear" in method) method.mockClear();
+      if (typeof method === "function" && "mockClear" in method) {
+        (method as { mockClear: () => void }).mockClear();
+      }
     }
     window.nativeApi = nativeApi;
     window.desktopBridge = {
@@ -93,7 +98,7 @@ describe("ConnectionsSettingsPanel", () => {
         return desktopExposureState;
       }),
       getAdvertisedEndpoints: vi.fn(async () => desktopAdvertisedEndpoints),
-    } as typeof window.desktopBridge;
+    } as unknown as NonNullable<typeof window.desktopBridge>;
     window.localStorage.removeItem(SAVED_CONNECTIONS_STORAGE_KEY);
   });
 
@@ -159,22 +164,24 @@ describe("ConnectionsSettingsPanel", () => {
             id: "pairing-link-1",
             credential: "LIVE-CODE",
             label: "Browser pairing",
-            createdAt: NOW_ISO,
-            expiresAt: NOW_ISO,
+            role: "client",
+            subject: "owner",
+            createdAt: NOW_UTC,
+            expiresAt: NOW_UTC,
           },
         ],
         clientSessions: [
           {
-            sessionId: "session-1",
+            sessionId: SESSION_ID,
             subject: "owner",
             role: "owner",
-            method: "bearer",
-            client: { label: "Current browser", userAgent: null, ip: null },
+            method: "bearer-session-token",
+            client: { label: "Current browser", deviceType: "unknown" },
             current: true,
             connected: true,
-            createdAt: NOW_ISO,
-            expiresAt: NOW_ISO,
-            lastSeenAt: NOW_ISO,
+            issuedAt: NOW_UTC,
+            expiresAt: NOW_UTC,
+            lastConnectedAt: NOW_UTC,
           },
         ],
       },

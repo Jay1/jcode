@@ -224,6 +224,9 @@ export class WsTransport {
       return undefined as T;
     }
 
+    const runtime = this.runtime;
+    if (!runtime) throw new WsTransportRpcError({ message: "WebSocket RPC runtime unavailable" });
+
     const rpcInput =
       method === ORCHESTRATION_WS_METHODS.dispatchCommand
         ? (params as { command: unknown }).command
@@ -236,7 +239,7 @@ export class WsTransport {
       >
     )[method];
     if (!call) throw new WsTransportRpcError({ message: `Unknown RPC method: ${method}` });
-    return (await this.runtime.runPromise(call(normalizedRpcInput))) as T;
+    return (await runtime.runPromise(call(normalizedRpcInput))) as T;
   }
 
   subscribe<C extends WsPushChannel>(
@@ -599,8 +602,10 @@ export class WsTransport {
     restart?: (() => void) | undefined,
   ): void {
     if (this.streamCleanups.has(key)) return;
+    const runtime = this.runtime;
+    if (!runtime) return;
     const runnableStream = stream as Stream.Stream<T, WsTransportRpcError, never>;
-    const cancel = this.runtime.runCallback(
+    const cancel = runtime.runCallback(
       Stream.runForEach(runnableStream, (event) => Effect.sync(() => listener(event))),
       {
         onExit: (exit) => {
@@ -646,7 +651,9 @@ export class WsTransport {
     params: unknown,
   ): Promise<GitRunStackedActionResult> {
     let result: GitRunStackedActionResult | null = null;
-    await this.runtime.runPromise(
+    const runtime = this.runtime;
+    if (!runtime) throw new WsTransportRpcError({ message: "WebSocket RPC runtime unavailable" });
+    await runtime.runPromise(
       Stream.runForEach(client[WS_METHODS.gitRunStackedAction](params as never), (event) =>
         Effect.sync(() => {
           this.emit(WS_CHANNELS.gitActionProgress, event as GitActionProgressEvent);

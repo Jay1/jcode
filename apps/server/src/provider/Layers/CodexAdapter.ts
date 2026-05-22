@@ -383,14 +383,14 @@ function toCanonicalUserInputAnswers(
     return undefined;
   };
 
-  const result: ProviderUserInputAnswers = {};
+  const result: Record<string, string | readonly string[] | null> = {};
   for (const [questionId, value] of Object.entries(answers)) {
     const normalized = normalizeAnswer(value);
     if (normalized !== undefined) {
       result[questionId] = normalized;
     }
   }
-  return result;
+  return result as ProviderUserInputAnswers;
 }
 
 function toUserInputQuestions(payload: Record<string, unknown> | undefined) {

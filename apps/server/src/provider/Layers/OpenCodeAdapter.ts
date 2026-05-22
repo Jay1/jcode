@@ -4034,7 +4034,11 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
         const binaryPath = input.binaryPath?.trim() || adapterConfig.defaultBinaryPath;
         const freeOnlyProviderID = adapterConfig.provider === "kilo" ? "kilo" : undefined;
         return withDiscoveryInventory(
-          { binaryPath, serverUrl: input.serverUrl, serverPassword: input.serverPassword },
+          {
+            binaryPath,
+            ...(input.serverUrl ? { serverUrl: input.serverUrl } : {}),
+            ...(input.serverPassword ? { serverPassword: input.serverPassword } : {}),
+          },
           ({ inventory, credentialProviderIDs }) =>
             Effect.gen(function* () {
             const preferredProviderIDs = new Set(
@@ -4095,9 +4099,9 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
       const listAgents: NonNullable<OpenCodeAdapterShape["listAgents"]> = (input) =>
         withDiscoveryInventory(
           {
-            binaryPath: input.binaryPath,
-            serverUrl: input.serverUrl,
-            serverPassword: input.serverPassword,
+            ...(input.binaryPath ? { binaryPath: input.binaryPath } : {}),
+            ...(input.serverUrl ? { serverUrl: input.serverUrl } : {}),
+            ...(input.serverPassword ? { serverPassword: input.serverPassword } : {}),
           },
           ({ inventory }) =>
             Effect.succeed({

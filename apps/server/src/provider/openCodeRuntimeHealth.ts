@@ -253,14 +253,14 @@ export function checkOpenCodeRuntimeHealth(input: {
       const resolved = resolveOpenCodeRuntimeProfile({
         settings: input.settings,
         defaultBinaryPath: input.defaultBinaryPath,
-        profileId: input.profileId,
+        ...(input.profileId !== undefined ? { profileId: input.profileId } : {}),
       });
       const profile = resolved.profile;
       const connectionConfig = resolveOpenCodeRuntimeConnectionConfig({
         resolved,
         cliSpec: input.cliSpec,
         defaultBinaryPath: input.defaultBinaryPath,
-        cwd: input.cwd,
+        ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
       });
 
       if ((profile.mode === "external" || profile.mode === "remote") && !connectionConfig.serverUrl) {
@@ -296,7 +296,6 @@ export function checkOpenCodeRuntimeHealth(input: {
         return baseHealth({
           resolved,
           binaryPath: connectionConfig.binaryPath,
-          serverUrl: connectionConfig.serverUrl,
           status: "unreachable",
           external: profile.mode !== "managed",
           mismatches: [
@@ -308,6 +307,7 @@ export function checkOpenCodeRuntimeHealth(input: {
               )}`,
             },
           ],
+          ...(connectionConfig.serverUrl ? { serverUrl: connectionConfig.serverUrl } : {}),
         });
       }
       const server = serverExit.value;
@@ -426,18 +426,18 @@ export function checkOpenCodeRuntimeHealth(input: {
   ).pipe(
     Effect.catch((cause) =>
       Effect.succeed({
-        provider: "opencode",
+        provider: "opencode" as const,
         profileId: "unknown",
         profileLabel: "Unknown OpenCode runtime",
-        mode: "managed",
-        configMode: "inherit",
-        status: "unreachable",
+        mode: "managed" as const,
+        configMode: "inherit" as const,
+        status: "unreachable" as const,
         external: false,
         capabilities: {},
         mismatches: [
           {
             id: "runtime-health-failed",
-            severity: "blocking",
+            severity: "blocking" as const,
             message: `OpenCode runtime health check failed: ${openCodeRuntimeErrorDetail(cause)}`,
           },
         ],

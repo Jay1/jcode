@@ -225,8 +225,8 @@ export const makeWsRpcLayer = () =>
 
       const getOpenCodeRuntimeHealth = (input: {
         readonly provider: "opencode";
-        readonly profileId?: string;
-        readonly cwd?: string;
+        readonly profileId?: string | null;
+        readonly cwd?: string | null;
       }) =>
         Effect.gen(function* () {
           const settings = yield* serverSettings.getSettings;
@@ -236,8 +236,8 @@ export const makeWsRpcLayer = () =>
             runtime,
             cliSpec: OPENCODE_CLI_SPEC,
             defaultBinaryPath: OPENCODE_CLI_SPEC.defaultBinaryPath,
-            profileId: input.profileId,
-            cwd: input.cwd,
+            ...(input.profileId !== undefined ? { profileId: input.profileId } : {}),
+            ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
           });
         }).pipe(Effect.provide(OpenCodeRuntimeLive));
 
@@ -822,7 +822,14 @@ export const makeWsRpcLayer = () =>
             "Failed to get composer capabilities",
           ),
         [WS_METHODS.providerGetRuntimeHealth]: (input) =>
-          rpcEffect(getOpenCodeRuntimeHealth(input), "Failed to get runtime health"),
+          rpcEffect(
+            getOpenCodeRuntimeHealth({
+              provider: input.provider,
+              ...(input.profileId !== undefined ? { profileId: input.profileId } : {}),
+              ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
+            }),
+            "Failed to get runtime health",
+          ),
         [WS_METHODS.providerCompactThread]: (input) =>
           rpcEffect(providerService.compactThread(input), "Failed to compact thread"),
         [WS_METHODS.providerListCommands]: (input) =>

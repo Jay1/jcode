@@ -298,6 +298,8 @@ describe("wsNativeApi", () => {
             serverUrl: "",
             serverPassword: "",
             customModels: [],
+            runtimeProfiles: [],
+            activeRuntimeProfileId: "",
           },
           pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
         },
