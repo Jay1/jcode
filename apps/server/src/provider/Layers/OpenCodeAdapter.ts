@@ -2006,7 +2006,9 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
       ) {
         const idleBeforeAssistantActivity = context.activeTurnCompletionActivitySerial === 0;
         const idleAfterToolCalls =
-          context.activeTurnSawToolCallFinish && !context.activeTurnSawFinalAssistant;
+          idleBeforeAssistantActivity &&
+          context.activeTurnSawToolCallFinish &&
+          !context.activeTurnSawFinalAssistant;
         if (!idleBeforeAssistantActivity && !idleAfterToolCalls) {
           return false;
         }
