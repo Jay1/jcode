@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/prod/readme-logo.svg" alt="JCode logo" width="210" />
+  <img src="./apps/web/public/jcode.png" alt="JCode logo" width="96" />
 </p>
 
 # JCode
