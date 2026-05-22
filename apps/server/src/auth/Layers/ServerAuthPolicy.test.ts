@@ -19,7 +19,7 @@ const makeLayer = (overrides: Partial<ServerConfigShape>) =>
       ).pipe(
         Layer.provide(
           ServerConfig.layerTest(process.cwd(), {
-            prefix: "dpcode-auth-policy-test-",
+            prefix: "jcode-auth-policy-test-",
           }),
         ),
       ),

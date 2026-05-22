@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 function makeStore() {
-  const dir = FS.mkdtempSync(Path.join(OS.tmpdir(), "dpcode-desktop-secrets-"));
+  const dir = FS.mkdtempSync(Path.join(OS.tmpdir(), "jcode-desktop-secrets-"));
   tempDirs.push(dir);
   return new DesktopConnectionSecretStore(dir);
 }

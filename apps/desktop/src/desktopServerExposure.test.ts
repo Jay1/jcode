@@ -21,7 +21,7 @@ afterEach(() => {
 });
 
 function makeStore() {
-  const dir = FS.mkdtempSync(Path.join(OS.tmpdir(), "dpcode-desktop-exposure-"));
+  const dir = FS.mkdtempSync(Path.join(OS.tmpdir(), "jcode-desktop-exposure-"));
   tempDirs.push(dir);
   return new DesktopServerExposureStore(dir);
 }

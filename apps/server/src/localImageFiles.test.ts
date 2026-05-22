@@ -22,7 +22,7 @@ afterEach(() => {
 
 describe("resolveAllowedLocalImageFile", () => {
   it("allows images inside the current workspace", async () => {
-    const workspace = makeTempDir("dpcode-image-workspace-");
+    const workspace = makeTempDir("jcode-image-workspace-");
     writeFileSync(path.join(workspace, ".git"), "gitdir: .git");
     const imagePath = path.join(workspace, "preview.png");
     writeFileSync(imagePath, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
@@ -37,7 +37,7 @@ describe("resolveAllowedLocalImageFile", () => {
   });
 
   it("allows images inside Codex generated_images without a cwd", async () => {
-    const codexHome = makeTempDir("dpcode-codex-home-");
+    const codexHome = makeTempDir("jcode-codex-home-");
     const previousCodexHome = process.env.CODEX_HOME;
     process.env.CODEX_HOME = codexHome;
     try {

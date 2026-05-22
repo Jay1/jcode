@@ -1535,11 +1535,11 @@ describe("store pure functions", () => {
   it("renames a project locally without changing its remote or folder names", () => {
     const state = makeState(makeThread());
 
-    const next = renameProjectLocally(state, ProjectId.makeUnsafe("project-1"), "dpcode");
+    const next = renameProjectLocally(state, ProjectId.makeUnsafe("project-1"), "local-alias");
 
     expect(next.projects[0]).toMatchObject({
-      name: "dpcode",
-      localName: "dpcode",
+      name: "local-alias",
+      localName: "local-alias",
       remoteName: "Project",
       folderName: "project",
     });
@@ -2687,7 +2687,7 @@ describe("store read model sync", () => {
     const aliasedState = renameProjectLocally(
       makeState(makeThread()),
       ProjectId.makeUnsafe("project-1"),
-      "dpcode",
+      "local-alias",
     );
 
     const next = syncServerReadModel(
@@ -2700,8 +2700,8 @@ describe("store read model sync", () => {
     );
 
     expect(next.projects[0]).toMatchObject({
-      name: "dpcode",
-      localName: "dpcode",
+      name: "local-alias",
+      localName: "local-alias",
       remoteName: "Project",
       folderName: "project",
     });
@@ -2728,7 +2728,7 @@ describe("store read model sync", () => {
       "jcode:renderer-state:v8",
       JSON.stringify({
         projectNamesByCwd: {
-          "/tmp/project": "dpcode",
+          "/tmp/project": "local-alias",
         },
       }),
     );
@@ -2743,8 +2743,8 @@ describe("store read model sync", () => {
         projects: [
           makeProject({
             id: projectId,
-            name: "dpcode",
-            localName: "dpcode",
+            name: "local-alias",
+            localName: "local-alias",
           }),
         ],
         threads: [makeThread()],
@@ -2810,12 +2810,12 @@ describe("store read model sync", () => {
         threadsHydrated: true,
       }));
 
-      freshStore.useStore.getState().renameProjectLocally(projectId, "dpcode");
+      freshStore.useStore.getState().renameProjectLocally(projectId, "local-alias");
 
       expect(setItem).toHaveBeenCalled();
       expect(JSON.parse(storage.get("jcode:renderer-state:v8") ?? "{}")).toMatchObject({
         projectNamesByCwd: {
-          "/tmp/project": "dpcode",
+        "/tmp/project": "local-alias",
         },
       });
     } finally {

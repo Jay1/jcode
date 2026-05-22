@@ -127,7 +127,7 @@ describe("wsNativeApi", () => {
     const listener = vi.fn();
     onServerWelcome(listener);
 
-    const payload = { cwd: "/tmp/workspace", homeDir: "/Users/tester", projectName: "t3-code" };
+    const payload = { cwd: "/tmp/workspace", homeDir: "/Users/tester", projectName: "jcode" };
     emitPush(WS_CHANNELS.serverWelcome, payload);
 
     expect(listener).toHaveBeenCalledTimes(1);
@@ -150,7 +150,7 @@ describe("wsNativeApi", () => {
     emitPush(WS_CHANNELS.serverWelcome, {
       cwd: "/tmp/workspace",
       homeDir: "/Users/tester",
-      projectName: "t3-code",
+      projectName: "jcode",
       bootstrapProjectId: ProjectId.makeUnsafe("project-1"),
       bootstrapThreadId: ThreadId.makeUnsafe("thread-1"),
     });
@@ -160,7 +160,7 @@ describe("wsNativeApi", () => {
       expect.objectContaining({
         cwd: "/tmp/workspace",
         homeDir: "/Users/tester",
-        projectName: "t3-code",
+        projectName: "jcode",
         bootstrapProjectId: "project-1",
         bootstrapThreadId: "thread-1",
       }),
@@ -182,7 +182,7 @@ describe("wsNativeApi", () => {
     emitPush(WS_CHANNELS.serverWelcome, {
       cwd: "/tmp/workspace",
       homeDir: "/Users/tester",
-      projectName: "t3-code",
+      projectName: "jcode",
     });
 
     expect(listener).toHaveBeenCalledTimes(2);
@@ -190,7 +190,7 @@ describe("wsNativeApi", () => {
       expect.objectContaining({
         cwd: "/tmp/workspace",
         homeDir: "/Users/tester",
-        projectName: "t3-code",
+        projectName: "jcode",
       }),
     );
   });
