@@ -68,6 +68,15 @@ jobs:
       - name: Build desktop pipeline
         run: bun run build:desktop
 
+      - name: Build desktop package smoke
+        run: |
+          bun run dist:desktop:artifact -- \
+            --platform linux \
+            --target AppImage \
+            --arch x64 \
+            --skip-build \
+            --output-dir /tmp/jcode-desktop-package-smoke
+
       - name: Verify preload bundle output
         run: |
           test -f apps/desktop/dist-electron/preload.js
