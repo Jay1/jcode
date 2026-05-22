@@ -145,6 +145,11 @@ export function deriveTerminalAssistantMessageIds(
   return new Set(lastAssistantMessageIdByResponseKey.values());
 }
 
+const groupedEntriesEqual = (
+  left: ReadonlyArray<WorkLogEntry>,
+  right: ReadonlyArray<WorkLogEntry>,
+) => left.length === right.length && left.every((entry, index) => entry === right[index]);
+
 // Derives transcript rows from timeline entries while preserving the current
 // t3code behavior of attaching trailing work groups to the adjacent assistant reply.
 export function deriveMessagesTimelineRows(input: {
@@ -162,11 +167,6 @@ export function deriveMessagesTimelineRows(input: {
   const durationStartByMessageId = computeMessageDurationStart(timelineMessages);
   const terminalAssistantMessageIds = deriveTerminalAssistantMessageIds(timelineMessages);
   let pendingWorkGroup: Extract<MessagesTimelineRow, { kind: "work" }> | null = null;
-
-  const groupedEntriesEqual = (
-    left: ReadonlyArray<WorkLogEntry>,
-    right: ReadonlyArray<WorkLogEntry>,
-  ) => left.length === right.length && left.every((entry, index) => entry === right[index]);
 
   const appendWorkEntriesToPreviousAssistant = (groupedEntries: WorkLogEntry[]): boolean => {
     const previousRow = nextRows.at(-1);
@@ -393,15 +393,6 @@ function workLogEntryArraysEqual(
   if (!left || !right) return false;
   if (left.length !== right.length) return false;
   return left.every((entry, index) => workLogEntryContentEqual(entry, right[index]!));
-}
-
-function shallowEqualEntryArray<T>(
-  left: ReadonlyArray<T> | undefined,
-  right: ReadonlyArray<T> | undefined,
-) {
-  if (left === right) return true;
-  if (!left || !right) return false;
-  return left.length === right.length && left.every((entry, index) => entry === right[index]);
 }
 
 function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean {

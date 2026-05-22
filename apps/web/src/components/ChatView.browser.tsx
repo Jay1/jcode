@@ -626,8 +626,7 @@ function createSnapshotWithActiveInlinePlan(): OrchestrationReadModel {
     ...snapshot,
     threads: snapshot.threads.map((thread) =>
       thread.id === THREAD_ID
-        ? {
-            ...thread,
+        ? Object.assign({}, thread, {
             latestTurn: {
               turnId: activeTurnId,
               state: "running",
@@ -675,15 +674,14 @@ function createSnapshotWithActiveInlinePlan(): OrchestrationReadModel {
               },
             ],
             session: thread.session
-              ? {
-                  ...thread.session,
+              ? Object.assign({}, thread.session, {
                   status: "running",
                   activeTurnId,
                   updatedAt: isoAt(1_003),
-                }
+                })
               : null,
             updatedAt: isoAt(1_003),
-          }
+          })
         : thread,
     ),
   };
@@ -697,8 +695,7 @@ function createSnapshotWithSettledInlinePlan(): OrchestrationReadModel {
     ...snapshot,
     threads: snapshot.threads.map((thread) =>
       thread.id === THREAD_ID
-        ? {
-            ...thread,
+        ? Object.assign({}, thread, {
             latestTurn: {
               turnId: activeTurnId,
               state: "completed",
@@ -722,15 +719,14 @@ function createSnapshotWithSettledInlinePlan(): OrchestrationReadModel {
               },
             ],
             session: thread.session
-              ? {
-                  ...thread.session,
+              ? Object.assign({}, thread.session, {
                   status: "ready",
                   activeTurnId: null,
                   updatedAt: isoAt(1_004),
-                }
+                })
               : null,
             updatedAt: isoAt(1_004),
-          }
+          })
         : thread,
     ),
   };
@@ -750,8 +746,7 @@ function createSnapshotWithInlineToolOverflow(options: {
     ...snapshot,
     threads: snapshot.threads.map((thread) =>
       thread.id === THREAD_ID
-        ? {
-            ...thread,
+        ? Object.assign({}, thread, {
             latestTurn: {
               turnId: activeTurnId,
               state: options.active ? "running" : "completed",
@@ -787,15 +782,14 @@ function createSnapshotWithInlineToolOverflow(options: {
               },
             ],
             session: thread.session
-              ? {
-                  ...thread.session,
+              ? Object.assign({}, thread.session, {
                   status: options.active ? "running" : "ready",
                   activeTurnId: options.active ? activeTurnId : null,
                   updatedAt: options.active ? isoAt(1_107) : isoAt(1_108),
-                }
+                })
               : null,
             updatedAt: options.active ? isoAt(1_107) : isoAt(1_109),
-          }
+          })
         : thread,
     ),
   };
@@ -3308,17 +3302,15 @@ describe("ChatView timeline estimator parity (full app)", () => {
         ...settledSnapshot,
         threads: settledSnapshot.threads.map((thread) =>
           thread.id === THREAD_ID
-            ? {
-                ...thread,
+            ? Object.assign({}, thread, {
                 messages: thread.messages.map((message) =>
                   message.role === "assistant"
-                    ? {
-                        ...message,
+                    ? Object.assign({}, message, {
                         streaming: true,
-                      }
+                      })
                     : message,
                 ),
-              }
+              })
             : thread,
         ),
       },

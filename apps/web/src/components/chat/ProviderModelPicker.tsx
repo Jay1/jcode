@@ -245,7 +245,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   const visibleAvailableProviderOptions = useMemo(
     () =>
       filterProviderOptionsByVisibility(
-        [...AVAILABLE_PROVIDER_OPTIONS].sort((left, right) =>
+        AVAILABLE_PROVIDER_OPTIONS.toSorted((left, right) =>
           compareProvidersByOrder(providerOrder ?? [], left.value, right.value),
         ),
         hiddenProviderSet,
@@ -256,7 +256,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   const visibleUnavailableProviderOptions = useMemo(
     () =>
       filterProviderOptionsByVisibility(
-        [...UNAVAILABLE_PROVIDER_OPTIONS].sort((left, right) =>
+        UNAVAILABLE_PROVIDER_OPTIONS.toSorted((left, right) =>
           compareProvidersByOrder(providerOrder ?? [], left.value, right.value),
         ),
         hiddenProviderSet,

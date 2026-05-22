@@ -94,13 +94,15 @@ export function buildThreadHandoffImportedMessages(
 export function buildThreadHandoffImportedActivities(
   thread: Pick<Thread, "activities">,
 ): ReadonlyArray<OrchestrationThreadActivity> {
-  return thread.activities.filter(isImportableThreadActivity).map((activity) => {
-    const { sequence: _sequence, ...rest } = activity;
-    return {
-      ...rest,
-      id: EventId.makeUnsafe(randomUUID()),
-    };
-  });
+  return thread.activities.filter(isImportableThreadActivity).map((activity) => ({
+    id: EventId.makeUnsafe(randomUUID()),
+    tone: activity.tone,
+    kind: activity.kind,
+    summary: activity.summary,
+    payload: activity.payload,
+    turnId: activity.turnId,
+    createdAt: activity.createdAt,
+  }));
 }
 
 // Used by: ChatView fork command gating.
