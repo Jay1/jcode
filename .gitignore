@@ -16,9 +16,11 @@ release/
 /.dpcode/electron-dev
 /.dpcode/backups
 .idea/
+.vscode/
 apps/web/.playwright
 apps/web/playwright-report
 .playwright-cli/
+.playwright-mcp/
 coverage/
 apps/*/coverage/
 packages/*/coverage/
@@ -31,6 +33,11 @@ __screenshots__/
 /.tmp/
 /~/
 /.brainstorm/
+/.docs/
+/.plans/
+/.sisyphus/
+/AGENTS.md
+/CLAUDE.md
 /bootstrap.js
 /preload.js
 /browser-sidebar-comment-preload.js
