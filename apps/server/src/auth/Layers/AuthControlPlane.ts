@@ -1,4 +1,4 @@
-import type { AuthClientSession, AuthPairingLink } from "@jcode/contracts";
+import type { AuthClientSession } from "@jcode/contracts";
 import { DateTime, Effect, Layer } from "effect";
 
 import { BootstrapCredentialService } from "../Services/BootstrapCredentialService";
@@ -58,19 +58,7 @@ export const makeAuthControlPlane = Effect.gen(function* () {
         pairingLinks
           .filter((pairingLink) => (input?.role ? pairingLink.role === input.role : true))
           .filter((pairingLink) => !input?.excludeSubjects?.includes(pairingLink.subject))
-          .map((pairingLink) =>
-            pairingLink.label
-              ? ({ ...pairingLink, label: pairingLink.label } satisfies AuthPairingLink)
-              : ({
-                  id: pairingLink.id,
-                  credential: pairingLink.credential,
-                  role: pairingLink.role,
-                  subject: pairingLink.subject,
-                  createdAt: pairingLink.createdAt,
-                  expiresAt: pairingLink.expiresAt,
-                } satisfies AuthPairingLink),
-          )
-          .sort(
+          .toSorted(
             (left, right) =>
               DateTime.toEpochMillis(right.createdAt) - DateTime.toEpochMillis(left.createdAt),
           ),
@@ -118,7 +106,7 @@ export const makeAuthControlPlane = Effect.gen(function* () {
 
   const listSessions: AuthControlPlaneShape["listSessions"] = () =>
     sessions.listActive().pipe(
-      Effect.map((activeSessions) => [...activeSessions].sort(bySessionPriority)),
+      Effect.map((activeSessions) => activeSessions.toSorted(bySessionPriority)),
       Effect.mapError(toAuthControlPlaneError("Failed to list sessions.")),
     );
 

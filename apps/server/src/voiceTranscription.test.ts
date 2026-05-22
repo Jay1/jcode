@@ -32,9 +32,10 @@ describe("transcribeVoiceWithChatGptSession", () => {
       fetchImpl,
     });
 
-    const [url, init] = vi.mocked(fetchImpl).mock.calls[0] ?? [];
+    const [url, init] = vi.mocked(fetchImpl).mock.calls[0]!;
     expect(url).toBe("https://chatgpt.com/backend-api/transcribe");
-    expect((init?.body as FormData).get("model")).toBeNull();
+    if (!init) throw new Error("Expected fetch init.");
+    expect((init.body as FormData).get("model")).toBeNull();
   });
 
   it("refreshes the ChatGPT session once when the upload is unauthorized", async () => {
