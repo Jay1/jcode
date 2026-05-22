@@ -1,17 +1,17 @@
 # ADR 0001: JCode Is A Local Coding-Agent Cockpit
 
-| Field | Value |
-| --- | --- |
-| Status | Accepted |
-| Type | Architecture decision record |
-| Owner | Engineering |
-| Audience | Maintainers, reviewers, and automation agents |
-| Scope | Product/runtime boundary for JCode as a local cockpit rather than a hosted SaaS product |
-| Canonical path | `docs/adr/0001-local-coding-agent-cockpit.md` |
-| Last reviewed | 2026-05-22 |
-| Review cadence | Event-driven; review if JCode becomes a public hosted product or changes runtime trust boundaries |
-| Source of truth | `README.md`, `docs/jcode-operating-model.md`, `apps/server`, `apps/web`, `apps/desktop` |
-| Verification | Confirm runtime/defaults remain local-first and publishable |
+| Field           | Value                                                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------- |
+| Status          | Accepted                                                                                          |
+| Type            | Architecture decision record                                                                      |
+| Owner           | Engineering                                                                                       |
+| Audience        | Maintainers, reviewers, and automation agents                                                     |
+| Scope           | Product/runtime boundary for JCode as a local cockpit rather than a hosted SaaS product           |
+| Canonical path  | `docs/adr/0001-local-coding-agent-cockpit.md`                                                     |
+| Last reviewed   | 2026-05-22                                                                                        |
+| Review cadence  | Event-driven; review if JCode becomes a public hosted product or changes runtime trust boundaries |
+| Source of truth | `README.md`, `docs/jcode-operating-model.md`, `apps/server`, `apps/web`, `apps/desktop`           |
+| Verification    | Confirm runtime/defaults remain local-first and publishable                                       |
 
 ## Context
 

@@ -1,17 +1,17 @@
 # Docs Agent Guide
 
-| Field | Value |
-| --- | --- |
-| Status | Active |
-| Type | Documentation subtree guidance |
-| Owner | Engineering |
-| Audience | Documentation maintainers, reviewers, and automation agents |
-| Scope | Structure, metadata, source-of-truth rules, verification expectations, and anti-patterns for `docs/` work |
-| Canonical path | `docs/AGENTS.md` |
-| Last reviewed | 2026-05-22 |
-| Review cadence | Event-driven; review when docs structure or repo workflow changes |
-| Source of truth | `docs/README.md`, category indexes, runtime source, package scripts, and root `AGENTS.md` |
-| Verification | `git diff --check` plus source cross-checks for referenced commands, paths, and runtime behavior |
+| Field           | Value                                                                                                     |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| Status          | Active                                                                                                    |
+| Type            | Documentation subtree guidance                                                                            |
+| Owner           | Engineering                                                                                               |
+| Audience        | Documentation maintainers, reviewers, and automation agents                                               |
+| Scope           | Structure, metadata, source-of-truth rules, verification expectations, and anti-patterns for `docs/` work |
+| Canonical path  | `docs/AGENTS.md`                                                                                          |
+| Last reviewed   | 2026-05-22                                                                                                |
+| Review cadence  | Event-driven; review when docs structure or repo workflow changes                                         |
+| Source of truth | `docs/README.md`, category indexes, runtime source, package scripts, and root `AGENTS.md`                 |
+| Verification    | `git diff --check` plus source cross-checks for referenced commands, paths, and runtime behavior          |
 
 ## Rules
 

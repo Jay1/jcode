@@ -1,18 +1,18 @@
 # JCode Documentation Hub
 
-| Field | Value |
-| --- | --- |
-| Status | Active |
-| Type | Documentation portal and governance contract |
-| Owner | Engineering |
-| Audience | Maintainers, reviewers, operators, and automation agents |
-| Scope | JCode architecture, operations, security posture, testing strategy, governance, and decision records |
-| Canonical path | `docs/README.md` |
-| Last reviewed | 2026-05-22 |
-| Review cadence | Event-driven; review when repo structure, runtime architecture, release process, or agent workflow changes |
+| Field           | Value                                                                                                            |
+| --------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Status          | Active                                                                                                           |
+| Type            | Documentation portal and governance contract                                                                     |
+| Owner           | Engineering                                                                                                      |
+| Audience        | Maintainers, reviewers, operators, and automation agents                                                         |
+| Scope           | JCode architecture, operations, security posture, testing strategy, governance, and decision records             |
+| Canonical path  | `docs/README.md`                                                                                                 |
+| Last reviewed   | 2026-05-22                                                                                                       |
+| Review cadence  | Event-driven; review when repo structure, runtime architecture, release process, or agent workflow changes       |
 | Source of truth | Runtime source, tests, package scripts, GitHub workflows, `AGENTS.md`, accepted ADRs, and documents listed below |
-| Verification | Source cross-checks plus focused commands named by changed documents |
-| Export posture | Portable Markdown; suitable for future wiki, Notion, Obsidian, ITGlue, or Confluence migration |
+| Verification    | Source cross-checks plus focused commands named by changed documents                                             |
+| Export posture  | Portable Markdown; suitable for future wiki, Notion, Obsidian, ITGlue, or Confluence migration                   |
 
 ## Purpose
 
@@ -39,25 +39,25 @@ When sources disagree, use this order before changing code or docs:
 
 ## Start Here
 
-| If you are doing this | Start here | Then check |
-| --- | --- | --- |
-| Understanding the system | [Architecture](architecture/README.md) | [System Overview](architecture/system-overview.md), [Runtime Boundaries](architecture/runtime-boundaries.md) |
-| Running or debugging locally | [Runbooks](runbooks/README.md) | [Local Development](runbooks/local-development.md), [CI Operations](runbooks/ci-operations.md) |
-| Changing provider/runtime behavior | [Provider Runtime Architecture](architecture/provider-runtime.md) | `apps/server/AGENTS.md`, [Testing Strategy](testing/strategy.md) |
-| Preparing a release | [Release Operations](runbooks/release-operations.md) | [CI Operations](runbooks/ci-operations.md), [Security Baseline](security/baseline.md) |
-| Reviewing repo hygiene | [Governance](governance/README.md) | [Repo Governance](governance/repo-governance.md), [Docs Agent Guide](AGENTS.md) |
+| If you are doing this              | Start here                                                        | Then check                                                                                                   |
+| ---------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Understanding the system           | [Architecture](architecture/README.md)                            | [System Overview](architecture/system-overview.md), [Runtime Boundaries](architecture/runtime-boundaries.md) |
+| Running or debugging locally       | [Runbooks](runbooks/README.md)                                    | [Local Development](runbooks/local-development.md), [CI Operations](runbooks/ci-operations.md)               |
+| Changing provider/runtime behavior | [Provider Runtime Architecture](architecture/provider-runtime.md) | `apps/server/AGENTS.md`, [Testing Strategy](testing/strategy.md)                                             |
+| Preparing a release                | [Release Operations](runbooks/release-operations.md)              | [CI Operations](runbooks/ci-operations.md), [Security Baseline](security/baseline.md)                        |
+| Reviewing repo hygiene             | [Governance](governance/README.md)                                | [Repo Governance](governance/repo-governance.md), [Docs Agent Guide](AGENTS.md)                              |
 
 ## Category Index
 
-| Category | Use for |
-| --- | --- |
-| [Architecture](architecture/README.md) | System shape, runtime boundaries, provider architecture, and durable design context |
-| [ADR](adr/README.md) | Accepted architecture decisions and their consequences |
-| [API and Runtime Contracts](api/README.md) | Runtime event, RPC, WebSocket, and desktop bridge ownership |
-| [Governance](governance/README.md) | Branch posture, attribution, contribution policy, and publishable defaults |
-| [Runbooks](runbooks/README.md) | Repeatable local development, CI, release, and troubleshooting procedures |
-| [Security](security/README.md) | Local-first security posture, secrets hygiene, and security review expectations |
-| [Testing](testing/README.md) | Focused verification strategy, browser/manual checks, and CI gate mapping |
+| Category                                   | Use for                                                                             |
+| ------------------------------------------ | ----------------------------------------------------------------------------------- |
+| [Architecture](architecture/README.md)     | System shape, runtime boundaries, provider architecture, and durable design context |
+| [ADR](adr/README.md)                       | Accepted architecture decisions and their consequences                              |
+| [API and Runtime Contracts](api/README.md) | Runtime event, RPC, WebSocket, and desktop bridge ownership                         |
+| [Governance](governance/README.md)         | Branch posture, attribution, contribution policy, and publishable defaults          |
+| [Runbooks](runbooks/README.md)             | Repeatable local development, CI, release, and troubleshooting procedures           |
+| [Security](security/README.md)             | Local-first security posture, secrets hygiene, and security review expectations     |
+| [Testing](testing/README.md)               | Focused verification strategy, browser/manual checks, and CI gate mapping           |
 
 ## Structure
 

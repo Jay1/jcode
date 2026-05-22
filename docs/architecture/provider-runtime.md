@@ -1,17 +1,17 @@
 # Provider Runtime Architecture
 
-| Field | Value |
-| --- | --- |
-| Status | Active |
-| Type | Architecture reference |
-| Owner | Engineering |
-| Audience | Engineers and automation agents changing coding-agent integrations |
-| Scope | Provider adapter boundaries, OpenCode runtime health, event projection, and completion/error invariants |
-| Canonical path | `docs/architecture/provider-runtime.md` |
-| Last reviewed | 2026-05-22 |
-| Review cadence | Event-driven; review when provider adapters, runtime health, event ingestion, or turn lifecycle behavior changes |
+| Field           | Value                                                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Status          | Active                                                                                                                   |
+| Type            | Architecture reference                                                                                                   |
+| Owner           | Engineering                                                                                                              |
+| Audience        | Engineers and automation agents changing coding-agent integrations                                                       |
+| Scope           | Provider adapter boundaries, OpenCode runtime health, event projection, and completion/error invariants                  |
+| Canonical path  | `docs/architecture/provider-runtime.md`                                                                                  |
+| Last reviewed   | 2026-05-22                                                                                                               |
+| Review cadence  | Event-driven; review when provider adapters, runtime health, event ingestion, or turn lifecycle behavior changes         |
 | Source of truth | `apps/server/src/provider`, `apps/server/src/orchestration`, `packages/contracts/src/providerRuntime.ts`, provider tests |
-| Verification | Focused adapter/runtime tests plus Aikido scan for modified first-party server code |
+| Verification    | Focused adapter/runtime tests plus Aikido scan for modified first-party server code                                      |
 
 ## Purpose
 
@@ -29,12 +29,12 @@ Provider process or external provider server
 
 ## Important Boundaries
 
-| Area | Source |
-| --- | --- |
-| OpenCode adapter | `apps/server/src/provider/Layers/OpenCodeAdapter.ts` |
-| Provider health/update advisories | `apps/server/src/provider/Layers/ProviderHealth.ts` |
-| Runtime event contracts | `packages/contracts/src/providerRuntime.ts` |
-| Ingestion/projection | `apps/server/src/orchestration` |
+| Area                              | Source                                               |
+| --------------------------------- | ---------------------------------------------------- |
+| OpenCode adapter                  | `apps/server/src/provider/Layers/OpenCodeAdapter.ts` |
+| Provider health/update advisories | `apps/server/src/provider/Layers/ProviderHealth.ts`  |
+| Runtime event contracts           | `packages/contracts/src/providerRuntime.ts`          |
+| Ingestion/projection              | `apps/server/src/orchestration`                      |
 
 ## Invariants
 
