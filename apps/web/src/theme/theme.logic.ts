@@ -666,7 +666,6 @@ export function buildThemeCssVariables(
     options?.electron === true && !pack.theme.opaqueWindows ? "translucent" : "opaque";
   const warningColor = variant === "dark" ? "#f5b44a" : "#d97706";
   const sidebarSurfaceUnder = readCodexVariable("--color-background-surface-under");
-  const sidebarRaisedSurface = readCodexVariable("--color-background-elevated-primary");
   const composerFocusBorder = buildComposerFocusBorder(
     pack,
     variant,

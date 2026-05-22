@@ -822,7 +822,7 @@ export class DesktopBrowserManager {
       return await webContents.debugger.sendCommand(input.method, input.params ?? {});
     } catch (error) {
       if (error instanceof Error) {
-        throw new Error(`CDP ${input.method} failed: ${error.message}`);
+        throw new Error(`CDP ${input.method} failed: ${error.message}`, { cause: error });
       }
       throw error;
     }
@@ -953,7 +953,7 @@ export class DesktopBrowserManager {
     const inactiveRuntimeTabIds = state.tabs
       .filter((tab) => tab.id !== activeTabId)
       .filter((tab) => this.runtimes.has(buildRuntimeKey(threadId, tab.id)))
-      .sort((left, right) => {
+      .toSorted((left, right) => {
         const leftKey = buildRuntimeKey(threadId, left.id);
         const rightKey = buildRuntimeKey(threadId, right.id);
         return (
