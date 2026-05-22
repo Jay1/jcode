@@ -17,13 +17,12 @@ Treat upstream projects as source material:
 - T3Code is a parts bin for specific features or fixes.
 - DPCode is also a parts bin after the baseline, not a boss.
 
-Do not blindly merge upstream work into the stable branch. Use a canary branch
-or service, test it, then promote only the useful pieces.
+Do not blindly merge upstream work into the stable branch. Review upstream work
+on short-lived feature branches, test it, then keep only the useful pieces.
 
 ## Branch Strategy
 
 - `main`: stable JCode source.
-- `canary`: upstream pulls, experiments, and risky upgrades.
 - `feature/*`: bounded changes.
 
 Tag known-good deployable points before risky changes:

@@ -3,14 +3,7 @@
 These notes document the intended shape for a local JCode deployment without
 committing Jay-specific runtime state as application defaults.
 
-## Current Battlestation Reality
-
-The live battlestation service still runs from the working DPCode canary path
-until JCode has its own build/deploy pass:
-
-```text
-/home/jay/code/dpcode-canary
-```
+## Source Path
 
 The target JCode source path is:
 
@@ -43,7 +36,7 @@ For a public/default setup, app auth should remain enabled.
 Before switching the live service from DPCode to JCode:
 
 1. Build JCode from `/home/jay/code/jcode`.
-2. Start it on a canary port with a separate state directory.
+2. Start it locally with a separate state directory.
 3. Verify project list, thread open, agent start, and restart recovery.
 4. Tag the known-good state.
 5. Switch the service path and keep the previous DPCode service path as rollback.
