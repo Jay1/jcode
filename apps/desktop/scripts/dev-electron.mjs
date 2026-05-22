@@ -111,14 +111,14 @@ function cleanupStaleComputerUseApps() {
   }
 }
 
-function warnIfAlphaAppRunning() {
+function warnIfProdAppRunning() {
   if (process.platform === "win32") {
     return;
   }
 
   const result = spawnSync(
     "pgrep",
-    ["-fal", "/Applications/JCode \\(Alpha\\)\\.app/Contents/MacOS/JCode \\(Alpha\\)"],
+    ["-fal", "/Applications/JCode\\.app/Contents/MacOS/JCode"],
     { encoding: "utf8" },
   );
   const output = typeof result.stdout === "string" ? result.stdout.trim() : "";
@@ -127,7 +127,7 @@ function warnIfAlphaAppRunning() {
   }
 
   console.error(
-    "[desktop-dev] JCode (Alpha) is still running. Close it before testing voice in JCode (Dev), or you may be looking at the wrong app/runtime.",
+    "[desktop-dev] JCode is still running. Close it before testing voice in JCode (Dev), or you may be looking at the wrong app/runtime.",
   );
   console.error(output);
 }
@@ -286,7 +286,7 @@ async function shutdown(exitCode) {
 startWatchers();
 cleanupStaleDevApps();
 cleanupStaleComputerUseApps();
-warnIfAlphaAppRunning();
+warnIfProdAppRunning();
 startApp();
 
 process.once("SIGINT", () => {

@@ -17,7 +17,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
-const APP_DISPLAY_NAME = isDevelopment ? "JCode (Dev)" : "JCode (Alpha)";
+const APP_DISPLAY_NAME = isDevelopment ? "JCode (Dev)" : "JCode";
 const APP_BUNDLE_ID = isDevelopment ? "com.jcode.dev" : "com.jcode";
 const LAUNCHER_VERSION = 2;
 const MICROPHONE_USAGE_DESCRIPTION =

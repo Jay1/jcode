@@ -129,7 +129,7 @@ const STATE_DIR = Path.join(BASE_DIR, "userdata");
 const DESKTOP_SCHEME = "t3";
 const ROOT_DIR = Path.resolve(__dirname, "../../..");
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
-const APP_DISPLAY_NAME = isDevelopment ? "JCode (Dev)" : "JCode (Alpha)";
+const APP_DISPLAY_NAME = isDevelopment ? "JCode (Dev)" : "JCode";
 const APP_USER_MODEL_ID = isDevelopment ? "com.jcode.dev" : "com.jcode";
 const COMMIT_HASH_PATTERN = /^[0-9a-f]{7,40}$/i;
 const COMMIT_HASH_DISPLAY_LENGTH = 12;
@@ -1064,7 +1064,7 @@ function showDesktopNotification(input: {
  *
  * Electron derives the default userData path from `productName` in
  * package.json, which currently produces directories with spaces and
- * parentheses (e.g. `~/.config/JCode (Alpha)` on Linux). This is
+ * parentheses (e.g. `~/.config/JCode` on Linux). This is
  * unfriendly for shell usage and violates Linux naming conventions.
  *
  * We override it to a clean lowercase JCode name. Legacy T3 Code/early
