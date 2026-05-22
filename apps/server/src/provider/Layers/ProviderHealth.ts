@@ -1290,6 +1290,25 @@ export const makeCheckOpenCodeProviderStatus = (
 
 export const checkOpenCodeProviderStatus = makeCheckOpenCodeProviderStatus();
 
+function trimToNull(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+export function isExternalOpenCodeRuntimeActive(settings: ServerSettings): boolean {
+  const providerSettings = settings.providers.opencode;
+  const requestedProfileId = trimToNull(providerSettings.activeRuntimeProfileId);
+  const configuredProfile = requestedProfileId
+    ? providerSettings.runtimeProfiles.find((profile) => profile.id === requestedProfileId)
+    : providerSettings.runtimeProfiles[0];
+
+  if (configuredProfile) {
+    return configuredProfile.mode === "external" || configuredProfile.mode === "remote";
+  }
+
+  return trimToNull(providerSettings.serverUrl) !== null;
+}
+
 // ── Kilo health check ───────────────────────────────────────────────
 
 export const makeCheckKiloProviderStatus = (
@@ -1613,6 +1632,15 @@ export const ProviderHealthLive = Layer.effect(
             updateExecutable: getProviderBinaryPath(provider, settings) || "agent",
             updateArgs: ["update"],
             updateLockKey: "cursor-agent",
+          });
+        }
+        if (provider === "opencode" && isExternalOpenCodeRuntimeActive(settings)) {
+          return makeProviderMaintenanceCapabilities({
+            provider,
+            packageName: null,
+            updateExecutable: null,
+            updateArgs: [],
+            updateLockKey: null,
           });
         }
         const definition = PACKAGE_MANAGED_PROVIDER_UPDATES[provider];

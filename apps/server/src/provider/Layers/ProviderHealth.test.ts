@@ -1,5 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, it, assert } from "@effect/vitest";
+import { DEFAULT_SERVER_SETTINGS } from "@jcode/contracts";
 import { Effect, FileSystem, Layer, Path, Sink, Stream } from "effect";
 import * as PlatformError from "effect/PlatformError";
 import { ChildProcessSpawner } from "effect/unstable/process";
@@ -10,6 +11,7 @@ import {
   checkCursorProviderStatus,
   checkOpenCodeProviderStatus,
   hasCustomModelProvider,
+  isExternalOpenCodeRuntimeActive,
   makeCheckClaudeProviderStatus,
   makeCheckCodexProviderStatus,
   makeCheckCursorProviderStatus,
@@ -700,6 +702,64 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
         );
       }).pipe(Effect.provide(failingSpawnerLayer("spawn opencode ENOENT"))),
     );
+  });
+
+  describe("isExternalOpenCodeRuntimeActive", () => {
+    it("does not treat the default OpenCode CLI runtime as external", () => {
+      assert.strictEqual(isExternalOpenCodeRuntimeActive(DEFAULT_SERVER_SETTINGS), false);
+    });
+
+    it("detects an active external OpenCode runtime profile", () => {
+      assert.strictEqual(
+        isExternalOpenCodeRuntimeActive({
+          ...DEFAULT_SERVER_SETTINGS,
+          providers: {
+            ...DEFAULT_SERVER_SETTINGS.providers,
+            opencode: {
+              ...DEFAULT_SERVER_SETTINGS.providers.opencode,
+              activeRuntimeProfileId: "external",
+              runtimeProfiles: [
+                {
+                  id: "external",
+                  label: "Jay Battlestation OpenCode",
+                  provider: "opencode",
+                  mode: "external",
+                  serverUrl: "http://127.0.0.1:4096",
+                  configMode: "inherit",
+                  skillRoots: [],
+                  pluginRoots: [],
+                  requiredCommands: [],
+                  requiredSkills: [],
+                  requiredPlugins: [],
+                  requiredAgents: [],
+                  requiredModels: [],
+                  requiredEnv: [],
+                  requirements: [],
+                  capabilityPolicy: "warn",
+                },
+              ],
+            },
+          },
+        }),
+        true,
+      );
+    });
+
+    it("detects a legacy external OpenCode server URL", () => {
+      assert.strictEqual(
+        isExternalOpenCodeRuntimeActive({
+          ...DEFAULT_SERVER_SETTINGS,
+          providers: {
+            ...DEFAULT_SERVER_SETTINGS.providers,
+            opencode: {
+              ...DEFAULT_SERVER_SETTINGS.providers.opencode,
+              serverUrl: "http://127.0.0.1:4096",
+            },
+          },
+        }),
+        true,
+      );
+    });
   });
 
   describe("checkKiloProviderStatus", () => {
