@@ -150,12 +150,18 @@ export class DesktopServerExposureStore {
     readonly activeMode: DesktopServerExposureMode;
     readonly networkInterfaces?: DesktopNetworkInterfaces;
   }): DesktopServerExposureState {
-    return resolveDesktopServerExposureState({
+    const stateInput: Parameters<typeof resolveDesktopServerExposureState>[0] = {
       mode: this.readMode(),
       activeMode: input.activeMode,
       port: input.port,
-      networkInterfaces: input.networkInterfaces,
-    });
+    };
+    if (input.networkInterfaces !== undefined) {
+      return resolveDesktopServerExposureState({
+        ...stateInput,
+        networkInterfaces: input.networkInterfaces,
+      });
+    }
+    return resolveDesktopServerExposureState(stateInput);
   }
 
   getAdvertisedEndpoints(input: {
