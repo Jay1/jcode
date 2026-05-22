@@ -326,19 +326,18 @@ export type OpenCodeRuntimeHealthStatus = typeof OpenCodeRuntimeHealthStatus.Typ
 export const OpenCodeRuntimeCapabilityRequirement = Schema.Struct({
   kind: Schema.Literals(["command", "skill", "plugin", "agent", "model", "env", "path"]),
   name: TrimmedNonEmptyString,
-  severity: OpenCodeRuntimeMismatchSeverity.pipe(Schema.withDecodingDefault(() => "error" as const)),
+  severity: OpenCodeRuntimeMismatchSeverity.pipe(
+    Schema.withDecodingDefault(() => "error" as const),
+  ),
 });
-export type OpenCodeRuntimeCapabilityRequirement =
-  typeof OpenCodeRuntimeCapabilityRequirement.Type;
+export type OpenCodeRuntimeCapabilityRequirement = typeof OpenCodeRuntimeCapabilityRequirement.Type;
 
 export const OpenCodeRuntimeProfile = Schema.Struct({
   id: TrimmedNonEmptyString,
   label: TrimmedNonEmptyString,
   provider: Schema.Literal("opencode").pipe(Schema.withDecodingDefault(() => "opencode" as const)),
   mode: ProviderRuntimeMode,
-  configMode: OpenCodeRuntimeConfigMode.pipe(
-    Schema.withDecodingDefault(() => "inherit" as const),
-  ),
+  configMode: OpenCodeRuntimeConfigMode.pipe(Schema.withDecodingDefault(() => "inherit" as const)),
   serverUrl: Schema.optional(TrimmedNonEmptyString),
   binaryPath: Schema.optional(TrimmedNonEmptyString),
   cwdDefault: Schema.optional(TrimmedNonEmptyString),

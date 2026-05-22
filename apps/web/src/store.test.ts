@@ -2815,7 +2815,7 @@ describe("store read model sync", () => {
       expect(setItem).toHaveBeenCalled();
       expect(JSON.parse(storage.get("jcode:renderer-state:v8") ?? "{}")).toMatchObject({
         projectNamesByCwd: {
-        "/tmp/project": "local-alias",
+          "/tmp/project": "local-alias",
         },
       });
     } finally {

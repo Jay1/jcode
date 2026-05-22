@@ -73,7 +73,10 @@ async function fetchRemoteJson<T>(input: {
 
   if (!response.ok) {
     throw new RemoteAuthHttpError(
-      await readRemoteAuthErrorMessage(response, `Remote auth request failed (${response.status}).`),
+      await readRemoteAuthErrorMessage(
+        response,
+        `Remote auth request failed (${response.status}).`,
+      ),
       response.status,
     );
   }

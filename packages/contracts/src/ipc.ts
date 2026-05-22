@@ -289,9 +289,7 @@ export interface DesktopBridge {
   getWsUrl: () => string | null;
   getLocalEnvironmentBootstrap?: () => Promise<DesktopLocalEnvironmentBootstrap | null>;
   getServerExposureState?: () => Promise<DesktopServerExposureState>;
-  setServerExposureMode?: (
-    mode: DesktopServerExposureMode,
-  ) => Promise<DesktopServerExposureState>;
+  setServerExposureMode?: (mode: DesktopServerExposureMode) => Promise<DesktopServerExposureState>;
   getAdvertisedEndpoints?: () => Promise<ReadonlyArray<DesktopAdvertisedEndpoint>>;
   connectionSecrets?: {
     read: (profileId: string) => Promise<string | null>;

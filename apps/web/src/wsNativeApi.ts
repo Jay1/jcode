@@ -131,7 +131,9 @@ async function requestAuthJson<T>(
   const hasBody = options.body !== undefined;
   const activeProfileId = readActiveSavedConnectionProfileId();
   const activeProfile = activeProfileId ? readSavedConnectionProfile(activeProfileId) : null;
-  const bearerToken = activeProfileId ? await readSavedConnectionSecretAsync(activeProfileId) : null;
+  const bearerToken = activeProfileId
+    ? await readSavedConnectionSecretAsync(activeProfileId)
+    : null;
   const remoteUrl = activeProfile ? new URL(path, activeProfile.httpBaseUrl).toString() : path;
   const response = await fetch(remoteUrl, {
     method: options.method ?? "GET",

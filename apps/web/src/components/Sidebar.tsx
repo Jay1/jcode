@@ -1510,9 +1510,7 @@ export default function Sidebar() {
       const latestThread = sortThreadsForSidebar(
         snapshot.threads
           .filter(
-            (thread) =>
-              thread.projectId === projectId &&
-              (thread.archivedAt ?? null) === null,
+            (thread) => thread.projectId === projectId && (thread.archivedAt ?? null) === null,
           )
           .map((thread) => ({
             id: thread.id,
@@ -1553,9 +1551,7 @@ export default function Sidebar() {
       const latestThread = sortThreadsForSidebar(
         snapshot.threads
           .filter(
-            (thread) =>
-              thread.projectId === projectId &&
-              (thread.archivedAt ?? null) === null,
+            (thread) => thread.projectId === projectId && (thread.archivedAt ?? null) === null,
           )
           .map((thread) => ({
             id: thread.id,
@@ -1676,7 +1672,11 @@ export default function Sidebar() {
 
       return openExistingProjectFromSnapshot(project.id, snapshot);
     },
-    [openExistingProjectFromSnapshot, syncServerShellSnapshot, waitForProjectWorkspaceRootInSnapshot],
+    [
+      openExistingProjectFromSnapshot,
+      syncServerShellSnapshot,
+      waitForProjectWorkspaceRootInSnapshot,
+    ],
   );
 
   const handleOpenProjectFromSearch = useCallback(

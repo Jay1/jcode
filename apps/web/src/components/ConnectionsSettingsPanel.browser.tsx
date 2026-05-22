@@ -122,9 +122,7 @@ describe("ConnectionsSettingsPanel", () => {
         label: "In-app pairing",
       });
       expect(document.body.textContent).toContain("PAIR-CODE");
-      expect(document.body.textContent).toContain(
-        "http://192.168.1.44:58090/pair#token=PAIR-CODE",
-      );
+      expect(document.body.textContent).toContain("http://192.168.1.44:58090/pair#token=PAIR-CODE");
     });
 
     await screen.unmount();

@@ -40,11 +40,14 @@ describe("remoteAuthApi", () => {
       }),
     ).resolves.toMatchObject({ sessionToken: "session-token" });
 
-    expect(fetchMock).toHaveBeenCalledWith("https://backend.example.com/api/auth/bootstrap/bearer", {
-      body: JSON.stringify({ credential: "PAIRCODE" }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://backend.example.com/api/auth/bootstrap/bearer",
+      {
+        body: JSON.stringify({ credential: "PAIRCODE" }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      },
+    );
   });
 
   it("fetches session state with bearer authorization", async () => {

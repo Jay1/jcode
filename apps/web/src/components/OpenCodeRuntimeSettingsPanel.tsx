@@ -105,7 +105,11 @@ export function OpenCodeRuntimeSettingsPanel() {
         <div className="mt-3 space-y-1 border-t border-border/70 pt-3">
           {health.mismatches.slice(0, 5).map((mismatch) => (
             <div key={mismatch.id} className="text-xs text-muted-foreground">
-              <span className={statusClassName(mismatch.severity === "blocking" ? "unreachable" : "degraded")}>
+              <span
+                className={statusClassName(
+                  mismatch.severity === "blocking" ? "unreachable" : "degraded",
+                )}
+              >
                 {mismatch.severity}
               </span>
               <span> - {mismatch.message}</span>

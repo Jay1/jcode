@@ -21,7 +21,9 @@ async function bootstrapSameOrigin(credential: string): Promise<void> {
     body: JSON.stringify({ credential }),
   });
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as { readonly error?: unknown } | null;
+    const payload = (await response.json().catch(() => null)) as {
+      readonly error?: unknown;
+    } | null;
     throw new Error(
       typeof payload?.error === "string"
         ? payload.error

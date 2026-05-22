@@ -45,11 +45,8 @@ function readDocument(): SavedConnectionsDocument {
     }
     return {
       version: 1,
-      profiles: parsed.profiles.flatMap((profile) =>
-        isStoredProfile(profile) ? [profile] : [],
-      ),
-      activeProfileId:
-        typeof parsed.activeProfileId === "string" ? parsed.activeProfileId : null,
+      profiles: parsed.profiles.flatMap((profile) => (isStoredProfile(profile) ? [profile] : [])),
+      activeProfileId: typeof parsed.activeProfileId === "string" ? parsed.activeProfileId : null,
     };
   } catch {
     return { version: 1, profiles: [], activeProfileId: null };

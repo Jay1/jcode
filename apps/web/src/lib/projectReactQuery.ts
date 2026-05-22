@@ -1,7 +1,4 @@
-import type {
-  ProjectSearchEntriesResult,
-  ProjectSearchLocalEntriesResult,
-} from "@jcode/contracts";
+import type { ProjectSearchEntriesResult, ProjectSearchLocalEntriesResult } from "@jcode/contracts";
 import { queryOptions } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
 

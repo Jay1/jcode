@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getPairingTokenFromUrl, setPairingTokenOnUrl, stripPairingTokenFromUrl } from "./pairingUrl";
+import {
+  getPairingTokenFromUrl,
+  setPairingTokenOnUrl,
+  stripPairingTokenFromUrl,
+} from "./pairingUrl";
 
 describe("pairingUrl", () => {
   it("reads pairing tokens from the hash before the query string", () => {

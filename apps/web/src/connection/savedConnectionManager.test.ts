@@ -116,11 +116,14 @@ describe("savedConnectionManager", () => {
           sessionToken: "session-token",
         }),
       )
-      .mockResolvedValueOnce(jsonResponse({ token: "ws-token", expiresAt: "2026-05-21T18:00:00Z" }));
+      .mockResolvedValueOnce(
+        jsonResponse({ token: "ws-token", expiresAt: "2026-05-21T18:00:00Z" }),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
     await addSavedConnectionFromPairing({
-      pairingUrl: "https://app.example.com/pair?host=https%3A%2F%2Fbackend.example.com#token=PAIRCODE",
+      pairingUrl:
+        "https://app.example.com/pair?host=https%3A%2F%2Fbackend.example.com#token=PAIRCODE",
     });
 
     await expect(getActiveSavedConnectionWebSocketUrl()).resolves.toBe(

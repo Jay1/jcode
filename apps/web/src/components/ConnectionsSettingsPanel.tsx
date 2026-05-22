@@ -173,9 +173,7 @@ export function ConnectionsSettingsPanel() {
   );
   const preferredAdvertisedEndpoint = useMemo(
     () =>
-      advertisedEndpoints.find((endpoint) => endpoint.isDefault) ??
-      advertisedEndpoints[0] ??
-      null,
+      advertisedEndpoints.find((endpoint) => endpoint.isDefault) ?? advertisedEndpoints[0] ?? null,
     [advertisedEndpoints],
   );
 
@@ -255,7 +253,9 @@ export function ConnectionsSettingsPanel() {
 
   const revokeClientSession = async (sessionId: string) => {
     try {
-      await ensureNativeApi().server.revokeAuthClient({ sessionId: AuthSessionId.makeUnsafe(sessionId) });
+      await ensureNativeApi().server.revokeAuthClient({
+        sessionId: AuthSessionId.makeUnsafe(sessionId),
+      });
       await refreshAccess();
       toastManager.add({ type: "success", title: "Client session revoked" });
     } catch (error) {
@@ -289,9 +289,7 @@ export function ConnectionsSettingsPanel() {
       }
       toastManager.add({
         type: "success",
-        title: nextExposure.requiresRestart
-          ? "Network access saved"
-          : "Network access updated",
+        title: nextExposure.requiresRestart ? "Network access saved" : "Network access updated",
         description: nextExposure.requiresRestart
           ? "Restart JCode to apply the backend bind change."
           : undefined,
@@ -340,7 +338,12 @@ export function ConnectionsSettingsPanel() {
               </div>
             </div>
             {activeProfile ? (
-              <Button type="button" size="sm" variant="outline" onClick={() => activateProfile(null)}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => activateProfile(null)}
+              >
                 Use local backend
               </Button>
             ) : null}
@@ -500,7 +503,11 @@ export function ConnectionsSettingsPanel() {
             />
           </div>
           <div>
-            <Button type="button" onClick={() => void addRemoteConnection()} disabled={isPairingRemote}>
+            <Button
+              type="button"
+              onClick={() => void addRemoteConnection()}
+              disabled={isPairingRemote}
+            >
               {isPairingRemote ? <Loader2Icon className="mr-2 size-4 animate-spin" /> : null}
               Pair backend
             </Button>
