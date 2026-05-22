@@ -18,6 +18,36 @@ Jay's day-to-day workflow.
 It is a small Bun/TypeScript monorepo with a web UI, desktop packaging, and a
 local server that manages coding-agent sessions.
 
+## Installation
+
+Desktop builds are published from GitHub Releases. Package-manager installs become
+available after the corresponding Homebrew tap and Winget manifests are published.
+
+### macOS
+
+Install with Homebrew after the JCode tap is published:
+
+```bash
+brew tap Jay1/jcode https://github.com/Jay1/jcode
+brew install --cask jcode
+```
+
+Until then, download the latest `JCode-<version>-arm64.dmg` or
+`JCode-<version>-x64.dmg` from
+[GitHub Releases](https://github.com/Jay1/jcode/releases).
+
+### Windows
+
+Install with Winget after the `Jay1.JCode` package is accepted into the Windows
+Package Manager community repository:
+
+```powershell
+winget install Jay1.JCode
+```
+
+Until then, download the latest `JCode-<version>-x64.exe` installer from
+[GitHub Releases](https://github.com/Jay1/jcode/releases).
+
 ## Development
 
 Common commands:

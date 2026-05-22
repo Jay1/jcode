@@ -1,0 +1,19 @@
+PackageIdentifier: Jay1.JCode
+PackageVersion: "{{VERSION}}"
+PackageLocale: en-US
+Publisher: Jay1
+PublisherUrl: https://github.com/Jay1
+PackageName: JCode
+PackageUrl: https://github.com/Jay1/jcode
+License: MIT
+LicenseUrl: https://github.com/Jay1/jcode/blob/main/LICENSE
+ShortDescription: Local cockpit for coding agents.
+Description: JCode is a local cockpit for coding agents, built around OpenCode with a web UI, desktop packaging, and a local server for managing coding-agent sessions.
+Moniker: jcode
+Tags:
+  - agent
+  - coding-agent
+  - developer-tools
+  - opencode
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0

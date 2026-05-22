@@ -1,0 +1,18 @@
+PackageIdentifier: Jay1.JCode
+PackageVersion: "{{VERSION}}"
+InstallerLocale: en-US
+InstallerType: nullsoft
+InstallModes:
+  - interactive
+  - silent
+InstallerSwitches:
+  Silent: /S
+  SilentWithProgress: /S
+UpgradeBehavior: install
+ReleaseDate: "{{RELEASE_DATE}}"
+Installers:
+  - Architecture: x64
+    InstallerUrl: "https://github.com/Jay1/jcode/releases/download/v{{VERSION}}/JCode-{{VERSION}}-x64.exe"
+    InstallerSha256: "{{INSTALLER_SHA256_X64}}"
+ManifestType: installer
+ManifestVersion: 1.10.0
