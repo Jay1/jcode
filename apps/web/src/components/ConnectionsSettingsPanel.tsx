@@ -56,6 +56,10 @@ function sortClientSessions(sessions: ReadonlyArray<AuthClientSession>) {
   );
 }
 
+function normalizeArrayResponse<T>(value: ReadonlyArray<T> | null | undefined): ReadonlyArray<T> {
+  return Array.isArray(value) ? value : [];
+}
+
 function applyAuthAccessEvent(
   event: AuthAccessStreamEvent,
   setters: {
@@ -71,8 +75,10 @@ function applyAuthAccessEvent(
 ) {
   switch (event.type) {
     case "snapshot":
-      setters.setPairingLinks(sortPairingLinks(event.access.pairingLinks));
-      setters.setClientSessions(sortClientSessions(event.access.clientSessions));
+      setters.setPairingLinks(sortPairingLinks(normalizeArrayResponse(event.access.pairingLinks)));
+      setters.setClientSessions(
+        sortClientSessions(normalizeArrayResponse(event.access.clientSessions)),
+      );
       return;
     case "pairingLinkUpserted":
       setters.updatePairingLinks((current) =>
@@ -137,8 +143,8 @@ export function ConnectionsSettingsPanel() {
         api.server.listAuthClients().catch(() => []),
       ]);
       setSessionState(session);
-      setPairingLinks(links);
-      setClientSessions(clients);
+      setPairingLinks(normalizeArrayResponse(links));
+      setClientSessions(normalizeArrayResponse(clients));
       refreshSavedProfiles();
     } catch (error) {
       toastManager.add({

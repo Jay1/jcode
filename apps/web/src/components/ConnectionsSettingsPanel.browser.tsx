@@ -199,4 +199,18 @@ describe("ConnectionsSettingsPanel", () => {
 
     await screen.unmount();
   });
+
+  it("treats null issued access responses as empty lists", async () => {
+    vi.mocked(nativeApi.server.listAuthPairingLinks).mockResolvedValueOnce(null as never);
+    vi.mocked(nativeApi.server.listAuthClients).mockResolvedValueOnce(null as never);
+
+    const screen = await render(<ConnectionsSettingsPanel />);
+
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("No active pairing links.");
+      expect(document.body.textContent).toContain("No paired client sessions.");
+    });
+
+    await screen.unmount();
+  });
 });
