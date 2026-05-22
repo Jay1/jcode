@@ -284,6 +284,8 @@ const resolveBooleanFlag = (flag: Option.Option<boolean>, envValue: boolean) =>
   Option.getOrElse(flag, () => envValue);
 const mergeOptions = <A>(a: Option.Option<A>, b: Option.Option<A>, defaultValue: A) =>
   Option.getOrElse(a, () => Option.getOrElse(b, () => defaultValue));
+const nullableToOption = <A>(value: A | null | undefined): Option.Option<A> =>
+  value == null ? Option.none<A>() : Option.some(value);
 
 export const resolveBuildOptions = Effect.fn("resolveBuildOptions")(function* (
   input: BuildCliInput,
@@ -294,7 +296,7 @@ export const resolveBuildOptions = Effect.fn("resolveBuildOptions")(function* (
 
   const platform = mergeOptions(
     input.platform,
-    Option.fromNullable(env.platform),
+    nullableToOption(env.platform),
     detectHostBuildPlatform(process.platform),
   );
 
@@ -306,17 +308,17 @@ export const resolveBuildOptions = Effect.fn("resolveBuildOptions")(function* (
 
   const target = mergeOptions(
     input.target,
-    Option.fromNullable(env.target),
+    nullableToOption(env.target),
     PLATFORM_CONFIG[platform].defaultTarget,
   );
-  const arch = mergeOptions(input.arch, Option.fromNullable(env.arch), getDefaultArch(platform));
-  const version = mergeOptions(input.buildVersion, Option.fromNullable(env.version), undefined);
+  const arch = mergeOptions(input.arch, nullableToOption(env.arch), getDefaultArch(platform));
+  const version = mergeOptions(input.buildVersion, nullableToOption(env.version), undefined);
   const releaseDir = resolveBooleanFlag(input.mockUpdates, env.mockUpdates)
     ? "release-mock"
     : "release";
   const outputDir = path.resolve(
     repoRoot,
-    mergeOptions(input.outputDir, Option.fromNullable(env.outputDir), releaseDir),
+    mergeOptions(input.outputDir, nullableToOption(env.outputDir), releaseDir),
   );
 
   const skipBuild = resolveBooleanFlag(input.skipBuild, env.skipBuild);
@@ -326,7 +328,7 @@ export const resolveBuildOptions = Effect.fn("resolveBuildOptions")(function* (
   const mockUpdates = resolveBooleanFlag(input.mockUpdates, env.mockUpdates);
   const mockUpdateServerPort = mergeOptions(
     input.mockUpdateServerPort,
-    Option.fromNullable(env.mockUpdateServerPort),
+    nullableToOption(env.mockUpdateServerPort),
     undefined,
   );
 
