@@ -100,15 +100,6 @@ function formatRecentSessionsSubtitle(sessionCount: number): string | undefined 
   return `${new Intl.NumberFormat(undefined).format(sessionCount)} recent ${sessionCount === 1 ? "session" : "sessions"}`;
 }
 
-function formatUsageTimestamp(timestampMs: number): string {
-  return new Intl.DateTimeFormat(undefined, {
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-  }).format(timestampMs);
-}
-
 async function safeReadDir(path: string): Promise<ReadonlyArray<Dirent>> {
   try {
     return await fs.readdir(path, { withFileTypes: true });
@@ -134,7 +125,7 @@ async function listRecentFiles(paths: ReadonlyArray<string>): Promise<ReadonlyAr
   );
 
   return filesWithStats
-    .sort((left, right) => right.mtimeMs - left.mtimeMs)
+    .toSorted((left, right) => right.mtimeMs - left.mtimeMs)
     .slice(0, MAX_RECENT_USAGE_FILES)
     .map((entry) => entry.path);
 }

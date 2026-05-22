@@ -43,6 +43,20 @@ interface FakeGhScenario {
   createPullRequestError?: GitHubCliError;
 }
 
+type MutableGitHubPullRequestSummary = {
+  number: GitHubPullRequestSummary["number"];
+  title: GitHubPullRequestSummary["title"];
+  url: GitHubPullRequestSummary["url"];
+  baseRefName: GitHubPullRequestSummary["baseRefName"];
+  headRefName: GitHubPullRequestSummary["headRefName"];
+  state?: NonNullable<GitHubPullRequestSummary["state"]>;
+  isCrossRepository?: NonNullable<GitHubPullRequestSummary["isCrossRepository"]>;
+  headRepositoryNameWithOwner?: NonNullable<
+    GitHubPullRequestSummary["headRepositoryNameWithOwner"]
+  >;
+  headRepositoryOwnerLogin?: NonNullable<GitHubPullRequestSummary["headRepositoryOwnerLogin"]>;
+};
+
 interface FakeGitTextGeneration {
   generateCommitMessage: (input: {
     cwd: string;
@@ -452,37 +466,41 @@ function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
         }).pipe(
           Effect.map((result) => {
             const parsed = JSON.parse(result.stdout) as Array<Record<string, unknown>>;
-            return parsed.map((pullRequest) => ({
-              number: pullRequest.number as number,
-              title: pullRequest.title as string,
-              url: pullRequest.url as string,
-              baseRefName: pullRequest.baseRefName as string,
-              headRefName: pullRequest.headRefName as string,
-              ...(typeof pullRequest.state === "string"
-                ? { state: pullRequest.state as GitHubPullRequestSummary["state"] }
-                : {}),
-              ...(typeof pullRequest.isCrossRepository === "boolean"
-                ? { isCrossRepository: pullRequest.isCrossRepository }
-                : {}),
-              ...(pullRequest.headRepository &&
-              typeof pullRequest.headRepository === "object" &&
-              typeof (pullRequest.headRepository as { nameWithOwner?: unknown }).nameWithOwner ===
-                "string"
-                ? {
-                    headRepositoryNameWithOwner: (
-                      pullRequest.headRepository as { nameWithOwner: string }
-                    ).nameWithOwner,
-                  }
-                : {}),
-              ...(pullRequest.headRepositoryOwner &&
-              typeof pullRequest.headRepositoryOwner === "object" &&
-              typeof (pullRequest.headRepositoryOwner as { login?: unknown }).login === "string"
-                ? {
-                    headRepositoryOwnerLogin: (pullRequest.headRepositoryOwner as { login: string })
-                      .login,
-                  }
-                : {}),
-            })) as ReadonlyArray<GitHubPullRequestSummary>;
+            return parsed.map((pullRequest) => {
+              const summary: MutableGitHubPullRequestSummary = {
+                number: pullRequest.number as number,
+                title: pullRequest.title as string,
+                url: pullRequest.url as string,
+                baseRefName: pullRequest.baseRefName as string,
+                headRefName: pullRequest.headRefName as string,
+              };
+              if (typeof pullRequest.state === "string") {
+                summary.state = pullRequest.state as NonNullable<GitHubPullRequestSummary["state"]>;
+              }
+              if (typeof pullRequest.isCrossRepository === "boolean") {
+                summary.isCrossRepository = pullRequest.isCrossRepository;
+              }
+              if (
+                pullRequest.headRepository &&
+                typeof pullRequest.headRepository === "object" &&
+                typeof (pullRequest.headRepository as { nameWithOwner?: unknown }).nameWithOwner ===
+                  "string"
+              ) {
+                summary.headRepositoryNameWithOwner = (
+                  pullRequest.headRepository as { nameWithOwner: string }
+                ).nameWithOwner;
+              }
+              if (
+                pullRequest.headRepositoryOwner &&
+                typeof pullRequest.headRepositoryOwner === "object" &&
+                typeof (pullRequest.headRepositoryOwner as { login?: unknown }).login === "string"
+              ) {
+                summary.headRepositoryOwnerLogin = (
+                  pullRequest.headRepositoryOwner as { login: string }
+                ).login;
+              }
+              return summary;
+            }) as ReadonlyArray<GitHubPullRequestSummary>;
           }),
         ),
       createPullRequest: (input) =>
