@@ -24,6 +24,12 @@ export const THREAD_SELECTION_SAFE_SELECTOR = "[data-thread-item], [data-thread-
 export const SIDEBAR_THREAD_PREWARM_LIMIT = 10;
 export const DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY = "jcode:show-debug-feature-flags-menu";
 export type SidebarNewThreadEnvMode = "local" | "worktree";
+export type DebugFeatureFlagsConsoleWindow = Window & {
+  jcodeShowFeatureFlags?: () => void;
+  jcodeHideFeatureFlags?: () => void;
+  dpcodeShowFeatureFlags?: () => void;
+  dpcodeHideFeatureFlags?: () => void;
+};
 type SidebarProject = {
   id: string;
   name: string;
@@ -54,6 +60,35 @@ export function shouldShowDebugFeatureFlagsMenu(input: {
   readonly storageValue: string | null;
 }): boolean {
   return input.isDev && isLoopbackHostname(input.hostname) && input.storageValue === "true";
+}
+
+export function installDebugFeatureFlagConsoleCommands(input: {
+  readonly debugWindow: DebugFeatureFlagsConsoleWindow;
+  readonly showFeatureFlags: () => void;
+  readonly hideFeatureFlags: () => void;
+}): () => void {
+  const { debugWindow, showFeatureFlags, hideFeatureFlags } = input;
+
+  debugWindow.jcodeShowFeatureFlags = showFeatureFlags;
+  debugWindow.jcodeHideFeatureFlags = hideFeatureFlags;
+  // Keep the old console hooks as compatibility aliases for local workflows.
+  debugWindow.dpcodeShowFeatureFlags = showFeatureFlags;
+  debugWindow.dpcodeHideFeatureFlags = hideFeatureFlags;
+
+  return () => {
+    if (debugWindow.jcodeShowFeatureFlags === showFeatureFlags) {
+      delete debugWindow.jcodeShowFeatureFlags;
+    }
+    if (debugWindow.jcodeHideFeatureFlags === hideFeatureFlags) {
+      delete debugWindow.jcodeHideFeatureFlags;
+    }
+    if (debugWindow.dpcodeShowFeatureFlags === showFeatureFlags) {
+      delete debugWindow.dpcodeShowFeatureFlags;
+    }
+    if (debugWindow.dpcodeHideFeatureFlags === hideFeatureFlags) {
+      delete debugWindow.dpcodeHideFeatureFlags;
+    }
+  };
 }
 
 export type SidebarProjectEntry = {

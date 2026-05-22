@@ -177,7 +177,9 @@ const ServerConfigLive = (input: CliInput) =>
 
       const devUrl = Option.getOrElse(input.devUrl, () => env.devUrl);
       const baseDir = yield* resolveBaseDir(Option.getOrUndefined(input.t3Home) ?? env.t3Home);
-      // Import legacy JCode/T3Code state before runtime paths are derived under ~/.jcode.
+      // Legacy DPCode/T3Code env names remain accepted so existing services can
+      // boot JCode long enough to migrate state and update their launch config.
+      // Import legacy DPCode/T3Code state before runtime paths are derived under ~/.jcode.
       yield* migrateLegacyHomeIfNeeded({
         baseDir,
         homeDir: OS.homedir(),

@@ -177,7 +177,7 @@ async function resolveDesktopVoiceAuth(
         method: "initialize",
         params: {
           clientInfo: {
-            name: "dp-code-desktop",
+            name: "jcode-desktop",
             title: "JCode Desktop",
             version: app.getVersion(),
           },

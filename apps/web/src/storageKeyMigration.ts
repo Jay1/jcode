@@ -3,6 +3,8 @@
 // Layer: Web bootstrap utility
 // Exports: migrateJCodeLocalStorageKeys
 
+// DPCode/T3Code keys are compatibility inputs only. Leave legacy keys intact so
+// users can downgrade during the rebrand window without losing browser state.
 const STORAGE_KEY_MIGRATIONS = [
   [["dpcode:renderer-state:v8", "t3code:renderer-state:v8"], "jcode:renderer-state:v8"],
   [["dpcode:composer-drafts:v1", "t3code:composer-drafts:v1"], "jcode:composer-drafts:v1"],

@@ -1,5 +1,5 @@
 // FILE: storageKeyMigration.test.ts
-// Purpose: Verify legacy JCode/T3Code localStorage keys are copied to jcode:* without
+// Purpose: Verify legacy DPCode/T3Code localStorage keys are copied to jcode:* without
 // overwriting existing JCode values, so app boot never silently loses persisted state.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

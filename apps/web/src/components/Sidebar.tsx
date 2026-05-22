@@ -181,6 +181,7 @@ import {
   describeAddProjectError,
   buildProjectThreadTree,
   deriveSidebarProjectData,
+  type DebugFeatureFlagsConsoleWindow,
   extractDuplicateProjectCreateProjectId,
   findWorkspaceRootMatch,
   getFallbackThreadIdAfterDelete,
@@ -189,6 +190,7 @@ import {
   getSidebarThreadIdsToPrewarm,
   getVisibleSidebarEntriesForPreview,
   groupSidebarThreadsByProjectId,
+  installDebugFeatureFlagConsoleCommands,
   pruneExpandedProjectThreadListsForCollapsedProjects,
   recoverExistingAddProjectTarget,
   DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY,
@@ -285,11 +287,6 @@ const PROJECT_CONTEXT_MENU_COPY_PATH_ICON =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
 const PROJECT_CONTEXT_MENU_ARCHIVE_ICON = renderToStaticMarkup(<HiOutlineArchiveBox />);
 const PROJECT_CONTEXT_MENU_DELETE_THREADS_ICON = renderToStaticMarkup(<Trash2 />);
-
-type DebugFeatureFlagsWindow = Window & {
-  dpcodeShowFeatureFlags?: () => void;
-  dpcodeHideFeatureFlags?: () => void;
-};
 
 function readDebugFeatureFlagsMenuVisibility(): boolean {
   if (typeof window === "undefined") {
@@ -1195,7 +1192,7 @@ export default function Sidebar() {
       return;
     }
 
-    const debugWindow = window as DebugFeatureFlagsWindow;
+    const debugWindow = window as DebugFeatureFlagsConsoleWindow;
     const updateVisibility = () => {
       setShowDebugFeatureFlagsMenu(readDebugFeatureFlagsMenuVisibility());
     };
@@ -1208,19 +1205,17 @@ export default function Sidebar() {
       updateVisibility();
     };
 
-    debugWindow.dpcodeShowFeatureFlags = showFeatureFlags;
-    debugWindow.dpcodeHideFeatureFlags = hideFeatureFlags;
+    const uninstallConsoleCommands = installDebugFeatureFlagConsoleCommands({
+      debugWindow,
+      showFeatureFlags,
+      hideFeatureFlags,
+    });
     window.addEventListener("storage", updateVisibility);
     updateVisibility();
 
     return () => {
       window.removeEventListener("storage", updateVisibility);
-      if (debugWindow.dpcodeShowFeatureFlags === showFeatureFlags) {
-        delete debugWindow.dpcodeShowFeatureFlags;
-      }
-      if (debugWindow.dpcodeHideFeatureFlags === hideFeatureFlags) {
-        delete debugWindow.dpcodeHideFeatureFlags;
-      }
+      uninstallConsoleCommands();
     };
   }, []);
   const createSplitViewFromDrop = useSplitViewStore((store) => store.createFromDrop);

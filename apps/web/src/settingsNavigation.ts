@@ -31,6 +31,8 @@ export const SETTINGS_SECTION_IDS = [
 ] as const;
 
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
+// The group id is internal-only and predates the JCode rename; keep it stable
+// because it is used as a UI grouping key while the visible label is JCode.
 export type SettingsNavGroupId = "app" | "dpcode";
 
 export type SettingsNavItem = {

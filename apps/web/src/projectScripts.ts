@@ -76,9 +76,11 @@ export function projectScriptRuntimeEnv(
   input: ProjectScriptRuntimeEnvInput,
 ): Record<string, string> {
   const env: Record<string, string> = {
+    JCODE_PROJECT_ROOT: input.project.cwd,
     T3CODE_PROJECT_ROOT: input.project.cwd,
   };
   if (input.worktreePath) {
+    env.JCODE_WORKTREE_PATH = input.worktreePath;
     env.T3CODE_WORKTREE_PATH = input.worktreePath;
   }
   if (input.extraEnv) {

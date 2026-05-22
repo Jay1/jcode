@@ -121,6 +121,7 @@ const NOTIFICATIONS_IS_SUPPORTED_CHANNEL = "desktop:notifications-is-supported";
 const NOTIFICATIONS_SHOW_CHANNEL = "desktop:notifications-show";
 const BASE_DIR =
   process.env.JCODE_HOME?.trim() ||
+  // Legacy env names remain accepted so renamed desktop installs can reuse existing launch config.
   process.env.DPCODE_HOME?.trim() ||
   process.env.T3CODE_HOME?.trim() ||
   Path.join(OS.homedir(), ".jcode");
@@ -1442,6 +1443,7 @@ function backendEnv(): NodeJS.ProcessEnv {
     JCODE_HOME: BASE_DIR,
     JCODE_AUTH_TOKEN: backendAuthToken,
     [JCODE_BROWSER_USE_PIPE_ENV]: DPCODE_BROWSER_USE_PIPE_PATH,
+    // Keep legacy backend env aliases during the desktop rebrand migration.
     DPCODE_MODE: "desktop",
     DPCODE_NO_BROWSER: "1",
     DPCODE_PORT: String(backendPort),

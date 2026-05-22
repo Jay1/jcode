@@ -53,6 +53,8 @@ describe("projectScripts helpers", () => {
     });
 
     expect(env).toMatchObject({
+      JCODE_PROJECT_ROOT: "/repo",
+      JCODE_WORKTREE_PATH: "/repo/worktree-a",
       T3CODE_PROJECT_ROOT: "/repo",
       T3CODE_WORKTREE_PATH: "/repo/worktree-a",
     });
@@ -62,13 +64,15 @@ describe("projectScripts helpers", () => {
     const env = projectScriptRuntimeEnv({
       project: { cwd: "/repo" },
       extraEnv: {
-        T3CODE_PROJECT_ROOT: "/custom-root",
+        JCODE_PROJECT_ROOT: "/custom-root",
         CUSTOM_FLAG: "1",
       },
     });
 
-    expect(env.T3CODE_PROJECT_ROOT).toBe("/custom-root");
+    expect(env.JCODE_PROJECT_ROOT).toBe("/custom-root");
+    expect(env.T3CODE_PROJECT_ROOT).toBe("/repo");
     expect(env.CUSTOM_FLAG).toBe("1");
+    expect(env.JCODE_WORKTREE_PATH).toBeUndefined();
     expect(env.T3CODE_WORKTREE_PATH).toBeUndefined();
   });
 

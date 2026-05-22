@@ -19,6 +19,7 @@ import {
   getVisibleThreadsForProject,
   getProjectSortTimestamp,
   hasUnseenCompletion,
+  installDebugFeatureFlagConsoleCommands,
   isLoopbackHostname,
   isDuplicateProjectCreateError,
   pruneExpandedProjectThreadListsForCollapsedProjects,
@@ -137,6 +138,28 @@ describe("debug feature flags menu visibility", () => {
         storageValue: null,
       }),
     ).toBe(false);
+  });
+
+  it("installs JCode console aliases while preserving legacy DPCode aliases", () => {
+    const debugWindow = {} as Window & {
+      jcodeShowFeatureFlags?: () => void;
+      jcodeHideFeatureFlags?: () => void;
+      dpcodeShowFeatureFlags?: () => void;
+      dpcodeHideFeatureFlags?: () => void;
+    };
+    const showFeatureFlags = () => undefined;
+    const hideFeatureFlags = () => undefined;
+
+    installDebugFeatureFlagConsoleCommands({
+      debugWindow,
+      showFeatureFlags,
+      hideFeatureFlags,
+    });
+
+    expect(debugWindow.jcodeShowFeatureFlags).toBe(showFeatureFlags);
+    expect(debugWindow.jcodeHideFeatureFlags).toBe(hideFeatureFlags);
+    expect(debugWindow.dpcodeShowFeatureFlags).toBe(showFeatureFlags);
+    expect(debugWindow.dpcodeHideFeatureFlags).toBe(hideFeatureFlags);
   });
 });
 

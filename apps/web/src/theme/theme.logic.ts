@@ -182,6 +182,8 @@ const CODE_THEME_SEED_PATCH_METADATA: Partial<
     dark: { contrast: true, fonts: { code: true, ui: true }, opaqueWindows: true },
     light: { contrast: true, fonts: { code: true, ui: true }, opaqueWindows: true },
   },
+  // Theme ids are stored in localStorage and share strings. Keep the inherited
+  // id stable while presenting the theme under the JCode label.
   "dp-code": {
     dark: { contrast: true },
     light: { contrast: true },

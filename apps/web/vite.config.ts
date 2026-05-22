@@ -6,14 +6,17 @@ import { defineConfig } from "vite";
 import pkg from "./package.json" with { type: "json" };
 
 const port = Number(process.env.PORT ?? 5733);
-const sourcemapEnv = process.env.T3CODE_WEB_SOURCEMAP?.trim().toLowerCase();
 
-const buildSourcemap =
-  sourcemapEnv === "0" || sourcemapEnv === "false"
+export function resolveBuildSourcemapEnv(env: NodeJS.ProcessEnv): boolean | "hidden" {
+  const sourcemapEnv = (env.JCODE_WEB_SOURCEMAP ?? env.T3CODE_WEB_SOURCEMAP)?.trim().toLowerCase();
+  return sourcemapEnv === "0" || sourcemapEnv === "false"
     ? false
     : sourcemapEnv === "hidden"
       ? "hidden"
       : true;
+}
+
+const buildSourcemap = resolveBuildSourcemapEnv(process.env);
 
 export default defineConfig({
   plugins: [
