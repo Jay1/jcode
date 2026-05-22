@@ -1,8 +1,4 @@
-import {
-  type ProviderApprovalDecision,
-  type ProviderKind,
-  type ThreadId,
-} from "@jcode/contracts";
+import { type ProviderApprovalDecision, type ProviderKind, type ThreadId } from "@jcode/contracts";
 import { Schema } from "effect";
 import * as EffectAcpErrors from "effect-acp/errors";
 

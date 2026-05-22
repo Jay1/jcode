@@ -45,7 +45,9 @@ export interface ServerShape {
   readonly stopSignal: Effect.Effect<void, never>;
 }
 
-export class Server extends ServiceMap.Service<Server, ServerShape>()("jcode/effectServer/Server") {}
+export class Server extends ServiceMap.Service<Server, ServerShape>()(
+  "jcode/effectServer/Server",
+) {}
 
 export class ServerLifecycleError extends Schema.TaggedErrorClass<ServerLifecycleError>()(
   "ServerLifecycleError",

@@ -20,7 +20,18 @@ import {
   type ServerLifecycleStreamEvent,
 } from "@jcode/contracts";
 import { clamp } from "effect/Number";
-import { Effect, FileSystem, Layer, Option, Path, Queue, Ref, Schema, ServiceMap, Stream } from "effect";
+import {
+  Effect,
+  FileSystem,
+  Layer,
+  Option,
+  Path,
+  Queue,
+  Ref,
+  Schema,
+  ServiceMap,
+  Stream,
+} from "effect";
 import { HttpRouter, HttpServerRequest } from "effect/unstable/http";
 import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
 
@@ -96,9 +107,7 @@ function redactProcessArgs(args: string): string {
 function parseProcessTable(output: string): ProcessTableRow[] {
   const rows: ProcessTableRow[] = [];
   for (const line of output.split(/\r?\n/)) {
-    const match = line
-      .trim()
-      .match(/^(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)(?:\s+(.*))?$/);
+    const match = line.trim().match(/^(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)(?:\s+(.*))?$/);
     if (!match) {
       continue;
     }
@@ -809,10 +818,7 @@ export const makeWsRpcLayer = () =>
                 ),
               );
 
-              return Stream.concat(
-                snapshotStream,
-                Stream.merge(pairingLinkChanges, clientChanges),
-              );
+              return Stream.concat(snapshotStream, Stream.merge(pairingLinkChanges, clientChanges));
             }),
           ).pipe(Stream.mapError((cause) => toWsRpcError(cause, "Auth access stream failed"))),
 

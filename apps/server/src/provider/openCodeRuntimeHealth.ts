@@ -46,8 +46,8 @@ function valueName(value: unknown): string | null {
 }
 
 function uniqueSorted(values: Iterable<string>): string[] {
-  return [...new Set([...values].map((value) => value.trim()).filter(Boolean))].sort((left, right) =>
-    left.localeCompare(right),
+  return [...new Set([...values].map((value) => value.trim()).filter(Boolean))].sort(
+    (left, right) => left.localeCompare(right),
   );
 }
 
@@ -201,7 +201,9 @@ function profilePathMismatches(
   );
 }
 
-function buildStatus(mismatches: readonly OpenCodeRuntimeMismatch[]): OpenCodeRuntimeHealth["status"] {
+function buildStatus(
+  mismatches: readonly OpenCodeRuntimeMismatch[],
+): OpenCodeRuntimeHealth["status"] {
   if (mismatches.some((mismatch) => mismatch.severity === "blocking")) return "misconfigured";
   if (mismatches.some((mismatch) => mismatch.severity === "error")) return "degraded";
   if (mismatches.length > 0) return "degraded";
@@ -263,7 +265,10 @@ export function checkOpenCodeRuntimeHealth(input: {
         ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
       });
 
-      if ((profile.mode === "external" || profile.mode === "remote") && !connectionConfig.serverUrl) {
+      if (
+        (profile.mode === "external" || profile.mode === "remote") &&
+        !connectionConfig.serverUrl
+      ) {
         return baseHealth({
           resolved,
           binaryPath: connectionConfig.binaryPath,
@@ -279,8 +284,8 @@ export function checkOpenCodeRuntimeHealth(input: {
         });
       }
 
-      const serverExit = yield* Effect.exit(input.runtime
-        .connectToOpenCodeServer({
+      const serverExit = yield* Effect.exit(
+        input.runtime.connectToOpenCodeServer({
           binaryPath: connectionConfig.binaryPath,
           cliSpec: connectionConfig.cliSpec,
           ...(connectionConfig.serverUrl ? { serverUrl: connectionConfig.serverUrl } : {}),
@@ -290,7 +295,8 @@ export function checkOpenCodeRuntimeHealth(input: {
             ? { xdgConfigHome: connectionConfig.xdgConfigHome }
             : {}),
           ...(connectionConfig.cwd ? { cwd: connectionConfig.cwd } : {}),
-        }));
+        }),
+      );
 
       if (Exit.isFailure(serverExit)) {
         return baseHealth({
@@ -354,8 +360,13 @@ export function checkOpenCodeRuntimeHealth(input: {
       const plugins = summarizeNames(extractNamedCollection(inventory.consoleState, ["plugins"]));
       const cliModels = yield* input.runtime
         .listOpenCodeCliModels({ binaryPath: connectionConfig.binaryPath, cliSpec: input.cliSpec })
-        .pipe(Effect.map((models) => models.map((model) => model.slug)), Effect.catch(() => Effect.succeed([])));
-      const models = summarizeModels(cliModels.length > 0 ? cliModels : inventoryModelSlugs(inventory));
+        .pipe(
+          Effect.map((models) => models.map((model) => model.slug)),
+          Effect.catch(() => Effect.succeed([])),
+        );
+      const models = summarizeModels(
+        cliModels.length > 0 ? cliModels : inventoryModelSlugs(inventory),
+      );
       const mismatches = profilePathMismatches(resolved);
 
       addMissingCapabilityMismatches({

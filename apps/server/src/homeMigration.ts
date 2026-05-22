@@ -246,9 +246,7 @@ export const migrateLegacyHomeIfNeeded = Effect.fn(function* (input: LegacyHomeM
 
   let legacyBaseDir = "";
   let sourcePaths: ServerDerivedPaths | undefined;
-  let sourceArtifacts:
-    | Record<(typeof IMPORTABLE_ARTIFACTS)[number], boolean>
-    | undefined;
+  let sourceArtifacts: Record<(typeof IMPORTABLE_ARTIFACTS)[number], boolean> | undefined;
   let importedArtifacts: ReadonlyArray<(typeof IMPORTABLE_ARTIFACTS)[number]> = [];
 
   for (const candidate of existingSourceCandidates) {

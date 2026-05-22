@@ -915,9 +915,9 @@ describe("TerminalManager", () => {
       }),
     );
 
-    expect(
-      events.some((event) => event.type === "activity" && event.cliKind === "codex"),
-    ).toBe(true);
+    expect(events.some((event) => event.type === "activity" && event.cliKind === "codex")).toBe(
+      true,
+    );
 
     manager.dispose();
   });

@@ -292,9 +292,9 @@ describe("buildCodexProcessEnv", () => {
 
       const env = buildCodexProcessEnv({
         env: {
-        SHELL: "/bin/zsh",
-        PATH: "/usr/bin",
-        JCODE_DISABLE_CODEX_BROWSER_PLUGIN: "0",
+          SHELL: "/bin/zsh",
+          PATH: "/usr/bin",
+          JCODE_DISABLE_CODEX_BROWSER_PLUGIN: "0",
         },
         homePath: tempDir,
         platform: "darwin",

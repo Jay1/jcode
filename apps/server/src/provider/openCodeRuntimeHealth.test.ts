@@ -59,7 +59,9 @@ function makeRuntime(overrides: Partial<OpenCodeRuntimeShape> = {}): OpenCodeRun
   };
 }
 
-function settingsWithOpenCodeProfile(profile: ServerSettings["providers"]["opencode"]["runtimeProfiles"][number]): ServerSettings {
+function settingsWithOpenCodeProfile(
+  profile: ServerSettings["providers"]["opencode"]["runtimeProfiles"][number],
+): ServerSettings {
   return {
     ...DEFAULT_SERVER_SETTINGS,
     providers: {
@@ -147,9 +149,9 @@ describe("checkOpenCodeRuntimeHealth", () => {
 
     expect(health.status).toBe("degraded");
     expect(health.capabilities.skills?.names).toContain("superpowers");
-    expect(health.mismatches.some((mismatch) => mismatch.id === "missing-skill-missing-skill")).toBe(
-      true,
-    );
+    expect(
+      health.mismatches.some((mismatch) => mismatch.id === "missing-skill-missing-skill"),
+    ).toBe(true);
   });
 
   it("reports healthy when required capabilities are present", async () => {

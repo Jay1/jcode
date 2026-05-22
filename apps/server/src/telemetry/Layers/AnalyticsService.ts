@@ -62,9 +62,7 @@ const TelemetryEnvConfig = Config.all({
   maxBufferedEvents: optionalNumberEnvConfig(
     "JCODE_TELEMETRY_MAX_BUFFERED_EVENTS",
     "T3CODE_TELEMETRY_MAX_BUFFERED_EVENTS",
-  ).pipe(
-    Config.map((value) => value ?? 1_000),
-  ),
+  ).pipe(Config.map((value) => value ?? 1_000)),
 });
 
 const makeAnalyticsService = Effect.gen(function* () {

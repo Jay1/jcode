@@ -1037,9 +1037,7 @@ it.layer(TestLayer)("git integration", (it) => {
 
         expect(renamed.branch).toBe("jcode/feat/session-1");
         const branches = yield* (yield* GitCore).listBranches({ cwd: tmp });
-        expect(branches.branches.some((branch) => branch.name === "jcode/feat/session")).toBe(
-          true,
-        );
+        expect(branches.branches.some((branch) => branch.name === "jcode/feat/session")).toBe(true);
         expect(branches.branches.some((branch) => branch.name === "jcode/feat/session-1")).toBe(
           true,
         );

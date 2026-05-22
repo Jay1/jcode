@@ -170,29 +170,25 @@ export interface OpenCodePathInfo {
 }
 
 export interface OpenCodeRuntimeShape {
-  readonly startOpenCodeServerProcess: (input: {
-    readonly binaryPath: string;
-    readonly cliSpec?: OpenCodeCompatibleCliSpec;
-    readonly port?: number;
-    readonly hostname?: string;
-    readonly timeoutMs?: number;
-  } & OpenCodeServerLaunchConfig) => Effect.Effect<
-    OpenCodeServerProcess,
-    OpenCodeRuntimeError,
-    Scope.Scope
-  >;
-  readonly connectToOpenCodeServer: (input: {
-    readonly binaryPath: string;
-    readonly cliSpec?: OpenCodeCompatibleCliSpec;
-    readonly serverUrl?: string | null;
-    readonly port?: number;
-    readonly hostname?: string;
-    readonly timeoutMs?: number;
-  } & OpenCodeServerLaunchConfig) => Effect.Effect<
-    OpenCodeServerConnection,
-    OpenCodeRuntimeError,
-    Scope.Scope
-  >;
+  readonly startOpenCodeServerProcess: (
+    input: {
+      readonly binaryPath: string;
+      readonly cliSpec?: OpenCodeCompatibleCliSpec;
+      readonly port?: number;
+      readonly hostname?: string;
+      readonly timeoutMs?: number;
+    } & OpenCodeServerLaunchConfig,
+  ) => Effect.Effect<OpenCodeServerProcess, OpenCodeRuntimeError, Scope.Scope>;
+  readonly connectToOpenCodeServer: (
+    input: {
+      readonly binaryPath: string;
+      readonly cliSpec?: OpenCodeCompatibleCliSpec;
+      readonly serverUrl?: string | null;
+      readonly port?: number;
+      readonly hostname?: string;
+      readonly timeoutMs?: number;
+    } & OpenCodeServerLaunchConfig,
+  ) => Effect.Effect<OpenCodeServerConnection, OpenCodeRuntimeError, Scope.Scope>;
   readonly runOpenCodeCommand: (input: {
     readonly binaryPath: string;
     readonly cliSpec?: OpenCodeCompatibleCliSpec;

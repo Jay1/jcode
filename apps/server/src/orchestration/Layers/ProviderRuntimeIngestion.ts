@@ -62,7 +62,9 @@ const MAX_ACTIVITY_DATA_STRING_CHARS = 2_000;
 const MAX_ACTIVITY_DATA_ARRAY_ITEMS = 24;
 const MAX_ACTIVITY_DATA_OBJECT_KEYS = 64;
 const ACTIVITY_DATA_TRUNCATION_MARKER = "__jcodeTruncated";
-const STRICT_PROVIDER_LIFECYCLE_GUARD = (process.env.JCODE_STRICT_PROVIDER_LIFECYCLE_GUARD ?? process.env.T3CODE_STRICT_PROVIDER_LIFECYCLE_GUARD) !== "0";
+const STRICT_PROVIDER_LIFECYCLE_GUARD =
+  (process.env.JCODE_STRICT_PROVIDER_LIFECYCLE_GUARD ??
+    process.env.T3CODE_STRICT_PROVIDER_LIFECYCLE_GUARD) !== "0";
 
 type TurnStartRequestedDomainEvent = Extract<
   OrchestrationEvent,
@@ -252,7 +254,10 @@ function truncateJsonValue(
   }
 
   const entries = Object.entries(value)
-    .filter(([, entry]) => entry !== undefined && typeof entry !== "function" && typeof entry !== "symbol")
+    .filter(
+      ([, entry]) =>
+        entry !== undefined && typeof entry !== "function" && typeof entry !== "symbol",
+    )
     .toSorted((left, right) => {
       const byRank = activityPayloadKeyRank(left[0]) - activityPayloadKeyRank(right[0]);
       return byRank !== 0 ? byRank : left[0].localeCompare(right[0]);

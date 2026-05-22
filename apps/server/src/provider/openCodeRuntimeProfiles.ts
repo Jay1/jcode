@@ -117,7 +117,9 @@ export function resolveOpenCodeRuntimeConnectionConfig(input: {
     binaryPath,
     cliSpec: input.cliSpec,
     ...(profile.mode === "external" || profile.mode === "remote"
-      ? serverUrl ? { serverUrl } : {}
+      ? serverUrl
+        ? { serverUrl }
+        : {}
       : {}),
     ...(input.resolved.serverPassword ? { serverPassword: input.resolved.serverPassword } : {}),
     configMode: profile.configMode,

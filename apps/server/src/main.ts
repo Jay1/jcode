@@ -100,9 +100,7 @@ const firstDefined = <T>(values: ReadonlyArray<T | undefined>): T | undefined =>
 
 const optionalStringEnvConfig = (...names: ReadonlyArray<string>) =>
   Config.all(
-    names.map((name) =>
-      Config.string(name).pipe(Config.option, Config.map(Option.getOrUndefined)),
-    ),
+    names.map((name) => Config.string(name).pipe(Config.option, Config.map(Option.getOrUndefined))),
   ).pipe(Config.map(firstDefined));
 
 const optionalBooleanEnvConfig = (...names: ReadonlyArray<string>) =>

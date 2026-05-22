@@ -4043,45 +4043,45 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
           },
           ({ inventory, credentialProviderIDs }) =>
             Effect.gen(function* () {
-            const preferredProviderIDs = new Set(
-              resolvePreferredOpenCodeModelProviders({
+              const preferredProviderIDs = new Set(
+                resolvePreferredOpenCodeModelProviders({
+                  inventory,
+                  credentialProviderIDs,
+                }).map((provider) => provider.id),
+              );
+              const inventoryModels = flattenOpenCodeModels({
                 inventory,
                 credentialProviderIDs,
-              }).map((provider) => provider.id),
-            );
-            const inventoryModels = flattenOpenCodeModels({
-              inventory,
-              credentialProviderIDs,
-              ...(freeOnlyProviderID ? { freeOnlyProviderID } : {}),
-            });
-            const cliModels = yield* openCodeRuntime
-              .listOpenCodeCliModels({ binaryPath, cliSpec: adapterConfig.cliSpec })
-              .pipe(Effect.catch(() => Effect.succeed([])));
-            const preferredCliModels = cliModels.filter((model) =>
-              preferredProviderIDs.has(model.providerID),
-            );
-            const models = mergeOpenCodeCliModelDescriptors({
-              inventory,
-              models: inventoryModels,
-              cliModels: preferredCliModels.length > 0 ? preferredCliModels : cliModels,
-              ...(freeOnlyProviderID ? { freeOnlyProviderID } : {}),
-            });
-            yield* Effect.logDebug(`${adapterConfig.displayName} model discovery resolved`, {
-              binaryPath,
-              connectedProviders: inventory.providerList.connected,
-              inventoryModelCount: inventoryModels.length,
-              cliModelCount: cliModels.length,
-              modelCount: models.length,
-              sampleModels: models.slice(0, 12).map((model) => model.slug),
-            });
-            return {
-              models,
-              source:
-                cliModels.length > 0
-                  ? adapterConfig.cliModelSource
-                  : adapterConfig.fallbackModelSource,
-              cached: false,
-            };
+                ...(freeOnlyProviderID ? { freeOnlyProviderID } : {}),
+              });
+              const cliModels = yield* openCodeRuntime
+                .listOpenCodeCliModels({ binaryPath, cliSpec: adapterConfig.cliSpec })
+                .pipe(Effect.catch(() => Effect.succeed([])));
+              const preferredCliModels = cliModels.filter((model) =>
+                preferredProviderIDs.has(model.providerID),
+              );
+              const models = mergeOpenCodeCliModelDescriptors({
+                inventory,
+                models: inventoryModels,
+                cliModels: preferredCliModels.length > 0 ? preferredCliModels : cliModels,
+                ...(freeOnlyProviderID ? { freeOnlyProviderID } : {}),
+              });
+              yield* Effect.logDebug(`${adapterConfig.displayName} model discovery resolved`, {
+                binaryPath,
+                connectedProviders: inventory.providerList.connected,
+                inventoryModelCount: inventoryModels.length,
+                cliModelCount: cliModels.length,
+                modelCount: models.length,
+                sampleModels: models.slice(0, 12).map((model) => model.slug),
+              });
+              return {
+                models,
+                source:
+                  cliModels.length > 0
+                    ? adapterConfig.cliModelSource
+                    : adapterConfig.fallbackModelSource,
+                cached: false,
+              };
             }).pipe(
               Effect.catch(() =>
                 Effect.succeed({
