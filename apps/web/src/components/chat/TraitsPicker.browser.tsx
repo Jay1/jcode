@@ -11,62 +11,23 @@ import {
   ThreadId,
 } from "@jcode/contracts";
 import { page } from "vitest/browser";
-import { useCallback } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
 import { TraitsPicker } from "./TraitsPicker";
 import {
+  ClaudeTraitsPickerHarness,
+  OpenCodeTraitsPickerHarness,
+} from "./TraitsPicker.browser-harness";
+import {
   COMPOSER_DRAFT_STORAGE_KEY,
   ComposerThreadDraftState,
   useComposerDraftStore,
-  useComposerThreadDraft,
-  useEffectiveComposerModelState,
 } from "../../composerDraftStore";
 
 // ── Claude TraitsPicker tests ─────────────────────────────────────────
 
 const CLAUDE_THREAD_ID = ThreadId.makeUnsafe("thread-claude-traits");
-
-function ClaudeTraitsPickerHarness(props: {
-  model: string;
-  fallbackModelSelection: ModelSelection | null;
-}) {
-  const prompt = useComposerThreadDraft(CLAUDE_THREAD_ID).prompt;
-  const setPrompt = useComposerDraftStore((store) => store.setPrompt);
-  const { modelOptions, selectedModel } = useEffectiveComposerModelState({
-    threadId: CLAUDE_THREAD_ID,
-    selectedProvider: "claudeAgent",
-    threadModelSelection: props.fallbackModelSelection,
-    projectModelSelection: null,
-    customModelsByProvider: {
-      codex: [],
-      claudeAgent: [],
-      cursor: [],
-      gemini: [],
-      kilo: [],
-      opencode: [],
-      pi: [],
-    },
-  });
-  const handlePromptChange = useCallback(
-    (nextPrompt: string) => {
-      setPrompt(CLAUDE_THREAD_ID, nextPrompt);
-    },
-    [setPrompt],
-  );
-
-  return (
-    <TraitsPicker
-      provider="claudeAgent"
-      threadId={CLAUDE_THREAD_ID}
-      model={selectedModel ?? props.model}
-      prompt={prompt}
-      modelOptions={modelOptions?.claudeAgent}
-      onPromptChange={handlePromptChange}
-    />
-  );
-}
 
 async function mountClaudePicker(props?: {
   model?: string;
@@ -123,7 +84,11 @@ async function mountClaudePicker(props?: {
         } satisfies ModelSelection)
       : null;
   const screen = await render(
-    <ClaudeTraitsPickerHarness model={model} fallbackModelSelection={fallbackModelSelection} />,
+    <ClaudeTraitsPickerHarness
+      threadId={CLAUDE_THREAD_ID}
+      model={model}
+      fallbackModelSelection={fallbackModelSelection}
+    />,
     { container: host },
   );
 
@@ -556,48 +521,6 @@ const OPENCODE_RUNTIME_MODEL_WITHOUT_DEFAULT: ProviderModelDescriptor = {
   ],
 };
 
-function OpenCodeTraitsPickerHarness(props: {
-  model: string;
-  runtimeModel?: ProviderModelDescriptor;
-  fallbackModelSelection: ModelSelection | null;
-}) {
-  const prompt = useComposerThreadDraft(OPENCODE_THREAD_ID).prompt;
-  const setPrompt = useComposerDraftStore((store) => store.setPrompt);
-  const { modelOptions, selectedModel } = useEffectiveComposerModelState({
-    threadId: OPENCODE_THREAD_ID,
-    selectedProvider: "opencode",
-    threadModelSelection: props.fallbackModelSelection,
-    projectModelSelection: null,
-    customModelsByProvider: {
-      codex: [],
-      claudeAgent: [],
-      cursor: [],
-      gemini: [],
-      kilo: [],
-      opencode: [],
-      pi: [],
-    },
-  });
-  const handlePromptChange = useCallback(
-    (nextPrompt: string) => {
-      setPrompt(OPENCODE_THREAD_ID, nextPrompt);
-    },
-    [setPrompt],
-  );
-
-  return (
-    <TraitsPicker
-      provider="opencode"
-      threadId={OPENCODE_THREAD_ID}
-      model={selectedModel ?? props.model}
-      runtimeModel={props.runtimeModel}
-      prompt={prompt}
-      modelOptions={modelOptions?.opencode}
-      onPromptChange={handlePromptChange}
-    />
-  );
-}
-
 async function mountOpenCodePicker(props?: {
   model?: string;
   options?: OpenCodeModelOptions;
@@ -641,6 +564,7 @@ async function mountOpenCodePicker(props?: {
   };
   const screen = await render(
     <OpenCodeTraitsPickerHarness
+      threadId={OPENCODE_THREAD_ID}
       model={model}
       {...(props?.runtimeModel ? { runtimeModel: props.runtimeModel } : {})}
       fallbackModelSelection={fallbackModelSelection}
