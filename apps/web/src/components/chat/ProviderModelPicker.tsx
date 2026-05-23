@@ -10,6 +10,7 @@ import { Fragment, memo, useCallback, useDeferredValue, useMemo, useState } from
 import { type ProviderPickerKind, PROVIDER_OPTIONS } from "../../session-logic";
 import { formatProviderModelOptionName } from "../../providerModelOptions";
 import { compareProvidersByOrder } from "../../providerOrdering";
+import { AVAILABLE_PROVIDER_OPTIONS } from "./ProviderModelPicker.logic";
 import {
   Menu,
   MenuGroup,
@@ -47,14 +48,6 @@ import {
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { StarFilledIcon, StarIcon } from "../../lib/icons";
 import { Skeleton } from "../ui/skeleton";
-
-function isAvailableProviderOption(option: (typeof PROVIDER_OPTIONS)[number]): option is {
-  value: ProviderKind;
-  label: string;
-  available: true;
-} {
-  return option.available;
-}
 
 const PROVIDER_ICON_BY_PROVIDER: Record<ProviderPickerKind, Icon> = {
   codex: OpenAI,
@@ -97,7 +90,6 @@ function resolveLiveProviderAvailability(provider: ServerProviderStatus | undefi
   };
 }
 
-export const AVAILABLE_PROVIDER_OPTIONS = PROVIDER_OPTIONS.filter(isAvailableProviderOption);
 const UNAVAILABLE_PROVIDER_OPTIONS = PROVIDER_OPTIONS.filter((option) => !option.available);
 
 // Removes user-hidden providers from a provider option list while always
