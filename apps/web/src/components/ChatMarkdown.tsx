@@ -579,6 +579,30 @@ function SuspenseShikiCodeBlock({
     );
   }
 
+  return (
+    <UncachedShikiCodeBlock
+      code={code}
+      language={language}
+      themeName={themeName}
+      cacheKey={cacheKey}
+      isStreaming={isStreaming}
+    />
+  );
+}
+
+function UncachedShikiCodeBlock({
+  code,
+  language,
+  themeName,
+  cacheKey,
+  isStreaming,
+}: {
+  code: string;
+  language: SupportedLanguages;
+  themeName: DiffThemeName;
+  cacheKey: string;
+  isStreaming: boolean;
+}) {
   const highlighter = use(getHighlighterPromise(language));
   const highlightedHtml = useMemo(() => {
     try {
