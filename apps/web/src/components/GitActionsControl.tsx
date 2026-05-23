@@ -1352,7 +1352,7 @@ export default function GitActionsControl({
                 )}
               {isGitStatusOutOfSync && (
                 <p className="px-3 py-1.5 text-xs text-muted-foreground">
-                  Refreshing git status...
+                  Refreshing git status&hellip;
                 </p>
               )}
               {gitStatusError && (
