@@ -72,8 +72,8 @@
 
 ## Phase 3: Handle Route Module `only-export-components`
 
-- [ ] Inspect each route file with current errors: `_chat.$threadId.tsx`, `__root.tsx`, `_chat.settings.tsx`, `_chat.tsx`, `_chat.index.tsx`, `_chat.workspace.$workspaceId.tsx`, `_chat.workspace.index.tsx`, and `pair.tsx`.
-- [ ] For each route, list exports and classify them as required TanStack Router exports, route UI components, loader/search logic, constants, or types.
+- [x] Inspect each route file with current errors: `_chat.$threadId.tsx`, `__root.tsx`, `_chat.settings.tsx`, `_chat.tsx`, `_chat.index.tsx`, `_chat.workspace.$workspaceId.tsx`, `_chat.workspace.index.tsx`, and `pair.tsx`.
+- [ ] In progress: For each route, list exports and classify them as required TanStack Router exports, route UI components, loader/search logic, constants, or types.
 - [ ] For `_chat.$threadId.tsx`, move route UI into `_chat.$threadId.view.tsx` and pure route helpers into `_chat.$threadId.logic.ts`.
 - [ ] Update `_chat.$threadId.tsx` so it imports the route view and helper functions and exports only what TanStack Router requires.
 - [ ] Run focused tests that cover chat thread loading, if present.
@@ -81,7 +81,7 @@
 - [ ] Verify global providers, error boundaries, and devtools behavior still mount correctly.
 - [ ] For `_chat.settings.tsx`, move settings page UI into `_chat.settings.view.tsx` and settings logic into `_chat.settings.logic.ts`.
 - [ ] Run focused settings tests if present; otherwise use typecheck plus manual browser verification.
-- [ ] For `_chat.tsx`, `_chat.index.tsx`, workspace route files, and `pair.tsx`, repeat the thin-route-module extraction pattern.
+- [ ] In progress: For `_chat.tsx`, `_chat.index.tsx`, workspace route files, and `pair.tsx`, repeat the thin-route-module extraction pattern.
 - [ ] Run React Doctor again and record remaining route `only-export-components` diagnostics.
 - [ ] If route files still report `only-export-components` solely because of the required exported `Route` constant, research React Doctor config support for narrow rule ignores.
 - [ ] If React Doctor supports ignores, add the narrowest possible ignore for `only-export-components` on `apps/web/src/routes/**/*.tsx` and document why TanStack Router route modules are exempt.

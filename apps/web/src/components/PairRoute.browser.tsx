@@ -39,7 +39,7 @@ describe("PairRoute", () => {
 
   it("submits a manually entered pairing code to the current backend", async () => {
     window.history.replaceState(null, "", "/pair");
-    const { PairRoute } = await import("../routes/pair");
+    const { PairRoute } = await import("../routes/-pair.view");
 
     const screen = await render(<PairRoute />);
 
@@ -62,7 +62,7 @@ describe("PairRoute", () => {
 
   it("auto-submits hash tokens and strips them from the address bar", async () => {
     window.history.replaceState(null, "", "/pair#token=AUTO-CODE");
-    const { PairRoute } = await import("../routes/pair");
+    const { PairRoute } = await import("../routes/-pair.view");
 
     const screen = await render(<PairRoute />);
 
