@@ -81,7 +81,7 @@
 - [ ] Verify global providers, error boundaries, and devtools behavior still mount correctly.
 - [ ] For `_chat.settings.tsx`, move settings page UI into `_chat.settings.view.tsx` and settings logic into `_chat.settings.logic.ts`.
 - [ ] Run focused settings tests if present; otherwise use typecheck plus manual browser verification.
-- [ ] In progress: For `_chat.tsx`, `_chat.index.tsx`, workspace route files, and `pair.tsx`, repeat the thin-route-module extraction pattern. Completed `pair.tsx`, `_chat.index.tsx`, `_chat.workspace.$workspaceId.tsx`, and `_chat.workspace.index.tsx`; `_chat.tsx` remains.
+- [x] For `_chat.tsx`, `_chat.index.tsx`, workspace route files, and `pair.tsx`, repeat the thin-route-module extraction pattern.
 - [ ] Run React Doctor again and record remaining route `only-export-components` diagnostics.
 - [ ] If route files still report `only-export-components` solely because of the required exported `Route` constant, research React Doctor config support for narrow rule ignores.
 - [ ] If React Doctor supports ignores, add the narrowest possible ignore for `only-export-components` on `apps/web/src/routes/**/*.tsx` and document why TanStack Router route modules are exempt.
