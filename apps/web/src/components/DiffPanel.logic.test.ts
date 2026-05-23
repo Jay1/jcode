@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { DraftThreadState } from "../composerDraftStore";
 import type { Thread } from "../types";
-import { resolveDiffPanelThread } from "./DiffPanel.logic";
+import { resolveDiffPanelThread, resolveDiffSelectAllArmed } from "./DiffPanel.logic";
 
 const PROJECT_ID = ProjectId.makeUnsafe("project-1");
 const THREAD_ID = ThreadId.makeUnsafe("thread-1");
@@ -101,5 +101,28 @@ describe("resolveDiffPanelThread", () => {
         fallbackModelSelection: null,
       }),
     ).toBeUndefined();
+  });
+});
+
+describe("resolveDiffSelectAllArmed", () => {
+  it("arms only for select-all inside the diff viewport", () => {
+    expect(
+      resolveDiffSelectAllArmed(false, { key: "a", metaKey: true, ctrlKey: false }, true),
+    ).toBe(true);
+    expect(
+      resolveDiffSelectAllArmed(false, { key: "a", metaKey: true, ctrlKey: false }, false),
+    ).toBe(false);
+  });
+
+  it("keeps the armed state through copy and bare modifier keydowns", () => {
+    expect(
+      resolveDiffSelectAllArmed(true, { key: "c", metaKey: true, ctrlKey: false }, false),
+    ).toBe(true);
+    expect(
+      resolveDiffSelectAllArmed(true, { key: "Meta", metaKey: true, ctrlKey: false }, false),
+    ).toBe(true);
+    expect(
+      resolveDiffSelectAllArmed(true, { key: "x", metaKey: false, ctrlKey: false }, false),
+    ).toBe(false);
   });
 });

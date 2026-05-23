@@ -4,7 +4,13 @@
 // Depends on: Vitest and diffRendering helpers
 
 import { describe, expect, it } from "vitest";
-import { buildPatchCacheKey, resolveDiffCopyText, summarizePatchStats } from "./diffRendering";
+import {
+  buildPatchCacheKey,
+  getRenderablePatch,
+  resolveDiffCopyText,
+  serializeRenderablePatchText,
+  summarizePatchStats,
+} from "./diffRendering";
 
 describe("buildPatchCacheKey", () => {
   it("returns a stable cache key for identical content", () => {
@@ -45,6 +51,31 @@ describe("resolveDiffCopyText", () => {
   it("does not expose empty or missing patches as copyable", () => {
     expect(resolveDiffCopyText(undefined)).toBeNull();
     expect(resolveDiffCopyText(" \n\t ")).toBeNull();
+  });
+});
+
+describe("serializeRenderablePatchText", () => {
+  it("serializes parsed file diffs back into complete unified patch text", () => {
+    const patch = [
+      "diff --git a/src/example.ts b/src/example.ts",
+      "index 1111111..2222222 100644",
+      "--- a/src/example.ts",
+      "+++ b/src/example.ts",
+      "@@ -1,3 +1,4 @@",
+      " const stable = true;",
+      "-const oldValue = 1;",
+      "+const newValue = 1;",
+      "+const addedValue = 2;",
+      " export { stable };",
+      "",
+    ].join("\n");
+
+    const serialized = serializeRenderablePatchText(getRenderablePatch(patch));
+
+    expect(serialized).toContain("diff --git a/src/example.ts b/src/example.ts");
+    expect(serialized).toContain("@@ -1,3 +1,4 @@");
+    expect(serialized).toContain("-const oldValue = 1;");
+    expect(serialized).toContain("+const newValue = 1;");
   });
 });
 
