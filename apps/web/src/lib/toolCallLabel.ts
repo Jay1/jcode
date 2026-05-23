@@ -21,10 +21,14 @@ function humanizeMcpToolIdentifier(value: string): string | null {
 
   const [, server, tool, ...rest] = trimmed.split("__");
   const normalizedServer = humanizeMcpToken(server);
-  const normalizedTool = [tool, ...rest]
-    .map((part) => humanizeMcpToken(part))
-    .filter((part) => part.length > 0)
-    .join(" ");
+  const normalizedToolParts: string[] = [];
+  for (const part of [tool, ...rest]) {
+    const normalizedPart = humanizeMcpToken(part);
+    if (normalizedPart.length > 0) {
+      normalizedToolParts.push(normalizedPart);
+    }
+  }
+  const normalizedTool = normalizedToolParts.join(" ");
 
   if (!normalizedServer || !normalizedTool) {
     return null;

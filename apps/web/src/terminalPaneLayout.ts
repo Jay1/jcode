@@ -26,9 +26,20 @@ function normalizePaneTerminalIds(
   terminalIds: Array<string | undefined> | undefined,
   validTerminalIdSet?: ReadonlySet<string>,
 ): string[] {
-  return [...new Set((terminalIds ?? []).map((terminalId) => terminalId?.trim() ?? ""))]
-    .filter((terminalId) => terminalId.length > 0)
-    .filter((terminalId) => (validTerminalIdSet ? validTerminalIdSet.has(terminalId) : true));
+  const normalizedTerminalIds: string[] = [];
+  const seenTerminalIds = new Set<string>();
+
+  for (const terminalId of terminalIds ?? []) {
+    const normalizedTerminalId = terminalId?.trim() ?? "";
+    if (normalizedTerminalId.length === 0) continue;
+    if (validTerminalIdSet && !validTerminalIdSet.has(normalizedTerminalId)) continue;
+    if (seenTerminalIds.has(normalizedTerminalId)) continue;
+
+    seenTerminalIds.add(normalizedTerminalId);
+    normalizedTerminalIds.push(normalizedTerminalId);
+  }
+
+  return normalizedTerminalIds;
 }
 
 function resolveLeafTerminalIds(

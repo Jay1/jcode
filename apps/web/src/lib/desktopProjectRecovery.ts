@@ -7,11 +7,12 @@ import type { OrchestrationReadModel, OrchestrationShellSnapshot } from "@jcode/
 type ProjectRecoverySnapshot = OrchestrationReadModel | OrchestrationShellSnapshot;
 
 export function hasLiveThreadsWithMissingProjects(snapshot: ProjectRecoverySnapshot): boolean {
-  const liveProjectIds = new Set(
-    snapshot.projects
-      .filter((project) => !("deletedAt" in project) || project.deletedAt === null)
-      .map((project) => project.id),
-  );
+  const liveProjectIds = new Set<string>();
+  for (const project of snapshot.projects) {
+    if (!("deletedAt" in project) || project.deletedAt === null) {
+      liveProjectIds.add(project.id);
+    }
+  }
 
   return snapshot.threads.some((thread) => {
     const isLiveThread = !("deletedAt" in thread) || thread.deletedAt === null;

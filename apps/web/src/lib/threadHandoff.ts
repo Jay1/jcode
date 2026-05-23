@@ -58,7 +58,11 @@ export function resolveThreadHandoffBadgeLabel(thread: Pick<Thread, "handoff">):
 export function buildThreadHandoffImportedMessages(
   thread: Pick<Thread, "messages">,
 ): ReadonlyArray<ThreadHandoffImportedMessage> {
-  return thread.messages.filter(isImportableThreadMessage).map((message) => {
+  const importedMessages: ThreadHandoffImportedMessage[] = [];
+
+  for (const message of thread.messages) {
+    if (!isImportableThreadMessage(message)) continue;
+
     const importedText =
       message.role === "user" ? stripEmbeddedAssistantSelections(message.text) : message.text;
     const importedMessage: ThreadHandoffImportedMessage = {
@@ -87,22 +91,31 @@ export function buildThreadHandoffImportedMessages(
                 },
           )
         : null;
-    return attachments ? Object.assign(importedMessage, { attachments }) : importedMessage;
-  });
+    importedMessages.push(attachments ? Object.assign(importedMessage, { attachments }) : importedMessage);
+  }
+
+  return importedMessages;
 }
 
 export function buildThreadHandoffImportedActivities(
   thread: Pick<Thread, "activities">,
 ): ReadonlyArray<OrchestrationThreadActivity> {
-  return thread.activities.filter(isImportableThreadActivity).map((activity) => ({
-    id: EventId.makeUnsafe(randomUUID()),
-    tone: activity.tone,
-    kind: activity.kind,
-    summary: activity.summary,
-    payload: activity.payload,
-    turnId: activity.turnId,
-    createdAt: activity.createdAt,
-  }));
+  const importedActivities: OrchestrationThreadActivity[] = [];
+
+  for (const activity of thread.activities) {
+    if (!isImportableThreadActivity(activity)) continue;
+    importedActivities.push({
+      id: EventId.makeUnsafe(randomUUID()),
+      tone: activity.tone,
+      kind: activity.kind,
+      summary: activity.summary,
+      payload: activity.payload,
+      turnId: activity.turnId,
+      createdAt: activity.createdAt,
+    });
+  }
+
+  return importedActivities;
 }
 
 // Used by: ChatView fork command gating.
