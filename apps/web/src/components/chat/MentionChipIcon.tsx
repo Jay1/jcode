@@ -3,36 +3,16 @@
 //          the outlined folder glyph and the Seti file-type icon so the
 //          composer Lexical chip (DOM) and the sent-message chip (React)
 //          stay in sync.
-// Layer: UI shared component/helper
-// Exports: MentionChipIcon, createMentionChipIconElement
+// Layer: UI shared component
+// Exports: MentionChipIcon
 
 import { memo } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { getFileIconUrlForEntry, inferEntryKindFromPath } from "~/file-icons";
-import { FileIcon, PlugIcon } from "~/lib/icons";
+import { inferEntryKindFromPath } from "~/file-icons";
+import { PlugIcon } from "~/lib/icons";
 import { COMPOSER_INLINE_MENTION_CHIP_ICON_CLASS_NAME } from "../composerInlineChip";
 import { FolderClosed } from "../FolderClosed";
 import { FileEntryIcon } from "./FileEntryIcon";
-
-const FOLDER_CLOSED_ICON_SVG = renderToStaticMarkup(
-  <FolderClosed aria-hidden="true" className={COMPOSER_INLINE_MENTION_CHIP_ICON_CLASS_NAME} />,
-);
-const FILE_ICON_SVG = renderToStaticMarkup(
-  <FileIcon aria-hidden="true" className={COMPOSER_INLINE_MENTION_CHIP_ICON_CLASS_NAME} />,
-);
-const PLUG_ICON_SVG = renderToStaticMarkup(
-  <PlugIcon aria-hidden="true" className={COMPOSER_INLINE_MENTION_CHIP_ICON_CLASS_NAME} />,
-);
-
-export type MentionChipKind = "path" | "plugin";
-
-function createStaticIconSpan(svg: string): HTMLSpanElement {
-  const span = document.createElement("span");
-  span.ariaHidden = "true";
-  span.className = COMPOSER_INLINE_MENTION_CHIP_ICON_CLASS_NAME;
-  span.innerHTML = svg;
-  return span;
-}
+import type { MentionChipKind } from "./MentionChipIcon.logic";
 
 export const MentionChipIcon = memo(function MentionChipIcon(props: {
   path: string;
@@ -57,30 +37,3 @@ export const MentionChipIcon = memo(function MentionChipIcon(props: {
     />
   );
 });
-
-export function createMentionChipIconElement(
-  path: string,
-  theme: "light" | "dark",
-  kind: MentionChipKind = "path",
-): HTMLElement {
-  if (kind === "plugin" || path.startsWith("plugin://")) {
-    return createStaticIconSpan(PLUG_ICON_SVG);
-  }
-  if (inferEntryKindFromPath(path) === "directory") {
-    return createStaticIconSpan(FOLDER_CLOSED_ICON_SVG);
-  }
-  const image = document.createElement("img");
-  image.alt = "";
-  image.ariaHidden = "true";
-  image.className = COMPOSER_INLINE_MENTION_CHIP_ICON_CLASS_NAME;
-  image.loading = "lazy";
-  image.src = getFileIconUrlForEntry(path, "file", theme);
-  image.addEventListener(
-    "error",
-    () => {
-      image.replaceWith(createStaticIconSpan(FILE_ICON_SVG));
-    },
-    { once: true },
-  );
-  return image;
-}

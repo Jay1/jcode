@@ -59,7 +59,7 @@
 - [x] Inspect `apps/web/src/components/chat/ProviderModelPicker.tsx` and identify exported constants such as provider option lists.
 - [x] Move exported constants from `ProviderModelPicker.tsx` into `ProviderModelPicker.constants.ts` or existing provider registry files if that is the established location.
 - [x] Run `bun run --cwd apps/web test src/components/chat/composerProviderRegistry.test.tsx` if provider selection behavior is touched.
-- [ ] Inspect `apps/web/src/components/chat/MentionChipIcon.tsx` and move exported non-component values into `MentionChipIcon.logic.ts` or `MentionChipIcon.types.ts`.
+- [x] Inspect `apps/web/src/components/chat/MentionChipIcon.tsx` and move exported non-component values into `MentionChipIcon.logic.ts` or `MentionChipIcon.types.ts`.
 - [ ] Inspect `apps/web/src/components/chat/ChatTranscriptPane.browser.tsx`.
 - [ ] If the browser wrapper only exists to lazy-load or gate browser APIs, move local React components into `ChatTranscriptPane.tsx` or `ChatTranscriptPane.view.tsx` and keep the browser file as a thin component-only export.
 - [ ] Inspect `apps/web/src/components/chat/TraitsPicker.browser.tsx`.
