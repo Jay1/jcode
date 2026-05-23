@@ -2,10 +2,11 @@
 // Purpose: Shared sidebar sorting and status helpers used by the thread list UI.
 // Exports: Sidebar row state derivation, add-project error helpers, sort utilities, and visibility helpers.
 
-import type { KeybindingCommand, ProjectId, ThreadId } from "@jcode/contracts";
+import type { KeybindingCommand, ProjectId, ResolvedKeybindingsConfig, ThreadId } from "@jcode/contracts";
 import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "../appSettings";
 import type { ChatMessage, Project, SidebarThreadSummary, Thread } from "../types";
 import { cn } from "../lib/utils";
+import { shortcutLabelForCommand } from "../keybindings";
 import { isDuplicateProjectCreateError } from "../lib/projectCreateRecovery";
 import { workspaceRootsEqual } from "@jcode/shared/threadWorkspace";
 import {
@@ -22,6 +23,7 @@ export {
 
 const THREAD_SELECTION_SAFE_SELECTOR = "[data-thread-item], [data-thread-selection-safe]";
 const SIDEBAR_THREAD_PREWARM_LIMIT = 10;
+export const EMPTY_THREAD_JUMP_LABELS: ReadonlyMap<ThreadId, string> = new Map<ThreadId, string>();
 export const DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY = "jcode:show-debug-feature-flags-menu";
 export type SidebarNewThreadEnvMode = "local" | "worktree";
 export type DebugFeatureFlagsConsoleWindow = Window & {
@@ -89,6 +91,52 @@ export function installDebugFeatureFlagConsoleCommands(input: {
       delete debugWindow.dpcodeHideFeatureFlags;
     }
   };
+}
+
+export function threadJumpLabelMapsEqual(
+  left: ReadonlyMap<ThreadId, string>,
+  right: ReadonlyMap<ThreadId, string>,
+): boolean {
+  if (left === right) {
+    return true;
+  }
+  if (left.size !== right.size) {
+    return false;
+  }
+  for (const [threadId, label] of left) {
+    if (right.get(threadId) !== label) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Resolve the visible numbered-thread hints from the active keybinding config.
+export function buildThreadJumpLabelMap(input: {
+  keybindings: ResolvedKeybindingsConfig;
+  platform: string;
+  terminalOpen: boolean;
+  threadJumpCommandByThreadId: ReadonlyMap<ThreadId, KeybindingCommand>;
+}): ReadonlyMap<ThreadId, string> {
+  if (input.threadJumpCommandByThreadId.size === 0) {
+    return EMPTY_THREAD_JUMP_LABELS;
+  }
+
+  const shortcutLabelOptions = {
+    platform: input.platform,
+    context: {
+      terminalFocus: false,
+      terminalOpen: input.terminalOpen,
+    },
+  } as const;
+  const mapping = new Map<ThreadId, string>();
+  for (const [threadId, command] of input.threadJumpCommandByThreadId) {
+    const label = shortcutLabelForCommand(input.keybindings, command, shortcutLabelOptions);
+    if (label) {
+      mapping.set(threadId, label);
+    }
+  }
+  return mapping.size > 0 ? mapping : EMPTY_THREAD_JUMP_LABELS;
 }
 
 export function formatRelativeTime(iso: string): string {

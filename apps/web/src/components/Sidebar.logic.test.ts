@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildProjectThreadTree,
+  buildThreadJumpLabelMap,
   deriveSidebarProjectData,
   describeAddProjectError,
+  EMPTY_THREAD_JUMP_LABELS,
   extractDuplicateProjectCreateProjectId,
   formatRelativeTime,
   findWorkspaceRootMatch,
@@ -33,6 +35,7 @@ import {
   shouldShowDebugFeatureFlagsMenu,
   shouldPrunePinnedThreads,
   shouldClearThreadSelectionOnMouseDown,
+  threadJumpLabelMapsEqual,
   sortProjectsForSidebar,
   sortThreadsForSidebar,
 } from "./Sidebar.logic";
@@ -177,6 +180,33 @@ describe("debug feature flags menu visibility", () => {
     expect(debugWindow.jcodeHideFeatureFlags).toBe(hideFeatureFlags);
     expect(debugWindow.dpcodeShowFeatureFlags).toBe(showFeatureFlags);
     expect(debugWindow.dpcodeHideFeatureFlags).toBe(hideFeatureFlags);
+  });
+});
+
+describe("thread jump label maps", () => {
+  it("reuses the shared empty map when there are no thread jump commands", () => {
+    expect(
+      buildThreadJumpLabelMap({
+        keybindings: [],
+        platform: "mac",
+        terminalOpen: false,
+        threadJumpCommandByThreadId: new Map(),
+      }),
+    ).toBe(EMPTY_THREAD_JUMP_LABELS);
+  });
+
+  it("builds labels from effective keybindings and compares map contents", () => {
+    const threadId = ThreadId.makeUnsafe("thread-jump-1");
+    const labels = buildThreadJumpLabelMap({
+      keybindings: [],
+      platform: "mac",
+      terminalOpen: false,
+      threadJumpCommandByThreadId: new Map([[threadId, "thread.jump.1"]]),
+    });
+
+    expect(labels.get(threadId)).toBe("⌘1");
+    expect(threadJumpLabelMapsEqual(labels, new Map([[threadId, "⌘1"]]))).toBe(true);
+    expect(threadJumpLabelMapsEqual(labels, new Map([[threadId, "⌘2"]]))).toBe(false);
   });
 });
 

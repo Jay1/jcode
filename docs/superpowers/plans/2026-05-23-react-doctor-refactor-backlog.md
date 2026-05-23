@@ -119,7 +119,7 @@
 - [x] Add focused tests for any newly extracted ChatView logic with non-trivial branching.
 - [x] Extract rendering-only subcomponents from `ChatView.tsx` into colocated `ChatView.*.tsx` files only after logic extraction is stable.
 - [x] Keep state ownership in `ChatView.tsx` until tests prove it is safe to move into hooks.
-- [ ] Repeat the same approach for `src/components/Sidebar.tsx`.
+- [x] Repeat the same approach for `src/components/Sidebar.tsx`.
 - [x] Repeat the same approach for `src/components/SidebarSearchPalette.tsx`.
 - [x] Repeat the same approach for `src/components/DiffPanel.tsx`.
 - [x] Run focused tests after each extraction.

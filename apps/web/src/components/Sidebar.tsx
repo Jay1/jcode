@@ -192,9 +192,11 @@ import {
   getVisibleSidebarEntriesForPreview,
   groupSidebarThreadsByProjectId,
   installDebugFeatureFlagConsoleCommands,
+  buildThreadJumpLabelMap,
   pruneExpandedProjectThreadListsForCollapsedProjects,
   recoverExistingAddProjectTarget,
   DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY,
+  EMPTY_THREAD_JUMP_LABELS,
   resolveProjectEmptyState,
   resolveSidebarNewThreadEnvMode,
   resolveThreadRowClassName,
@@ -202,6 +204,7 @@ import {
   isDuplicateProjectCreateError,
   type SidebarDerivedProjectData,
   shouldShowDebugFeatureFlagsMenu,
+  threadJumpLabelMapsEqual,
   shouldPrunePinnedThreads,
   shouldClearThreadSelectionOnMouseDown,
   sortProjectsForSidebar,
@@ -264,7 +267,6 @@ const SIDEBAR_LIST_ANIMATION_OPTIONS = {
   duration: 180,
   easing: "ease-out",
 } as const;
-const EMPTY_THREAD_JUMP_LABELS = new Map<ThreadId, string>();
 const EMPTY_SHORTCUT_PARTS: readonly string[] = [];
 const ADD_PROJECT_SNAPSHOT_CATCH_UP_MAX_ATTEMPTS = 6;
 const ADD_PROJECT_SNAPSHOT_CATCH_UP_DELAY_MS = 50;
@@ -305,54 +307,6 @@ function readDebugFeatureFlagsMenuVisibility(): boolean {
   }
 }
 
-function threadJumpLabelMapsEqual(
-  left: ReadonlyMap<ThreadId, string>,
-  right: ReadonlyMap<ThreadId, string>,
-): boolean {
-  if (left === right) {
-    return true;
-  }
-  if (left.size !== right.size) {
-    return false;
-  }
-  for (const [threadId, label] of left) {
-    if (right.get(threadId) !== label) {
-      return false;
-    }
-  }
-  return true;
-}
-
-// Resolve the visible numbered-thread hints from the active keybinding config.
-function buildThreadJumpLabelMap(input: {
-  keybindings: ResolvedKeybindingsConfig;
-  platform: string;
-  terminalOpen: boolean;
-  threadJumpCommandByThreadId: ReadonlyMap<
-    ThreadId,
-    NonNullable<ReturnType<typeof threadJumpCommandForIndex>>
-  >;
-}): ReadonlyMap<ThreadId, string> {
-  if (input.threadJumpCommandByThreadId.size === 0) {
-    return EMPTY_THREAD_JUMP_LABELS;
-  }
-
-  const shortcutLabelOptions = {
-    platform: input.platform,
-    context: {
-      terminalFocus: false,
-      terminalOpen: input.terminalOpen,
-    },
-  } as const;
-  const mapping = new Map<ThreadId, string>();
-  for (const [threadId, command] of input.threadJumpCommandByThreadId) {
-    const label = shortcutLabelForCommand(input.keybindings, command, shortcutLabelOptions);
-    if (label) {
-      mapping.set(threadId, label);
-    }
-  }
-  return mapping.size > 0 ? mapping : EMPTY_THREAD_JUMP_LABELS;
-}
 function ProviderGlyph({ provider, className }: { provider: ProviderKind; className?: string }) {
   if (provider === "claudeAgent") {
     return <ClaudeAI aria-hidden="true" className={cn("text-foreground", className)} />;
