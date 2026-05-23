@@ -123,7 +123,7 @@ function serializeHunkHeader(hunk: Hunk): string {
   return context ? `${specs} ${context}` : specs;
 }
 
-function serializeFileDiffMetadata(file: FileDiffMetadata): string {
+export function serializeFileDiffMetadata(file: FileDiffMetadata): string {
   const newPath = file.name;
   const oldPath = file.prevName ?? file.name;
   const lines: string[] = [`diff --git a/${oldPath} b/${newPath}`];
