@@ -1499,16 +1499,25 @@ export default function Sidebar() {
   const openOrCreateProjectThreadFromSnapshot = useCallback(
     async (projectId: ProjectId, snapshot: OrchestrationShellSnapshot) => {
       const latestThread = sortThreadsForSidebar(
-        snapshot.threads
-          .filter(
-            (thread) => thread.projectId === projectId && (thread.archivedAt ?? null) === null,
-          )
-          .map((thread) => ({
+        snapshot.threads.reduce<
+          {
+            id: OrchestrationShellSnapshot["threads"][number]["id"];
+            createdAt: string;
+            updatedAt?: string | undefined;
+            latestUserMessageAt?: string | null | undefined;
+          }[]
+        >((threads, thread) => {
+          if (thread.projectId !== projectId || (thread.archivedAt ?? null) !== null) {
+            return threads;
+          }
+          threads.push({
             id: thread.id,
             createdAt: thread.createdAt,
             updatedAt: thread.updatedAt,
             latestUserMessageAt: thread.latestUserMessageAt,
-          })),
+          });
+          return threads;
+        }, []),
         appSettings.sidebarThreadSortOrder,
       )[0];
       if (latestThread) {
@@ -1540,16 +1549,25 @@ export default function Sidebar() {
       }
 
       const latestThread = sortThreadsForSidebar(
-        snapshot.threads
-          .filter(
-            (thread) => thread.projectId === projectId && (thread.archivedAt ?? null) === null,
-          )
-          .map((thread) => ({
+        snapshot.threads.reduce<
+          {
+            id: OrchestrationShellSnapshot["threads"][number]["id"];
+            createdAt: string;
+            updatedAt?: string | undefined;
+            latestUserMessageAt?: string | null | undefined;
+          }[]
+        >((threads, thread) => {
+          if (thread.projectId !== projectId || (thread.archivedAt ?? null) !== null) {
+            return threads;
+          }
+          threads.push({
             id: thread.id,
             createdAt: thread.createdAt,
             updatedAt: thread.updatedAt,
             latestUserMessageAt: thread.latestUserMessageAt,
-          })),
+          });
+          return threads;
+        }, []),
         appSettings.sidebarThreadSortOrder,
       )[0];
       if (latestThread) {

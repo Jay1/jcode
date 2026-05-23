@@ -102,14 +102,14 @@
 
 ## Phase 5: Mechanical Performance Warnings
 
-- [ ] Address `js-combine-iterations` in files with clear adjacent array passes and no side effects.
-- [ ] Address `js-set-map-lookups` where repeated array searches can become a local `Set` or `Map` without changing ordering semantics.
-- [ ] Address `async-await-in-loop` only when operations are independent and safe to parallelize.
-- [ ] Address `async-defer-await` where removing eager `await` does not alter error timing or loading behavior.
-- [ ] Keep each change local to one file or one feature area.
-- [ ] Add or update pure logic tests when transforming data processing code.
-- [ ] Run focused tests after each warning family batch.
-- [ ] Run React Doctor and record count changes for the mechanical warning rules.
+- [x] Address `js-combine-iterations` in files with clear adjacent array passes and no side effects.
+- [x] Address `js-set-map-lookups` where repeated array searches can become a local `Set` or `Map` without changing ordering semantics. Remaining hits are string/index scans or UI event index lookups left unchanged.
+- [x] Address `async-await-in-loop` only when operations are independent and safe to parallelize. Remaining hits require sequential side effects or browser-test timing and were deferred to semantic triage.
+- [x] Address `async-defer-await` where removing eager `await` does not alter error timing or loading behavior. Remaining hits depend on awaited side effects/values and were deferred to semantic triage.
+- [x] Keep each change local to one file or one feature area.
+- [x] Add or update pure logic tests when transforming data processing code.
+- [x] Run focused tests after each warning family batch.
+- [x] Run React Doctor and record count changes for the mechanical warning rules. Current: `js-combine-iterations` 0, `js-set-map-lookups` 10, `async-await-in-loop` 13, `async-defer-await` 6, total 509, errors 0.
 
 ## Phase 6: Component Extraction For Large Files
 

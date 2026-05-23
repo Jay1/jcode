@@ -2051,9 +2051,12 @@ function verifyPersistedAttachments(
     const persistedAttachments = attachments.filter(
       (attachment) => imageIdSet.has(attachment.id) && persistedIdSet.has(attachment.id),
     );
-    const nonPersistedImageIds = current.images
-      .map((image) => image.id)
-      .filter((imageId) => !persistedIdSet.has(imageId));
+    const nonPersistedImageIds = current.images.reduce<string[]>((imageIds, image) => {
+      if (!persistedIdSet.has(image.id)) {
+        imageIds.push(image.id);
+      }
+      return imageIds;
+    }, []);
     const nextDraft: ComposerThreadDraftState = {
       ...current,
       persistedAttachments,

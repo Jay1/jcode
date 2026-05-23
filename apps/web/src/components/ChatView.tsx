@@ -1732,13 +1732,14 @@ export default function ChatView({
     () => new Set<ProviderKind>(settings.hiddenProviders),
     [settings.hiddenProviders],
   );
-  const searchableModelOptions = useMemo(
-    () =>
-      [...AVAILABLE_PROVIDER_OPTIONS]
-        .sort((left, right) =>
-          compareProvidersByOrder(settings.providerOrder, left.value, right.value),
-        )
-        .filter((option) => {
+  const searchableModelOptions = useMemo(() => {
+    const options: Parameters<
+      typeof useComposerCommandMenuItems
+    >[0]["searchableModelOptions"][number][] = [];
+    for (const option of [...AVAILABLE_PROVIDER_OPTIONS].sort((left, right) =>
+      compareProvidersByOrder(settings.providerOrder, left.value, right.value),
+    )) {
+      const isVisible = (() => {
           if (lockedProvider !== null) {
             return option.value === lockedProvider;
           }
@@ -1749,33 +1750,32 @@ export default function ChatView({
             return true;
           }
           return !hiddenProviderSet.has(option.value);
-        })
-        .flatMap((option) =>
-          modelOptionsByProvider[option.value].map(
-            ({ slug, name, upstreamProviderId, upstreamProviderName }) => ({
-              provider: option.value,
-              providerLabel: option.label,
-              slug,
-              name,
-              searchSlug: slug.toLowerCase(),
-              searchName: name.toLowerCase(),
-              searchProvider: option.label.toLowerCase(),
-              searchUpstreamProvider: (
-                upstreamProviderName ??
-                upstreamProviderId ??
-                ""
-              ).toLowerCase(),
-            }),
-          ),
-        ),
-    [
+      })();
+      if (!isVisible) continue;
+
+      for (const { slug, name, upstreamProviderId, upstreamProviderName } of modelOptionsByProvider[
+        option.value
+      ]) {
+        options.push({
+          provider: option.value,
+          providerLabel: option.label,
+          slug,
+          name,
+          searchSlug: slug.toLowerCase(),
+          searchName: name.toLowerCase(),
+          searchProvider: option.label.toLowerCase(),
+          searchUpstreamProvider: (upstreamProviderName ?? upstreamProviderId ?? "").toLowerCase(),
+        });
+      }
+    }
+    return options;
+  }, [
       hiddenProviderSet,
       lockedProvider,
       modelOptionsByProvider,
       selectedProvider,
       settings.providerOrder,
-    ],
-  );
+    ]);
   const phase = derivePhase(activeThread?.session ?? null);
   const isConnecting = isLocalConnecting || phase === "connecting";
   const rawWorkLogEntries = useMemo(
@@ -2686,21 +2686,22 @@ export default function ChatView({
     activeThread?.session?.provider,
     activeThread?.session?.status,
   ]);
-  const providerStatuses = useMemo(
-    () =>
-      (serverConfigQuery.data?.providers ?? EMPTY_PROVIDER_STATUSES)
-        .map((status) => {
+  const providerStatuses = useMemo(() => {
+    const statuses: NonNullable<ReturnType<typeof normalizeProviderStatusForLocalConfig>>[] = [];
+    for (const status of serverConfigQuery.data?.providers ?? EMPTY_PROVIDER_STATUSES) {
           const customBinaryPath = getCustomBinaryPathForProvider(settings, status.provider);
-          return normalizeProviderStatusForLocalConfig({
+      const normalizedStatus = normalizeProviderStatusForLocalConfig({
             provider: status.provider,
             status,
             customBinaryPath,
             confirmedCustomBinaryPath: confirmedCustomBinaryPathsByProvider[status.provider],
           });
-        })
-        .flatMap((status) => (status ? [status] : [])),
-    [confirmedCustomBinaryPathsByProvider, serverConfigQuery.data?.providers, settings],
-  );
+      if (normalizedStatus) {
+        statuses.push(normalizedStatus);
+      }
+    }
+    return statuses;
+  }, [confirmedCustomBinaryPathsByProvider, serverConfigQuery.data?.providers, settings]);
   const handoffBadgeLabel = useMemo(
     () => (activeThread ? resolveThreadHandoffBadgeLabel(activeThread) : null),
     [activeThread],
@@ -4253,9 +4254,12 @@ export default function ChatView({
       } catch {
         const currentImageIds = new Set(composerImages.map((image) => image.id));
         const fallbackPersistedAttachments = getPersistedAttachmentsForThread();
-        const fallbackPersistedIds = fallbackPersistedAttachments
-          .map((attachment) => attachment.id)
-          .filter((id) => currentImageIds.has(id));
+        const fallbackPersistedIds = fallbackPersistedAttachments.reduce<string[]>((ids, attachment) => {
+          if (currentImageIds.has(attachment.id)) {
+            ids.push(attachment.id);
+          }
+          return ids;
+        }, []);
         const fallbackPersistedIdSet = new Set(fallbackPersistedIds);
         const fallbackAttachments = fallbackPersistedAttachments.filter((attachment) =>
           fallbackPersistedIdSet.has(attachment.id),
