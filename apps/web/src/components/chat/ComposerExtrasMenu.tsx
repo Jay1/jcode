@@ -50,6 +50,7 @@ export const ComposerExtrasMenu = memo(function ComposerExtrasMenu(props: {
         ref={fileInputRef}
         data-testid="composer-photo-input"
         type="file"
+        aria-label="Add composer images"
         accept="image/*"
         multiple
         className="sr-only"
