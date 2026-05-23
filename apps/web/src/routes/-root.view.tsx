@@ -351,6 +351,7 @@ function GlobalShortcutsDialog() {
 
   return (
     <ShortcutsDialog
+      key={open ? "open" : "closed"}
       open={open}
       onOpenChange={setOpen}
       keybindings={keybindings}

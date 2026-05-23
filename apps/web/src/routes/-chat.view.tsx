@@ -464,6 +464,7 @@ function ChatRouteGlobalShortcuts() {
 
   return (
     <ShortcutsDialog
+      key={shortcutsDialogOpen ? "open" : "closed"}
       open={shortcutsDialogOpen}
       onOpenChange={setShortcutsDialogOpen}
       keybindings={keybindings}
