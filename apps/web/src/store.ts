@@ -1311,7 +1311,9 @@ function isStalePendingRequestFailureDetail(detail: unknown): boolean {
     normalized.includes("stale pending user-input request") ||
     normalized.includes("unknown pending approval request") ||
     normalized.includes("unknown pending permission request") ||
-    normalized.includes("unknown pending user-input request")
+    normalized.includes("unknown pending user-input request") ||
+    normalized.includes("unknown pending user input request") ||
+    normalized.includes("unknown pending codex user input request")
   );
 }
 
