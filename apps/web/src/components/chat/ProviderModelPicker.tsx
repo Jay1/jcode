@@ -340,7 +340,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   const renderModelRadioGroup = (provider: ProviderKind) => {
     if (props.loadingModelProviders?.[provider]) {
       return (
-        <div className="w-60 space-y-2 px-2 py-2" aria-label="Loading models">
+        <div className="w-60 space-y-2 p-2" aria-label="Loading models">
           {Array.from({ length: 6 }, (_, index) => (
             <div key={index} className="flex items-center gap-2 rounded-md px-2 py-1.5">
               <Skeleton className="size-3.5 rounded-full" />
@@ -438,7 +438,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
           ))}
         </MenuRadioGroup>
       ) : (
-        <div className="px-2 py-2 text-muted-foreground text-sm">No matches</div>
+        <div className="p-2 text-muted-foreground text-sm">No matches</div>
       );
 
     if (!shouldShowSearch) {
