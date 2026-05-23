@@ -519,7 +519,7 @@ function SplitPaneEmbeddedPanel(props: {
       resizeOverlay.addEventListener("pointerup", onPointerUp);
       resizeOverlay.addEventListener("pointercancel", onPointerUp);
     },
-    [minPanelWidth, panelWidth, shouldAcceptEmbeddedWidth, storageKey],
+    [minPanelWidth, shouldAcceptEmbeddedWidth, storageKey],
   );
 
   if (!props.panelOpen || !props.threadId) {

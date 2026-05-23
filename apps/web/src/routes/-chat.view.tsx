@@ -1,7 +1,7 @@
 import { type ResolvedKeybindingsConfig } from "@jcode/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   goBackInAppHistory,
@@ -219,7 +219,10 @@ function ChatRouteGlobalShortcuts() {
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const keybindings = serverConfigQuery.data?.keybindings ?? EMPTY_KEYBINDINGS;
   const platform = typeof navigator === "undefined" ? "" : navigator.platform;
-  const providerStatuses = serverConfigQuery.data?.providers ?? [];
+  const providerStatuses = useMemo(
+    () => serverConfigQuery.data?.providers ?? [],
+    [serverConfigQuery.data?.providers],
+  );
   const activeThreadTerminalState = useTerminalStateStore((state) =>
     activeContextThreadId
       ? selectThreadTerminalState(state.terminalStateByThreadId, activeContextThreadId)
