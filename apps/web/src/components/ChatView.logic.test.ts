@@ -421,6 +421,17 @@ describe("formatOutgoingPrompt", () => {
       }),
     ).toBe("Implement this");
   });
+
+  it("injects supported Claude ultrathink effort into outgoing prompts", () => {
+    expect(
+      formatOutgoingPrompt({
+        provider: "claudeAgent",
+        model: "claude-sonnet-4-6",
+        effort: "ultrathink",
+        text: "Implement this",
+      }),
+    ).toBe("Ultrathink:\nImplement this");
+  });
 });
 
 describe("mergeDynamicModelOptions", () => {
