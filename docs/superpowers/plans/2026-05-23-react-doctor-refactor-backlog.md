@@ -121,7 +121,7 @@
 - [x] Keep state ownership in `ChatView.tsx` until tests prove it is safe to move into hooks.
 - [ ] Repeat the same approach for `src/components/Sidebar.tsx`.
 - [ ] Repeat the same approach for `src/components/SidebarSearchPalette.tsx`.
-- [ ] Repeat the same approach for `src/components/DiffPanel.tsx`. Started by extracting `DiffPanelShell` loading states; `DiffPanel.tsx` itself still needs a dedicated pass.
+- [x] Repeat the same approach for `src/components/DiffPanel.tsx`.
 - [x] Run focused tests after each extraction.
 - [x] Run browser verification for visible layout or interaction changes.
 - [x] Run React Doctor and record changes for `no-giant-component` and `no-multi-comp`. Current: `no-giant-component` 15, `no-multi-comp` 8, total 507, errors 0.
