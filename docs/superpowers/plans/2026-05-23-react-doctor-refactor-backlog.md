@@ -134,7 +134,7 @@
 - [ ] Replace derived state with direct derivation during render only when it is pure and cheap.
 - [ ] Replace prop-change synchronization with reducer actions only when state is genuinely user-editable or cross-eventful.
 - [ ] Use refs only for imperative handles and previous-value tracking that does not affect rendering.
-- [ ] Fix `exhaustive-deps` warnings by making dependencies correct, not by suppressing them.
+- [ ] Fix `exhaustive-deps` warnings by making dependencies correct, not by suppressing them. In progress; reduced from 21 to 12, leaving ref-cleanup warnings for semantic review.
 - [ ] For event handlers, use normal callbacks for user events and `useEffectEvent` only for effect-owned callbacks where React 19 semantics are intended.
 - [ ] Add regression tests around any state transition that changes behavior risk.
 - [ ] Run focused tests and manual browser QA after each file.

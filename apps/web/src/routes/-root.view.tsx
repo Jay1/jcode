@@ -397,6 +397,7 @@ function GlobalWhatsNewSurface() {
         />
       )}
       <WhatsNewDialog
+        key={isDialogOpen ? currentVersion : "closed"}
         open={isDialogOpen}
         onOpenChange={onDialogOpenChange}
         currentEntry={currentEntry}
