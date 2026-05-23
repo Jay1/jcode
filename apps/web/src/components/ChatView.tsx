@@ -68,6 +68,7 @@ import {
   providerAgentsQueryOptions,
   providerComposerCapabilitiesQueryOptions,
   providerCommandsQueryOptions,
+  isInitialModelDiscoveryPending,
   providerModelsQueryOptions,
   providerPluginsQueryOptions,
   providerSkillsQueryOptions,
@@ -1502,7 +1503,7 @@ export default function ChatView({
   const cursorModelDiscoveryPending =
     cursorModelDiscoveryEnabled &&
     !hasResolvedCursorModelDiscovery &&
-    (cursorDynamicModelsQuery.isLoading || cursorDynamicModelsQuery.isFetching);
+    isInitialModelDiscoveryPending(cursorDynamicModelsQuery);
   const kiloModelDiscoveryEnabled =
     selectedProvider === "kilo" || lockedProvider === "kilo" || isModelPickerOpen;
   const hasResolvedKiloModelDiscovery =
@@ -1512,7 +1513,7 @@ export default function ChatView({
   const kiloModelDiscoveryPending =
     kiloModelDiscoveryEnabled &&
     !hasResolvedKiloModelDiscovery &&
-    (kiloDynamicModelsQuery.isLoading || kiloDynamicModelsQuery.isFetching);
+    isInitialModelDiscoveryPending(kiloDynamicModelsQuery);
   const modelOptionsByProvider = useMemo(() => {
     const staticOptions: Record<ProviderKind, ReturnType<typeof getAppModelOptions>> = {
       codex: getAppModelOptions(

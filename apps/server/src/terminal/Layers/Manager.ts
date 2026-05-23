@@ -20,6 +20,7 @@ import {
   deriveTerminalOutputIdentity,
   deriveTerminalProcessIdentity,
   deriveTerminalTitleSignalIdentity,
+  MOUSE_REPORTING_RESET_SEQUENCE,
   TERMINAL_CLI_KIND_ENV_KEYS,
   TERMINAL_HOOK_OSC_PREFIXES,
   terminalCliKindFromValue,
@@ -830,6 +831,11 @@ function appendSessionHistory(
 function sanitizePersistedTerminalHistory(history: string): string {
   if (history.length === 0) return history;
   return sanitizeTerminalHistoryChunk("", history).visibleText;
+}
+
+function snapshotHistory(history: string): string {
+  if (history.length === 0) return history;
+  return `${history}${MOUSE_REPORTING_RESET_SEQUENCE}`;
 }
 
 interface TerminalManagerEvents {
@@ -1896,7 +1902,7 @@ export class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> 
       cwd: session.cwd,
       status: session.status,
       pid: session.pid,
-      history: session.history,
+      history: snapshotHistory(session.history),
       exitCode: session.exitCode,
       exitSignal: session.exitSignal,
       updatedAt: session.updatedAt,
