@@ -888,7 +888,7 @@ export default function DiffPanel({
           </div>
 
           {surfaceMode === "summary" ? (
-            <div className="min-h-0 flex-1 overflow-auto px-4 py-4">
+            <div className="min-h-0 flex-1 overflow-auto p-4">
               <div className="mb-4 flex items-center justify-between gap-3 border-b border-border/60 pb-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground">Repo summary</p>
@@ -1053,7 +1053,7 @@ export default function DiffPanel({
                           )}
                         />
                         {!canRender && (
-                          <div className="px-3 py-3 text-[11px] leading-relaxed text-muted-foreground">
+                          <div className="p-3 text-[11px] leading-relaxed text-muted-foreground">
                             This file is too large to display. Open the file to inspect the change.
                           </div>
                         )}
