@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -28,6 +28,7 @@ export function ThreadWorktreeHandoffDialog({
   onOpenChange,
   onConfirm,
 }: ThreadWorktreeHandoffDialogProps) {
+  const worktreeInputId = useId();
   const worktreeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -72,9 +73,10 @@ export function ThreadWorktreeHandoffDialog({
               handleSubmit();
             }}
           >
-            <label className="grid gap-1.5">
+            <label htmlFor={worktreeInputId} className="grid gap-1.5">
               <span className="text-xs font-medium text-foreground">Worktree name</span>
               <Input
+                id={worktreeInputId}
                 ref={worktreeInputRef}
                 value={worktreeName}
                 disabled={busy}
