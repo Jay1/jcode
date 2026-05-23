@@ -5779,7 +5779,7 @@ export default function Sidebar() {
                     aria-label="Loading projects"
                   >
                     <div className="text-center text-[length:var(--app-font-size-ui,12px)] text-muted-foreground/58">
-                      Loading projects...
+                      Loading projects&hellip;
                     </div>
                     <div className="mx-auto grid w-full max-w-42 gap-1.5 opacity-70">
                       <div className="h-2 rounded-full bg-muted/55 animate-pulse" />
