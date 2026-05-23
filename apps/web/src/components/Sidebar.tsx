@@ -4331,6 +4331,7 @@ export default function Sidebar() {
             ) : null}
             {renamingThreadId === thread.id ? (
               <input
+                aria-label="Thread title"
                 ref={(el) => {
                   if (el && renamingInputRef.current !== el) {
                     renamingInputRef.current = el;
@@ -4531,6 +4532,7 @@ export default function Sidebar() {
             <div className="flex min-w-0 flex-1 items-baseline gap-2 overflow-hidden">
               {isRenamingProject ? (
                 <input
+                  aria-label="Project name"
                   ref={(element) => {
                     if (element && renamingProjectInputRef.current !== element) {
                       renamingProjectInputRef.current = element;
@@ -5483,6 +5485,7 @@ export default function Sidebar() {
                               isRenaming ? (
                                 <div className="px-1.5 py-0.5">
                                   <input
+                                    aria-label="Workspace title"
                                     autoFocus
                                     value={renamingWorkspaceTitle}
                                     onChange={(event) => {
@@ -5700,6 +5703,7 @@ export default function Sidebar() {
                       >
                         <input
                           ref={addProjectInputRef}
+                          aria-label="Project path"
                           className="min-w-0 flex-1 bg-transparent pl-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none"
                           placeholder="/path/to/project"
                           value={newCwd}
