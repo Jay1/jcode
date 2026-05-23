@@ -217,11 +217,12 @@ function HighlightedText(props: { text: string; query: string; className?: strin
 }
 
 export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
+  const { importProviders, open } = props;
   const { activeTheme, resolvedTheme, setCodeThemeId, setTheme, theme } = useTheme();
   const [query, setQuery] = useState(props.initialBrowseQuery ?? "");
   const [highlightedItemValue, setHighlightedItemValue] = useState<string | null>(null);
   const [importProvider, setImportProvider] = useState<ImportProviderKind>(
-    props.importProviders[0] ?? "codex",
+    importProviders[0] ?? "codex",
   );
   const [importId, setImportId] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
@@ -230,24 +231,24 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
   const [isAddingProject, setIsAddingProject] = useState(false);
 
   useEffect(() => {
-    if (!props.open) {
+    if (!open) {
       setQuery("");
       setHighlightedItemValue(null);
-      setImportProvider(props.importProviders[0] ?? "codex");
+      setImportProvider(importProviders[0] ?? "codex");
       setImportId("");
       setImportError(null);
       setIsImporting(false);
       setAddProjectError(null);
       setIsAddingProject(false);
     }
-  }, [props.importProviders, props.open]);
+  }, [importProviders, open]);
 
   useEffect(() => {
-    if (props.importProviders.includes(importProvider)) {
+    if (importProviders.includes(importProvider)) {
       return;
     }
-    setImportProvider(props.importProviders[0] ?? "codex");
-  }, [importProvider, props.importProviders]);
+    setImportProvider(importProviders[0] ?? "codex");
+  }, [importProvider, importProviders]);
 
   useEffect(() => {
     setAddProjectError(null);
