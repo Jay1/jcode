@@ -53,9 +53,14 @@ export function resolveAvailableEditorOptions(
   availableEditors: ReadonlyArray<EditorId>,
 ): ReadonlyArray<EditorOption> {
   const availableEditorIds = new Set(availableEditors);
-  return EDITORS.filter((editor) => availableEditorIds.has(editor.id)).map((editor) => ({
-    value: editor.id,
-    label: resolveEditorLabel(editor.id, platform),
-    Icon: resolveEditorIcon(editor.id),
-  }));
+  const editorOptions: EditorOption[] = [];
+  for (const editor of EDITORS) {
+    if (!availableEditorIds.has(editor.id)) continue;
+    editorOptions.push({
+      value: editor.id,
+      label: resolveEditorLabel(editor.id, platform),
+      Icon: resolveEditorIcon(editor.id),
+    });
+  }
+  return editorOptions;
 }

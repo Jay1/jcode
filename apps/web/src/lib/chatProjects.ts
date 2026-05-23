@@ -40,14 +40,16 @@ function findCanonicalHomeProject(homeDir: string): {
     };
   }
 
-  const duplicateProjectIds = homeProjects
-    .filter((project) => project.id !== canonicalProject.id)
-    .flatMap((project) => {
-      const hasThreads = (state.threadIds ?? [])
-        .map((threadId) => getThreadFromState(state, threadId))
-        .some((thread) => thread?.projectId === project.id);
-      return hasThreads ? [] : [project.id];
-    });
+  const duplicateProjectIds: ProjectId[] = [];
+  for (const project of homeProjects) {
+    if (project.id === canonicalProject.id) continue;
+    const hasThreads = (state.threadIds ?? []).some(
+      (threadId) => getThreadFromState(state, threadId)?.projectId === project.id,
+    );
+    if (!hasThreads) {
+      duplicateProjectIds.push(project.id);
+    }
+  }
 
   return {
     canonicalProjectId: canonicalProject.id,

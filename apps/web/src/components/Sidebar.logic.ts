@@ -220,12 +220,14 @@ export function pruneExpandedProjectThreadListsForCollapsedProjects<
   normalizeProjectCwd: (cwd: string) => string;
 }): ReadonlySet<string> {
   const { expandedProjectThreadListCwds, normalizeProjectCwd, projects } = input;
-  const collapsedProjectCwds = new Set(
-    projects
-      .filter((project) => !project.expanded)
-      .map((project) => normalizeProjectCwd(project.cwd))
-      .filter((cwd) => cwd.length > 0),
-  );
+  const collapsedProjectCwds = new Set<string>();
+  for (const project of projects) {
+    if (project.expanded) continue;
+    const cwd = normalizeProjectCwd(project.cwd);
+    if (cwd.length > 0) {
+      collapsedProjectCwds.add(cwd);
+    }
+  }
 
   if (collapsedProjectCwds.size === 0) {
     return expandedProjectThreadListCwds;

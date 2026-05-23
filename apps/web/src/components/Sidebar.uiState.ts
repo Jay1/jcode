@@ -24,6 +24,19 @@ const DEFAULT_SIDEBAR_UI_STATE: SidebarUiState = {
   lastThreadRoute: null,
 };
 
+function normalizeExpandedProjectThreadListCwds(values: readonly unknown[]): string[] {
+  const normalizedCwds: string[] = [];
+  const seenCwds = new Set<string>();
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const cwd = normalizeSidebarProjectThreadListCwd(value);
+    if (cwd.length === 0 || seenCwds.has(cwd)) continue;
+    seenCwds.add(cwd);
+    normalizedCwds.push(cwd);
+  }
+  return normalizedCwds;
+}
+
 export function normalizeSidebarProjectThreadListCwd(cwd: string): string {
   return normalizeWorkspaceRootForComparison(cwd);
 }
@@ -66,14 +79,9 @@ export function readSidebarUiState(): SidebarUiState {
     return {
       chatSectionExpanded: parsed.chatSectionExpanded === true,
       chatThreadListExpanded: parsed.chatThreadListExpanded === true,
-      expandedProjectThreadListCwds: [
-        ...new Set(
-          (parsed.expandedProjectThreadListCwds ?? [])
-            .filter((cwd): cwd is string => typeof cwd === "string")
-            .map((cwd) => normalizeSidebarProjectThreadListCwd(cwd))
-            .filter((cwd) => cwd.length > 0),
-        ),
-      ],
+      expandedProjectThreadListCwds: normalizeExpandedProjectThreadListCwds(
+        parsed.expandedProjectThreadListCwds ?? [],
+      ),
       dismissedThreadStatusKeyByThreadId: Object.fromEntries(
         Object.entries(parsed.dismissedThreadStatusKeyByThreadId ?? {}).filter(
           ([threadId, statusKey]) =>
@@ -101,13 +109,9 @@ export function persistSidebarUiState(input: SidebarUiState): void {
       JSON.stringify({
         chatSectionExpanded: input.chatSectionExpanded,
         chatThreadListExpanded: input.chatThreadListExpanded,
-        expandedProjectThreadListCwds: [
-          ...new Set(
-            input.expandedProjectThreadListCwds
-              .map((cwd) => normalizeSidebarProjectThreadListCwd(cwd))
-              .filter((cwd) => cwd.length > 0),
-          ),
-        ],
+        expandedProjectThreadListCwds: normalizeExpandedProjectThreadListCwds(
+          input.expandedProjectThreadListCwds,
+        ),
         dismissedThreadStatusKeyByThreadId: Object.fromEntries(
           Object.entries(input.dismissedThreadStatusKeyByThreadId).filter(
             ([threadId, statusKey]) => threadId.length > 0 && statusKey.length > 0,
