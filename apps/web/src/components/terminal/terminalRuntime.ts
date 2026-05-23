@@ -13,6 +13,7 @@ import {
   defaultTerminalTitleForCliKind,
   consumeTerminalIdentityInput,
   deriveTerminalOutputIdentity,
+  MOUSE_REPORTING_RESET_SEQUENCE,
 } from "@jcode/shared/terminalThreads";
 import { Terminal } from "@xterm/xterm";
 
@@ -56,7 +57,7 @@ function resetForSnapshotReplay(entry: TerminalRuntimeEntry): void {
   entry.outputIdentityBuffer = "";
   clearPendingWrites(entry);
   clearDeferredWrites(entry);
-  entry.terminal.write("\u001bc");
+  entry.terminal.write(`\u001bc${MOUSE_REPORTING_RESET_SEQUENCE}`);
 }
 
 function replaySnapshotHistory(entry: TerminalRuntimeEntry, history: string): void {

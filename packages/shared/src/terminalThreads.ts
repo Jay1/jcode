@@ -23,6 +23,7 @@ export const TERMINAL_HOOK_OSC_PREFIXES = [
 ] as const;
 export const T3CODE_TERMINAL_CLI_KIND_ENV_KEY = LEGACY_T3CODE_TERMINAL_CLI_KIND_ENV_KEY;
 export const T3CODE_TERMINAL_HOOK_OSC_PREFIX = LEGACY_T3CODE_TERMINAL_HOOK_OSC_PREFIX;
+export const MOUSE_REPORTING_RESET_SEQUENCE = "\u001b[?1000l\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1015l";
 export const MANAGED_TERMINAL_COMMAND_NAME_BY_CLI_KIND: Record<TerminalCliKind, string> = {
   codex: "codex",
   claude: "claude",
