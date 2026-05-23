@@ -1,10 +1,13 @@
 import { assert, describe, it } from "vitest";
 
 import {
+  buildHighlightedTextSegments,
+  buildSidebarThemeCommandItem,
   matchSidebarSearchActions,
   matchSidebarSearchProjects,
   matchSidebarSearchThemes,
   matchSidebarSearchThreads,
+  threadMatchLabel,
   type SidebarSearchAction,
   type SidebarSearchProject,
   type SidebarSearchTheme,
@@ -236,5 +239,55 @@ describe("SidebarSearchPalette.logic", () => {
     assert.equal(result[0]?.thread.id, "thread-alpha-compose-prompt");
     assert.equal(result[0]?.matchKind, "title");
     assert.equal(result[0]?.messageMatchCount, 2);
+  });
+});
+
+describe("sidebar theme command logic", () => {
+  it("stays quiet for blank queries", () => {
+    assert.isNull(buildSidebarThemeCommandItem({ query: "  ", resolvedTheme: "dark", theme: "system" }));
+  });
+
+  it("matches explicit theme modes", () => {
+    assert.deepEqual(
+      buildSidebarThemeCommandItem({ query: "use system", resolvedTheme: "dark", theme: "system" }),
+      {
+        id: "theme-command:system",
+        label: "Follow system theme",
+        description: "Match your OS appearance setting.",
+        mode: "system",
+        isActive: true,
+      },
+    );
+  });
+
+  it("suggests the opposite resolved theme for appearance intent", () => {
+    assert.deepEqual(
+      buildSidebarThemeCommandItem({ query: "the", resolvedTheme: "dark", theme: "system" }),
+      {
+        id: "theme-command:light",
+        label: "Switch to light theme",
+        description: "Always use the light theme.",
+        mode: "light",
+        isActive: false,
+      },
+    );
+  });
+});
+
+describe("sidebar highlight and label helpers", () => {
+  it("builds stable highlight segments with duplicate and special-character tokens", () => {
+    assert.deepEqual(buildHighlightedTextSegments({ text: "Fix alpha.alpha. beta", query: "alpha. alpha." }), [
+      { key: "0-4", text: "Fix ", highlighted: false },
+      { key: "4-6", text: "alpha.", highlighted: true },
+      { key: "10-6", text: "alpha.", highlighted: true },
+      { key: "16-5", text: " beta", highlighted: false },
+    ]);
+  });
+
+  it("labels message and project matches only", () => {
+    assert.equal(threadMatchLabel({ matchKind: "message", messageMatchCount: 2 }), "2 chat hits");
+    assert.equal(threadMatchLabel({ matchKind: "message", messageMatchCount: 1 }), "Chat match");
+    assert.equal(threadMatchLabel({ matchKind: "project", messageMatchCount: 0 }), "Project match");
+    assert.isNull(threadMatchLabel({ matchKind: "title", messageMatchCount: 0 }));
   });
 });

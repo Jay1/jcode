@@ -45,10 +45,13 @@ import {
   type SidebarSearchProject,
   type SidebarSearchTheme,
   type SidebarSearchThread,
+  buildHighlightedTextSegments,
+  buildSidebarThemeCommandItem,
   matchSidebarSearchActions,
   matchSidebarSearchProjects,
   matchSidebarSearchThemes,
   matchSidebarSearchThreads,
+  threadMatchLabel,
 } from "./SidebarSearchPalette.logic";
 import { useTheme } from "../hooks/useTheme";
 import { getAvailableCodeThemes, getCodeThemeSeed } from "../theme/theme.logic";
@@ -145,92 +148,6 @@ function PaletteIcon(props: { icon: IconComponent }) {
   );
 }
 
-type ThemeCommandItem = {
-  description: string;
-  id: string;
-  isActive: boolean;
-  label: string;
-  mode: "system" | "light" | "dark";
-};
-
-function queryTokens(query: string): string[] {
-  return query
-    .trim()
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((token) => token.length > 0);
-}
-
-function hasTokenEqual(query: string, token: string): boolean {
-  return queryTokens(query).includes(token);
-}
-
-// Treat any token of length >= 2 that is a prefix of `keyword` as a match,
-// so typing `th` / `the` already starts surfacing theme actions.
-function hasTokenPrefixOf(query: string, keyword: string): boolean {
-  return queryTokens(query).some((token) => token.length >= 2 && keyword.startsWith(token));
-}
-
-// Keep the palette quiet by default, then expose one focused appearance action
-// once the user is clearly asking about themes.
-function buildThemeCommandItem(input: {
-  query: string;
-  resolvedTheme: "light" | "dark";
-  theme: "system" | "light" | "dark";
-}): ThemeCommandItem | null {
-  const normalizedQuery = input.query.trim().toLowerCase();
-  if (!normalizedQuery) {
-    return null;
-  }
-
-  if (hasTokenEqual(normalizedQuery, "system")) {
-    return {
-      id: "theme-command:system",
-      label: "Follow system theme",
-      description: "Match your OS appearance setting.",
-      mode: "system",
-      isActive: input.theme === "system",
-    };
-  }
-
-  if (hasTokenEqual(normalizedQuery, "light")) {
-    return {
-      id: "theme-command:light",
-      label: "Switch to light theme",
-      description: "Always use the light theme.",
-      mode: "light",
-      isActive: input.theme === "light",
-    };
-  }
-
-  if (hasTokenEqual(normalizedQuery, "dark")) {
-    return {
-      id: "theme-command:dark",
-      label: "Switch to dark theme",
-      description: "Always use the dark theme.",
-      mode: "dark",
-      isActive: input.theme === "dark",
-    };
-  }
-
-  if (
-    hasTokenPrefixOf(normalizedQuery, "theme") ||
-    hasTokenPrefixOf(normalizedQuery, "appearance")
-  ) {
-    const nextMode = input.resolvedTheme === "dark" ? "light" : "dark";
-    return {
-      id: `theme-command:${nextMode}`,
-      label: `Switch to ${nextMode} theme`,
-      description:
-        nextMode === "light" ? "Always use the light theme." : "Always use the dark theme.",
-      mode: nextMode,
-      isActive: input.theme === nextMode,
-    };
-  }
-
-  return null;
-}
-
 function CodeThemeBadge(props: { accent: string; background: string; foreground: string }) {
   return (
     <span
@@ -275,53 +192,11 @@ function ProviderIcon(props: { provider: ProviderKind }) {
   );
 }
 
-function threadMatchLabel(input: {
-  matchKind: "message" | "project" | "title";
-  messageMatchCount: number;
-}): string | null {
-  if (input.matchKind === "message") {
-    return input.messageMatchCount > 1 ? `${input.messageMatchCount} chat hits` : "Chat match";
-  }
-  if (input.matchKind === "project") {
-    return "Project match";
-  }
-  return null;
-}
-
-function tokenizeHighlightQuery(query: string): string[] {
-  const tokens = query
-    .trim()
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((token) => token.length > 0)
-    .filter((token, index, allTokens) => allTokens.indexOf(token) === index);
-  return tokens.toSorted((left, right) => right.length - left.length);
-}
-
-function escapeRegExp(value: string): string {
-  return value.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function HighlightedText(props: { text: string; query: string; className?: string }) {
-  const segments = useMemo(() => {
-    const tokens = tokenizeHighlightQuery(props.query);
-    if (tokens.length === 0) {
-      return [{ key: "full", text: props.text, highlighted: false }];
-    }
-
-    const pattern = new RegExp(`(${tokens.map(escapeRegExp).join("|")})`, "gi");
-    const parts = props.text.split(pattern).filter((part) => part.length > 0);
-    let offset = 0;
-    return parts.map((part) => {
-      const segment = {
-        key: `${offset}-${part.length}`,
-        text: part,
-        highlighted: tokens.some((token) => token === part.toLowerCase()),
-      };
-      offset += part.length;
-      return segment;
-    });
-  }, [props.query, props.text]);
+  const segments = useMemo(
+    () => buildHighlightedTextSegments({ query: props.query, text: props.text }),
+    [props.query, props.text],
+  );
 
   return (
     <span className={props.className}>
@@ -426,7 +301,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
   );
   const themeCommandItem = useMemo(
     () =>
-      buildThemeCommandItem({
+      buildSidebarThemeCommandItem({
         query,
         resolvedTheme,
         theme,
