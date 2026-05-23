@@ -130,17 +130,17 @@ export const ProjectPicker = memo(function ProjectPicker({
     () => new Set(activeFolderOptions.map((entry) => entry.cwd)),
     [activeFolderOptions],
   );
-  const macFolderOptions = useMemo(
-    () =>
-      directoryEntries
-        .filter((entry) => !entry.name.startsWith("."))
-        .map((entry) => ({
-          absolutePath: homeDir ? joinDirectoryPath(homeDir, entry.path) : entry.path,
-          entry,
-        }))
-        .filter((entry) => !activeFolderPathSet.has(entry.absolutePath)),
-    [activeFolderPathSet, directoryEntries, homeDir],
-  );
+  const macFolderOptions = useMemo(() => {
+    const options: { absolutePath: string; entry: ProjectDirectoryEntry }[] = [];
+    for (const entry of directoryEntries) {
+      if (entry.name.startsWith(".")) continue;
+      const absolutePath = homeDir ? joinDirectoryPath(homeDir, entry.path) : entry.path;
+      if (!activeFolderPathSet.has(absolutePath)) {
+        options.push({ absolutePath, entry });
+      }
+    }
+    return options;
+  }, [activeFolderPathSet, directoryEntries, homeDir]);
 
   const normalizedQuery = deferredQuery.trim().toLowerCase();
   const filteredActiveFolderOptions = useMemo(() => {
@@ -178,13 +178,14 @@ export const ProjectPicker = memo(function ProjectPicker({
     if (!selectedWorkspaceRoot) return null;
     return (
       activeFolderOptions.find((entry) => entry.cwd === selectedWorkspaceRoot) ??
-      macFolderOptions
-        .filter(({ absolutePath }) => absolutePath === selectedWorkspaceRoot)
-        .map(({ entry, absolutePath }) => ({
-          cwd: absolutePath,
-          primaryLabel: entry.name,
-          secondaryLabel: null,
-        }))[0] ??
+      (() => {
+        const match = macFolderOptions.find(
+          ({ absolutePath }) => absolutePath === selectedWorkspaceRoot,
+        );
+        return match
+          ? { cwd: match.absolutePath, primaryLabel: match.entry.name, secondaryLabel: null }
+          : null;
+      })() ??
       null
     );
   }, [activeFolderOptions, macFolderOptions, selectedWorkspaceRoot]);

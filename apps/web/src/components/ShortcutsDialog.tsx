@@ -161,12 +161,17 @@ function ShortcutSection({
 function filterSections(sections: ShortcutSheetSection[], query: string): ShortcutSheetSection[] {
   const trimmed = query.trim().toLowerCase();
   if (trimmed.length === 0) return sections;
-  return sections
-    .map((section) => ({
+  const filteredSections: ShortcutSheetSection[] = [];
+  for (const section of sections) {
+    const filteredSection = {
       ...section,
       entries: section.entries.filter((entry) => matchesEntry(entry, trimmed)),
-    }))
-    .filter((section) => section.entries.length > 0);
+    };
+    if (filteredSection.entries.length > 0) {
+      filteredSections.push(filteredSection);
+    }
+  }
+  return filteredSections;
 }
 
 function matchesEntry(entry: ShortcutSheetEntry, needle: string): boolean {

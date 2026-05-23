@@ -408,13 +408,17 @@ function AnchoredToastProvider({ children, ...props }: Toast.Provider.Props) {
 function AnchoredToasts() {
   const { toasts } = Toast.useToastManager<ThreadToastData>();
   const visibleThreadIds = useVisibleThreadIdsFromRoute();
+  const anchoredToasts = toasts.reduce<typeof toasts>((items, toast) => {
+    if (shouldRenderForActiveThread(toast.data, visibleThreadIds)) {
+      items.push(toast);
+    }
+    return items;
+  }, []);
 
   return (
     <Toast.Portal data-slot="toast-portal-anchored">
       <Toast.Viewport className="outline-none" data-slot="toast-viewport-anchored">
-        {toasts
-          .filter((toast) => shouldRenderForActiveThread(toast.data, visibleThreadIds))
-          .map((toast) => {
+        {anchoredToasts.map((toast) => {
             const Icon = toast.type ? TOAST_ICONS[toast.type as keyof typeof TOAST_ICONS] : null;
             const tooltipStyle = toast.data?.tooltipStyle ?? false;
             const positionerProps = toast.positionerProps;
