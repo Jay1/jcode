@@ -46,10 +46,10 @@
 
 ## Phase 2: Clear Non-Route `only-export-components` Errors
 
-- [ ] Inspect `apps/web/src/components/chat-drop-overlay/ChatPaneDropOverlay.tsx` and identify each exported non-component at the reported lines.
-- [ ] Move reusable pure helpers from `ChatPaneDropOverlay.tsx` into `ChatPaneDropOverlay.logic.ts`.
-- [ ] Update imports in `ChatPaneDropOverlay.tsx` and `ChatPaneDropOverlay.test.tsx`.
-- [ ] Run `bun run --cwd apps/web test src/components/chat-drop-overlay/ChatPaneDropOverlay.test.tsx`.
+- [x] Inspect `apps/web/src/components/chat-drop-overlay/ChatPaneDropOverlay.tsx` and identify each exported non-component at the reported lines.
+- [x] Move reusable pure helpers from `ChatPaneDropOverlay.tsx` into `ChatPaneDropOverlay.logic.ts`.
+- [x] Update imports in `ChatPaneDropOverlay.tsx` and `ChatPaneDropOverlay.test.tsx`.
+- [x] Run `bun run --cwd apps/web test src/components/chat-drop-overlay/ChatPaneDropOverlay.test.tsx`.
 - [ ] Inspect `apps/web/src/components/chat/ComposerCommandMenu.tsx` and identify the reported exported helper.
 - [ ] Move `ComposerCommandMenu.tsx` exported non-component logic into `ComposerCommandMenu.logic.ts`.
 - [ ] Add or update a focused logic test if the moved helper has branching behavior.

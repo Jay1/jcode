@@ -10,7 +10,7 @@ import {
   dropZoneToDirectionSide,
   getDropZoneFromPointer,
   isThreadDragPayloadAllowed,
-} from "./ChatPaneDropOverlay";
+} from "./ChatPaneDropOverlay.logic";
 
 const RECT = { left: 0, top: 0, width: 100, height: 100 };
 const THREAD_A = ThreadId.makeUnsafe("thread-a");

@@ -230,7 +230,7 @@ import {
   type SplitViewId,
   useSplitViewStore,
 } from "../splitViewStore";
-import { THREAD_DRAG_MIME } from "./chat-drop-overlay/ChatPaneDropOverlay";
+import { THREAD_DRAG_MIME } from "./chat-drop-overlay/ChatPaneDropOverlay.logic";
 import { useTemporaryThreadStore } from "../temporaryThreadStore";
 import { useThreadActivationController } from "../hooks/useThreadActivationController";
 import { usePinnedThreadsStore } from "../pinnedThreadsStore";
