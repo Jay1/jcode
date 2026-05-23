@@ -3,14 +3,20 @@ import { describe, expect, it } from "vitest";
 
 import {
   appendVoiceTranscriptToPrompt,
+  buildQueuedComposerPreviewText,
   filterSidechatTranscriptMessages,
   type LocalDispatchSnapshot,
   deriveComposerSendState,
   deriveComposerVoiceState,
   describeVoiceRecordingStartError,
+  formatOutgoingPrompt,
   hasServerAcknowledgedLocalDispatch,
   isVoiceAuthExpiredMessage,
+  mergeDynamicModelOptions,
+  providerMentionReferencesEqual,
+  promptIncludesSkillMention,
   resolveActiveThreadTitle,
+  resolvePromptPluginMentions,
   sanitizeVoiceErrorMessage,
   buildExpiredTerminalContextToastCopy,
   shouldAutoDeleteTerminalThreadOnLastClose,
@@ -18,6 +24,8 @@ import {
   shouldShowComposerModelBootstrapSkeleton,
   shouldStartActiveTurnLayoutGrace,
   shouldRenderTerminalWorkspace,
+  syncTerminalContextsByIds,
+  terminalContextIdListsEqual,
 } from "./ChatView.logic";
 
 describe("voice helpers", () => {
@@ -340,6 +348,217 @@ describe("buildExpiredTerminalContextToastCopy", () => {
       title: "Expired terminal contexts omitted from message",
       description: "Re-add it if you want that terminal output included.",
     });
+  });
+});
+
+describe("queued composer preview helpers", () => {
+  it("prefers prompt text before attachment fallbacks", () => {
+    expect(
+      buildQueuedComposerPreviewText({
+        trimmedPrompt: "Ship the patch",
+        images: [{ name: "ignored.png" } as never],
+        assistantSelections: [{ id: "assistant-1" }],
+        terminalContexts: [],
+      }),
+    ).toBe("Ship the patch");
+  });
+
+  it("falls back through images, assistant selections, terminal contexts, then generic copy", () => {
+    const terminalContext = {
+      id: "ctx-1",
+      threadId: ThreadId.makeUnsafe("thread-1"),
+      terminalId: "default",
+      terminalLabel: "Terminal 1",
+      lineStart: 4,
+      lineEnd: 6,
+      text: "bun test",
+      createdAt: "2026-03-17T12:52:29.000Z",
+    };
+
+    expect(
+      buildQueuedComposerPreviewText({
+        trimmedPrompt: "",
+        images: [{ name: "screenshot.png" } as never],
+        assistantSelections: [],
+        terminalContexts: [],
+      }),
+    ).toBe("Image: screenshot.png");
+    expect(
+      buildQueuedComposerPreviewText({
+        trimmedPrompt: "",
+        images: [],
+        assistantSelections: [{ id: "assistant-1" }, { id: "assistant-2" }],
+        terminalContexts: [],
+      }),
+    ).toBe("Referenced selections");
+    expect(
+      buildQueuedComposerPreviewText({
+        trimmedPrompt: "",
+        images: [],
+        assistantSelections: [],
+        terminalContexts: [terminalContext],
+      }),
+    ).toBe("Terminal 1 lines 4-6");
+    expect(
+      buildQueuedComposerPreviewText({
+        trimmedPrompt: "",
+        images: [],
+        assistantSelections: [],
+        terminalContexts: [],
+      }),
+    ).toBe("Queued follow-up");
+  });
+});
+
+describe("formatOutgoingPrompt", () => {
+  it("leaves non-injected provider prompts unchanged", () => {
+    expect(
+      formatOutgoingPrompt({
+        provider: "opencode",
+        model: "gpt-5.1-codex-max",
+        effort: "high",
+        text: "Implement this",
+      }),
+    ).toBe("Implement this");
+  });
+});
+
+describe("mergeDynamicModelOptions", () => {
+  it("deduplicates dynamic models, preserves static names, and appends custom models", () => {
+    expect(
+      mergeDynamicModelOptions({
+        provider: "opencode",
+        staticOptions: [
+          { slug: "gpt-5.1-codex-max", name: "Static GPT" },
+          { slug: "local-model", name: "Local Model", isCustom: true },
+        ],
+        dynamicModels: [
+          { slug: "gpt-5.1-codex-max", name: "Dynamic GPT" },
+          { slug: "gpt-5.1-codex-max", name: "Duplicate GPT" },
+          { slug: "anthropic/claude-sonnet-4-5", name: "Claude Sonnet 4.5" },
+        ],
+      }),
+    ).toEqual([
+      { slug: "gpt-5.1-codex-max", name: "Static GPT" },
+      { slug: "anthropic/claude-sonnet-4-5", name: "Claude Sonnet 4.5" },
+      { slug: "local-model", name: "Local Model", isCustom: true },
+    ]);
+  });
+
+  it("drops Claude default aliases and reverses discovered Claude model order", () => {
+    expect(
+      mergeDynamicModelOptions({
+        provider: "claudeAgent",
+        staticOptions: [{ slug: "claude-sonnet-4-5", name: "Sonnet" }],
+        dynamicModels: [
+          { slug: "default", name: "Default (recommended)" },
+          { slug: "claude-opus-4-1", name: "Claude Opus 4.1" },
+          { slug: "claude-sonnet-4-5[1m]", name: "Claude Sonnet 4.5" },
+        ],
+      }),
+    ).toEqual([
+      { slug: "claude-sonnet-4-5", name: "Sonnet" },
+      { slug: "claude-opus-4-1", name: "Claude Opus 4.1" },
+    ]);
+  });
+});
+
+describe("resolvePromptPluginMentions", () => {
+  const existingMentions = [
+    { name: "Review", path: "plugins/review" },
+    { name: "Review", path: "plugins/review-alt" },
+  ];
+
+  it("matches skill mentions with provider-specific prefixes", () => {
+    expect(promptIncludesSkillMention("use $review please", "review", "opencode")).toBe(true);
+    expect(promptIncludesSkillMention("use /skill:review please", "review", "pi")).toBe(true);
+    expect(promptIncludesSkillMention("use $reviewer please", "review", "opencode")).toBe(false);
+  });
+
+  it("reuses existing mentions before discovered unambiguous mentions", () => {
+    expect(
+      resolvePromptPluginMentions({
+        prompt: "@review @deploy",
+        existingMentions,
+        providerPlugins: [
+          {
+            plugin: { name: "Deploy" } as never,
+            mention: { name: "Deploy", path: "plugins/deploy" },
+          },
+        ],
+      }),
+    ).toEqual([
+      { name: "Review", path: "plugins/review" },
+      { name: "Deploy", path: "plugins/deploy" },
+    ]);
+  });
+
+  it("skips duplicate prompt mentions and ambiguous discovered plugins", () => {
+    expect(
+      resolvePromptPluginMentions({
+        prompt: "@review @review @deploy",
+        existingMentions,
+        providerPlugins: [
+          {
+            plugin: { name: "Deploy" } as never,
+            mention: { name: "Deploy", path: "plugins/deploy" },
+          },
+          {
+            plugin: { name: "Deploy" } as never,
+            mention: { name: "Deploy", path: "plugins/deploy-alt" },
+          },
+        ],
+      }),
+    ).toEqual([{ name: "Review", path: "plugins/review" }]);
+  });
+});
+
+describe("composer selection equality helpers", () => {
+  it("compares provider mention order by visible name and path", () => {
+    const mentions = [{ name: "Review", path: "plugins/review" }];
+
+    expect(providerMentionReferencesEqual(mentions, [{ name: "Review", path: "plugins/review" }])).toBe(
+      true,
+    );
+    expect(providerMentionReferencesEqual(mentions, [{ name: "Deploy", path: "plugins/review" }])).toBe(
+      false,
+    );
+  });
+
+  it("syncs terminal context selections by id order", () => {
+    const contexts = [
+      {
+        id: "ctx-a",
+        threadId: ThreadId.makeUnsafe("thread-1"),
+        terminalId: "default",
+        terminalLabel: "Terminal 1",
+        lineStart: 1,
+        lineEnd: 1,
+        text: "a",
+        createdAt: "2026-03-17T12:52:29.000Z",
+      },
+      {
+        id: "ctx-b",
+        threadId: ThreadId.makeUnsafe("thread-1"),
+        terminalId: "default",
+        terminalLabel: "Terminal 1",
+        lineStart: 2,
+        lineEnd: 2,
+        text: "b",
+        createdAt: "2026-03-17T12:53:29.000Z",
+      },
+    ];
+
+    expect(syncTerminalContextsByIds(contexts, ["ctx-b", "missing", "ctx-a"])).toEqual([
+      contexts[1],
+      contexts[0],
+    ]);
+    expect(terminalContextIdListsEqual([contexts[1]!, contexts[0]!], ["ctx-b", "ctx-a"])).toBe(
+      true,
+    );
+    expect(terminalContextIdListsEqual([contexts[0]!, contexts[1]!], ["ctx-b", "ctx-a"])).toBe(
+      false,
+    );
   });
 });
 

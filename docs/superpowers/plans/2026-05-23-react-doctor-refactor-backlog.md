@@ -113,18 +113,18 @@
 
 ## Phase 6: Component Extraction For Large Files
 
-- [ ] Start with `src/components/ChatView.tsx` because it has the highest diagnostic count.
-- [ ] Identify seams in `ChatView.tsx`: data loading, session lifecycle state, composer state, panel layout, terminal/browser panel state, and rendering-only subtrees.
-- [ ] Extract pure helper logic from `ChatView.tsx` into `ChatView.logic.ts` first.
-- [ ] Add focused tests for any newly extracted ChatView logic with non-trivial branching.
-- [ ] Extract rendering-only subcomponents from `ChatView.tsx` into colocated `ChatView.*.tsx` files only after logic extraction is stable.
-- [ ] Keep state ownership in `ChatView.tsx` until tests prove it is safe to move into hooks.
+- [x] Start with `src/components/ChatView.tsx` because it has the highest diagnostic count.
+- [x] Identify seams in `ChatView.tsx`: data loading, session lifecycle state, composer state, panel layout, terminal/browser panel state, and rendering-only subtrees.
+- [x] Extract pure helper logic from `ChatView.tsx` into `ChatView.logic.ts` first.
+- [x] Add focused tests for any newly extracted ChatView logic with non-trivial branching.
+- [x] Extract rendering-only subcomponents from `ChatView.tsx` into colocated `ChatView.*.tsx` files only after logic extraction is stable.
+- [x] Keep state ownership in `ChatView.tsx` until tests prove it is safe to move into hooks.
 - [ ] Repeat the same approach for `src/components/Sidebar.tsx`.
 - [ ] Repeat the same approach for `src/components/SidebarSearchPalette.tsx`.
-- [ ] Repeat the same approach for `src/components/DiffPanel.tsx`.
-- [ ] Run focused tests after each extraction.
-- [ ] Run browser verification for visible layout or interaction changes.
-- [ ] Run React Doctor and record changes for `no-giant-component` and `no-multi-comp`.
+- [x] Repeat the same approach for `src/components/DiffPanel.tsx`.
+- [x] Run focused tests after each extraction.
+- [x] Run browser verification for visible layout or interaction changes.
+- [x] Run React Doctor and record changes for `no-giant-component` and `no-multi-comp`. Current: `no-giant-component` 15, `no-multi-comp` 8, total 507, errors 0.
 
 ## Phase 7: State And Effect Semantics
 
