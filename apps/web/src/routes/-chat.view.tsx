@@ -426,6 +426,7 @@ function ChatRouteGlobalShortcuts() {
     handleNewThread,
     keybindings,
     latestUsableProjectId,
+    platform,
     appSettings.claudeBinaryPath,
     appSettings.codexBinaryPath,
     appSettings.cursorBinaryPath,

@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { APP_DISPLAY_NAME } from "../branding";
 import { addSavedConnectionFromPairing } from "../connection/savedConnectionManager";
@@ -45,7 +45,7 @@ export function PairRoute() {
   );
   const [error, setError] = useState<string | null>(null);
 
-  const submitPairing = async (value: string) => {
+  const submitPairing = useCallback(async (value: string) => {
     const nextCredential = value.trim();
     if (!nextCredential) return;
     setStatus("pairing");
@@ -76,12 +76,12 @@ export function PairRoute() {
       setError((caught as Error).message);
       setStatus("error");
     }
-  };
+  }, [navigate]);
 
   useEffect(() => {
     if (!initialCredential) return;
     void submitPairing(initialCredential);
-  }, [initialCredential]);
+  }, [initialCredential, submitPairing]);
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background px-4 text-foreground">
