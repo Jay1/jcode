@@ -281,7 +281,7 @@ export function PullRequestThreadDialog({
               preparePullRequestThreadMutation.isPending
             }
           >
-            {preparingMode === "worktree" ? "Preparing worktree..." : "Worktree"}
+            {preparingMode === "worktree" ? "Preparing worktree\u2026" : "Worktree"}
           </Button>
         </DialogFooter>
       </DialogPopup>
