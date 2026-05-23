@@ -4,7 +4,13 @@
 // Depends on: Vitest and diffRendering helpers
 
 import { describe, expect, it } from "vitest";
-import { buildPatchCacheKey, resolveDiffCopyText, summarizePatchStats } from "./diffRendering";
+import {
+  MAX_RENDERABLE_DIFF_LINE_LENGTH,
+  buildPatchCacheKey,
+  canRenderFileDiff,
+  resolveDiffCopyText,
+  summarizePatchStats,
+} from "./diffRendering";
 
 describe("buildPatchCacheKey", () => {
   it("returns a stable cache key for identical content", () => {
@@ -65,5 +71,24 @@ describe("summarizePatchStats", () => {
     ].join("\n");
 
     expect(summarizePatchStats(patch)).toEqual({ additions: 2, deletions: 1 });
+  });
+});
+
+describe("canRenderFileDiff", () => {
+  it("rejects file diffs with oversized added or removed lines", () => {
+    const oversizedLine = "x".repeat(MAX_RENDERABLE_DIFF_LINE_LENGTH + 1);
+
+    expect(
+      canRenderFileDiff({
+        additionLines: ["small"],
+        deletionLines: [oversizedLine],
+      }),
+    ).toBe(false);
+    expect(
+      canRenderFileDiff({
+        additionLines: [oversizedLine],
+        deletionLines: ["small"],
+      }),
+    ).toBe(false);
   });
 });
