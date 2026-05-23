@@ -2924,7 +2924,7 @@ describe("ProviderCommandReactor", () => {
         new ProviderAdapterRequestError({
           provider: "claudeAgent",
           method: "item/tool/respondToUserInput",
-          detail: "Unknown pending user-input request: user-input-request-1",
+          detail: "Unknown pending codex user input request: user-input-request-1",
         }),
       ),
     );

@@ -695,6 +695,10 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                         '%stale pending user-input request%'
                       OR lower(COALESCE(json_extract(later.payload_json, '$.detail'), '')) LIKE
                         '%unknown pending user-input request%'
+                      OR lower(COALESCE(json_extract(later.payload_json, '$.detail'), '')) LIKE
+                        '%unknown pending user input request%'
+                      OR lower(COALESCE(json_extract(later.payload_json, '$.detail'), '')) LIKE
+                        '%unknown pending codex user input request%'
                     )
                   )
                 )
@@ -1043,6 +1047,10 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                           '%stale pending user-input request%'
                         OR lower(COALESCE(json_extract(later.payload_json, '$.detail'), '')) LIKE
                           '%unknown pending user-input request%'
+                        OR lower(COALESCE(json_extract(later.payload_json, '$.detail'), '')) LIKE
+                          '%unknown pending user input request%'
+                        OR lower(COALESCE(json_extract(later.payload_json, '$.detail'), '')) LIKE
+                          '%unknown pending codex user input request%'
                       )
                     )
                   )
