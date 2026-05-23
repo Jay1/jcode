@@ -321,11 +321,11 @@ import { resolveRuntimeModelDescriptor } from "./chat/runtimeModelCapabilities";
 import { ProjectPicker } from "./chat/ProjectPicker";
 import { ProviderHealthBanner } from "./chat/ProviderHealthBanner";
 import { ThreadErrorBanner } from "./chat/ThreadErrorBanner";
+import { RateLimitBanner } from "./chat/RateLimitBanner";
 import {
-  RateLimitBanner,
   deriveLatestRateLimitStatus,
   type RateLimitStatus,
-} from "./chat/RateLimitBanner";
+} from "./chat/RateLimitBanner.logic";
 import {
   ACTIVE_TURN_LAYOUT_SETTLE_DELAY_MS,
   appendVoiceTranscriptToPrompt,

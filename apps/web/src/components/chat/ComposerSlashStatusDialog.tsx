@@ -6,7 +6,7 @@ import {
   formatContextWindowTokens,
   formatCostUsd,
 } from "../../lib/contextWindow";
-import type { RateLimitStatus } from "./RateLimitBanner";
+import type { RateLimitStatus } from "./RateLimitBanner.logic";
 import { Button } from "../ui/button";
 import {
   Dialog,
