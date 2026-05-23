@@ -211,7 +211,7 @@ export function estimateTimelineWorkGroupHeight(
 }
 
 // Estimate the inline tool preview block that can appear under assistant messages.
-export function estimateTimelineInlineToolPreviewHeight(
+function estimateTimelineInlineToolPreviewHeight(
   entries: ReadonlyArray<TimelineWorkEntryHeightInput>,
   options: TimelineWorkGroupEstimateOptions,
 ): number {

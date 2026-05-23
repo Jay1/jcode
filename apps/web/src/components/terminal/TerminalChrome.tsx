@@ -67,7 +67,7 @@ function TerminalActionButton({ label, className, onClick, children }: TerminalA
   );
 }
 
-export function TerminalChromeActions(props: {
+function TerminalChromeActions(props: {
   actions: ReadonlyArray<TerminalChromeActionItem>;
   variant: "compact" | "workspace" | "sidebar";
 }) {

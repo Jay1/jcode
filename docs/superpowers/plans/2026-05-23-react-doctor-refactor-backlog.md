@@ -91,10 +91,10 @@
 
 ## Phase 4: Remove Confirmed Dead Exports And Files
 
-- [ ] Generate a list of `unused-export` and `unused-file` diagnostics from the current React Doctor JSON.
-- [ ] Exclude generated files and route artifacts from deletion candidates.
-- [ ] For each candidate export, check code references with `grep` and LSP references before editing.
-- [ ] Remove private dead exports by converting them to unexported declarations when still used locally.
+- [x] Generate a list of `unused-export` and `unused-file` diagnostics from the current React Doctor JSON.
+- [x] Exclude generated files and route artifacts from deletion candidates.
+- [x] For each candidate export, check code references with `grep` and LSP references before editing.
+- [x] Remove private dead exports by converting them to unexported declarations when still used locally.
 - [ ] Delete truly unused files only after confirming they are not dynamically imported, referenced by route generation, or used by tests/story-like tooling.
 - [ ] Run `bun run --cwd apps/web typecheck` after each small deletion batch.
 - [ ] Run focused tests for affected areas.

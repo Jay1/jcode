@@ -10,13 +10,7 @@ import { normalizeModelSlug } from "@jcode/shared/model";
 import { buildJcodeBranchName } from "@jcode/shared/git";
 import { isGenericChatThreadTitle } from "@jcode/shared/chatThreads";
 import { isGenericTerminalThreadTitle } from "@jcode/shared/terminalThreads";
-import {
-  type ChatAssistantSelectionAttachment,
-  type ChatMessage,
-  type SessionPhase,
-  type Thread,
-  type ThreadPrimarySurface,
-} from "../types";
+import { type ChatMessage, type SessionPhase, type Thread, type ThreadPrimarySurface } from "../types";
 import { type ComposerImageAttachment, type DraftThreadState } from "../composerDraftStore";
 import { Schema } from "effect";
 import {
@@ -425,18 +419,6 @@ export function deriveComposerSendState(options: {
       options.assistantSelectionCount > 0 ||
       sendableTerminalContexts.length > 0,
   };
-}
-
-export function collectUserMessageAssistantSelections(
-  message: ChatMessage,
-): ChatAssistantSelectionAttachment[] {
-  if (message.role !== "user" || !message.attachments) {
-    return [];
-  }
-  return message.attachments.filter(
-    (attachment): attachment is ChatAssistantSelectionAttachment =>
-      attachment.type === "assistant-selection",
-  );
 }
 
 export function buildExpiredTerminalContextToastCopy(

@@ -7,7 +7,7 @@ import { forwardRef, memo, type ComponentProps, type ReactNode } from "react";
 import { cn } from "~/lib/utils";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
-export const MESSAGE_ACTION_BUTTON_CLASS_NAME =
+const MESSAGE_ACTION_BUTTON_CLASS_NAME =
   "sidebar-icon-button inline-flex size-5 cursor-pointer border border-transparent bg-transparent shadow-none disabled:cursor-default disabled:opacity-45";
 
 type MessageActionButtonProps = Omit<

@@ -8,8 +8,6 @@ import { type TimelineEntry, type WorkLogEntry } from "../../session-logic";
 import { normalizeCompactToolLabel as normalizeCompactToolLabelValue } from "../../lib/toolCallLabel";
 import { type ChatMessage, type ProposedPlan, type TurnDiffSummary } from "../../types";
 
-export const MAX_VISIBLE_WORK_LOG_ENTRIES = 6;
-
 export interface TimelineDurationMessage {
   id: string;
   role: "user" | "assistant" | "system";

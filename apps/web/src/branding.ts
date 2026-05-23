@@ -1,4 +1,4 @@
-export const APP_BASE_NAME = "JCode";
+const APP_BASE_NAME = "JCode";
 export const APP_WORDMARK_PREFIX = "J";
 export const APP_WORDMARK_SUFFIX = "Code";
 export const APP_DISPLAY_NAME = import.meta.env.DEV ? `${APP_BASE_NAME} (Dev)` : APP_BASE_NAME;
