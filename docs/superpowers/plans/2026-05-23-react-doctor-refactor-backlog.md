@@ -83,11 +83,11 @@
 - [x] Run focused settings tests if present; otherwise use typecheck plus manual browser verification.
 - [x] For `_chat.tsx`, `_chat.index.tsx`, workspace route files, and `pair.tsx`, repeat the thin-route-module extraction pattern.
 - [x] Run React Doctor again and record remaining route `only-export-components` diagnostics.
-- [ ] If route files still report `only-export-components` solely because of the required exported `Route` constant, research React Doctor config support for narrow rule ignores.
-- [ ] If React Doctor supports ignores, add the narrowest possible ignore for `only-export-components` on `apps/web/src/routes/**/*.tsx` and document why TanStack Router route modules are exempt.
-- [ ] If React Doctor does not support ignores, document route false positives in the plan notes and keep full scan report-only.
-- [ ] Run `bun run --cwd apps/web typecheck`.
-- [ ] Run `bun run --cwd apps/web test` or the closest focused route/component test set.
+- [x] If route files still report `only-export-components` solely because of the required exported `Route` constant, research React Doctor config support for narrow rule ignores. Not needed: route errors are now `0`.
+- [x] If React Doctor supports ignores, add the narrowest possible ignore for `only-export-components` on `apps/web/src/routes/**/*.tsx` and document why TanStack Router route modules are exempt. Not needed: no ignore added.
+- [x] If React Doctor does not support ignores, document route false positives in the plan notes and keep full scan report-only. Not needed: no route false positives remain.
+- [x] Run `bun run --cwd apps/web typecheck`.
+- [x] Run `bun run --cwd apps/web test` or the closest focused route/component test set.
 
 ## Phase 4: Remove Confirmed Dead Exports And Files
 
