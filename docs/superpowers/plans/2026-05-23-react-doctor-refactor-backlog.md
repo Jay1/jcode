@@ -128,8 +128,8 @@
 
 ## Phase 7: State And Effect Semantics
 
-- [ ] Triage `no-adjust-state-on-prop-change`, `no-derived-state`, `no-derived-state-effect`, `no-chain-state-updates`, `no-cascading-set-state`, `exhaustive-deps`, `no-event-handler`, and `no-render-in-render` together per file.
-- [ ] Start with `ChatView.tsx` only after Phase 6 has reduced its size enough to reason about safely.
+- [x] Triage `no-adjust-state-on-prop-change`, `no-derived-state`, `no-derived-state-effect`, `no-chain-state-updates`, `no-cascading-set-state`, `exhaustive-deps`, `no-event-handler`, and `no-render-in-render` together per file. Current state/effect diagnostics: 198 total; top files are `ChatView.tsx` 82, `SidebarSearchPalette.tsx` 16, `DiffPanel.tsx` 10.
+- [x] Start with `ChatView.tsx` only after Phase 6 has reduced its size enough to reason about safely.
 - [ ] For each state diagnostic, classify whether the state is derived display state, user-editable draft state, cached external state, or imperative integration state.
 - [ ] Replace derived state with direct derivation during render only when it is pure and cheap.
 - [ ] Replace prop-change synchronization with reducer actions only when state is genuinely user-editable or cross-eventful.

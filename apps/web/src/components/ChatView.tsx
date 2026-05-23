@@ -745,8 +745,9 @@ export default function ChatView({
     setIsTraitsPickerOpen(false);
   }, [threadId]);
   useEffect(() => {
+    const scrollDebouncer = showScrollDebouncer.current;
     return () => {
-      showScrollDebouncer.current.cancel();
+      scrollDebouncer.cancel();
       const pendingFrame = pendingInteractionAnchorFrameRef.current;
       if (pendingFrame !== null) {
         window.cancelAnimationFrame(pendingFrame);
@@ -1499,7 +1500,7 @@ export default function ChatView({
   const isConnecting = isLocalConnecting || phase === "connecting";
   const rawWorkLogEntries = useMemo(
     () => deriveWorkLogEntries(threadActivities, activeLatestTurn?.turnId ?? undefined),
-    [activeLatestTurn?.turnId, threadActivities, WORK_LOG_PRESENTATION_VERSION],
+    [activeLatestTurn?.turnId, threadActivities],
   );
   const hasWorkLogSubagents = useMemo(
     () => rawWorkLogEntries.some((entry) => (entry.subagents?.length ?? 0) > 0),
