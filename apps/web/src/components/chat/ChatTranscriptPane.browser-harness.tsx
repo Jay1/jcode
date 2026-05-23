@@ -69,6 +69,7 @@ export function TranscriptPerfHarness(props: { onTranscriptRender: () => void })
       <label htmlFor="composer-input">Composer</label>
       <input
         id="composer-input"
+        aria-label="Composer"
         placeholder="Type composer text"
         value={composerValue}
         onChange={handleComposerChange}
