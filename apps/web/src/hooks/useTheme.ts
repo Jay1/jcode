@@ -110,7 +110,8 @@ function subscribe(listener: () => void): () => void {
 
   listeners.push(listener);
 
-  const mediaQuery = typeof window.matchMedia === "function" ? window.matchMedia(MEDIA_QUERY) : null;
+  const mediaQuery =
+    typeof window.matchMedia === "function" ? window.matchMedia(MEDIA_QUERY) : null;
   const handleMediaChange = () => {
     const state = readStoredThemeState();
     if (state.mode === "system") {
