@@ -7760,6 +7760,7 @@ export default function ChatView({
       </header>
 
       <RenameThreadDialog
+        key={renameDialogOpen ? activeThread.id : "closed"}
         open={renameDialogOpen}
         currentTitle={activeThread.title}
         onOpenChange={setRenameDialogOpen}

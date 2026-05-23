@@ -24,16 +24,14 @@ export function RenameThreadDialog({
   onOpenChange,
   onSave,
 }: RenameThreadDialogProps) {
-  const [value, setValue] = useState(currentTitle);
+  const [value, setValue] = useState(() => currentTitle);
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) {
-      setIsSaving(false);
       return;
     }
-    setValue(currentTitle);
     const frame = window.requestAnimationFrame(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
@@ -41,7 +39,7 @@ export function RenameThreadDialog({
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [open, currentTitle]);
+  }, [open]);
 
   const trimmed = value.trim();
   const canSave = trimmed.length > 0 && !isSaving;
