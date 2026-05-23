@@ -4328,7 +4328,7 @@ export default function Sidebar() {
             />
           ))}
         <SidebarMenuSubButton
-          render={<div role="button" tabIndex={0} />}
+          render={<div role="button" tabIndex={0} aria-label={thread.title} />}
           data-thread-entry-point={threadEntryPoint}
           size="sm"
           isActive={isActive}
@@ -4803,7 +4803,7 @@ export default function Sidebar() {
               {hasHiddenThreads && !isThreadListExpanded && (
                 <SidebarMenuSubItem className="w-full">
                   <SidebarMenuSubButton
-                    render={<button type="button" />}
+                    render={<button type="button" aria-label="Show more threads" />}
                     data-thread-selection-safe
                     size="sm"
                     className="h-7 w-full translate-x-0 justify-start rounded-lg pr-2 pl-8 text-left text-[length:var(--app-font-size-ui,12px)] text-muted-foreground/79 hover:bg-[var(--sidebar-accent)]"
@@ -4818,7 +4818,7 @@ export default function Sidebar() {
               {hasHiddenThreads && isThreadListExpanded && (
                 <SidebarMenuSubItem className="w-full">
                   <SidebarMenuSubButton
-                    render={<button type="button" />}
+                    render={<button type="button" aria-label="Show fewer threads" />}
                     data-thread-selection-safe
                     size="sm"
                     className="h-7 w-full translate-x-0 justify-start rounded-lg pr-2 pl-8 text-left text-[length:var(--app-font-size-ui,12px)] text-muted-foreground/79 hover:bg-[var(--sidebar-accent)]"
@@ -5480,7 +5480,7 @@ export default function Sidebar() {
                         return (
                           <SidebarMenuSubItem key={item.id} className="w-full">
                             <SidebarMenuSubButton
-                              render={<button type="button" />}
+                              render={<button type="button" aria-label={item.label} />}
                               size="sm"
                               isActive={isActive}
                               className="group/settings-nav-item h-7.5 w-full justify-start gap-2 rounded-lg px-2 py-0.5 text-[length:var(--app-font-size-ui,12px)] font-normal hover:bg-[var(--sidebar-accent)]"
