@@ -1,7 +1,7 @@
 import type { GitResolvePullRequestResult } from "@jcode/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   gitPreparePullRequestThreadMutationOptions,
@@ -42,6 +42,7 @@ export function PullRequestThreadDialog({
   onPrepared,
 }: PullRequestThreadDialogProps) {
   const queryClient = useQueryClient();
+  const referenceInputId = useId();
   const referenceInputRef = useRef<HTMLInputElement>(null);
   const [reference, setReference] = useState(initialReference ?? "");
   const [referenceDirty, setReferenceDirty] = useState(false);
@@ -192,9 +193,10 @@ export function PullRequestThreadDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogPanel className="space-y-4">
-          <label className="grid gap-1.5">
+          <label htmlFor={referenceInputId} className="grid gap-1.5">
             <span className="text-xs font-medium text-foreground">Pull request</span>
             <Input
+              id={referenceInputId}
               ref={referenceInputRef}
               placeholder="https://github.com/owner/repo/pull/42 or #42"
               value={reference}
