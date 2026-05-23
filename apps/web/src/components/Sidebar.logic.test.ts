@@ -5,6 +5,7 @@ import {
   deriveSidebarProjectData,
   describeAddProjectError,
   extractDuplicateProjectCreateProjectId,
+  formatRelativeTime,
   findWorkspaceRootMatch,
   getFallbackThreadIdAfterDelete,
   getVisibleSidebarEntriesForPreview,
@@ -43,6 +44,22 @@ import {
   type SidebarThreadSummary,
   type Thread,
 } from "../types";
+
+describe("formatRelativeTime", () => {
+  it("formats recent, hourly, and daily timestamps relative to now", () => {
+    const now = new Date("2026-05-23T12:00:00.000Z").getTime();
+    const originalNow = Date.now;
+    Date.now = () => now;
+    try {
+      expect(formatRelativeTime("2026-05-23T11:59:45.000Z")).toBe("now");
+      expect(formatRelativeTime("2026-05-23T11:30:00.000Z")).toBe("30m");
+      expect(formatRelativeTime("2026-05-23T09:00:00.000Z")).toBe("3h");
+      expect(formatRelativeTime("2026-05-21T12:00:00.000Z")).toBe("2d");
+    } finally {
+      Date.now = originalNow;
+    }
+  });
+});
 
 function makeLatestTurn(overrides?: {
   completedAt?: string | null;

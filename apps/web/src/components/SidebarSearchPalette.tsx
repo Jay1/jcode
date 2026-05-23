@@ -22,7 +22,7 @@ import { type ComponentType, useEffect, useMemo, useState, type KeyboardEvent } 
 import { useQuery } from "@tanstack/react-query";
 import { FolderClosed } from "./FolderClosed";
 import { ClaudeAI, CursorIcon, Gemini, KiloIcon, OpenAI, OpenCodeIcon, PiIcon } from "./Icons";
-import { formatRelativeTime } from "./Sidebar";
+import { formatRelativeTime } from "./Sidebar.logic";
 import { readNativeApi } from "~/nativeApi";
 import { isMacPlatform } from "~/lib/utils";
 import { Kbd, KbdGroup } from "./ui/kbd";

@@ -102,7 +102,7 @@ import { normalizeSettingsSection, SETTINGS_NAV_ITEMS } from "../settingsNavigat
 import { useStore } from "../store";
 import ReleaseHistoryDialog from "../components/ReleaseHistoryDialog";
 import { createAllThreadsSelector } from "../storeSelectors";
-import { formatRelativeTime } from "../components/Sidebar";
+import { formatRelativeTime } from "../components/Sidebar.logic";
 import { formatWorktreePathForDisplay } from "../worktreeCleanup";
 import { sameProviderOrder } from "../providerOrdering";
 
