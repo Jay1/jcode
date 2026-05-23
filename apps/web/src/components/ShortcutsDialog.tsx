@@ -94,7 +94,7 @@ export default function ShortcutsDialog(props: {
           </div>
         </DialogHeader>
 
-        <DialogPanel className="max-h-[min(70vh,560px)] px-0 py-0">
+        <DialogPanel className="max-h-[min(70vh,560px)] p-0">
           {hasResults ? (
             <div className="flex flex-col">
               {filteredSections.map((section, index) => (
