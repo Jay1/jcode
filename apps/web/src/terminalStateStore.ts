@@ -135,14 +135,19 @@ function normalizeTerminalCliKinds(
   terminalIds: string[],
 ): Record<string, TerminalCliKind> {
   const validTerminalIdSet = new Set(terminalIds);
-  const normalizedEntries = Object.entries(terminalCliKindsById ?? {})
-    .map(([terminalId, cliKind]) => [terminalId.trim(), cliKind] as const)
-    .filter(
-      ([terminalId, cliKind]) =>
-        terminalId.length > 0 && (cliKind === "codex" || cliKind === "claude"),
-    )
-    .filter(([terminalId]) => validTerminalIdSet.has(terminalId))
-    .toSorted(([leftId], [rightId]) => leftId.localeCompare(rightId));
+  const normalizedEntries: [string, TerminalCliKind][] = [];
+  for (const [terminalId, cliKind] of Object.entries(terminalCliKindsById ?? {})) {
+    const trimmedTerminalId = terminalId.trim();
+    if (
+      trimmedTerminalId.length === 0 ||
+      (cliKind !== "codex" && cliKind !== "claude") ||
+      !validTerminalIdSet.has(trimmedTerminalId)
+    ) {
+      continue;
+    }
+    normalizedEntries.push([trimmedTerminalId, cliKind]);
+  }
+  normalizedEntries.sort(([leftId], [rightId]) => leftId.localeCompare(rightId));
   return Object.fromEntries(normalizedEntries);
 }
 
@@ -151,14 +156,19 @@ function normalizeTerminalAttentionStates(
   terminalIds: string[],
 ): Record<string, "attention" | "review"> {
   const validTerminalIdSet = new Set(terminalIds);
-  const normalizedEntries = Object.entries(terminalAttentionStatesById ?? {})
-    .map(([terminalId, state]) => [terminalId.trim(), state] as const)
-    .filter(
-      ([terminalId, state]) =>
-        terminalId.length > 0 && (state === "attention" || state === "review"),
-    )
-    .filter(([terminalId]) => validTerminalIdSet.has(terminalId))
-    .toSorted(([leftId], [rightId]) => leftId.localeCompare(rightId));
+  const normalizedEntries: [string, "attention" | "review"][] = [];
+  for (const [terminalId, state] of Object.entries(terminalAttentionStatesById ?? {})) {
+    const trimmedTerminalId = terminalId.trim();
+    if (
+      trimmedTerminalId.length === 0 ||
+      (state !== "attention" && state !== "review") ||
+      !validTerminalIdSet.has(trimmedTerminalId)
+    ) {
+      continue;
+    }
+    normalizedEntries.push([trimmedTerminalId, state]);
+  }
+  normalizedEntries.sort(([leftId], [rightId]) => leftId.localeCompare(rightId));
   return Object.fromEntries(normalizedEntries);
 }
 

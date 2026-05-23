@@ -232,9 +232,7 @@ function persistState(state: AppState): void {
     window.localStorage.setItem(
       PERSISTED_STATE_KEY,
       JSON.stringify({
-        expandedProjectCwds: state.projects
-          .filter((project) => project.expanded)
-          .map((project) => project.cwd),
+        expandedProjectCwds: collectExpandedProjectCwds(state.projects),
         projectOrderCwds: state.projects.map((project) => project.cwd),
         projectNamesByCwd: Object.fromEntries(persistedProjectNamesByCwd),
       }),
@@ -248,6 +246,16 @@ function persistState(state: AppState): void {
   } catch {
     // Ignore quota/storage errors to avoid breaking chat UX.
   }
+}
+
+function collectExpandedProjectCwds(projects: ReadonlyArray<Project>): string[] {
+  const expandedProjectCwds: string[] = [];
+  for (const project of projects) {
+    if (project.expanded) {
+      expandedProjectCwds.push(project.cwd);
+    }
+  }
+  return expandedProjectCwds;
 }
 const debouncedPersistState = new Debouncer(persistState, { wait: 500 });
 
@@ -1796,12 +1804,11 @@ function mapProjectsFromReadModel(
   const usePersistedOrder = previous.length === 0;
 
   const mappedProjects = incoming
-    .map((project) => {
+    .map((incomingProject, incomingIndex) => {
       const existing =
-        previousById.get(project.id) ?? previousByCwd.get(projectCwdKey(project.workspaceRoot));
-      return normalizeProjectFromReadModel(project, existing);
-    })
-    .map((project, incomingIndex) => {
+        previousById.get(incomingProject.id) ??
+        previousByCwd.get(projectCwdKey(incomingProject.workspaceRoot));
+      const project = normalizeProjectFromReadModel(incomingProject, existing);
       const previousIndex =
         previousOrderById.get(project.id) ?? previousOrderByCwd.get(projectCwdKey(project.cwd));
       const persistedIndex = usePersistedOrder
@@ -1841,12 +1848,11 @@ function mapProjectsFromShellSnapshot(
   const usePersistedOrder = previous.length === 0;
 
   const mappedProjects = incoming
-    .map((project) => {
+    .map((incomingProject, incomingIndex) => {
       const existing =
-        previousById.get(project.id) ?? previousByCwd.get(projectCwdKey(project.workspaceRoot));
-      return normalizeProjectFromShell(project, existing);
-    })
-    .map((project, incomingIndex) => {
+        previousById.get(incomingProject.id) ??
+        previousByCwd.get(projectCwdKey(incomingProject.workspaceRoot));
+      const project = normalizeProjectFromShell(incomingProject, existing);
       const previousIndex =
         previousOrderById.get(project.id) ?? previousOrderByCwd.get(projectCwdKey(project.cwd));
       const persistedIndex = usePersistedOrder
