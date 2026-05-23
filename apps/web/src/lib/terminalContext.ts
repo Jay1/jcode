@@ -83,7 +83,7 @@ function previewTerminalContextText(text: string): string {
   return preview.length > 180 ? `${preview.slice(0, 177)}...` : preview;
 }
 
-export function normalizeTerminalContextSelection(
+function normalizeTerminalContextSelection(
   selection: TerminalContextSelection,
 ): TerminalContextSelection | null {
   const text = normalizeTerminalContextText(selection.text);
@@ -103,7 +103,7 @@ export function normalizeTerminalContextSelection(
   };
 }
 
-export function formatTerminalContextRange(selection: {
+function formatTerminalContextRange(selection: {
   lineStart: number;
   lineEnd: number;
 }): string {

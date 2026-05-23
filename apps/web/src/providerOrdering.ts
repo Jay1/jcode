@@ -16,7 +16,7 @@ export const DEFAULT_PROVIDER_ORDER: readonly ProviderKind[] = [
 
 const PROVIDER_KIND_SET: ReadonlySet<ProviderKind> = new Set(DEFAULT_PROVIDER_ORDER);
 
-export function isProviderKind(value: string): value is ProviderKind {
+function isProviderKind(value: string): value is ProviderKind {
   return PROVIDER_KIND_SET.has(value as ProviderKind);
 }
 

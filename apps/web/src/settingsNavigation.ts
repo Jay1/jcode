@@ -17,7 +17,7 @@ import {
   WorktreeIcon,
 } from "./lib/icons";
 
-export const SETTINGS_SECTION_IDS = [
+const SETTINGS_SECTION_IDS = [
   "general",
   "appearance",
   "notifications",

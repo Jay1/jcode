@@ -7,7 +7,7 @@ import { parsePatchFiles } from "@pierre/diffs";
 import type { Hunk } from "@pierre/diffs";
 import type { FileDiffMetadata } from "@pierre/diffs/react";
 
-export const DIFF_THEME_NAMES = {
+const DIFF_THEME_NAMES = {
   // Keep diff syntax highlighting on the bundled GitHub themes for better parity with git tooling.
   light: "github-light",
   dark: "github-dark",
@@ -123,7 +123,7 @@ function serializeHunkHeader(hunk: Hunk): string {
   return context ? `${specs} ${context}` : specs;
 }
 
-export function serializeFileDiffMetadata(file: FileDiffMetadata): string {
+function serializeFileDiffMetadata(file: FileDiffMetadata): string {
   const newPath = file.name;
   const oldPath = file.prevName ?? file.name;
   const lines: string[] = [`diff --git a/${oldPath} b/${newPath}`];
@@ -178,7 +178,7 @@ export function serializeRenderablePatchText(renderable: RenderablePatch | null)
 }
 
 // Summarize parsed hunks for compact, consistent diff stats across panel chrome.
-export function summarizeFileDiffStats(files: ReadonlyArray<FileDiffMetadata>): {
+function summarizeFileDiffStats(files: ReadonlyArray<FileDiffMetadata>): {
   additions: number;
   deletions: number;
 } {

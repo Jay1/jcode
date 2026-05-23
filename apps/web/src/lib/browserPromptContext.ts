@@ -53,12 +53,12 @@ function normalizePromptForMatching(prompt: string): string {
   return prompt.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-export function promptRequestsExplicitComputerUse(prompt: string): boolean {
+function promptRequestsExplicitComputerUse(prompt: string): boolean {
   const normalized = normalizePromptForMatching(prompt);
   return EXPLICIT_COMPUTER_USE_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
 
-export function promptLooksLikeInternalBrowserTask(prompt: string): boolean {
+function promptLooksLikeInternalBrowserTask(prompt: string): boolean {
   const normalized = normalizePromptForMatching(prompt);
   const mentionsInternalBrowser = INTERNAL_BROWSER_SCOPE_PATTERNS.some((pattern) =>
     normalized.includes(pattern),

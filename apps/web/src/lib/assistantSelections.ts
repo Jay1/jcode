@@ -25,7 +25,7 @@ export interface ParsedAssistantSelectionEntry {
 
 export type AssistantSelectionValidationError = "empty" | "too-long";
 
-export function normalizeAssistantSelectionText(text: string): string {
+function normalizeAssistantSelectionText(text: string): string {
   return text
     .replace(/\r\n/g, "\n")
     .replace(/^\n+|\n+$/g, "")
@@ -99,7 +99,7 @@ export function formatAssistantSelectionTitleSeed(selectionCount: number): strin
     : "Referenced assistant selections";
 }
 
-export function buildAssistantSelectionsPromptBlock(
+function buildAssistantSelectionsPromptBlock(
   selections: ReadonlyArray<Pick<ChatAssistantSelectionAttachment, "assistantMessageId" | "text">>,
 ): string {
   const normalizedSelections = selections

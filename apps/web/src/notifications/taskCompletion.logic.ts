@@ -286,7 +286,7 @@ function approvalSummary(requestKind: "command" | "file-read" | "file-change"): 
 }
 
 // Compare consecutive activity snapshots and emit only fresh input-needed transitions.
-export function collectThreadAttentionCandidates(
+function collectThreadAttentionCandidates(
   previousThreads: readonly Thread[],
   nextThreads: readonly Thread[],
 ): ThreadAttentionCandidate[] {
@@ -387,7 +387,7 @@ export function buildTaskCompletionCopy(candidate: CompletedThreadCandidate): {
   };
 }
 
-export function buildThreadAttentionCopy(candidate: ThreadAttentionCandidate): {
+function buildThreadAttentionCopy(candidate: ThreadAttentionCandidate): {
   title: string;
   body: string;
 } {
@@ -427,7 +427,7 @@ export function buildTerminalAttentionCopy(candidate: TerminalAttentionCandidate
   };
 }
 
-export function shouldSuppressVisibleThreadNotification(input: {
+function shouldSuppressVisibleThreadNotification(input: {
   threadId: Thread["id"];
   visibleThreadIds: ReadonlySet<Thread["id"]>;
   windowForeground: boolean;

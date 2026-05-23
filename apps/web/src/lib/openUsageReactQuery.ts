@@ -22,7 +22,7 @@ function isOpenUsagePollingEnabled(): boolean {
   );
 }
 
-export const openUsageQueryKeys = {
+const openUsageQueryKeys = {
   all: ["openUsage"] as const,
   provider: (provider: ProviderKind | null | undefined) =>
     ["openUsage", "provider", provider ?? null] as const,

@@ -168,7 +168,7 @@ export function collectTerminalIdsFromLayout(node: ThreadTerminalLayoutNode): st
   return node.children.flatMap((child) => collectTerminalIdsFromLayout(child));
 }
 
-export function findAdjacentTerminalId(
+function findAdjacentTerminalId(
   node: ThreadTerminalLayoutNode,
   terminalId: string,
 ): string | null {

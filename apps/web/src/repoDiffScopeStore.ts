@@ -9,7 +9,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 export type RepoDiffScope = NonNullable<GitReadWorkingTreeDiffInput["scope"]>;
 
-export const DEFAULT_REPO_DIFF_SCOPE: RepoDiffScope = "workingTree";
+const DEFAULT_REPO_DIFF_SCOPE: RepoDiffScope = "workingTree";
 
 export const REPO_DIFF_SCOPE_LABELS: Record<RepoDiffScope, string> = {
   workingTree: "Working tree",
