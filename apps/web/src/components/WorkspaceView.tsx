@@ -401,6 +401,7 @@ export default function WorkspaceView({ workspaceId }: { workspaceId: string }) 
               {renaming ? (
                 <input
                   ref={renameInputRef}
+                  aria-label="Workspace title"
                   value={draftTitle}
                   onChange={(event) => setDraftTitle(event.target.value)}
                   onBlur={commitRename}
