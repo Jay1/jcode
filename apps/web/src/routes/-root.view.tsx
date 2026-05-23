@@ -90,9 +90,13 @@ function reconcilePromotedDraftsFromShellThreads(
   threads: ReadonlyArray<OrchestrationShellSnapshot["threads"][number]>,
 ): void {
   markPromotedDraftThreads(new Set(threads.map((thread) => thread.id)));
-  finalizePromotedDraftThreads(
-    new Set(threads.filter((thread) => shellThreadHasStarted(thread)).map((thread) => thread.id)),
-  );
+  const startedThreadIds = new Set<OrchestrationShellSnapshot["threads"][number]["id"]>();
+  for (const thread of threads) {
+    if (shellThreadHasStarted(thread)) {
+      startedThreadIds.add(thread.id);
+    }
+  }
+  finalizePromotedDraftThreads(startedThreadIds);
 }
 
 function reconcilePromotedDraftFromThreadDetail(thread: OrchestrationThread): void {
@@ -850,12 +854,14 @@ function EventRouter() {
       threadReplayRequestInFlight.add(threadId);
       try {
         const replayedEvents = await api.orchestration.replayEvents(fromSequence);
-        for (const event of replayedEvents
-          .filter((candidate) => isThreadDetailEventForThread(candidate, threadId))
+        const matchingEvents = replayedEvents
           .filter(
-            (candidate) => targetSequence === undefined || candidate.sequence <= targetSequence,
+            (candidate) =>
+              isThreadDetailEventForThread(candidate, threadId) &&
+              (targetSequence === undefined || candidate.sequence <= targetSequence),
           )
-          .toSorted((left, right) => left.sequence - right.sequence)) {
+          .toSorted((left, right) => left.sequence - right.sequence);
+        for (const event of matchingEvents) {
           const latestThreadSequence = threadSnapshotSequenceById.get(threadId) ?? fromSequence;
           if (event.sequence <= latestThreadSequence) {
             continue;

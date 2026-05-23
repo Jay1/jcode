@@ -209,18 +209,18 @@ function createUniqueTerminalTitle(options: {
   terminalTitleOverridesById?: Record<string, string> | undefined;
 }): string {
   const baseTitle = generatedTerminalTitleBase(options.cliKind);
-  const takenTitles = new Set(
-    Object.keys(options.terminalLabelsById)
-      .filter((terminalId) => terminalId !== options.excludeTerminalId)
-      .map((terminalId) =>
-        resolveTerminalDisplayTitle({
-          terminalId,
-          terminalLabelsById: options.terminalLabelsById,
-          terminalTitleOverridesById: options.terminalTitleOverridesById ?? {},
-        }),
-      )
-      .filter((title) => title.length > 0),
-  );
+  const takenTitles = new Set<string>();
+  for (const terminalId of Object.keys(options.terminalLabelsById)) {
+    if (terminalId === options.excludeTerminalId) continue;
+    const title = resolveTerminalDisplayTitle({
+      terminalId,
+      terminalLabelsById: options.terminalLabelsById,
+      terminalTitleOverridesById: options.terminalTitleOverridesById ?? {},
+    });
+    if (title.length > 0) {
+      takenTitles.add(title);
+    }
+  }
   let index = 1;
   while (true) {
     const candidate = `${baseTitle} ${index}`;

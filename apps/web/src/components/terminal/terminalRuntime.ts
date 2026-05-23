@@ -28,6 +28,8 @@ import {
   isTerminalLinkActivation,
   resolvePathLinkTarget,
   resolveWrappedTerminalLinkRange,
+  type TerminalLinkBufferRange,
+  type TerminalLinkMatch,
   wrappedTerminalLinkRangeIntersectsBufferLine,
 } from "../../terminal-links";
 import {
@@ -681,14 +683,15 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
           return;
         }
 
-        const links = extractTerminalLinks(wrappedLine.text)
-          .map((match) => ({
-            match,
-            range: resolveWrappedTerminalLinkRange(wrappedLine, match),
-          }))
-          .filter(({ range }) =>
-            wrappedTerminalLinkRangeIntersectsBufferLine(range, bufferLineNumber),
-          );
+        const links = extractTerminalLinks(wrappedLine.text).reduce<
+          { match: TerminalLinkMatch; range: TerminalLinkBufferRange }[]
+        >((items, match) => {
+          const range = resolveWrappedTerminalLinkRange(wrappedLine, match);
+          if (wrappedTerminalLinkRangeIntersectsBufferLine(range, bufferLineNumber)) {
+            items.push({ match, range });
+          }
+          return items;
+        }, []);
         if (links.length === 0) {
           callback(undefined);
           return;
