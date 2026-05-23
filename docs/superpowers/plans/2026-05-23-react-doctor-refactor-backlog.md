@@ -77,8 +77,8 @@
 - [ ] For `_chat.$threadId.tsx`, move route UI into `_chat.$threadId.view.tsx` and pure route helpers into `_chat.$threadId.logic.ts`.
 - [ ] Update `_chat.$threadId.tsx` so it imports the route view and helper functions and exports only what TanStack Router requires.
 - [ ] Run focused tests that cover chat thread loading, if present.
-- [ ] For `__root.tsx`, move root layout UI into `__root.view.tsx` and pure helpers into `__root.logic.ts`.
-- [ ] Verify global providers, error boundaries, and devtools behavior still mount correctly.
+- [x] For `__root.tsx`, move root layout UI into a route-ignored root view file.
+- [x] Verify global providers, error boundaries, and devtools behavior still mount correctly.
 - [x] For `_chat.settings.tsx`, move settings page UI into a route-ignored settings view file.
 - [x] Run focused settings tests if present; otherwise use typecheck plus manual browser verification.
 - [x] For `_chat.tsx`, `_chat.index.tsx`, workspace route files, and `pair.tsx`, repeat the thin-route-module extraction pattern.
