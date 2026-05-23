@@ -2020,7 +2020,7 @@ export function SettingsRouteView() {
         <div className="space-y-4">
           {serverWorktreesQuery.isLoading ? (
             <div className="rounded-xl border border-dashed border-border/70 px-4 py-6 text-sm text-muted-foreground">
-              Loading managed worktrees...
+              Loading managed worktrees&hellip;
             </div>
           ) : serverWorktreesQuery.isError ? (
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-6 text-sm text-destructive">
