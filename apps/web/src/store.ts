@@ -1420,9 +1420,14 @@ function normalizeActivityCommandValue(value: unknown): string | null {
   if (!Array.isArray(value)) {
     return null;
   }
-  const parts = value
-    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
-    .filter((entry) => entry.length > 0);
+  const parts: string[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "string") continue;
+    const trimmedEntry = entry.trim();
+    if (trimmedEntry.length > 0) {
+      parts.push(trimmedEntry);
+    }
+  }
   return parts.length > 0 ? parts.join(" ") : null;
 }
 

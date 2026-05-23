@@ -52,11 +52,12 @@ function nextWorkspaceTitle(
   workspacePages: readonly WorkspacePage[],
   excludeWorkspaceId?: string | undefined,
 ): string {
-  const takenTitles = new Set(
-    workspacePages
-      .filter((workspace) => workspace.id !== excludeWorkspaceId)
-      .map((workspace) => workspace.title.toLowerCase()),
-  );
+  const takenTitles = new Set<string>();
+  for (const workspace of workspacePages) {
+    if (workspace.id !== excludeWorkspaceId) {
+      takenTitles.add(workspace.title.toLowerCase());
+    }
+  }
   let index = 1;
   while (true) {
     const candidate = `Workspace ${index}`;

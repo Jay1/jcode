@@ -381,11 +381,15 @@ export function resolvePreferredSplitViewIdForThread(input: {
     return null;
   }
 
-  const matchingSplitViews = Object.values(input.splitViewsById)
-    .filter((splitView): splitView is SplitView => splitView !== undefined)
-    .filter((splitView) =>
-      collectLeaves(splitView.root).some((leaf) => leaf.threadId === input.threadId),
-    );
+  const matchingSplitViews: SplitView[] = [];
+  for (const splitView of Object.values(input.splitViewsById)) {
+    if (
+      splitView &&
+      collectLeaves(splitView.root).some((leaf) => leaf.threadId === input.threadId)
+    ) {
+      matchingSplitViews.push(splitView);
+    }
+  }
 
   const sourceSplitViewId = input.splitViewIdBySourceThreadId[input.threadId] ?? null;
   if (
@@ -711,7 +715,8 @@ export const useSplitViewStore = create<SplitViewStore>()(
               continue;
             }
 
-            const focusedStillPresent = !result.removedLeafIds.includes(splitView.focusedPaneId);
+            const removedLeafIds = new Set(result.removedLeafIds);
+            const focusedStillPresent = !removedLeafIds.has(splitView.focusedPaneId);
             const nextFocusedPaneId = focusedStillPresent
               ? splitView.focusedPaneId
               : resolveDefaultFocusLeafId(result.nextRoot);

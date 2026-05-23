@@ -56,7 +56,14 @@ interface ThreadTerminalState {
 const TERMINAL_STATE_STORAGE_KEY = "jcode:terminal-state:v1";
 
 function normalizeTerminalIds(terminalIds: string[]): string[] {
-  const ids = [...new Set(terminalIds.map((id) => id.trim()).filter((id) => id.length > 0))];
+  const ids: string[] = [];
+  const seenIds = new Set<string>();
+  for (const id of terminalIds) {
+    const trimmedId = id.trim();
+    if (trimmedId.length === 0 || seenIds.has(trimmedId)) continue;
+    seenIds.add(trimmedId);
+    ids.push(trimmedId);
+  }
   return ids.length > 0 ? ids : [DEFAULT_THREAD_TERMINAL_ID];
 }
 
@@ -66,9 +73,17 @@ function normalizeRunningTerminalIds(
 ): string[] {
   if (runningTerminalIds.length === 0) return [];
   const validTerminalIdSet = new Set(terminalIds);
-  return [...new Set(runningTerminalIds)]
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0 && validTerminalIdSet.has(id));
+  const ids: string[] = [];
+  const seenIds = new Set<string>();
+  for (const id of runningTerminalIds) {
+    const trimmedId = id.trim();
+    if (trimmedId.length === 0 || !validTerminalIdSet.has(trimmedId) || seenIds.has(trimmedId)) {
+      continue;
+    }
+    seenIds.add(trimmedId);
+    ids.push(trimmedId);
+  }
+  return ids;
 }
 
 function normalizeTerminalLabels(
@@ -76,11 +91,20 @@ function normalizeTerminalLabels(
   terminalIds: string[],
 ): Record<string, string> {
   const validTerminalIdSet = new Set(terminalIds);
-  const normalizedEntries = Object.entries(terminalLabelsById ?? {})
-    .map(([terminalId, label]) => [terminalId.trim(), label.trim()] as const)
-    .filter(([terminalId, label]) => terminalId.length > 0 && label.length > 0)
-    .filter(([terminalId]) => validTerminalIdSet.has(terminalId))
-    .toSorted(([leftId], [rightId]) => leftId.localeCompare(rightId));
+  const normalizedEntries: [string, string][] = [];
+  for (const [terminalId, label] of Object.entries(terminalLabelsById ?? {})) {
+    const trimmedTerminalId = terminalId.trim();
+    const trimmedLabel = label.trim();
+    if (
+      trimmedTerminalId.length === 0 ||
+      trimmedLabel.length === 0 ||
+      !validTerminalIdSet.has(trimmedTerminalId)
+    ) {
+      continue;
+    }
+    normalizedEntries.push([trimmedTerminalId, trimmedLabel]);
+  }
+  normalizedEntries.sort(([leftId], [rightId]) => leftId.localeCompare(rightId));
   return Object.fromEntries(normalizedEntries);
 }
 
@@ -89,13 +113,20 @@ function normalizeTerminalTitleOverrides(
   terminalIds: string[],
 ): Record<string, string> {
   const validTerminalIdSet = new Set(terminalIds);
-  const normalizedEntries = Object.entries(terminalTitleOverridesById ?? {})
-    .map(([terminalId, titleOverride]) => [terminalId.trim(), titleOverride.trim()] as const)
-    .filter(
-      ([terminalId, titleOverride]) =>
-        terminalId.length > 0 && titleOverride.length > 0 && validTerminalIdSet.has(terminalId),
-    )
-    .toSorted(([leftId], [rightId]) => leftId.localeCompare(rightId));
+  const normalizedEntries: [string, string][] = [];
+  for (const [terminalId, titleOverride] of Object.entries(terminalTitleOverridesById ?? {})) {
+    const trimmedTerminalId = terminalId.trim();
+    const trimmedTitleOverride = titleOverride.trim();
+    if (
+      trimmedTerminalId.length === 0 ||
+      trimmedTitleOverride.length === 0 ||
+      !validTerminalIdSet.has(trimmedTerminalId)
+    ) {
+      continue;
+    }
+    normalizedEntries.push([trimmedTerminalId, trimmedTitleOverride]);
+  }
+  normalizedEntries.sort(([leftId], [rightId]) => leftId.localeCompare(rightId));
   return Object.fromEntries(normalizedEntries);
 }
 
