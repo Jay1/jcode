@@ -333,7 +333,7 @@ function PluginGridItem({ entry }: { entry: PluginEntry }) {
     entry.plugin.source.path;
 
   return (
-    <div className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-[var(--sidebar-accent)]">
+    <div className="flex items-center gap-3 rounded-xl p-3 transition-colors hover:bg-[var(--sidebar-accent)]">
       <PluginGlyph plugin={entry.plugin} />
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-semibold leading-snug text-foreground">
@@ -351,7 +351,7 @@ function SkillGridItem({ skill }: { skill: ProviderSkillDescriptor }) {
     skill.interface?.shortDescription ?? skill.description ?? "No description available.";
 
   return (
-    <div className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-[var(--sidebar-accent)]">
+    <div className="flex items-center gap-3 rounded-xl p-3 transition-colors hover:bg-[var(--sidebar-accent)]">
       <SkillGlyph skill={skill} />
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-semibold leading-snug text-foreground">
