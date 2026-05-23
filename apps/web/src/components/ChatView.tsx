@@ -201,13 +201,11 @@ import {
   ChevronRightIcon,
   EllipsisIcon,
   QueueArrow,
-  RefreshCwIcon,
   Trash2,
   XIcon,
 } from "~/lib/icons";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
-import { Skeleton } from "./ui/skeleton";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "./ui/menu";
 import { terminalRuntimeRegistry } from "./terminal/terminalRuntimeRegistry";
 import { cn, isMacPlatform, randomUUID } from "~/lib/utils";
@@ -293,6 +291,10 @@ import { ComposerSlashStatusDialog } from "./chat/ComposerSlashStatusDialog";
 import { ExpandedImagePreview } from "./chat/ExpandedImagePreview";
 import { ProviderModelPicker } from "./chat/ProviderModelPicker";
 import { AVAILABLE_PROVIDER_OPTIONS } from "./chat/ProviderModelPicker.logic";
+import {
+  ComposerControlSkeleton,
+  ComposerModelLoadingControl,
+} from "./ChatViewComposerLoadingControls";
 import { ComposerCommandMenu } from "./chat/ComposerCommandMenu";
 import type { ComposerCommandItem } from "./chat/ComposerCommandMenu.logic";
 import {
@@ -764,35 +766,6 @@ const terminalContextIdListsEqual = (
   ids: ReadonlyArray<string>,
 ): boolean =>
   contexts.length === ids.length && contexts.every((context, index) => context.id === ids[index]);
-
-function ComposerControlSkeleton(props: { widthClassName: string }) {
-  return (
-    <div
-      aria-hidden="true"
-      className={cn(
-        "flex h-8 shrink-0 items-center rounded-md border border-border/50 px-2",
-        props.widthClassName,
-      )}
-    >
-      <Skeleton className="h-3.5 w-full rounded-full" />
-    </div>
-  );
-}
-
-function ComposerModelLoadingControl(props: { widthClassName: string }) {
-  return (
-    <div
-      aria-label="Loading models"
-      className={cn(
-        "flex h-8 shrink-0 items-center gap-2 rounded-md border border-border/50 px-2 text-muted-foreground",
-        props.widthClassName,
-      )}
-    >
-      <RefreshCwIcon aria-hidden="true" className="size-3.5 animate-spin" />
-      <span className="truncate text-[length:var(--app-font-size-ui-xs,11px)]">Loading models</span>
-    </div>
-  );
-}
 
 interface ChatViewProps {
   threadId: ThreadId;
