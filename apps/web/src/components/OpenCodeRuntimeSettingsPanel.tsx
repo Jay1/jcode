@@ -59,7 +59,7 @@ export function OpenCodeRuntimeSettingsPanel() {
   const status = health?.status ?? "unknown";
 
   return (
-    <div className="mt-4 rounded-lg border border-border/70 bg-muted/15 px-3 py-3">
+    <div className="mt-4 rounded-lg border border-border/70 bg-muted/15 p-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <div className="text-sm font-medium text-foreground">OpenCode runtime</div>
