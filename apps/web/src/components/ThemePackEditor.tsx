@@ -151,7 +151,7 @@ export function ThemePackEditor({
                   hideIndicator
                   key={option.id}
                   value={option.id}
-                  className="rounded-lg px-2 py-2"
+                  className="rounded-lg p-2"
                 >
                   <CodeThemeSelectOption label={option.label} theme={option.previewTheme} />
                 </SelectItem>
