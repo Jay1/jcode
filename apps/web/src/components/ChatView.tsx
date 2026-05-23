@@ -292,7 +292,8 @@ import { buildTurnDiffSummaryByAssistantMessageId } from "./chat/MessagesTimelin
 import { ComposerSlashStatusDialog } from "./chat/ComposerSlashStatusDialog";
 import { ExpandedImagePreview } from "./chat/ExpandedImagePreview";
 import { AVAILABLE_PROVIDER_OPTIONS, ProviderModelPicker } from "./chat/ProviderModelPicker";
-import { ComposerCommandItem, ComposerCommandMenu } from "./chat/ComposerCommandMenu";
+import { ComposerCommandMenu } from "./chat/ComposerCommandMenu";
+import type { ComposerCommandItem } from "./chat/ComposerCommandMenu.logic";
 import {
   ComposerLocalDirectoryMenu,
   type ComposerLocalDirectoryMenuHandle,

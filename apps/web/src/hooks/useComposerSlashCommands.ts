@@ -28,7 +28,7 @@ import {
 } from "../composerSlashCommands";
 import { buildThreadHandoffImportedMessages } from "../lib/threadHandoff";
 import { toastManager } from "../components/ui/toast";
-import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
+import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu.logic";
 import { buildNextProviderOptions } from "../providerModelOptions";
 import { resolveForkThreadEnvironment } from "../lib/threadEnvironment";
 import { type SplitViewId, useSplitViewStore } from "../splitViewStore";

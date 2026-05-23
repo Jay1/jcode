@@ -50,9 +50,9 @@
 - [x] Move reusable pure helpers from `ChatPaneDropOverlay.tsx` into `ChatPaneDropOverlay.logic.ts`.
 - [x] Update imports in `ChatPaneDropOverlay.tsx` and `ChatPaneDropOverlay.test.tsx`.
 - [x] Run `bun run --cwd apps/web test src/components/chat-drop-overlay/ChatPaneDropOverlay.test.tsx`.
-- [ ] Inspect `apps/web/src/components/chat/ComposerCommandMenu.tsx` and identify the reported exported helper.
-- [ ] Move `ComposerCommandMenu.tsx` exported non-component logic into `ComposerCommandMenu.logic.ts`.
-- [ ] Add or update a focused logic test if the moved helper has branching behavior.
+- [x] Inspect `apps/web/src/components/chat/ComposerCommandMenu.tsx` and identify the reported exported helper.
+- [x] Move `ComposerCommandMenu.tsx` exported non-component logic into `ComposerCommandMenu.logic.ts`.
+- [x] Add or update a focused logic test if the moved helper has branching behavior.
 - [ ] Inspect `apps/web/src/components/Sidebar.tsx` and identify the reported exported helper or type.
 - [ ] Move runtime helper exports from `Sidebar.tsx` into `Sidebar.logic.ts`; move type-only exports into `Sidebar.types.ts` if needed.
 - [ ] Run existing `Sidebar` focused tests, especially `Sidebar.logic.test.ts` and `Sidebar.uiState.test.ts`.

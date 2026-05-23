@@ -27,7 +27,7 @@ import {
   getProviderNativeSlashCommandSearchTerms,
   shouldHideProviderNativeCommandFromComposerMenu,
 } from "../composerSlashCommands";
-import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
+import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu.logic";
 
 type ComposerPluginSuggestion = {
   plugin: ProviderPluginDescriptor;

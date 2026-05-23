@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupCommandItems, type ComposerCommandItem } from "./ComposerCommandMenu";
+import { groupCommandItems, type ComposerCommandItem } from "./ComposerCommandMenu.logic";
 
 describe("groupCommandItems", () => {
   it("groups mention suggestions as plugins, local, then subagents", () => {
