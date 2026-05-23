@@ -64,7 +64,8 @@ import { Button } from "./ui/button";
 import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./ui/menu";
 import { ToggleGroup, Toggle } from "./ui/toggle-group";
 import { FileEntryIcon } from "./chat/FileEntryIcon";
-import { DiffStatLabel, hasNonZeroStat } from "./chat/DiffStatLabel";
+import { DiffStatLabel } from "./chat/DiffStatLabel";
+import { hasNonZeroStat } from "./chat/DiffStatLabel.logic";
 import { type SplitViewPanePanelState } from "../splitViewStore";
 
 type DiffRenderMode = "stacked" | "split";

@@ -11,7 +11,6 @@ import {
   type ResolvedKeybindingsConfig,
   type ThreadId,
 } from "@jcode/contracts";
-import { isGenericChatThreadTitle } from "@jcode/shared/chatThreads";
 import { useQuery } from "@tanstack/react-query";
 import React, { memo, useEffect, useRef, useState } from "react";
 import { BsLayoutSplit, BsTerminal } from "react-icons/bs";
@@ -39,6 +38,7 @@ import { ClaudeAI, CursorIcon, Gemini, KiloIcon, OpenAI, OpenCodeIcon, PiIcon } 
 import { gitWorkingTreeDiffQueryOptions } from "~/lib/gitReactQuery";
 import { summarizePatchStats } from "~/lib/diffRendering";
 import { useRepoDiffScopeStore } from "~/repoDiffScopeStore";
+import { resolveChatHeaderThreadIconKind } from "./ChatHeader.logic";
 
 /** Width (px) below which collapsible header controls fold into the ellipsis menu. */
 const HEADER_COMPACT_BREAKPOINT = 480;
@@ -99,18 +99,6 @@ interface ChatHeaderProps {
   onNavigateToThread: (threadId: ThreadId) => void;
   onRenameThread: () => void;
   onCloseThreadPane?: () => void;
-}
-
-export type ChatHeaderThreadIconKind = "none" | "provider" | "terminal";
-
-export function resolveChatHeaderThreadIconKind(
-  entryPoint: ThreadPrimarySurface,
-  title?: string,
-): ChatHeaderThreadIconKind {
-  if (entryPoint === "chat" && isGenericChatThreadTitle(title)) {
-    return "none";
-  }
-  return entryPoint === "terminal" ? "terminal" : "provider";
 }
 
 export const ChatHeader = memo(function ChatHeader({
