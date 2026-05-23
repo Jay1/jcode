@@ -38,7 +38,9 @@
     "build:desktop": "turbo run build --filter=@jcode/desktop --filter=@jcode/server",
     "typecheck": "turbo run typecheck",
     "lint": "oxlint --report-unused-disable-directives",
-    "test": "turbo run test",
+    "test": "turbo run test && bun run react-doctor:changed",
+    "react-doctor": "react-doctor apps/web --yes --fail-on none",
+    "react-doctor:changed": "react-doctor apps/web --yes --diff HEAD --fail-on warning",
     "test:all": "bun run test && bun run test:browser",
     "test:browser": "turbo run test:browser --filter=@jcode/web",
     "test:browser:install": "bun run --cwd apps/web test:browser:install",
@@ -62,6 +64,7 @@
     "@vitest/coverage-v8": "4.1.0",
     "oxfmt": "^0.40.0",
     "oxlint": "^1.55.0",
+    "react-doctor": "^0.2.3",
     "turbo": "^2.3.3",
     "vitest": "catalog:"
   },
