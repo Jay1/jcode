@@ -188,6 +188,14 @@ export function providerModelsQueryOptions(input: {
   });
 }
 
+export function isInitialModelDiscoveryPending(query: {
+  isLoading: boolean;
+  isFetching: boolean;
+  isPlaceholderData: boolean;
+}): boolean {
+  return query.isLoading || (query.isFetching && query.isPlaceholderData);
+}
+
 export function providerAgentsQueryOptions(input: {
   provider: ProviderKind;
   binaryPath?: string | null;
