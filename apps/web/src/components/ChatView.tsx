@@ -3463,7 +3463,6 @@ export default function ChatView({
       setComposerDraftRuntimeMode,
       setDraftThreadContext,
       threadId,
-      toastManager,
     ],
   );
 
