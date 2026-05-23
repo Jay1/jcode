@@ -145,12 +145,12 @@ function extractLimitsFromById(payload: Record<string, unknown>): RateLimitWindo
   const rateLimitsByLimitId = asRecord(payload.rateLimitsByLimitId);
   if (!rateLimitsByLimitId) return undefined;
 
-  const limits = Object.values(rateLimitsByLimitId)
-    .map((entry) => asRecord(entry))
-    .flatMap((entry) => {
-      if (!entry) return [];
+  const limits: RateLimitWindow[] = [];
+  for (const value of Object.values(rateLimitsByLimitId)) {
+      const entry = asRecord(value);
+      if (!entry) continue;
       const primary = asRecord(entry.primary);
-      if (!primary) return [];
+      if (!primary) continue;
       const label =
         typeof entry.label === "string"
           ? entry.label
@@ -158,8 +158,10 @@ function extractLimitsFromById(payload: Record<string, unknown>): RateLimitWindo
             ? entry.window
             : "";
       const normalized = normalizeLimitWindow(label, primary);
-      return normalized ? [normalized] : [];
-    });
+      if (normalized) {
+        limits.push(normalized);
+      }
+  }
 
   return limits.length > 0 ? limits : undefined;
 }
@@ -167,13 +169,15 @@ function extractLimitsFromById(payload: Record<string, unknown>): RateLimitWindo
 function extractLimitsFromArray(payload: Record<string, unknown>): RateLimitWindow[] | undefined {
   if (!Array.isArray(payload.limits)) return undefined;
 
-  const limits = payload.limits
-    .map((entry) => asRecord(entry))
-    .flatMap((entry) => {
-      if (!entry || typeof entry.window !== "string") return [];
+  const limits: RateLimitWindow[] = [];
+  for (const value of payload.limits) {
+      const entry = asRecord(value);
+      if (!entry || typeof entry.window !== "string") continue;
       const normalized = normalizeLimitWindow(entry.window, entry);
-      return normalized ? [normalized] : [];
-    });
+      if (normalized) {
+        limits.push(normalized);
+      }
+  }
 
   return limits.length > 0 ? limits : undefined;
 }

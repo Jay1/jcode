@@ -58,7 +58,14 @@ function assignUniqueGroupId(groupId: string, usedGroupIds: Set<string>): string
 }
 
 function normalizeTerminalIds(terminalIds: string[]): string[] {
-  const cleaned = [...new Set(terminalIds.map((id) => id.trim()).filter((id) => id.length > 0))];
+  const cleaned: string[] = [];
+  const seenIds = new Set<string>();
+  for (const id of terminalIds) {
+    const trimmedId = id.trim();
+    if (trimmedId.length === 0 || seenIds.has(trimmedId)) continue;
+    seenIds.add(trimmedId);
+    cleaned.push(trimmedId);
+  }
   return cleaned.length > 0 ? cleaned : [DEFAULT_THREAD_TERMINAL_ID];
 }
 
@@ -164,9 +171,13 @@ function resolveTerminalVisualIdentityMap(input: {
 }): ReadonlyMap<string, ResolvedTerminalVisualIdentity> {
   const terminalLabelsById = input.terminalLabelsById ?? {};
   const terminalTitleOverridesById = input.terminalTitleOverridesById ?? {};
-  const runningTerminalIdSet = new Set(
-    input.runningTerminalIds.map((id) => id.trim()).filter((id) => id.length > 0),
-  );
+  const runningTerminalIdSet = new Set<string>();
+  for (const id of input.runningTerminalIds) {
+    const trimmedId = id.trim();
+    if (trimmedId.length > 0) {
+      runningTerminalIdSet.add(trimmedId);
+    }
+  }
 
   const resolveStateForTerminal = (terminalId: string): TerminalVisualState => {
     const attentionState = input.terminalAttentionStatesById[terminalId] ?? null;

@@ -455,6 +455,21 @@ function toActiveTaskListState(activity: OrchestrationThreadActivity): ActiveTas
   };
 }
 
+function findLastActiveTaskListForTurn(
+  activities: ReadonlyArray<OrchestrationThreadActivity>,
+  turnId: TurnId,
+): ActiveTaskListState | null {
+  for (let index = activities.length - 1; index >= 0; index -= 1) {
+    const activity = activities[index];
+    if (!activity || activity.turnId !== turnId) continue;
+    const taskList = toActiveTaskListState(activity);
+    if (taskList !== null) {
+      return taskList;
+    }
+  }
+  return null;
+}
+
 export function deriveActiveTaskListState(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
   latestTurnId: TurnId | undefined,
@@ -476,10 +491,7 @@ export function deriveActiveTaskListState(
   }
 
   const currentTurnTaskList = latestTurnId
-    ? (allTaskListActivities
-        .filter((activity) => activity.turnId === latestTurnId)
-        .map(toActiveTaskListState)
-        .findLast((taskList) => taskList !== null) ?? null)
+    ? (findLastActiveTaskListForTurn(allTaskListActivities, latestTurnId) ?? null)
     : null;
   if (currentTurnTaskList) {
     return currentTurnTaskList;
@@ -661,24 +673,26 @@ export function deriveWorkLogEntries(
   latestTurnId: TurnId | undefined,
 ): WorkLogEntry[] {
   const ordered = [...activities].toSorted(compareActivitiesByOrder);
-  const entries = ordered
-    .filter((activity) =>
-      latestTurnId
-        ? activity.turnId === latestTurnId ||
-          (activity.kind === "context-compaction" && activity.turnId === null)
-        : true,
-    )
-    .filter((activity) => !isCollabAgentToolActivity(activity))
-    .filter((activity) => activity.kind !== "task.started" && activity.kind !== "task.completed")
-    .filter((activity) => activity.kind !== "account.rate-limits.updated")
-    .filter(
-      (activity) =>
-        activity.kind !== "context-window.updated" && activity.kind !== "context-window.configured",
-    )
-    .filter((activity) => activity.summary !== "Checkpoint captured")
-    .filter((activity) => !isPlanBoundaryToolActivity(activity))
-    .filter((activity) => !isUninformativeCommandStartActivity(activity))
-    .map(toDerivedWorkLogEntry);
+  const entries: DerivedWorkLogEntry[] = [];
+  for (const activity of ordered) {
+    if (
+      latestTurnId &&
+      activity.turnId !== latestTurnId &&
+      !(activity.kind === "context-compaction" && activity.turnId === null)
+    ) {
+      continue;
+    }
+    if (isCollabAgentToolActivity(activity)) continue;
+    if (activity.kind === "task.started" || activity.kind === "task.completed") continue;
+    if (activity.kind === "account.rate-limits.updated") continue;
+    if (activity.kind === "context-window.updated" || activity.kind === "context-window.configured") {
+      continue;
+    }
+    if (activity.summary === "Checkpoint captured") continue;
+    if (isPlanBoundaryToolActivity(activity)) continue;
+    if (isUninformativeCommandStartActivity(activity)) continue;
+    entries.push(toDerivedWorkLogEntry(activity));
+  }
   return collapseDerivedWorkLogEntries(entries).map(
     ({
       activityKind: _activityKind,
