@@ -118,10 +118,8 @@ export function useWhatsNew(options?: {
     }
   }, [initialState, setStorage]);
 
-  const currentEntry = useMemo<WhatsNewEntry | null>(
-    () => (initialState.kind === "show" ? initialState.currentEntry : null),
-    [initialState],
-  );
+  const currentEntry: WhatsNewEntry | null =
+    initialState.kind === "show" ? initialState.currentEntry : null;
 
   const allEntries = useMemo<readonly WhatsNewEntry[]>(
     () => (initialState.kind === "show" ? initialState.allEntries : []),
