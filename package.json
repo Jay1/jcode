@@ -40,6 +40,8 @@
     "lint": "oxlint --report-unused-disable-directives",
     "test": "turbo run test",
     "test:local": "JCODE_LOCAL_TEST_PROFILE=1 turbo run test --concurrency=1 --ui=stream",
+    "react-doctor": "react-doctor apps/web --yes --fail-on none",
+    "react-doctor:changed": "react-doctor apps/web --yes --diff HEAD --fail-on warning",
     "test:all": "bun run test && bun run test:browser",
     "test:all:local": "bun run test:local && bun run test:browser:local",
     "test:browser": "turbo run test:browser --filter=@jcode/web",
@@ -69,6 +71,7 @@
     "@vitest/coverage-v8": "4.1.7",
     "oxfmt": "^0.52.0",
     "oxlint": "^1.67.0",
+    "react-doctor": "^0.2.3",
     "turbo": "^2.9.16",
     "vitest": "catalog:"
   },
