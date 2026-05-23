@@ -15,6 +15,8 @@ export const DIFF_THEME_NAMES = {
 
 export type DiffThemeName = (typeof DIFF_THEME_NAMES)[keyof typeof DIFF_THEME_NAMES];
 
+export const MAX_RENDERABLE_DIFF_LINE_LENGTH = 500_000;
+
 export function resolveDiffThemeName(theme: "light" | "dark"): DiffThemeName {
   return theme === "dark" ? DIFF_THEME_NAMES.dark : DIFF_THEME_NAMES.light;
 }
@@ -54,6 +56,15 @@ export function resolveDiffCopyText(patch: string | undefined): string | null {
     return null;
   }
   return patch.trim().length > 0 ? patch : null;
+}
+
+export function canRenderFileDiff(
+  fileDiff: Pick<FileDiffMetadata, "additionLines" | "deletionLines">,
+): boolean {
+  return (
+    fileDiff.additionLines.every((line) => line.length <= MAX_RENDERABLE_DIFF_LINE_LENGTH) &&
+    fileDiff.deletionLines.every((line) => line.length <= MAX_RENDERABLE_DIFF_LINE_LENGTH)
+  );
 }
 
 export type RenderablePatch =

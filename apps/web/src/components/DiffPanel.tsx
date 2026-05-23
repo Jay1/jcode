@@ -37,6 +37,7 @@ import { parseDiffRouteSearch, stripDiffSearchParams } from "../diffRouteSearch"
 import { useTheme } from "../hooks/useTheme";
 import {
   buildPatchCacheKey,
+  canRenderFileDiff,
   getRenderablePatch,
   resolveDiffCopyText,
   resolveDiffThemeName,
@@ -417,12 +418,20 @@ export default function DiffPanel({
     if (!renderablePatch || renderablePatch.kind !== "files") {
       return [];
     }
-    return renderablePatch.files.toSorted((left, right) =>
-      resolveFileDiffPath(left).localeCompare(resolveFileDiffPath(right), undefined, {
-        numeric: true,
-        sensitivity: "base",
-      }),
-    );
+    return renderablePatch.files
+      .map((fileDiff) => ({
+        canRender: canRenderFileDiff(fileDiff),
+        fileDiff,
+        filePath: resolveFileDiffPath(fileDiff),
+      }))
+      .toSorted((left, right) => {
+        const renderOrder = Number(!left.canRender) - Number(!right.canRender);
+        if (renderOrder !== 0) return renderOrder;
+        return left.filePath.localeCompare(right.filePath, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      });
   }, [renderablePatch]);
   const totalPatchStat = useMemo(() => summarizePatchStats(repoPatch), [repoPatch]);
 
@@ -1068,8 +1077,7 @@ export default function DiffPanel({
                     intersectionObserverMargin: 1200,
                   }}
                 >
-                  {renderableFiles.map((fileDiff) => {
-                    const filePath = resolveFileDiffPath(fileDiff);
+                  {renderableFiles.map(({ canRender, fileDiff, filePath }) => {
                     const fileKey = buildFileDiffRenderKey(fileDiff);
                     const themedFileKey = `${fileKey}:${resolvedTheme}`;
                     const isCollapsed = collapsedFiles.has(fileKey);
@@ -1102,7 +1110,7 @@ export default function DiffPanel({
                             theme: resolveDiffThemeName(resolvedTheme),
                             themeType: resolvedTheme as DiffThemeType,
                             unsafeCSS: buildDiffPanelUnsafeCSS(resolvedTheme),
-                            collapsed: isCollapsed,
+                            collapsed: isCollapsed || !canRender,
                           }}
                           renderHeaderPrefix={() => (
                             <FileEntryIcon
@@ -1133,6 +1141,11 @@ export default function DiffPanel({
                             </span>
                           )}
                         />
+                        {!canRender && (
+                          <div className="px-3 py-3 text-[11px] leading-relaxed text-muted-foreground">
+                            This file is too large to display. Open the file to inspect the change.
+                          </div>
+                        )}
                       </div>
                     );
                   })}

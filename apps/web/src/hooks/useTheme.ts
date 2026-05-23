@@ -39,6 +39,7 @@ const MEDIA_QUERY = "(prefers-color-scheme: dark)";
 let listeners: Array<() => void> = [];
 let lastSnapshot: ThemeSnapshot | null = null;
 let lastSnapshotKey = "";
+let lastAppliedThemeKey = "";
 let lastDesktopTheme: ThemeMode | null = null;
 
 // ─── Store wiring ─────────────────────────────────────────────────────────
@@ -54,7 +55,11 @@ function hasThemeStorage(): boolean {
 }
 
 function getSystemDark(): boolean {
-  return typeof window !== "undefined" && window.matchMedia(MEDIA_QUERY).matches;
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia(MEDIA_QUERY).matches
+  );
 }
 
 function readStoredThemeState(): ThemeState {
@@ -105,7 +110,8 @@ function subscribe(listener: () => void): () => void {
 
   listeners.push(listener);
 
-  const mediaQuery = window.matchMedia(MEDIA_QUERY);
+  const mediaQuery =
+    typeof window.matchMedia === "function" ? window.matchMedia(MEDIA_QUERY) : null;
   const handleMediaChange = () => {
     const state = readStoredThemeState();
     if (state.mode === "system") {
@@ -121,12 +127,12 @@ function subscribe(listener: () => void): () => void {
     emitChange();
   };
 
-  mediaQuery.addEventListener("change", handleMediaChange);
+  mediaQuery?.addEventListener("change", handleMediaChange);
   window.addEventListener("storage", handleStorage);
 
   return () => {
     listeners = listeners.filter((currentListener) => currentListener !== listener);
-    mediaQuery.removeEventListener("change", handleMediaChange);
+    mediaQuery?.removeEventListener("change", handleMediaChange);
     window.removeEventListener("storage", handleStorage);
   };
 }
@@ -148,11 +154,19 @@ function applyThemeState(state: ThemeState, suppressTransitions = false) {
     return;
   }
 
+  const systemDark = state.mode === "system" ? getSystemDark() : false;
+  const appliedThemeKey = `${serializeThemeState(state)}|${systemDark ? "dark" : "light"}`;
+  if (lastAppliedThemeKey === appliedThemeKey) {
+    syncDesktopTheme(state.mode);
+    return;
+  }
+  lastAppliedThemeKey = appliedThemeKey;
+
   if (suppressTransitions) {
     root.classList.add("no-transitions");
   }
 
-  const variant = resolveThemeVariant(state.mode, getSystemDark());
+  const variant = resolveThemeVariant(state.mode, systemDark);
   const activeTheme = resolveThemePack(state, variant);
   const cssVariableBuild = buildThemeCssVariables(activeTheme, variant, {
     electron: isElectron,
