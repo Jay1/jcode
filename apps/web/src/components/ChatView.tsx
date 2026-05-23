@@ -2238,26 +2238,30 @@ export default function ChatView({
       interactionMode,
       isSidechat: Boolean(activeThread.sidechatSourceThreadId),
     });
+  const claudeDynamicAgentsData = claudeDynamicAgentsQuery.data;
+  const codexDynamicAgentsData = codexDynamicAgentsQuery.data;
+  const kiloDynamicAgentsData = kiloDynamicAgentsQuery.data;
+  const openCodeDynamicAgentsData = openCodeDynamicAgentsQuery.data;
   const dynamicAgents = useMemo(() => {
     const query =
       selectedProvider === "claudeAgent"
-        ? claudeDynamicAgentsQuery
+        ? claudeDynamicAgentsData
         : selectedProvider === "kilo"
-          ? kiloDynamicAgentsQuery
+          ? kiloDynamicAgentsData
           : selectedProvider === "opencode"
-            ? openCodeDynamicAgentsQuery
-            : codexDynamicAgentsQuery;
-    return (query.data?.agents ?? []).map((a) => ({
+            ? openCodeDynamicAgentsData
+            : codexDynamicAgentsData;
+    return (query?.agents ?? []).map((a) => ({
       name: a.name,
       displayName: a.displayName,
       ...(a.description ? { description: a.description } : {}),
     }));
   }, [
     selectedProvider,
-    claudeDynamicAgentsQuery.data,
-    codexDynamicAgentsQuery.data,
-    kiloDynamicAgentsQuery.data,
-    openCodeDynamicAgentsQuery.data,
+    claudeDynamicAgentsData,
+    codexDynamicAgentsData,
+    kiloDynamicAgentsData,
+    openCodeDynamicAgentsData,
   ]);
   const normalComposerMenuItems = useComposerCommandMenuItems({
     composerTrigger: effectiveComposerTrigger,
