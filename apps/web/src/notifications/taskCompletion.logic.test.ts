@@ -8,11 +8,13 @@ import {
   TurnId,
 } from "@jcode/contracts";
 import {
+  buildNotificationSettingsSupportText,
   buildInputNeededCopy,
   buildTaskCompletionCopy,
   collectCompletedThreadCandidates,
   collectInputNeededThreadCandidates,
   isNotificationRuntimeFreshTimestamp,
+  readBrowserNotificationPermissionState,
   shouldShowThreadNotificationToast,
 } from "./taskCompletion.logic";
 import type { Thread } from "../types";
@@ -54,6 +56,18 @@ function makeThread(overrides: Partial<Thread>): Thread {
     ...overrides,
   };
 }
+
+describe("browser notification helpers", () => {
+  it("reports unsupported notification permissions when no window exists", () => {
+    expect(readBrowserNotificationPermissionState()).toBe("unsupported");
+  });
+
+  it("describes blocked browser notifications", () => {
+    expect(buildNotificationSettingsSupportText("denied")).toBe(
+      "Browser notifications are blocked. Re-enable them in your browser site settings.",
+    );
+  });
+});
 
 describe("collectCompletedThreadCandidates", () => {
   it("returns threads that moved from working to completed", () => {

@@ -97,7 +97,7 @@ import {
   buildNotificationSettingsSupportText,
   readBrowserNotificationPermissionState,
   requestBrowserNotificationPermission,
-} from "../notifications/taskCompletion";
+} from "../notifications/taskCompletion.logic";
 import { normalizeSettingsSection, SETTINGS_NAV_ITEMS } from "../settingsNavigation";
 import { useStore } from "../store";
 import ReleaseHistoryDialog from "../components/ReleaseHistoryDialog";

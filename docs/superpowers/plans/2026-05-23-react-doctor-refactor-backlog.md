@@ -64,11 +64,11 @@
 - [x] If the browser wrapper only exists to lazy-load or gate browser APIs, move local React components into `ChatTranscriptPane.tsx` or `ChatTranscriptPane.view.tsx` and keep the browser file as a thin component-only export.
 - [x] Inspect `apps/web/src/components/chat/TraitsPicker.browser.tsx`.
 - [x] Move local components or helpers from `TraitsPicker.browser.tsx` into `TraitsPicker.tsx`, `TraitsPicker.view.tsx`, or `TraitsPicker.logic.ts` according to responsibility.
-- [ ] Inspect `apps/web/src/notifications/taskCompletion.tsx`.
-- [ ] Move notification helper exports into `taskCompletion.logic.ts` and keep the `.tsx` file component-only if it renders React UI.
-- [ ] Run `bunx react-doctor apps/web --yes --fail-on none --json --json-compact --offline` and verify non-route `only-export-components` errors are cleared.
-- [ ] Run `bun run --cwd apps/web typecheck`.
-- [ ] Run focused tests for every touched component or logic file.
+- [x] Inspect `apps/web/src/notifications/taskCompletion.tsx`.
+- [x] Move notification helper exports into `taskCompletion.logic.ts` and keep the `.tsx` file component-only if it renders React UI.
+- [x] Run `bunx react-doctor apps/web --yes --fail-on none --json --json-compact --offline` and verify non-route `only-export-components` errors are cleared.
+- [x] Run `bun run --cwd apps/web typecheck`.
+- [x] Run focused tests for every touched component or logic file.
 
 ## Phase 3: Handle Route Module `only-export-components`
 
