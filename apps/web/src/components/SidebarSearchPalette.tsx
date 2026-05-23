@@ -475,7 +475,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                 </div>
               </div>
             </div>
-            <div className="space-y-4 px-4 py-4">
+            <div className="space-y-4 p-4">
               <div className="space-y-2">
                 <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
                   Provider
