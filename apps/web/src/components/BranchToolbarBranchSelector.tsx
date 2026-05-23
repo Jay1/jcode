@@ -443,12 +443,12 @@ export function BranchToolbarBranchSelector({
     onSetThreadWorkspace,
   ]);
 
-  const runBranchAction = (action: () => Promise<void>) => {
+  const runBranchAction = useCallback((action: () => Promise<void>) => {
     startBranchActionTransition(async () => {
       await action().catch(() => undefined);
       await invalidateGitQueries(queryClient).catch(() => undefined);
     });
-  };
+  }, [queryClient]);
 
   const openCreateBranchDialog = useCallback(() => {
     setCreateBranchName(canPrefillCreateBranch && !hasExactBranchMatch ? trimmedBranchQuery : "");
