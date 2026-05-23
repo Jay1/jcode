@@ -6068,6 +6068,7 @@ function SidebarSearchPaletteController(props: {
 
   return (
     <SidebarSearchPalette
+      key={props.open ? "open" : "closed"}
       open={props.open}
       mode={props.mode}
       onModeChange={props.onModeChange}

@@ -231,19 +231,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
   const [isAddingProject, setIsAddingProject] = useState(false);
 
   useEffect(() => {
-    if (!open) {
-      setQuery("");
-      setHighlightedItemValue(null);
-      setImportProvider(importProviders[0] ?? "codex");
-      setImportId("");
-      setImportError(null);
-      setIsImporting(false);
-      setAddProjectError(null);
-      setIsAddingProject(false);
-    }
-  }, [importProviders, open]);
-
-  useEffect(() => {
     if (importProviders.includes(importProvider)) {
       return;
     }
