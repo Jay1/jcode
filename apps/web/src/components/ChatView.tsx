@@ -7464,7 +7464,7 @@ export default function ChatView({
                 >
                   {isPreparingWorktree ? (
                     <span className="text-[length:var(--app-font-size-ui-xs,10px)] text-[var(--color-text-foreground-secondary)]">
-                      Preparing worktree...
+                      Preparing worktree&hellip;
                     </span>
                   ) : null}
                   {showVoiceNotesControl && (isVoiceRecording || isVoiceTranscribing) ? (
@@ -8216,7 +8216,7 @@ export default function ChatView({
                             >
                               {isPreparingWorktree ? (
                                 <span className="text-[length:var(--app-font-size-ui-xs,10px)] text-[var(--color-text-foreground-secondary)]">
-                                  Preparing worktree...
+                                  Preparing worktree&hellip;
                                 </span>
                               ) : null}
                               {showVoiceNotesControl &&
