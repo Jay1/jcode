@@ -806,6 +806,9 @@ function SettingsRouteView() {
     ...(!isDefaultActiveTheme ? [`${resolvedTheme === "dark" ? "Dark" : "Light"} theme pack`] : []),
     ...(settings.defaultProvider !== defaults.defaultProvider ? ["Default provider"] : []),
     ...(settings.defaultThreadEnvMode !== defaults.defaultThreadEnvMode ? ["New thread mode"] : []),
+    ...(settings.addProjectBaseDirectory !== defaults.addProjectBaseDirectory
+      ? ["Project Folder"]
+      : []),
     ...(settings.sidebarSide !== defaults.sidebarSide ? ["Sidebar position"] : []),
     ...(settings.sidebarProjectSortOrder !== defaults.sidebarProjectSortOrder
       ? ["Project sort order"]

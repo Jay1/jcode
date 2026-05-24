@@ -1,5 +1,12 @@
 # Project Folder Suggestions Design
 
+| Field   | Value                                                                                               |
+| ------- | --------------------------------------------------------------------------------------------------- |
+| Status  | Implemented                                                                                         |
+| Date    | 2026-05-24                                                                                          |
+| Author  | Engineering                                                                                         |
+| Related | [Project Folder Suggestions Implementation Plan](../plans/2026-05-24-project-folder-suggestions.md) |
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:writing-plans before implementation. Keep this as a small sidebar/settings feature; do not replace the whole project launcher.
 
 **Goal:** Make the sidebar add-project `+` flow faster by suggesting projects from a configured parent folder while preserving manual path entry.
@@ -40,7 +47,9 @@ When the user clicks `+` in the sidebar:
 
 ## UX Shape
 
-The `+` area should remain compact inside the sidebar. It should not become a full modal or command palette.
+- Keep the sidebar `+` area compact instead of replacing it with a modal or command palette.
+- Present suggested folders first when a Project Folder is configured.
+- Preserve existing Browse and Type path actions in every state.
 
 Suggested layout when a Project Folder is configured:
 
@@ -56,27 +65,24 @@ Suggested layout when no Project Folder is configured:
 
 ## Data Flow
 
-Settings flow:
-
-1. Settings → General reads `serverSettingsQueryOptions()`.
-2. User enters or browses for the Project Folder path.
-3. Settings patches server settings with the Project Folder path.
-4. Existing settings subscription invalidation keeps the app in sync.
-
-Sidebar flow:
-
-1. Sidebar reads the Project Folder from server settings.
-2. Sidebar requests direct child folders from the configured Project Folder.
-3. Sidebar filters out already-added project workspace roots.
-4. Clicking a suggestion calls the existing `addProjectFromPath()` path.
+| Step | Area     | Summary                                                                   |
+| ---- | -------- | ------------------------------------------------------------------------- |
+| 1    | Settings | Settings → General reads `serverSettingsQueryOptions()`.                  |
+| 2    | Settings | User enters or browses for the Project Folder path.                       |
+| 3    | Settings | Settings patches server settings with the Project Folder path.            |
+| 4    | Settings | Existing settings subscription invalidation keeps the app in sync.        |
+| 5    | Sidebar  | Sidebar reads the Project Folder from server settings.                    |
+| 6    | Sidebar  | Sidebar requests direct child folders from the configured Project Folder. |
+| 7    | Sidebar  | Sidebar filters out already-added project workspace roots.                |
+| 8    | Sidebar  | Clicking a suggestion calls the existing `addProjectFromPath()` path.     |
 
 ## Scope
 
 Included:
 
-- Add the Project Folder setting to the shared server settings contract.
-- Add Settings → General controls to view/change the Project Folder.
-- Add sidebar suggestions sourced from direct child folders.
+- Expose the Project Folder setting through the app/server settings mapping.
+- Provide Settings → General controls to view and change the Project Folder.
+- Include sidebar suggestions sourced from direct child folders.
 - Preserve Browse and Type path behavior.
 - Hide already-added project folders from suggestions.
 
@@ -90,14 +96,14 @@ Excluded:
 
 ## Acceptance Criteria
 
-- A user can set one Project Folder in Settings → General.
-- Clicking the sidebar `+` shows direct child folders from that Project Folder.
-- Folders already present as projects are not shown as suggestions.
-- Clicking a suggestion creates or recovers that project through the existing add-project path.
-- Browse and Type path remain available.
-- With no Project Folder configured, the add-project area still works through Browse/Type path and explains where to configure suggestions.
-- Focused tests cover setting normalization, suggestion filtering, and at least one sidebar interaction path.
-- Focused typecheck, LSP diagnostics, and manual QA of the sidebar flow pass before completion.
+- [ ] A user can set one Project Folder in Settings → General.
+- [ ] Clicking the sidebar `+` shows direct child folders from that Project Folder.
+- [ ] Folders already present as projects are not shown as suggestions after path normalization.
+- [ ] Clicking a suggestion creates or recovers that project through the existing add-project path.
+- [ ] Browse and Type path remain available.
+- [ ] With no Project Folder configured, the add-project area still works through Browse/Type path and explains where to configure suggestions.
+- [ ] Focused tests cover setting normalization, suggestion filtering, and at least one sidebar interaction path.
+- [ ] Focused typecheck, LSP diagnostics, and manual QA of the sidebar flow pass before completion.
 
 ## Open Implementation Notes
 
