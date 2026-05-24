@@ -132,6 +132,7 @@ const make = Effect.gen(function* () {
           detail: `Checkpoint diff is not available yet for turn ${input.toTurnCount}.`,
         });
       }
+      let fromCheckpointExists = false;
       if (input.toTurnCount === input.fromTurnCount + 1) {
         const turnStartCheckpointRef = checkpointRefForThreadTurnStart(
           input.threadId,
@@ -143,15 +144,18 @@ const make = Effect.gen(function* () {
         });
         if (turnStartExists) {
           fromCheckpointRef = turnStartCheckpointRef;
+          fromCheckpointExists = true;
         }
       }
 
       const [fromExists, toExists] = yield* Effect.all(
         [
-          checkpointStore.hasCheckpointRef({
-            cwd: workspaceCwd,
-            checkpointRef: fromCheckpointRef,
-          }),
+          fromCheckpointExists
+            ? Effect.succeed(true)
+            : checkpointStore.hasCheckpointRef({
+                cwd: workspaceCwd,
+                checkpointRef: fromCheckpointRef,
+              }),
           checkpointStore.hasCheckpointRef({
             cwd: workspaceCwd,
             checkpointRef: toCheckpointRef,

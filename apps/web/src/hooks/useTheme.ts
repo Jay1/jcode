@@ -139,7 +139,7 @@ function subscribe(listener: () => void): () => void {
 
 // ─── DOM projection ───────────────────────────────────────────────────────
 
-function applyThemeState(state: ThemeState, suppressTransitions = false) {
+export function applyThemeState(state: ThemeState, suppressTransitions = false) {
   if (typeof document === "undefined" || typeof window === "undefined") {
     return;
   }
