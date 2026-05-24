@@ -266,7 +266,7 @@ export const DEFAULT_THEME_STATE: ThemeState = {
 
 // ─── Theme catalog helpers ────────────────────────────────────────────────
 
-export function isThemeMode(value: unknown): value is ThemeMode {
+function isThemeMode(value: unknown): value is ThemeMode {
   return value === "light" || value === "dark" || value === "system";
 }
 
@@ -274,22 +274,18 @@ export function isThemeVariant(value: unknown): value is ThemeVariant {
   return value === "light" || value === "dark";
 }
 
-export function getThemeSharePrefix(): string {
-  return THEME_SHARE_PREFIX;
-}
-
 export function getAvailableCodeThemes(variant: ThemeVariant): readonly CodeThemeOption[] {
   return CODE_THEME_OPTIONS.filter((option) => option.variants.includes(variant));
 }
 
-export function isCodeThemeAvailable(codeThemeId: string, variant: ThemeVariant): boolean {
+function isCodeThemeAvailable(codeThemeId: string, variant: ThemeVariant): boolean {
   const normalizedCodeThemeId = codeThemeId.trim().toLowerCase();
   return CODE_THEME_OPTIONS.some(
     (option) => option.id === normalizedCodeThemeId && option.variants.includes(variant),
   );
 }
 
-export function normalizeCodeThemeId(
+function normalizeCodeThemeId(
   codeThemeId: unknown,
   variant: ThemeVariant,
   fallback = DEFAULT_THEME_STATE.codeThemeIds[variant],
@@ -301,7 +297,7 @@ export function normalizeCodeThemeId(
 
 // ─── Theme normalization ──────────────────────────────────────────────────
 
-export function normalizeThemeFonts(value: unknown): ThemeFonts {
+function normalizeThemeFonts(value: unknown): ThemeFonts {
   const fonts = isRecord(value) ? value : {};
   return {
     code: normalizeFontSelection(fonts.code),
@@ -309,7 +305,7 @@ export function normalizeThemeFonts(value: unknown): ThemeFonts {
   };
 }
 
-export function normalizeSemanticColors(
+function normalizeSemanticColors(
   value: unknown,
   fallback: ThemeSemanticColors,
 ): ThemeSemanticColors {
@@ -321,7 +317,7 @@ export function normalizeSemanticColors(
   };
 }
 
-export function normalizeChromeTheme(value: unknown, variant: ThemeVariant): ChromeTheme {
+function normalizeChromeTheme(value: unknown, variant: ThemeVariant): ChromeTheme {
   const fallback = DEFAULT_CHROME_THEME_BY_VARIANT[variant];
   const theme = isRecord(value) ? value : {};
 
@@ -339,7 +335,7 @@ export function normalizeChromeTheme(value: unknown, variant: ThemeVariant): Chr
   };
 }
 
-export function normalizeThemePack(value: unknown, variant: ThemeVariant): ThemePack {
+function normalizeThemePack(value: unknown, variant: ThemeVariant): ThemePack {
   const pack = isRecord(value) ? value : {};
   return {
     codeThemeId: normalizeCodeThemeId(pack.codeThemeId, variant),
