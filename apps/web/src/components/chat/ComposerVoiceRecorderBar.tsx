@@ -29,7 +29,7 @@ export const ComposerVoiceRecorderBar = memo(function ComposerVoiceRecorderBar(
   props: ComposerVoiceRecorderBarProps,
 ) {
   const trackRef = useRef<HTMLDivElement | null>(null);
-  const [visibleBarCount, setVisibleBarCount] = useState(96);
+  const [measuredVisibleBarCount, setMeasuredVisibleBarCount] = useState<number>();
 
   useEffect(() => {
     const node = trackRef.current;
@@ -41,15 +41,14 @@ export const ComposerVoiceRecorderBar = memo(function ComposerVoiceRecorderBar(
       if (width <= 0) {
         return;
       }
-      setVisibleBarCount(Math.max(8, Math.floor(width / (BAR_WIDTH_PX + BAR_GAP_PX))));
+      setMeasuredVisibleBarCount(Math.max(8, Math.floor(width / (BAR_WIDTH_PX + BAR_GAP_PX))));
     };
-    computeVisibleBars();
     const observer = new ResizeObserver(computeVisibleBars);
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
 
-  const visibleLevels = props.waveformLevels.slice(-visibleBarCount);
+  const visibleLevels = props.waveformLevels.slice(-(measuredVisibleBarCount ?? 96));
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -92,7 +91,7 @@ export const ComposerVoiceRecorderBar = memo(function ComposerVoiceRecorderBar(
 
       <button
         type="button"
-        className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-zinc-200/80 text-zinc-700 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white/10 dark:text-zinc-100 dark:hover:bg-white/15 sm:h-7 sm:w-7"
+        className="flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-full bg-zinc-200/80 text-zinc-700 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white/10 dark:text-zinc-100 dark:hover:bg-white/15 sm:h-7 sm:w-7"
         aria-label={props.isTranscribing ? "Transcribing voice note" : "Cancel voice note"}
         disabled={props.disabled || props.isTranscribing}
         onClick={props.onCancel}
@@ -100,13 +99,13 @@ export const ComposerVoiceRecorderBar = memo(function ComposerVoiceRecorderBar(
         {props.isTranscribing ? (
           <Loader2Icon aria-hidden="true" className="size-3 animate-spin" />
         ) : (
-          <IoStopSharp aria-hidden="true" className="size-[11px]" />
+          <IoStopSharp aria-hidden="true" className="size-2.75" />
         )}
       </button>
 
       <button
         type="button"
-        className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 sm:h-7 sm:w-7"
+        className="flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 sm:h-7 sm:w-7"
         aria-label={props.isTranscribing ? "Transcribing voice note" : "Send voice note"}
         disabled={props.disabled || props.isTranscribing}
         onClick={props.onSubmit}
@@ -114,7 +113,7 @@ export const ComposerVoiceRecorderBar = memo(function ComposerVoiceRecorderBar(
         {props.isTranscribing ? (
           <Loader2Icon aria-hidden="true" className="size-3 animate-spin" />
         ) : (
-          <FiArrowUp aria-hidden="true" className="size-[13px]" strokeWidth={2.25} />
+          <FiArrowUp aria-hidden="true" className="size-3.25" strokeWidth={2.25} />
         )}
       </button>
     </div>
