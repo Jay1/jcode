@@ -760,6 +760,26 @@ function AppWordmarkPrefix() {
   );
 }
 
+const SIDEBAR_TITLEBAR_CONTROLS = (
+  <div className="hidden shrink-0 items-center gap-0.5 md:flex">
+    <AppNavigationButtons className="ms-0" />
+    <SidebarTrigger
+      className="size-7 shrink-0 text-muted-foreground/75 hover:text-foreground"
+      aria-label="Toggle thread sidebar"
+    />
+  </div>
+);
+
+const SIDEBAR_HEADER_CONTROLS = (
+  <div className="ml-auto hidden shrink-0 items-center gap-0.5 md:flex">
+    <AppNavigationButtons className="ms-0" />
+    <SidebarTrigger
+      className="size-7 shrink-0 text-muted-foreground/75 hover:text-foreground"
+      aria-label="Toggle thread sidebar"
+    />
+  </div>
+);
+
 type SortableProjectHandleProps = Pick<
   ReturnType<typeof useSortable>,
   "attributes" | "listeners" | "setActivatorNodeRef"
@@ -5279,31 +5299,11 @@ export default function Sidebar() {
     </Tooltip>
   );
 
-  const titlebarControls = (
-    <div className="hidden shrink-0 items-center gap-0.5 md:flex">
-      <AppNavigationButtons className="ms-0" />
-      <SidebarTrigger
-        className="size-7 shrink-0 text-muted-foreground/75 hover:text-foreground"
-        aria-label="Toggle thread sidebar"
-      />
-    </div>
-  );
-
-  const headerControls = (
-    <div className="ml-auto hidden shrink-0 items-center gap-0.5 md:flex">
-      <AppNavigationButtons className="ms-0" />
-      <SidebarTrigger
-        className="size-7 shrink-0 text-muted-foreground/75 hover:text-foreground"
-        aria-label="Toggle thread sidebar"
-      />
-    </div>
-  );
-
   const wordmark = (
     <div className="flex w-full items-center gap-1.5">
       <SidebarTrigger className="shrink-0 md:hidden" />
       {brandWordmark}
-      {headerControls}
+      {SIDEBAR_HEADER_CONTROLS}
     </div>
   );
 
@@ -5319,7 +5319,7 @@ export default function Sidebar() {
               appSettings.sidebarSide === "left" && "pl-[90px]",
             )}
           >
-            {titlebarControls}
+            {SIDEBAR_TITLEBAR_CONTROLS}
           </SidebarHeader>
         </>
       ) : (
