@@ -44,4 +44,27 @@ describe("ComposerImageAttachmentChip", () => {
     expect(markup).not.toContain("absolute right-1 top-1");
     expect(markup).not.toContain("h-14 w-14");
   });
+
+  it("renders non-persisted attachment status as accessible text", () => {
+    const markup = renderToStaticMarkup(
+      <ComposerImageAttachmentChip
+        image={{
+          id: "image-1",
+          type: "image",
+          name: "unsaved.png",
+          mimeType: "image/png",
+          sizeBytes: 1024,
+          previewUrl: "blob:image-1",
+          file: new File(["image"], "unsaved.png", { type: "image/png" }),
+        }}
+        images={[]}
+        nonPersisted={true}
+        onExpandImage={() => {}}
+        onRemoveImage={() => {}}
+      />,
+    );
+
+    expect(markup).toContain("Draft attachment may not persist");
+    expect(markup).not.toContain('role="img"');
+  });
 });

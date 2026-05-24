@@ -59,12 +59,9 @@ export const ComposerImageAttachmentChip = memo(function ComposerImageAttachment
         <Tooltip>
           <TooltipTrigger
             render={
-              <span
-                role="img"
-                aria-label="Draft attachment may not persist"
-                className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-amber-600"
-              >
-                <CircleAlertIcon className="size-3" />
+              <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-amber-600">
+                <CircleAlertIcon aria-hidden="true" className="size-3" />
+                <span className="sr-only">Draft attachment may not persist</span>
               </span>
             }
           />
