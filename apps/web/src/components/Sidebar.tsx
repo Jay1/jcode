@@ -401,7 +401,7 @@ function resolveThreadRowMetaChips(input: {
 
 function ThreadMetaChipStack({ chips }: { chips: ThreadMetaChip[] }) {
   if (chips.length === 0) {
-    return <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center" />;
+    return <span className="inline-flex size-3.5 shrink-0 items-center justify-center" />;
   }
   if (chips.length === 1) {
     const only = chips[0]!;
@@ -409,7 +409,7 @@ function ThreadMetaChipStack({ chips }: { chips: ThreadMetaChip[] }) {
       <Tooltip>
         <TooltipTrigger
           render={
-            <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+            <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
               {only.icon}
             </span>
           }
@@ -5345,7 +5345,7 @@ export default function Sidebar() {
           </SidebarGroup>
         ) : null}
         {isOnSettings ? (
-          <SidebarGroup className="px-1.5 py-1.5">
+          <SidebarGroup className="p-1.5">
             <SidebarMenu className="gap-0.5">
               <SidebarMenuItem>
                 <SidebarMenuButton
@@ -5375,7 +5375,7 @@ export default function Sidebar() {
                       </span>
                     </div>
 
-                    <SidebarMenuSub className="mx-0 translate-x-0 border-l-0 px-0 py-0">
+                    <SidebarMenuSub className="mx-0 translate-x-0 border-l-0 p-0">
                       {items.map((item) => {
                         const Icon = item.icon;
                         const isActive = item.id === activeSettingsSection;
@@ -5572,7 +5572,7 @@ export default function Sidebar() {
                 </DndContext>
               </SidebarGroup>
             ) : (
-              <SidebarGroup className="px-1.5 py-1.5">
+              <SidebarGroup className="p-1.5">
                 {pinnedThreads.length > 0 ? (
                   <>
                     <div className="my-1 flex items-center justify-between px-2 py-1">
@@ -5873,7 +5873,7 @@ export default function Sidebar() {
                   {visibleChatThreadRows.length > 0 ? (
                     renderedChatEntries.map((entry) => renderChatItem(entry.row))
                   ) : (
-                    <div className="px-2 py-2 text-[length:var(--app-font-size-ui,12px)] text-muted-foreground/48">
+                    <div className="p-2 text-[length:var(--app-font-size-ui,12px)] text-muted-foreground/48">
                       No chats yet
                     </div>
                   )}
