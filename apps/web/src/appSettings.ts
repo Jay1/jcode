@@ -95,6 +95,9 @@ const withDefaults =
 
 export const AppSettingsSchema = Schema.Struct({
   claudeBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
+  addProjectBaseDirectory: Schema.String.check(Schema.isMaxLength(4096)).pipe(
+    withDefaults(() => ""),
+  ),
   chatFontSizePx: Schema.Number.pipe(withDefaults(() => DEFAULT_CHAT_FONT_SIZE_PX)),
   chatCodeFontFamily: Schema.String.check(Schema.isMaxLength(256)).pipe(withDefaults(() => "")),
   codexBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
@@ -290,8 +293,9 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
   };
 }
 
-function serverSettingsToAppSettings(settings: ServerSettings): Partial<AppSettings> {
+export function serverSettingsToAppSettings(settings: ServerSettings): Partial<AppSettings> {
   return {
+    addProjectBaseDirectory: settings.addProjectBaseDirectory,
     claudeBinaryPath: settings.providers.claudeAgent.binaryPath,
     codexBinaryPath: settings.providers.codex.binaryPath,
     codexHomePath: settings.providers.codex.homePath,
@@ -335,12 +339,17 @@ function hasOwn<Key extends keyof AppSettings>(patch: Partial<AppSettings>, key:
   return Object.prototype.hasOwnProperty.call(patch, key);
 }
 
-function appSettingsPatchToServerSettingsPatch(patch: Partial<AppSettings>): ServerSettingsPatch {
+export function appSettingsPatchToServerSettingsPatch(
+  patch: Partial<AppSettings>,
+): ServerSettingsPatch {
   const providers: MutableServerSettingsProvidersPatch = {};
   const serverPatch: MutableServerSettingsPatch = {};
 
   if (hasOwn(patch, "enableAssistantStreaming")) {
     serverPatch.enableAssistantStreaming = Boolean(patch.enableAssistantStreaming);
+  }
+  if (hasOwn(patch, "addProjectBaseDirectory")) {
+    serverPatch.addProjectBaseDirectory = patch.addProjectBaseDirectory ?? "";
   }
   if (patch.defaultThreadEnvMode === "local" || patch.defaultThreadEnvMode === "worktree") {
     serverPatch.defaultThreadEnvMode = patch.defaultThreadEnvMode;

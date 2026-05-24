@@ -7,6 +7,7 @@ import {
   DEFAULT_SIDEBAR_PROJECT_SORT_ORDER,
   DEFAULT_SIDEBAR_THREAD_SORT_ORDER,
   DEFAULT_TIMESTAMP_FORMAT,
+  appSettingsPatchToServerSettingsPatch,
   getAppModelOptions,
   getDefaultNativeFontSmoothing,
   getCustomModelOptionsByProvider,
@@ -21,6 +22,7 @@ import {
   normalizeStoredAppSettings,
   patchCustomModels,
   resolveAppModelSelection,
+  serverSettingsToAppSettings,
 } from "./appSettings";
 
 describe("normalizeCustomModelSlugs", () => {
@@ -257,6 +259,50 @@ describe("normalizeStoredAppSettings", () => {
       chatFontSizePx: 18,
       customCodexModels: ["custom/internal-model"],
     });
+  });
+});
+
+describe("server-backed app settings", () => {
+  it("maps the Project Folder setting from server settings", () => {
+    expect(
+      serverSettingsToAppSettings({
+        addProjectBaseDirectory: "/home/jay/code",
+        defaultThreadEnvMode: "local",
+        enableAssistantStreaming: false,
+        providers: {
+          claudeAgent: { enabled: true, binaryPath: "claude", launchArgs: "", customModels: [] },
+          codex: { enabled: true, binaryPath: "codex", homePath: "", customModels: [] },
+          cursor: { enabled: true, binaryPath: "agent", apiEndpoint: "", customModels: [] },
+          gemini: { enabled: true, binaryPath: "gemini", customModels: [] },
+          kilo: {
+            enabled: true,
+            binaryPath: "kilo",
+            serverUrl: "",
+            serverPassword: "",
+            customModels: [],
+          },
+          opencode: {
+            enabled: true,
+            binaryPath: "opencode",
+            serverUrl: "",
+            serverPassword: "",
+            runtimeProfiles: [],
+            activeRuntimeProfileId: "",
+            customModels: [],
+          },
+          pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
+        },
+        textGenerationModelSelection: { provider: "codex", model: "gpt-5.4" },
+      }),
+    ).toMatchObject({
+      addProjectBaseDirectory: "/home/jay/code",
+    });
+  });
+
+  it("maps Project Folder updates to server settings patches", () => {
+    expect(
+      appSettingsPatchToServerSettingsPatch({ addProjectBaseDirectory: "/home/jay/code" }),
+    ).toEqual({ addProjectBaseDirectory: "/home/jay/code" });
   });
 });
 
@@ -542,6 +588,7 @@ describe("AppSettingsSchema", () => {
       customKiloModels: [],
       customOpenCodeModels: [],
       customPiModels: [],
+      addProjectBaseDirectory: "",
     });
   });
 });

@@ -1440,6 +1440,47 @@ function SettingsRouteView() {
               </Select>
             }
           />
+
+          <SettingsRow
+            title="Project Folder"
+            description="Show direct child folders from this directory as suggestions when adding projects."
+            resetAction={
+              settings.addProjectBaseDirectory !== defaults.addProjectBaseDirectory ? (
+                <SettingResetButton
+                  label="project folder"
+                  onClick={() =>
+                    updateSettings({
+                      addProjectBaseDirectory: defaults.addProjectBaseDirectory,
+                    })
+                  }
+                />
+              ) : null
+            }
+            control={
+              <div className="flex w-full flex-col gap-2 sm:w-96 sm:flex-row sm:items-center">
+                <Input
+                  className="w-full sm:text-right"
+                  value={settings.addProjectBaseDirectory}
+                  onChange={(event) =>
+                    updateSettings({ addProjectBaseDirectory: event.target.value })
+                  }
+                  placeholder="/home/you/code"
+                  spellCheck={false}
+                  aria-label="Project Folder path"
+                />
+                {settings.addProjectBaseDirectory ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => updateSettings({ addProjectBaseDirectory: "" })}
+                  >
+                    Clear
+                  </Button>
+                ) : null}
+              </div>
+            }
+          />
         </div>
       </SettingsSection>
 
