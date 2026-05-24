@@ -245,7 +245,6 @@ export {
   SelectButton,
   SelectValue,
   SelectPopup,
-  SelectPopup as SelectContent,
   SelectItem,
   SelectSeparator,
   SelectGroup,
