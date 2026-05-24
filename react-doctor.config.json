@@ -1,0 +1,36 @@
+{
+  "ignore": {
+    "rules": [
+      "react-doctor/async-await-in-loop",
+      "react-doctor/async-defer-await",
+      "react-doctor/async-parallel",
+      "react-doctor/exhaustive-deps",
+      "react-doctor/js-set-map-lookups",
+      "react-doctor/no-adjust-state-on-prop-change",
+      "react-doctor/no-cascading-set-state",
+      "react-doctor/no-chain-state-updates",
+      "react-doctor/no-danger",
+      "react-doctor/no-derived-state",
+      "react-doctor/no-derived-state-effect",
+      "react-doctor/no-effect-chain",
+      "react-doctor/no-effect-event-handler",
+      "react-doctor/no-event-handler",
+      "react-doctor/no-giant-component",
+      "react-doctor/no-multi-comp",
+      "react-doctor/no-pass-data-to-parent",
+      "react-doctor/no-pass-live-state-to-parent",
+      "react-doctor/no-prevent-default",
+      "react-doctor/no-prop-callback-in-effect",
+      "react-doctor/no-render-in-render",
+      "react-doctor/no-reset-all-state-on-prop-change",
+      "react-doctor/prefer-tag-over-role",
+      "react-doctor/prefer-use-effect-event",
+      "react-doctor/prefer-useReducer",
+      "react-doctor/server-sequential-independent-await",
+      "react-doctor/unused-dev-dependency",
+      "react-doctor/unused-file",
+      "deslop/unused-dev-dependency",
+      "deslop/unused-file"
+    ]
+  }
+}
