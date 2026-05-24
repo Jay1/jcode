@@ -144,7 +144,7 @@ function ProviderUpdateNotifications() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
-  const [isUpdatingAll, setIsUpdatingAll] = useState(false);
+  const isUpdatingAllRef = useRef(false);
   const updateToastIdRef = useRef<ReturnType<typeof toastManager.add> | null>(null);
   const outdatedProviders = useMemo(
     () =>
@@ -158,11 +158,11 @@ function ProviderUpdateNotifications() {
 
   const updateAll = useCallback(
     async (providers: ReadonlyArray<ServerProviderStatus>) => {
-      if (isUpdatingAll || providers.length === 0) {
+      if (isUpdatingAllRef.current || providers.length === 0) {
         return;
       }
 
-      setIsUpdatingAll(true);
+      isUpdatingAllRef.current = true;
       if (updateToastIdRef.current) {
         toastManager.update(updateToastIdRef.current, {
           type: "loading",
@@ -208,7 +208,7 @@ function ProviderUpdateNotifications() {
       }
 
       await queryClient.invalidateQueries({ queryKey: serverQueryKeys.config() });
-      setIsUpdatingAll(false);
+      isUpdatingAllRef.current = false;
 
       if (failures.length > 0) {
         if (updateToastIdRef.current) {
@@ -252,11 +252,11 @@ function ProviderUpdateNotifications() {
         });
       }
     },
-    [isUpdatingAll, queryClient],
+    [queryClient],
   );
 
   useEffect(() => {
-    if (outdatedProviders.length === 0 || isUpdatingAll) {
+    if (outdatedProviders.length === 0 || isUpdatingAllRef.current) {
       return;
     }
 
@@ -312,7 +312,7 @@ function ProviderUpdateNotifications() {
         },
       },
     });
-  }, [isUpdatingAll, navigate, outdatedProviders, updateAll]);
+  }, [navigate, outdatedProviders, updateAll]);
 
   return null;
 }
