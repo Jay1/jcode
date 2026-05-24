@@ -664,9 +664,13 @@ export function resolvePromptPluginMentions(params: {
 
   for (const mentionName of uniquePromptMentionNames) {
     const key = normalizeMentionNameKey(mentionName);
-    const existingMention = (existingMentionsByName.get(key) ?? []).find(
-      (candidate) => !seenPaths.has(candidate.path),
-    );
+    let existingMention: ProviderMentionReference | null = null;
+    for (const candidate of existingMentionsByName.get(key) ?? []) {
+      if (!seenPaths.has(candidate.path)) {
+        existingMention = candidate;
+        break;
+      }
+    }
     if (existingMention) {
       seenPaths.add(existingMention.path);
       resolvedMentions.push(existingMention);
