@@ -43,6 +43,37 @@ import { resolveChatHeaderThreadIconKind } from "./ChatHeader.logic";
 /** Width (px) below which collapsible header controls fold into the ellipsis menu. */
 const HEADER_COMPACT_BREAKPOINT = 480;
 
+function ChatProviderIcon({
+  provider,
+  className,
+}: {
+  provider: ProviderKind | null;
+  className: string;
+}) {
+  if (provider === "claudeAgent") {
+    return <ClaudeAI className={cn("text-foreground", className)} />;
+  }
+  if (provider === "cursor") {
+    return <CursorIcon className={cn("text-foreground", className)} />;
+  }
+  if (provider === "gemini") {
+    return <Gemini className={cn("text-foreground", className)} />;
+  }
+  if (provider === "kilo") {
+    return <KiloIcon className={cn("text-muted-foreground/70", className)} />;
+  }
+  if (provider === "opencode") {
+    return <OpenCodeIcon className={cn("text-muted-foreground/70", className)} />;
+  }
+  if (provider === "pi") {
+    return <PiIcon className={cn("text-foreground", className)} />;
+  }
+  if (provider === "codex") {
+    return <OpenAI className={cn("text-muted-foreground/75", className)} />;
+  }
+  return <FiGitBranch className={className} />;
+}
+
 interface ChatHeaderProps {
   activeThreadId: ThreadId;
   activeThreadTitle: string;
@@ -178,31 +209,6 @@ export const ChatHeader = memo(function ChatHeader({
     return () => observer.disconnect();
   }, [isSplitPane]);
 
-  const renderProviderIcon = (provider: ProviderKind | null, className: string) => {
-    if (provider === "claudeAgent") {
-      return <ClaudeAI className={cn("text-foreground", className)} />;
-    }
-    if (provider === "cursor") {
-      return <CursorIcon className={cn("text-foreground", className)} />;
-    }
-    if (provider === "gemini") {
-      return <Gemini className={cn("text-foreground", className)} />;
-    }
-    if (provider === "kilo") {
-      return <KiloIcon className={cn("text-muted-foreground/70", className)} />;
-    }
-    if (provider === "opencode") {
-      return <OpenCodeIcon className={cn("text-muted-foreground/70", className)} />;
-    }
-    if (provider === "pi") {
-      return <PiIcon className={cn("text-foreground", className)} />;
-    }
-    if (provider === "codex") {
-      return <OpenAI className={cn("text-muted-foreground/75", className)} />;
-    }
-    return <FiGitBranch className={className} />;
-  };
-
   return (
     <div ref={headerRef} className="flex min-w-0 flex-1 items-center gap-2">
       <div
@@ -253,7 +259,7 @@ export const ChatHeader = memo(function ChatHeader({
                     {threadIconKind === "terminal" ? (
                       <TerminalIcon className="size-3.5 text-teal-600/85" />
                     ) : (
-                      renderProviderIcon(activeProvider, "size-3.5")
+                      <ChatProviderIcon provider={activeProvider} className="size-3.5" />
                     )}
                   </span>
                 )}
@@ -294,11 +300,11 @@ export const ChatHeader = memo(function ChatHeader({
                         className="hidden !h-6 shrink-0 items-center justify-center gap-1 rounded-md px-1.5 text-[10px] sm:inline-flex"
                       >
                         <span className="inline-flex size-4 shrink-0 items-center justify-center">
-                          {renderProviderIcon(handoffBadgeSourceProvider, "size-3")}
+                          <ChatProviderIcon provider={handoffBadgeSourceProvider} className="size-3" />
                         </span>
                         <ArrowRightIcon className="size-2.5 shrink-0 opacity-45" />
                         <span className="inline-flex size-4 shrink-0 items-center justify-center">
-                          {renderProviderIcon(handoffBadgeTargetProvider, "size-3")}
+                          <ChatProviderIcon provider={handoffBadgeTargetProvider} className="size-3" />
                         </span>
                       </Badge>
                     }
@@ -341,7 +347,7 @@ export const ChatHeader = memo(function ChatHeader({
             <MenuPopup align="end" side="bottom" className="w-48">
               {handoffActionTargetProviders.map((provider) => (
                 <MenuItem key={provider} onClick={() => onCreateHandoff(provider)}>
-                  {renderProviderIcon(provider, "size-3.5 shrink-0")}
+                  <ChatProviderIcon provider={provider} className="size-3.5 shrink-0" />
                   <span>Handoff to {PROVIDER_DISPLAY_NAMES[provider]}</span>
                 </MenuItem>
               ))}
