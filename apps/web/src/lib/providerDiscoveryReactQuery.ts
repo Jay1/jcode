@@ -6,7 +6,6 @@ import type {
   ProviderListModelsResult,
   ProviderListPluginsResult,
   ProviderListSkillsResult,
-  ProviderReadPluginResult,
 } from "@jcode/contracts";
 import { queryOptions } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
@@ -243,31 +242,6 @@ export function providerPluginsQueryOptions(input: {
     enabled: input.enabled ?? true,
     staleTime: 30_000,
     placeholderData: (previous) => previous ?? EMPTY_PLUGINS_RESULT,
-  });
-}
-
-export function providerReadPluginQueryOptions(input: {
-  provider: ProviderKind;
-  marketplacePath: string;
-  pluginName: string;
-  enabled?: boolean;
-}) {
-  return queryOptions({
-    queryKey: providerDiscoveryQueryKeys.plugin(
-      input.provider,
-      input.marketplacePath,
-      input.pluginName,
-    ),
-    queryFn: async (): Promise<ProviderReadPluginResult> => {
-      const api = ensureNativeApi();
-      return api.provider.readPlugin({
-        provider: input.provider,
-        marketplacePath: input.marketplacePath,
-        pluginName: input.pluginName,
-      });
-    },
-    enabled: input.enabled ?? true,
-    staleTime: 60_000,
   });
 }
 
