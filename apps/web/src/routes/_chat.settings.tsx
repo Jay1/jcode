@@ -104,7 +104,7 @@ import ReleaseHistoryDialog from "../components/ReleaseHistoryDialog";
 import { createAllThreadsSelector } from "../storeSelectors";
 import { formatRelativeTime } from "../components/Sidebar";
 import { formatWorktreePathForDisplay } from "../worktreeCleanup";
-import { sameProviderOrder } from "../providerOrdering";
+import { filterVisibleProviderItems, sameProviderOrder } from "../providerOrdering";
 
 // ── Settings taxonomy ──────────────────────────────────────────────────────
 
@@ -628,6 +628,10 @@ function SettingsRouteView() {
     [settings.hiddenProviders],
   );
   const hiddenProviderCount = hiddenProviderSet.size;
+  const visibleInstallProviderSettings = useMemo(
+    () => filterVisibleProviderItems(INSTALL_PROVIDER_SETTINGS, settings.hiddenProviders),
+    [settings.hiddenProviders],
+  );
   const providerVisibilityOptionsByProvider = useMemo(
     () => new Map(PROVIDER_VISIBILITY_OPTIONS.map((option) => [option.provider, option])),
     [],
@@ -669,19 +673,23 @@ function SettingsRouteView() {
       new Map((serverConfigQuery.data?.providers ?? []).map((status) => [status.provider, status])),
     [serverConfigQuery.data?.providers],
   );
+  const visibleProviderStatuses = useMemo(
+    () =>
+      filterVisibleProviderItems(serverConfigQuery.data?.providers ?? [], settings.hiddenProviders),
+    [serverConfigQuery.data?.providers, settings.hiddenProviders],
+  );
   const outdatedProviderCount = useMemo(
     () =>
-      (serverConfigQuery.data?.providers ?? []).filter(
-        (status) => status.versionAdvisory?.status === "behind_latest",
-      ).length,
-    [serverConfigQuery.data?.providers],
+      visibleProviderStatuses.filter((status) => status.versionAdvisory?.status === "behind_latest")
+        .length,
+    [visibleProviderStatuses],
   );
   const outdatedProviderStatuses = useMemo(
     () =>
-      (serverConfigQuery.data?.providers ?? []).filter(
+      visibleProviderStatuses.filter(
         (status) => status.versionAdvisory?.status === "behind_latest",
       ),
-    [serverConfigQuery.data?.providers],
+    [visibleProviderStatuses],
   );
   const shouldFocusProviderUpdates =
     activeSection === "providers" && settingsTarget === "provider-updates";
@@ -770,21 +778,28 @@ function SettingsRouteView() {
   const visibleCustomModelRows = showAllCustomModels
     ? savedCustomModelRows
     : savedCustomModelRows.slice(0, 5);
-  const isInstallSettingsDirty =
-    settings.claudeBinaryPath !== defaults.claudeBinaryPath ||
-    settings.cursorBinaryPath !== defaults.cursorBinaryPath ||
-    settings.cursorApiEndpoint !== defaults.cursorApiEndpoint ||
-    settings.geminiBinaryPath !== defaults.geminiBinaryPath ||
-    settings.kiloBinaryPath !== defaults.kiloBinaryPath ||
-    settings.kiloServerUrl !== defaults.kiloServerUrl ||
-    settings.kiloServerPassword !== defaults.kiloServerPassword ||
-    settings.codexBinaryPath !== defaults.codexBinaryPath ||
-    settings.codexHomePath !== defaults.codexHomePath ||
-    settings.openCodeBinaryPath !== defaults.openCodeBinaryPath ||
-    settings.openCodeServerUrl !== defaults.openCodeServerUrl ||
-    settings.openCodeServerPassword !== defaults.openCodeServerPassword ||
-    settings.piBinaryPath !== defaults.piBinaryPath ||
-    settings.piAgentDir !== defaults.piAgentDir;
+  const isInstallSettingsDirty = visibleInstallProviderSettings.some((providerSettings) =>
+    providerSettings.provider === "codex"
+      ? settings.codexBinaryPath !== defaults.codexBinaryPath ||
+        settings.codexHomePath !== defaults.codexHomePath
+      : providerSettings.provider === "claudeAgent"
+        ? settings.claudeBinaryPath !== defaults.claudeBinaryPath
+        : providerSettings.provider === "cursor"
+          ? settings.cursorBinaryPath !== defaults.cursorBinaryPath ||
+            settings.cursorApiEndpoint !== defaults.cursorApiEndpoint
+          : providerSettings.provider === "gemini"
+            ? settings.geminiBinaryPath !== defaults.geminiBinaryPath
+            : providerSettings.provider === "kilo"
+              ? settings.kiloBinaryPath !== defaults.kiloBinaryPath ||
+                settings.kiloServerUrl !== defaults.kiloServerUrl ||
+                settings.kiloServerPassword !== defaults.kiloServerPassword
+              : providerSettings.provider === "pi"
+                ? settings.piBinaryPath !== defaults.piBinaryPath ||
+                  settings.piAgentDir !== defaults.piAgentDir
+                : settings.openCodeBinaryPath !== defaults.openCodeBinaryPath ||
+                  settings.openCodeServerUrl !== defaults.openCodeServerUrl ||
+                  settings.openCodeServerPassword !== defaults.openCodeServerPassword,
+  );
 
   const changedSettingLabels = [
     ...(theme !== "system" ? ["Theme"] : []),
@@ -2655,7 +2670,7 @@ function SettingsRouteView() {
           >
             <div className="mt-4">
               <div className="overflow-hidden rounded-lg border border-border/70">
-                {INSTALL_PROVIDER_SETTINGS.map((providerSettings) => {
+                {visibleInstallProviderSettings.map((providerSettings) => {
                   const isOpen = openInstallProviders[providerSettings.provider];
                   const isDirty =
                     providerSettings.provider === "codex"

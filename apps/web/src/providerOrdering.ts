@@ -69,3 +69,11 @@ export function compareProvidersByOrder(
     rightIndex >= 0 ? rightIndex : DEFAULT_PROVIDER_ORDER.indexOf(right) + providerOrder.length;
   return normalizedLeftIndex - normalizedRightIndex;
 }
+
+export function filterVisibleProviderItems<T extends { provider: ProviderKind }>(
+  items: readonly T[],
+  hiddenProviders: ReadonlyArray<ProviderKind>,
+): T[] {
+  const hiddenProviderSet = new Set(hiddenProviders);
+  return items.filter((item) => !hiddenProviderSet.has(item.provider));
+}

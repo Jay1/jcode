@@ -31,9 +31,7 @@ export const SETTINGS_SECTION_IDS = [
 ] as const;
 
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
-// The group id is internal-only and predates the JCode rename; keep it stable
-// because it is used as a UI grouping key while the visible label is JCode.
-export type SettingsNavGroupId = "app" | "dpcode";
+export type SettingsNavGroupId = "app" | "jcode";
 
 export type SettingsNavItem = {
   id: SettingsSectionId;
@@ -49,7 +47,7 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
   label: string;
 }> = [
   { id: "app", label: "App" },
-  { id: "dpcode", label: "JCode" },
+  { id: "jcode", label: "JCode" },
 ] as const;
 
 export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
@@ -95,7 +93,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
   },
   {
     id: "connections",
-    group: "app",
+    group: "jcode",
     label: "Connections",
     description: "Pair browsers and remote backends.",
     icon: GlobeIcon,
@@ -111,7 +109,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
   },
   {
     id: "models",
-    group: "dpcode",
+    group: "jcode",
     label: "Models",
     description: "Git writing defaults and custom model slugs.",
     icon: BrainIcon,
@@ -119,7 +117,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
   },
   {
     id: "providers",
-    group: "dpcode",
+    group: "jcode",
     label: "Providers",
     description: "Choose visible providers, review CLI installs, and update provider tools.",
     icon: PlugIcon,
@@ -127,7 +125,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
   },
   {
     id: "advanced",
-    group: "dpcode",
+    group: "jcode",
     label: "Advanced",
     description: "Keybindings, recovery, and version info.",
     icon: WrenchIcon,
