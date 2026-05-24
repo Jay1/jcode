@@ -6,7 +6,7 @@
 // Notes: Pure UI; image URL building lives in `~/lib/localImageUrls`. No data
 //        fetching here so the component stays trivially testable.
 
-import { type MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type MouseEvent, useCallback, useMemo, useState } from "react";
 
 import { DownloadIcon, Loader2Icon, Maximize2, TriangleAlertIcon } from "~/lib/icons";
 
@@ -28,11 +28,33 @@ export function GeneratedMarkdownImage(props: GeneratedMarkdownImageProps) {
   const downloadUrl = useMemo(() => buildLocalImageUrl({ src, cwd, download: true }), [src, cwd]);
   const fileName = useMemo(() => localImageFileName(src), [src]);
   const accessibleName = alt?.trim() || "Generated image";
-  const [status, setStatus] = useState<GeneratedImageStatus>("loading");
 
-  useEffect(() => {
-    setStatus("loading");
-  }, [previewUrl]);
+  return (
+    <GeneratedMarkdownImageContent
+      key={previewUrl}
+      accessibleName={accessibleName}
+      downloadUrl={downloadUrl}
+      fileName={fileName}
+      onImageExpand={onImageExpand}
+      previewUrl={previewUrl}
+    />
+  );
+}
+
+function GeneratedMarkdownImageContent({
+  accessibleName,
+  downloadUrl,
+  fileName,
+  onImageExpand,
+  previewUrl,
+}: {
+  accessibleName: string;
+  downloadUrl: string;
+  fileName: string;
+  onImageExpand: ((preview: ExpandedImagePreview) => void) | undefined;
+  previewUrl: string;
+}) {
+  const [status, setStatus] = useState<GeneratedImageStatus>("loading");
 
   const expandImage = useCallback(
     (event: MouseEvent<HTMLElement>) => {
