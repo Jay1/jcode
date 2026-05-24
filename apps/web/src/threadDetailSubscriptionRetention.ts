@@ -160,7 +160,7 @@ export function retainThreadDetailSubscription(threadId: ThreadId): () => void {
   return () => releaseThreadDetailSubscription(threadId);
 }
 
-export function releaseThreadDetailSubscription(threadId: ThreadId): void {
+function releaseThreadDetailSubscription(threadId: ThreadId): void {
   const entry = retainedThreadEntries.get(threadId);
   if (!entry) {
     return;
@@ -176,7 +176,7 @@ export function releaseThreadDetailSubscription(threadId: ThreadId): void {
   evictIdleEntriesToCapacity();
 }
 
-export function subscribeRetainedThreadDetailIds(listener: () => void): () => void {
+function subscribeRetainedThreadDetailIds(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
