@@ -35,7 +35,7 @@ export function ChangelogAccordion({
   if (entries.length === 0) {
     return (
       <p className={cn("text-xs text-muted-foreground", className)}>
-        No release notes yet — check back after the next update.
+        No release notes yet. Check back after the next update.
       </p>
     );
   }

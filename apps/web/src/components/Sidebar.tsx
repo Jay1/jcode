@@ -1226,6 +1226,17 @@ export default function Sidebar() {
   const [desktopUpdateState, setDesktopUpdateState] = useState<DesktopUpdateState | null>(null);
   const [renamingWorkspaceId, setRenamingWorkspaceId] = useState<string | null>(null);
   const [renamingWorkspaceTitle, setRenamingWorkspaceTitle] = useState("");
+  const focusRenamingWorkspaceInput = useCallback((input: HTMLInputElement | null) => {
+    if (!input) {
+      return;
+    }
+    input.focus();
+    input.select();
+  }, []);
+  const focusAddProjectInput = useCallback((input: HTMLInputElement | null) => {
+    addProjectInputRef.current = input;
+    input?.focus();
+  }, []);
   const [installingDesktopUpdate, setInstallingDesktopUpdate] = useState(false);
   const selectedThreadIds = useThreadSelectionStore((s) => s.selectedThreadIds);
   const toggleThreadSelection = useThreadSelectionStore((s) => s.toggleThread);
@@ -5485,7 +5496,7 @@ export default function Sidebar() {
                                 <div className="px-1.5 py-0.5">
                                   <input
                                     aria-label="Workspace title"
-                                    autoFocus
+                                    ref={focusRenamingWorkspaceInput}
                                     value={renamingWorkspaceTitle}
                                     onChange={(event) => {
                                       setRenamingWorkspaceTitle(event.target.value);
@@ -5701,7 +5712,7 @@ export default function Sidebar() {
                         }`}
                       >
                         <input
-                          ref={addProjectInputRef}
+                          ref={focusAddProjectInput}
                           aria-label="Project path"
                           className="min-w-0 flex-1 bg-transparent pl-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none"
                           placeholder="/path/to/project"
@@ -5717,7 +5728,6 @@ export default function Sidebar() {
                               setAddProjectError(null);
                             }
                           }}
-                          autoFocus
                         />
                         <button
                           type="button"
