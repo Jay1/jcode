@@ -100,10 +100,9 @@ export function showContextMenuFallback<T extends string>(
       label.textContent = item.label;
       btn.appendChild(label);
 
+      const buttonIndex = buttons.length;
       btn.addEventListener("click", () => cleanup(item.id));
-      btn.addEventListener("mouseenter", () =>
-        focusItem(buttons.length > 0 ? buttons.indexOf(btn) : 0),
-      );
+      btn.addEventListener("mouseenter", () => focusItem(buttonIndex));
       btn.addEventListener("mouseleave", () => {
         btn.classList.remove("bg-[var(--sidebar-accent)]");
         focusedIndex = -1;
