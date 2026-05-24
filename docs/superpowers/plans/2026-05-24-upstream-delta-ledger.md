@@ -29,4 +29,4 @@
 - [x] Wire `bun run upstream:watch` in root `package.json` and ignore `.jcode/upstream-watch/`.
 - [x] Add `docs/runbooks/upstream-watch.md`.
 - [x] Verify with focused tests, scripts typecheck, manual dry-run QA, Aikido scan, and git status.
-- [ ] Commit implementation.
+- [x] Commit implementation.
