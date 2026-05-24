@@ -359,22 +359,26 @@ export function formatRateLimitRemainingPercent(remainingPercent: number | undef
   return `${Math.round(Math.min(100, Math.max(0, remainingPercent)))}%`;
 }
 
+const sameDayRateLimitResetFormatter = new Intl.DateTimeFormat(undefined, {
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+const laterRateLimitResetFormatter = new Intl.DateTimeFormat(undefined, {
+  day: "numeric",
+  month: "short",
+});
+
 export function formatRateLimitResetTime(resetsAt: string): string {
   const resetMs = Date.parse(resetsAt);
   if (Number.isNaN(resetMs)) return "";
   const diffMs = resetMs - Date.now();
 
   if (diffMs > 0 && diffMs < 24 * 60 * 60 * 1000) {
-    return new Intl.DateTimeFormat(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(resetMs);
+    return sameDayRateLimitResetFormatter.format(resetMs);
   }
 
-  return new Intl.DateTimeFormat(undefined, {
-    day: "numeric",
-    month: "short",
-  }).format(resetMs);
+  return laterRateLimitResetFormatter.format(resetMs);
 }
 
 export function deriveRateLimitLearnMoreHref(

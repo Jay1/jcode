@@ -237,11 +237,13 @@ export function deriveMessagesTimelineRows(input: {
       continue;
     }
 
+    const message = timelineEntry.message;
+    const messageId = message.id;
+    const messageRole = message.role;
     const inlineWorkEntries =
-      timelineEntry.message.role === "assistant" ? pendingWorkGroup?.groupedEntries : undefined;
-    const inlineWorkGroupId =
-      timelineEntry.message.role === "assistant" ? pendingWorkGroup?.id : undefined;
-    if (timelineEntry.message.role === "assistant") {
+      messageRole === "assistant" ? pendingWorkGroup?.groupedEntries : undefined;
+    const inlineWorkGroupId = messageRole === "assistant" ? pendingWorkGroup?.id : undefined;
+    if (messageRole === "assistant") {
       pendingWorkGroup = null;
     } else {
       flushPendingWorkGroup();
@@ -251,24 +253,21 @@ export function deriveMessagesTimelineRows(input: {
       kind: "message",
       id: timelineEntry.id,
       createdAt: timelineEntry.createdAt,
-      message: timelineEntry.message,
+      message,
       ...(inlineWorkEntries ? { inlineWorkEntries } : {}),
       ...(inlineWorkGroupId ? { inlineWorkGroupId } : {}),
-      durationStart:
-        durationStartByMessageId.get(timelineEntry.message.id) ?? timelineEntry.message.createdAt,
+      durationStart: durationStartByMessageId.get(messageId) ?? message.createdAt,
       showCompletionDivider:
-        timelineEntry.message.role === "assistant" &&
-        input.completionDividerBeforeEntryId === timelineEntry.id,
+        messageRole === "assistant" && input.completionDividerBeforeEntryId === timelineEntry.id,
       showAssistantCopyButton:
-        timelineEntry.message.role === "assistant" &&
-        terminalAssistantMessageIds.has(timelineEntry.message.id),
+        messageRole === "assistant" && terminalAssistantMessageIds.has(messageId),
       assistantTurnDiffSummary:
-        timelineEntry.message.role === "assistant"
-          ? input.turnDiffSummaryByAssistantMessageId.get(timelineEntry.message.id)
+        messageRole === "assistant"
+          ? input.turnDiffSummaryByAssistantMessageId.get(messageId)
           : undefined,
       revertTurnCount:
-        timelineEntry.message.role === "user"
-          ? input.revertTurnCountByUserMessageId.get(timelineEntry.message.id)
+        messageRole === "user"
+          ? input.revertTurnCountByUserMessageId.get(messageId)
           : undefined,
     });
   }
@@ -340,26 +339,28 @@ function workLogSubagentsEqual(
 ): boolean {
   if (left === right) return true;
   if (!left || !right) return false;
-  if (left.length !== right.length) return false;
-  return left.every((a, index) => {
-    const b = right[index];
-    return (
-      b !== undefined &&
-      a.threadId === b.threadId &&
-      a.providerThreadId === b.providerThreadId &&
-      a.resolvedThreadId === b.resolvedThreadId &&
-      a.agentId === b.agentId &&
-      a.nickname === b.nickname &&
-      a.role === b.role &&
-      a.model === b.model &&
-      a.prompt === b.prompt &&
-      a.rawStatus === b.rawStatus &&
-      a.latestUpdate === b.latestUpdate &&
-      a.title === b.title &&
-      a.statusLabel === b.statusLabel &&
-      a.isActive === b.isActive
-    );
-  });
+  return (
+    left.length === right.length &&
+    left.every((a, index) => {
+      const b = right[index];
+      return (
+        b !== undefined &&
+        a.threadId === b.threadId &&
+        a.providerThreadId === b.providerThreadId &&
+        a.resolvedThreadId === b.resolvedThreadId &&
+        a.agentId === b.agentId &&
+        a.nickname === b.nickname &&
+        a.role === b.role &&
+        a.model === b.model &&
+        a.prompt === b.prompt &&
+        a.rawStatus === b.rawStatus &&
+        a.latestUpdate === b.latestUpdate &&
+        a.title === b.title &&
+        a.statusLabel === b.statusLabel &&
+        a.isActive === b.isActive
+      );
+    })
+  );
 }
 
 function workLogEntryContentEqual(a: WorkLogEntry, b: WorkLogEntry): boolean {
@@ -389,8 +390,10 @@ function workLogEntryArraysEqual(
 ): boolean {
   if (left === right) return true;
   if (!left || !right) return false;
-  if (left.length !== right.length) return false;
-  return left.every((entry, index) => workLogEntryContentEqual(entry, right[index]!));
+  return (
+    left.length === right.length &&
+    left.every((entry, index) => workLogEntryContentEqual(entry, right[index]!))
+  );
 }
 
 function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean {

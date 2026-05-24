@@ -58,21 +58,24 @@ function sameBrowserHistoryEntries(
     return true;
   }
 
-  if (previousEntries == null || previousEntries.length !== nextEntries.length) {
+  if (previousEntries == null) {
     return false;
   }
 
-  return previousEntries.every((entry, index) => {
-    const nextEntry = nextEntries[index];
-    if (!nextEntry) {
-      return false;
-    }
-    return (
-      entry.url === nextEntry.url &&
-      entry.title === nextEntry.title &&
-      entry.tabId === nextEntry.tabId
-    );
-  });
+  return (
+    previousEntries.length === nextEntries.length &&
+    previousEntries.every((entry, index) => {
+      const nextEntry = nextEntries[index];
+      if (!nextEntry) {
+        return false;
+      }
+      return (
+        entry.url === nextEntry.url &&
+        entry.title === nextEntry.title &&
+        entry.tabId === nextEntry.tabId
+      );
+    })
+  );
 }
 
 export const useBrowserStateStore = create<BrowserStateStore>()(
