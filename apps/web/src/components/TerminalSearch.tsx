@@ -1,7 +1,12 @@
-import type { SearchAddon, ISearchOptions } from "@xterm/addon-search";
+import type { SearchAddon } from "@xterm/addon-search";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDownIcon, ChevronUpIcon, XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
+import {
+  createTerminalSearchOptions,
+  runTerminalSearch,
+  type TerminalSearchDirection,
+} from "./TerminalSearch.logic";
 
 interface TerminalSearchProps {
   searchAddon: SearchAddon | null;
@@ -9,29 +14,13 @@ interface TerminalSearchProps {
   onClose: () => void;
 }
 
-const SEARCH_DECORATIONS = {
-  matchBackground: "#515c6a",
-  matchBorder: "#74879f",
-  matchOverviewRuler: "#d186167e",
-  activeMatchBackground: "#515c6a",
-  activeMatchBorder: "#ffd33d",
-  activeMatchColorOverviewRuler: "#ffd33d",
-} satisfies NonNullable<ISearchOptions["decorations"]>;
-
 export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [hasResults, setHasResults] = useState<boolean | null>(null);
   const [caseSensitive, setCaseSensitive] = useState(false);
 
-  const searchOptions = useMemo(
-    (): ISearchOptions => ({
-      caseSensitive,
-      regex: false,
-      decorations: SEARCH_DECORATIONS as NonNullable<ISearchOptions["decorations"]>,
-    }),
-    [caseSensitive],
-  );
+  const searchOptions = useMemo(() => createTerminalSearchOptions(caseSensitive), [caseSensitive]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -40,20 +29,9 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen && searchAddon) {
-      searchAddon.clearDecorations();
-    }
-  }, [isOpen, searchAddon]);
-
   const handleSearch = useCallback(
-    (direction: "next" | "previous") => {
-      if (!searchAddon || !query) return;
-      const found =
-        direction === "next"
-          ? searchAddon.findNext(query, searchOptions)
-          : searchAddon.findPrevious(query, searchOptions);
-      setHasResults(found);
+    (direction: TerminalSearchDirection) => {
+      setHasResults(runTerminalSearch(searchAddon, query, searchOptions, direction));
     },
     [searchAddon, query, searchOptions],
   );
@@ -61,36 +39,26 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newQuery = e.target.value;
     setQuery(newQuery);
-    if (searchAddon && newQuery) {
-      const found = searchAddon.findNext(newQuery, searchOptions);
-      setHasResults(found);
-    } else {
-      setHasResults(null);
-      searchAddon?.clearDecorations();
-    }
+    setHasResults(runTerminalSearch(searchAddon, newQuery, searchOptions, "next"));
   };
 
-  // Re-run search when case sensitivity or search addon changes
-  // (but not on query change — handleInputChange handles that).
-  const prevCaseSensitiveRef = useRef(caseSensitive);
-  const prevSearchAddonRef = useRef<SearchAddon | null>(searchAddon);
-  useEffect(() => {
-    const caseSensitivityChanged = prevCaseSensitiveRef.current !== caseSensitive;
-    const searchAddonChanged = prevSearchAddonRef.current !== searchAddon;
-    if (!caseSensitivityChanged && !searchAddonChanged) return;
-
-    prevCaseSensitiveRef.current = caseSensitive;
-    prevSearchAddonRef.current = searchAddon;
-    if (searchAddon && query) {
-      const found = searchAddon.findNext(query, searchOptions);
-      setHasResults(found);
-    }
-  }, [searchAddon, query, searchOptions, caseSensitive]);
+  const handleCaseSensitiveToggle = () => {
+    const nextCaseSensitive = !caseSensitive;
+    setCaseSensitive(nextCaseSensitive);
+    setHasResults(
+      runTerminalSearch(
+        searchAddon,
+        query,
+        createTerminalSearchOptions(nextCaseSensitive),
+        "next",
+      ),
+    );
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       e.preventDefault();
-      onClose();
+      handleClose();
     } else if (e.key === "Enter") {
       e.preventDefault();
       handleSearch(e.shiftKey ? "previous" : "next");
@@ -100,6 +68,7 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
   const handleClose = () => {
     setQuery("");
     setHasResults(null);
+    searchAddon?.clearDecorations();
     onClose();
   };
 
@@ -115,7 +84,7 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
         onKeyDown={handleKeyDown}
         aria-label="Find in terminal"
         placeholder="Find"
-        className="h-6 w-28 min-w-0 flex-shrink bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+        className="h-6 w-28 min-w-0 shrink bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
       />
       {hasResults === false && query && (
         <span className="whitespace-nowrap px-1 text-xs text-muted-foreground">No results</span>
@@ -123,7 +92,7 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
       <div className="flex shrink-0 items-center">
         <button
           type="button"
-          onClick={() => setCaseSensitive((v) => !v)}
+          onClick={handleCaseSensitiveToggle}
           className={cn(
             "rounded p-1 transition-colors",
             caseSensitive
