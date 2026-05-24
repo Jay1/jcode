@@ -103,6 +103,11 @@ import {
   supportsThreadImport,
 } from "../lib/providerDiscoveryReactQuery";
 import { resolveCurrentProjectTargetId } from "../lib/projectShortcutTargets";
+import {
+  filterProjectFolderSuggestions,
+  mapProjectFolderDirectoryEntries,
+  normalizeProjectFolderPath,
+} from "../lib/projectFolderSuggestions";
 import { serverConfigQueryOptions } from "../lib/serverReactQuery";
 import { readNativeApi } from "../nativeApi";
 import { isHomeChatContainerProject, prewarmHomeChatProject } from "../lib/chatProjects";
@@ -1293,6 +1298,45 @@ export default function Sidebar() {
   // Keep every platform on the same explicit submit path so desktop picker
   // results do not depend on a separate immediate-add branch.
   const shouldShowProjectPathEntry = addingProject;
+  const projectFolderPath = useMemo(
+    () => normalizeProjectFolderPath(appSettings.addProjectBaseDirectory),
+    [appSettings.addProjectBaseDirectory],
+  );
+  const projectFolderDirectoriesQuery = useQuery({
+    queryKey: ["projects", "project-folder-suggestions", projectFolderPath],
+    queryFn: async () => {
+      const api = readNativeApi();
+      if (!api || !projectFolderPath) {
+        throw new Error("Project Folder suggestions are unavailable.");
+      }
+      return api.projects.listDirectories({ cwd: projectFolderPath });
+    },
+    enabled: shouldShowProjectPathEntry && !showManualPathInput && projectFolderPath !== null,
+    staleTime: 10_000,
+    placeholderData: (previous) => previous ?? { entries: [] },
+  });
+  const projectFolderSuggestionEntries = useMemo(
+    () =>
+      projectFolderPath
+        ? mapProjectFolderDirectoryEntries({
+            projectFolderPath,
+            entries: projectFolderDirectoriesQuery.data?.entries ?? [],
+          })
+        : [],
+    [projectFolderDirectoriesQuery.data?.entries, projectFolderPath],
+  );
+  const projectFolderSuggestions = useMemo(
+    () =>
+      filterProjectFolderSuggestions({
+        entries: projectFolderSuggestionEntries,
+        projects,
+      }),
+    [projectFolderSuggestionEntries, projects],
+  );
+  const projectFolderSuggestionsError =
+    projectFolderDirectoriesQuery.error instanceof Error
+      ? projectFolderDirectoriesQuery.error.message
+      : null;
   const routeActiveSidebarThreadId = routeThreadId;
   const activeSidebarThreadId = optimisticActiveThreadId ?? routeActiveSidebarThreadId;
   const visualActiveSidebarThreadId = optimisticActiveThreadId ?? routeThreadId;
@@ -5701,30 +5745,69 @@ export default function Sidebar() {
                 {shouldShowProjectPathEntry && (
                   <div className="mb-2.5 px-1">
                     {!showManualPathInput ? (
-                      <div className="flex gap-1.5">
-                        {isElectron && (
+                      <div className="space-y-1.5">
+                        {projectFolderPath ? (
+                          <div className="space-y-1">
+                            {projectFolderSuggestions.map((suggestion) => (
+                              <button
+                                key={suggestion.path}
+                                type="button"
+                                className="flex w-full min-w-0 items-center gap-2 rounded-lg bg-[var(--color-background-elevated-secondary)] px-2 py-1.5 text-left text-[length:var(--app-font-size-ui,12px)] text-[var(--color-text-foreground-secondary)] transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)] disabled:opacity-50"
+                                title={suggestion.path}
+                                onClick={() => void addProjectFromPath(suggestion.path)}
+                                disabled={isAddingProject}
+                              >
+                                <FolderIcon className="size-3.5 shrink-0" />
+                                <span className="min-w-0 flex-1 truncate">{suggestion.name}</span>
+                              </button>
+                            ))}
+                            {projectFolderSuggestions.length === 0 ? (
+                              <div className="rounded-lg border border-dashed border-[color:var(--color-border)] px-2 py-2 text-[length:var(--app-font-size-ui,12px)] leading-tight text-muted-foreground/70">
+                                {projectFolderDirectoriesQuery.isFetching
+                                  ? "Loading Project Folder suggestions..."
+                                  : projectFolderSuggestionsError
+                                    ? "Unable to read Project Folder suggestions."
+                                    : "No new folders in the configured Project Folder."}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-dashed border-[color:var(--color-border)] px-2 py-2 text-[length:var(--app-font-size-ui,12px)] leading-tight text-muted-foreground/70">
+                            <div>Set a Project Folder in Settings to show suggestions here.</div>
+                            <button
+                              type="button"
+                              className="mt-1 font-medium text-foreground/80 transition-colors hover:text-foreground"
+                              onClick={() => void navigate({ to: "/settings" })}
+                            >
+                              Open Settings
+                            </button>
+                          </div>
+                        )}
+                        <div className="flex gap-1.5">
+                          {isElectron && (
+                            <button
+                              type="button"
+                              className="flex h-8 flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-background-elevated-secondary)] px-2 text-[length:var(--app-font-size-ui,12px)] font-normal text-[var(--color-text-foreground-secondary)] transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)] disabled:opacity-50"
+                              onClick={() => void handlePickFolder()}
+                              disabled={isPickingFolder || isAddingProject}
+                            >
+                              <FolderIcon className="size-3.5" />
+                              {isPickingFolder
+                                ? "Opening..."
+                                : isAddingProject
+                                  ? "Adding..."
+                                  : "Browse"}
+                            </button>
+                          )}
                           <button
                             type="button"
-                            className="flex h-8 flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-background-elevated-secondary)] px-2 text-[length:var(--app-font-size-ui,12px)] font-normal text-[var(--color-text-foreground-secondary)] transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)] disabled:opacity-50"
-                            onClick={() => void handlePickFolder()}
-                            disabled={isPickingFolder || isAddingProject}
+                            className="flex h-8 flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-background-elevated-secondary)] px-2 text-[length:var(--app-font-size-ui,12px)] font-normal text-[var(--color-text-foreground-secondary)] transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)]"
+                            onClick={() => setShowManualPathInput(true)}
                           >
-                            <FolderIcon className="size-3.5" />
-                            {isPickingFolder
-                              ? "Opening..."
-                              : isAddingProject
-                                ? "Adding..."
-                                : "Browse"}
+                            <TbCursorText className="size-3.5" />
+                            Type path
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          className="flex h-8 flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-background-elevated-secondary)] px-2 text-[length:var(--app-font-size-ui,12px)] font-normal text-[var(--color-text-foreground-secondary)] transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)]"
-                          onClick={() => setShowManualPathInput(true)}
-                        >
-                          <TbCursorText className="size-3.5" />
-                          Type path
-                        </button>
+                        </div>
                       </div>
                     ) : (
                       <div
