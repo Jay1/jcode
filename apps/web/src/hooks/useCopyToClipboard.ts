@@ -93,12 +93,17 @@ export function useCopyToClipboard<TContext = void>({
   onErrorRef.current = onError;
   timeoutRef.current = timeout;
 
+  const clearCopiedTimeout = React.useCallback((): void => {
+    if (timeoutIdRef.current) {
+      clearTimeout(timeoutIdRef.current);
+      timeoutIdRef.current = null;
+    }
+  }, []);
+
   const copyToClipboard = React.useCallback((value: string, ctx: TContext): void => {
     void copyTextToClipboard(value).then(
       () => {
-        if (timeoutIdRef.current) {
-          clearTimeout(timeoutIdRef.current);
-        }
+        clearCopiedTimeout();
         setIsCopied(true);
 
         onCopyRef.current?.(ctx);
@@ -118,16 +123,12 @@ export function useCopyToClipboard<TContext = void>({
         }
       },
     );
-  }, []);
+  }, [clearCopiedTimeout]);
 
   // Cleanup timeout on unmount
   React.useEffect(() => {
-    return (): void => {
-      if (timeoutIdRef.current) {
-        clearTimeout(timeoutIdRef.current);
-      }
-    };
-  }, []);
+    return clearCopiedTimeout;
+  }, [clearCopiedTimeout]);
 
   return { copyToClipboard, isCopied };
 }

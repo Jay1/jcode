@@ -27,6 +27,13 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
     });
   }, [checkPosition]);
 
+  const cancelVisibilityCheck = useCallback(() => {
+    if (visibilityRafRef.current !== null) {
+      window.cancelAnimationFrame(visibilityRafRef.current);
+      visibilityRafRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     if (!terminal) {
       setIsVisible(false);
@@ -36,14 +43,11 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
     const d1 = terminal.onWriteParsed(scheduleVisibilityCheck);
     const d2 = terminal.onScroll(scheduleVisibilityCheck);
     return () => {
-      if (visibilityRafRef.current !== null) {
-        window.cancelAnimationFrame(visibilityRafRef.current);
-        visibilityRafRef.current = null;
-      }
+      cancelVisibilityCheck();
       d1.dispose();
       d2.dispose();
     };
-  }, [terminal, scheduleVisibilityCheck]);
+  }, [terminal, scheduleVisibilityCheck, cancelVisibilityCheck]);
 
   const scrollTerminalToBottom = () => terminal?.scrollToBottom();
 

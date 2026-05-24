@@ -66,31 +66,31 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
     onAdvanceRef.current = onAdvance;
   }, [onAdvance]);
 
+  const clearAutoAdvanceTimer = useCallback(() => {
+    if (autoAdvanceTimerRef.current !== null) {
+      window.clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+  }, []);
+
   // Cancel a pending auto-advance on unmount, and whenever the active question
   // changes or a response goes in flight — otherwise a manual Next/Submit landing
   // inside the 200ms window leaves a stale timer that advances or submits again.
   useEffect(() => {
-    return () => {
-      if (autoAdvanceTimerRef.current !== null) {
-        window.clearTimeout(autoAdvanceTimerRef.current);
-        autoAdvanceTimerRef.current = null;
-      }
-    };
-  }, [activeQuestion?.id, isResponding]);
+    return clearAutoAdvanceTimer;
+  }, [activeQuestion?.id, clearAutoAdvanceTimer, isResponding]);
 
   const handleOptionSelection = useCallback((questionId: string, optionLabel: string) => {
     const nextDraftAnswer = onToggleOption(questionId, optionLabel);
     if (activeQuestion?.multiSelect) {
       return;
     }
-    if (autoAdvanceTimerRef.current !== null) {
-      window.clearTimeout(autoAdvanceTimerRef.current);
-    }
+    clearAutoAdvanceTimer();
     autoAdvanceTimerRef.current = window.setTimeout(() => {
       autoAdvanceTimerRef.current = null;
       onAdvanceRef.current(nextDraftAnswer ? { [questionId]: nextDraftAnswer } : undefined);
     }, 200);
-  }, [activeQuestion?.multiSelect, onToggleOption]);
+  }, [activeQuestion?.multiSelect, clearAutoAdvanceTimer, onToggleOption]);
 
   // Keyboard shortcut: digits toggle options for multi-select prompts and preserve
   // the current auto-advance behavior for single-select questions.
