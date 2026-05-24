@@ -1,6 +1,6 @@
 import { ThreadId } from "@jcode/contracts";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { resolveRestorableThreadRoute } from "../chatRouteRestore";
 import { SplashScreen } from "../components/SplashScreen";
@@ -20,8 +20,30 @@ export function ChatIndexRouteView() {
     () => Object.keys(splitViewsById).filter((splitViewId) => splitViewsById[splitViewId]),
     [splitViewsById],
   );
-  const [attempt, setAttempt] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const restoreOrCreateThread = useCallback(async (): Promise<string | null> => {
+    setErrorMessage(null);
+
+    const restorableRoute = resolveRestorableThreadRoute({
+      lastThreadRoute: readSidebarUiState().lastThreadRoute,
+      availableThreadIds: new Set(threadIds),
+      availableSplitViewIds: new Set(splitViewIds),
+    });
+    if (restorableRoute) {
+      await navigate({
+        to: "/$threadId",
+        params: { threadId: ThreadId.makeUnsafe(restorableRoute.threadId) },
+        replace: true,
+        search: () => ({
+          splitViewId: restorableRoute.splitViewId,
+        }),
+      });
+      return null;
+    }
+
+    const result = await handleNewChat({ fresh: true });
+    return result.ok ? null : result.error;
+  }, [handleNewChat, navigate, splitViewIds, threadIds]);
 
   useEffect(() => {
     if (!threadsHydrated || !splitViewsHydrated) {
@@ -29,53 +51,30 @@ export function ChatIndexRouteView() {
     }
 
     let cancelled = false;
-    setErrorMessage(null);
 
-    void (async () => {
-      const restorableRoute = resolveRestorableThreadRoute({
-        lastThreadRoute: readSidebarUiState().lastThreadRoute,
-        availableThreadIds: new Set(threadIds),
-        availableSplitViewIds: new Set(splitViewIds),
-      });
-      if (restorableRoute) {
-        if (cancelled) {
-          return;
-        }
-        await navigate({
-          to: "/$threadId",
-          params: { threadId: ThreadId.makeUnsafe(restorableRoute.threadId) },
-          replace: true,
-          search: () => ({
-            splitViewId: restorableRoute.splitViewId,
-          }),
-        });
-        return;
+    void restoreOrCreateThread().then((error) => {
+      if (!cancelled && error) {
+        setErrorMessage(error);
       }
-
-      const result = await handleNewChat({ fresh: true });
-      if (cancelled || result.ok) {
-        return;
-      }
-      setErrorMessage(result.error);
-    })();
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [
-    attempt,
-    handleNewChat,
-    navigate,
-    splitViewIds,
-    splitViewsHydrated,
-    threadIds,
-    threadsHydrated,
-  ]);
+  }, [restoreOrCreateThread, splitViewsHydrated, threadsHydrated]);
+
+  const handleRetry = useCallback(() => {
+    void restoreOrCreateThread().then((error) => {
+      if (error) {
+        setErrorMessage(error);
+      }
+    });
+  }, [restoreOrCreateThread]);
 
   return (
     <SplashScreen
       errorMessage={errorMessage}
-      onRetry={errorMessage ? () => setAttempt((value) => value + 1) : null}
+      onRetry={errorMessage ? handleRetry : null}
     />
   );
 }
