@@ -603,6 +603,7 @@ function SplitPaneEmptyState(props: {
         "flex min-h-0 min-w-0 flex-1 flex-col items-center bg-background px-6 pt-16",
         props.isFocused ? "ring-2 ring-inset ring-primary/70" : "",
       )}
+      role="presentation"
       onMouseDown={props.onFocus}
     >
       <div className="w-full max-w-sm space-y-4">

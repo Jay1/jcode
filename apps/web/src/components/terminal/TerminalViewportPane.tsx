@@ -130,6 +130,7 @@ export default function TerminalViewportPane({
         <div
           key={node.paneId}
           className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background"
+          role="presentation"
           onMouseDown={() => {
             if (!isFocusedPane) {
               onActiveTerminalChange(activePaneTerminalId);
