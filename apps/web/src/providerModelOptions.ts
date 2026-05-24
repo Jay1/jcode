@@ -64,25 +64,6 @@ export function formatProviderModelOptionName(input: {
   return formatModelDisplayName(trimmedSlug) ?? trimmedSlug;
 }
 
-export function mergeProviderModelOptions(
-  preferred: ReadonlyArray<ProviderModelOption>,
-  fallback: ReadonlyArray<ProviderModelOption>,
-): ProviderModelOption[] {
-  const merged = [...preferred];
-  const seen = new Set(preferred.map((option) => modelOptionKey(option)));
-
-  for (const option of fallback) {
-    const key = modelOptionKey(option);
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    merged.push(option);
-  }
-
-  return merged;
-}
-
 export function groupProviderModelOptions(
   options: ReadonlyArray<ProviderModelOption>,
 ): ProviderModelOptionGroup[] {
