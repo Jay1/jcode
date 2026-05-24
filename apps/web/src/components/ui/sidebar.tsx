@@ -565,7 +565,7 @@ function SidebarRail({
     [endResizeInteraction, onPointerCancel],
   );
 
-  const handleClick = React.useCallback(
+  const toggleSidebarFromRail = React.useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       onClick?.(event);
       if (event.defaultPrevented) return;
@@ -626,7 +626,7 @@ function SidebarRail({
       )}
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      onClick={handleClick}
+      onClick={toggleSidebarFromRail}
       onPointerCancel={handlePointerCancel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
