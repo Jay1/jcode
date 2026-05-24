@@ -1156,7 +1156,6 @@ export default function Sidebar() {
       hideFeatureFlags,
     });
     window.addEventListener("storage", updateVisibility);
-    updateVisibility();
 
     return () => {
       window.removeEventListener("storage", updateVisibility);
