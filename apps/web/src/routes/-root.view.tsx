@@ -183,7 +183,10 @@ function ProviderUpdateNotifications() {
       for (const provider of providers) {
         try {
           const result = await api.server.updateProvider({ provider: provider.provider });
-          const refreshed = result.providers.find((entry) => entry.provider === provider.provider);
+          const refreshedByProvider = new Map(
+            result.providers.map((entry) => [entry.provider, entry] as const),
+          );
+          const refreshed = refreshedByProvider.get(provider.provider);
           const updateState = refreshed?.updateState;
           if (updateState?.status === "failed" || updateState?.status === "unchanged") {
             failures.push({
