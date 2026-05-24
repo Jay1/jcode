@@ -1,17 +1,19 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   filterUpdatedPullRequests,
   filterPublishedReleases,
+  createGitHubApiClient,
   runUpstreamWatch,
   type GitHubPullRequestSummary,
   type GitHubReleaseSummary,
 } from "./upstream-watch.ts";
 
 const upstream = { name: "example", repository: "owner/repo" };
+const originalFetch = globalThis.fetch;
 
 const pullRequests: GitHubPullRequestSummary[] = [
   {
@@ -67,6 +69,11 @@ describe("upstream-watch", () => {
       rmSync(tempRoot, { force: true, recursive: true });
       tempRoot = null;
     }
+    Object.defineProperty(globalThis, "fetch", {
+      configurable: true,
+      value: originalFetch,
+      writable: true,
+    });
   });
 
   it("filters pull requests by updated cursor", () => {
@@ -77,6 +84,51 @@ describe("upstream-watch", () => {
 
   it("filters releases by published cursor", () => {
     expect(filterPublishedReleases(releases, "2026-05-22T00:00:00Z")).toEqual([releases[0]]);
+  });
+
+  it("uses an abort signal for GitHub API requests", async () => {
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
+      return new Response(
+        JSON.stringify([
+          {
+            number: 1,
+            title: "Watched PR",
+            state: "open",
+            updated_at: "2026-05-24T12:00:00Z",
+            merged_at: null,
+            html_url: "https://github.com/owner/repo/pull/1",
+            user: { login: "alice" },
+            labels: [],
+            base: { ref: "main" },
+            head: { ref: "feature/watched" },
+          },
+        ]),
+      );
+    });
+    Object.defineProperty(globalThis, "fetch", {
+      configurable: true,
+      value: fetchMock,
+      writable: true,
+    });
+
+    const client = createGitHubApiClient({ token: "token" });
+
+    await expect(client.fetchPullRequests(upstream)).resolves.toHaveLength(1);
+  });
+
+  it("throws a clear error when GitHub API requests time out", async () => {
+    Object.defineProperty(globalThis, "fetch", {
+      configurable: true,
+      value: vi.fn(async () => {
+        throw new DOMException("The operation timed out.", "TimeoutError");
+      }),
+      writable: true,
+    });
+
+    const client = createGitHubApiClient({ token: "token" });
+
+    await expect(client.fetchPullRequests(upstream)).rejects.toThrow("GitHub request timed out");
   });
 
   it("does not write state during dry run", async () => {

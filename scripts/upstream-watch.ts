@@ -76,6 +76,7 @@ const DEFAULT_UPSTREAMS: readonly UpstreamRepositoryConfig[] = [
 ] as const;
 
 const STATE_SCHEMA_VERSION = 1;
+const GITHUB_REQUEST_TIMEOUT_MS = 30_000;
 const DEFAULT_STATE_DIR = resolve(process.cwd(), ".jcode/upstream-watch");
 
 function normalizeIsoTimestamp(timestamp: string): string {
@@ -313,7 +314,18 @@ async function fetchGitHubJson<T>(url: string, token: string | undefined): Promi
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
-  const response = await fetch(url, { headers });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers,
+      signal: AbortSignal.timeout(GITHUB_REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError")) {
+      throw new Error(`GitHub request timed out for ${url}`);
+    }
+    throw error;
+  }
   if (!response.ok) {
     throw new Error(`GitHub request failed: ${response.status} ${response.statusText} for ${url}`);
   }

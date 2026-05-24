@@ -1313,7 +1313,6 @@ export default function Sidebar() {
     },
     enabled: shouldShowProjectPathEntry && !showManualPathInput && projectFolderPath !== null,
     staleTime: 10_000,
-    placeholderData: (previous) => previous ?? { entries: [] },
   });
   const projectFolderSuggestionEntries = useMemo(
     () =>

@@ -1,12 +1,18 @@
 # Project Folder Suggestions Implementation Plan
 
+| Field  | Value                                                                                         |
+| ------ | --------------------------------------------------------------------------------------------- |
+| Status | In Progress                                                                                   |
+| Date   | 2026-05-24                                                                                    |
+| Design | [Project Folder Suggestions Design](../specs/2026-05-24-project-folder-suggestions-design.md) |
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a single Project Folder setting that feeds direct-child folder suggestions into the sidebar add-project flow while preserving Browse and Type path.
 
 ## File Structure
 
-- `packages/contracts/src/settings.ts`: add a publishable default server setting for one Project Folder path.
+- `apps/web/src/appSettings.ts`: map `addProjectBaseDirectory` between `AppSettings` and server settings with an empty publishable default.
 - `apps/web/src/routes/_chat.settings.tsx`: expose the Project Folder control in Settings -> General and patch server settings.
 - `apps/web/src/lib/projectFolderSuggestions.ts`: pure helper for normalizing the setting, deriving display names, and filtering already-added suggestions.
 - `apps/web/src/lib/projectFolderSuggestions.test.ts`: focused tests for filtering, path display, empty values, and duplicate project exclusion.

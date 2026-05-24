@@ -1,5 +1,16 @@
 # Upstream Delta Ledger Design
 
+| Field           | Value                                                                                               |
+| --------------- | --------------------------------------------------------------------------------------------------- |
+| Status          | Implemented                                                                                         |
+| Type            | Design specification                                                                                |
+| Owner           | Engineering                                                                                         |
+| Audience        | Maintainers and automation agents                                                                   |
+| Canonical path  | `docs/superpowers/specs/2026-05-24-upstream-delta-ledger-design.md`                                 |
+| Last reviewed   | 2026-05-24                                                                                          |
+| Review cadence  | Event-driven; review when upstream source strategy or the upstream watch script changes             |
+| Source of truth | `scripts/upstream-watch.ts`, `docs/runbooks/upstream-watch.md`, and `docs/jcode-operating-model.md` |
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:writing-plans before implementation. Keep the workflow ledger-only; do not add branch automation.
 
 **Goal:** Add a first-class local CLI for checking new DPCode and T3Code PR/release activity without re-reviewing all upstream activity each time.

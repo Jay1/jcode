@@ -1,5 +1,15 @@
 # Upstream Delta Ledger Implementation Plan
 
+| Field     | Value                                     |
+| --------- | ----------------------------------------- |
+| Title     | Upstream Delta Ledger Implementation Plan |
+| Author    | Engineering                               |
+| Date      | 2026-05-24                                |
+| Status    | Implemented                               |
+| Version   | 1.0                                       |
+| Reviewers | Maintainers                               |
+| Tags      | upstream, automation, local-ledger        |
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a local-only upstream delta ledger CLI for reviewing new DPCode and T3Code PR/release activity without rechecking all upstream history.
