@@ -223,9 +223,16 @@ export function normalizeTerminalPaneGroup(
   validTerminalIds: string[],
 ): ThreadTerminalGroup | null {
   const validTerminalIdSet = new Set(validTerminalIds);
-  const legacyTerminalIds = [
-    ...new Set((group.terminalIds ?? []).map((id) => id.trim()).filter(Boolean)),
-  ].filter((terminalId) => validTerminalIdSet.has(terminalId));
+  const legacyTerminalIds: string[] = [];
+  const seenLegacyTerminalIds = new Set<string>();
+  for (const id of group.terminalIds ?? []) {
+    const terminalId = id.trim();
+    if (!terminalId || !validTerminalIdSet.has(terminalId) || seenLegacyTerminalIds.has(terminalId)) {
+      continue;
+    }
+    seenLegacyTerminalIds.add(terminalId);
+    legacyTerminalIds.push(terminalId);
+  }
   const fallbackLayout = legacyTerminalIds.length > 0 ? buildLegacyLayout(legacyTerminalIds) : null;
   const sanitizedLayout = sanitizeLayoutNode(group.layout ?? fallbackLayout, validTerminalIdSet);
   if (!sanitizedLayout) return null;
@@ -567,21 +574,6 @@ export function resizeTerminalGroupLayout(
 ): ThreadTerminalGroup {
   const result = resizeSplitNode(group.layout, splitId, weights);
   return result.didResize ? { ...group, layout: result.node } : group;
-}
-
-function equalizeLayoutNode(node: ThreadTerminalLayoutNode): ThreadTerminalLayoutNode {
-  if (node.type === "terminal") {
-    return node;
-  }
-  return {
-    ...node,
-    children: node.children.map(equalizeLayoutNode),
-    weights: node.children.map(() => 1),
-  };
-}
-
-export function equalizeTerminalGroupLayout(group: ThreadTerminalGroup): ThreadTerminalGroup {
-  return { ...group, layout: equalizeLayoutNode(group.layout) };
 }
 
 export function createTerminalGroup(groupId: string, terminalId: string): ThreadTerminalGroup {
