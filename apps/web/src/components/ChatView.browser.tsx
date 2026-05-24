@@ -1263,14 +1263,16 @@ async function measureUserRow(options: {
 }
 
 async function measureChatLayout(host: HTMLElement): Promise<ChatLayoutMeasurement> {
-  const scrollContainer = await waitForElement(
-    () => host.querySelector<HTMLElement>("[data-chat-scroll-container='true']"),
-    "Unable to find ChatView message scroll container.",
-  );
-  const composerForm = await waitForElement(
-    () => host.querySelector<HTMLElement>("[data-chat-composer-form='true']"),
-    "Unable to find chat composer form.",
-  );
+  const [scrollContainer, composerForm] = await Promise.all([
+    waitForElement(
+      () => host.querySelector<HTMLElement>("[data-chat-scroll-container='true']"),
+      "Unable to find ChatView message scroll container.",
+    ),
+    waitForElement(
+      () => host.querySelector<HTMLElement>("[data-chat-composer-form='true']"),
+      "Unable to find chat composer form.",
+    ),
+  ]);
 
   await waitForLayout();
 
