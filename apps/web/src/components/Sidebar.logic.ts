@@ -803,9 +803,13 @@ export function getVisibleSidebarThreadIds(input: {
       isExpanded: expandedThreadListsByProject.has(project.id),
       previewLimit,
     });
+    const projectThreadById =
+      !project.expanded && activeThreadId
+        ? new Map(projectThreads.map((thread) => [thread.id, thread] as const))
+        : null;
     const pinnedCollapsedThread =
       !project.expanded && activeThreadId
-        ? (projectThreads.find((thread) => thread.id === activeThreadId) ?? null)
+        ? (projectThreadById?.get(activeThreadId) ?? null)
         : null;
 
     if (pinnedCollapsedThread) {
@@ -1099,6 +1103,7 @@ export function deriveSidebarProjectData(input: {
       input.normalizeProjectCwd(project.cwd),
     );
     const orderedProjectThreadIds = projectThreads.map((thread) => thread.id);
+    const projectThreadById = new Map(projectThreads.map((thread) => [thread.id, thread] as const));
 
     // Collapsed folders should not build or render their full tree; large projects can
     // contain hundreds of rows and folder toggles are on the sidebar hot path.
@@ -1106,7 +1111,7 @@ export function deriveSidebarProjectData(input: {
       const activeThread =
         input.activeSidebarThreadId === undefined
           ? null
-          : (projectThreads.find((thread) => thread.id === input.activeSidebarThreadId) ?? null);
+          : (projectThreadById.get(input.activeSidebarThreadId) ?? null);
       const childCount =
         activeThread === null
           ? 0
@@ -1154,13 +1159,14 @@ export function deriveSidebarProjectData(input: {
       }),
     );
 
-    const activeEntry =
-      input.activeSidebarThreadId === undefined
-        ? null
-        : (orderedEntries.find((entry) => entry.rowId === input.activeSidebarThreadId) ?? null);
+    const orderedEntryIds = new Set(orderedEntries.map((entry) => entry.rowId));
+    const activeEntryId =
+      input.activeSidebarThreadId !== undefined && orderedEntryIds.has(input.activeSidebarThreadId)
+        ? input.activeSidebarThreadId
+        : undefined;
     const { visibleEntries: renderedEntries } = getVisibleSidebarEntriesForPreview({
       entries: orderedEntries,
-      activeEntryId: activeEntry?.rowId,
+      activeEntryId,
       isExpanded: isThreadListExpanded,
       previewLimit: input.previewLimit,
     });
@@ -1171,7 +1177,7 @@ export function deriveSidebarProjectData(input: {
       visibleEntries: renderedEntries,
       hasHiddenThreads: renderedEntries.length < orderedEntries.length,
       isThreadListExpanded,
-      activeEntryId: activeEntry?.rowId ?? null,
+      activeEntryId: activeEntryId ?? null,
       projectStatus,
     });
   }
