@@ -219,7 +219,7 @@ export function TerminalSidebar(props: {
         <TerminalChromeActions actions={props.actions} variant="sidebar" />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-1 py-1">
+      <div className="min-h-0 flex-1 overflow-y-auto p-1">
         {props.terminalGroups.map((terminalGroup, groupIndex) => {
           const isGroupActive = terminalGroup.id === props.activeGroupId;
           const groupActiveTerminalId = isGroupActive
