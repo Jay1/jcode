@@ -438,7 +438,7 @@ function SettingsRow({
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex min-h-5 items-center gap-1.5">
             <h3 className="text-sm font-medium text-foreground">{title}</h3>
-            <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center">
+            <span className="inline-flex size-5 shrink-0 items-center justify-center">
               {resetAction}
             </span>
           </div>
@@ -2745,7 +2745,7 @@ export function SettingsRouteView() {
                         </div>
 
                         <CollapsibleContent>
-                          <div className="border-t border-border/70 bg-muted/20 px-3 py-3">
+                          <div className="border-t border-border/70 bg-muted/20 p-3">
                             <div className="space-y-3">
                               <ProviderDocsLinks docs={providerSettings.docs} />
                               {updateAdvisory?.status === "behind_latest" ? (
@@ -3032,7 +3032,7 @@ export function SettingsRouteView() {
                   />
                 </button>
                 {showRecoveryTools ? (
-                  <div className="mt-3 rounded-xl border border-border/70 px-3 py-3 text-xs text-muted-foreground">
+                  <div className="mt-3 rounded-xl border border-border/70 p-3 text-xs text-muted-foreground">
                     Rebuilds local project indexes and refreshes project snapshots. Existing chats
                     stay in place.
                   </div>
@@ -3142,7 +3142,7 @@ export function SettingsRouteView() {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-2xl px-6 py-6">
+          <div className="mx-auto w-full max-w-2xl p-6">
             {/* Section header */}
             <div className="mb-6">
               <h1 className="text-2xl font-semibold text-foreground">{activeSectionItem.label}</h1>
