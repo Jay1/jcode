@@ -46,10 +46,14 @@ export function migrateJCodeLocalStorageKeys(): void {
       if (storage.getItem(nextKey) !== null) {
         continue;
       }
-      const legacyValue = legacyKeys
-        .map((legacyKey) => storage.getItem(legacyKey))
-        .find((value): value is string => value !== null);
-      if (legacyValue !== undefined) {
+      let legacyValue: string | null = null;
+      for (const legacyKey of legacyKeys) {
+        legacyValue = storage.getItem(legacyKey);
+        if (legacyValue !== null) {
+          break;
+        }
+      }
+      if (legacyValue !== null) {
         storage.setItem(nextKey, legacyValue);
       }
     }
