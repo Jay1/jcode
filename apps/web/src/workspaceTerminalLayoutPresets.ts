@@ -65,7 +65,14 @@ export const WORKSPACE_LAYOUT_PRESETS: readonly WorkspaceLayoutPresetDefinition[
 ] as const;
 
 function normalizeTerminalIds(terminalIds: readonly string[]): string[] {
-  const ids = [...new Set(terminalIds.map((terminalId) => terminalId.trim()).filter(Boolean))];
+  const ids = [
+    ...new Set(
+      terminalIds.flatMap((terminalId) => {
+        const trimmedTerminalId = terminalId.trim();
+        return trimmedTerminalId ? [trimmedTerminalId] : [];
+      }),
+    ),
+  ];
   return ids.length > 0 ? ids : [DEFAULT_THREAD_TERMINAL_ID];
 }
 

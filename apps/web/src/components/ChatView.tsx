@@ -1456,7 +1456,7 @@ export default function ChatView({
     const options: Parameters<
       typeof useComposerCommandMenuItems
     >[0]["searchableModelOptions"][number][] = [];
-    for (const option of [...AVAILABLE_PROVIDER_OPTIONS].sort((left, right) =>
+    for (const option of AVAILABLE_PROVIDER_OPTIONS.toSorted((left, right) =>
       compareProvidersByOrder(settings.providerOrder, left.value, right.value),
     )) {
       const isVisible = (() => {
