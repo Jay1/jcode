@@ -114,7 +114,6 @@ export function useAppNavigationState(): AppNavigationState {
     const updateNavigationState = (event?: HistorySubscriberEvent) =>
       setNavigationState(syncAppNavigationState(appHistory, event?.action));
     const unsubscribe = appHistory.subscribe(updateNavigationState);
-    updateNavigationState();
     return unsubscribe;
   }, []);
 
