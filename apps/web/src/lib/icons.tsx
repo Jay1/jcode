@@ -15,7 +15,6 @@ import {
   IconArrowLeft,
   IconArrowRight,
   IconArrowUp,
-  IconArrowsUpDown,
   IconBell,
   IconBolt,
   IconBrain,
@@ -27,7 +26,6 @@ import {
   IconChevronRight,
   IconChevronUp,
   IconCircleCheck,
-  IconCloudUpload,
   IconColumns2,
   IconCopy,
   IconDots,
@@ -38,21 +36,15 @@ import {
   IconFlag,
   IconFlask2,
   IconFolder,
-  IconFolderOpen,
   IconGitCompare,
-  IconGitFork,
   IconGitPullRequest,
   IconEdit,
   IconInfoCircle,
-  IconLayoutSidebarLeftCollapse,
-  IconLayoutSidebarLeftExpand,
   IconLayoutSidebarRightCollapse,
   IconLayoutDistributeHorizontal,
   IconListCheck,
   IconListDetails,
   IconLoader2,
-  IconLock,
-  IconLockOpen,
   IconMaximize,
   IconMinimize,
   IconDeviceLaptop,
@@ -61,12 +53,9 @@ import {
   IconMoon,
   IconPalette,
   IconPaperclip,
-  IconPinnedFilled,
   IconPlayerPlay,
-  IconPlayerStop,
   IconPlus,
   IconRefresh,
-  IconRocket,
   IconRobot,
   IconRotate2,
   IconSearch,
@@ -120,7 +109,6 @@ export const BellIcon = adaptIcon(IconBell);
 export const ArrowRightIcon = adaptIcon(IconArrowRight);
 export const ArrowDownIcon = adaptIcon(IconArrowDown);
 export const ArrowUpIcon = adaptIcon(IconArrowUp);
-export const ArrowUpDownIcon = adaptIcon(IconArrowsUpDown);
 export const BotIcon = adaptIcon(IconRobot);
 export const BugIcon = adaptIcon(IconBug);
 export const CameraIcon = adaptIcon(IconCamera);
@@ -132,7 +120,6 @@ export const ChevronUpIcon = adaptIcon(IconChevronUp);
 export const ChevronsUpDownIcon = adaptIcon(IconSelector);
 export const CircleAlertIcon = adaptIcon(IconAlertCircle);
 export const CircleCheckIcon = adaptIcon(IconCircleCheck);
-export const CloudUploadIcon = adaptIcon(IconCloudUpload);
 export const Columns2Icon = adaptIcon(IconColumns2);
 export const CopyIcon = adaptIcon(IconCopy);
 export const DiffIcon = adaptIcon(IconGitCompare);
@@ -150,11 +137,9 @@ export const FlagIcon = adaptIcon(IconFlag);
 export const FlaskConicalIcon = adaptIcon(IconFlask2);
 export const FolderClosedIcon = adaptIcon(IconFolder);
 export const FolderIcon = adaptIcon(IconFolder);
-export const FolderOpenIcon = adaptIcon(IconFolderOpen);
 export const GitCommitIcon: LucideIcon = (props) => (
   <PiGitCommit className={props.className} style={props.style} />
 );
-export const GitForkIcon = adaptIcon(IconGitFork);
 export const GitHubIcon: LucideIcon = (props) => (
   <SiGithub className={props.className} style={props.style} />
 );
@@ -192,14 +177,10 @@ export const ListTodoIcon = adaptIcon(IconListDetails);
 export const Loader2Icon = adaptIcon(IconLoader2);
 export const LoaderCircleIcon = adaptIcon(IconLoader2);
 export const LoaderIcon = adaptIcon(IconLoader2);
-export const LockIcon = adaptIcon(IconLock);
-export const LockOpenIcon = adaptIcon(IconLockOpen);
 export const Maximize2 = adaptIcon(IconMaximize);
 export const Minimize2 = adaptIcon(IconMinimize);
 export const MessageCircleIcon = adaptIcon(IconMessageCircle);
 export const MicIcon = adaptIcon(IconMicrophone);
-export const PanelLeftCloseIcon = adaptIcon(IconLayoutSidebarLeftCollapse);
-export const PanelLeftIcon = adaptIcon(IconLayoutSidebarLeftExpand);
 export const PanelRightCloseIcon = adaptIcon(IconLayoutSidebarRightCollapse);
 export const PinIcon: LucideIcon = (props) => (
   <svg
@@ -218,12 +199,10 @@ export const PinIcon: LucideIcon = (props) => (
     <path d="M8.375 15.625L3.75 20.25" />
   </svg>
 );
-export const PinnedFilledIcon = adaptIcon(IconPinnedFilled);
 export const PlayIcon = adaptIcon(IconPlayerPlay);
 export const Plus = adaptIcon(IconPlus);
 export const PlusIcon = adaptIcon(IconPlus);
 export const RefreshCwIcon = adaptIcon(IconRefresh);
-export const RocketIcon = adaptIcon(IconRocket);
 export const RotateCcwIcon = adaptIcon(IconRotate2);
 export const Rows3Icon = adaptIcon(IconLayoutDistributeHorizontal);
 export const SearchIcon = adaptIcon(IconSearch);
@@ -233,7 +212,6 @@ export const StarFilledIcon = adaptIcon(IconStarFilled);
 export const SunIcon = adaptIcon(IconSun);
 export const MoonIcon = adaptIcon(IconMoon);
 export const DeviceLaptopIcon = adaptIcon(IconDeviceLaptop);
-export const StopIcon = adaptIcon(IconPlayerStop);
 export const SquarePenIcon = adaptIcon(IconEdit);
 export const SquareSplitHorizontal: LucideIcon = (props) => (
   <PiSquareSplitHorizontal className={props.className} style={props.style} />
