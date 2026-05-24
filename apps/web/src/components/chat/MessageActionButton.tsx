@@ -3,7 +3,7 @@
 // Layer: Web chat presentation component
 // Exports: MessageActionButton
 
-import { forwardRef, memo, type ComponentProps, type ReactNode } from "react";
+import { memo, type ComponentProps, type ReactNode } from "react";
 import { cn } from "~/lib/utils";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
@@ -20,11 +20,16 @@ type MessageActionButtonProps = Omit<
   tooltipSide?: ComponentProps<typeof TooltipPopup>["side"];
 };
 
-export const MessageActionButton = memo(
-  forwardRef<HTMLButtonElement, MessageActionButtonProps>(function MessageActionButton(
-    { children, className, label, tooltip, tooltipSide = "top", type = "button", ...props },
-    ref,
-  ) {
+export const MessageActionButton = memo(function MessageActionButton({
+  children,
+  className,
+  label,
+  ref,
+  tooltip,
+  tooltipSide = "top",
+  type = "button",
+  ...props
+}: MessageActionButtonProps) {
     return (
       <Tooltip>
         <TooltipTrigger
@@ -45,5 +50,4 @@ export const MessageActionButton = memo(
         </TooltipPopup>
       </Tooltip>
     );
-  }),
-);
+});
