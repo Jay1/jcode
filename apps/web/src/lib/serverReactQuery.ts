@@ -24,28 +24,6 @@ export function serverConfigQueryOptions() {
   });
 }
 
-export function serverAuthSessionQueryOptions() {
-  return queryOptions({
-    queryKey: serverQueryKeys.authSession(),
-    queryFn: async () => {
-      const api = ensureNativeApi();
-      return api.server.getAuthSession();
-    },
-    staleTime: 15_000,
-  });
-}
-
-export function serverEnvironmentQueryOptions() {
-  return queryOptions({
-    queryKey: serverQueryKeys.environment(),
-    queryFn: async () => {
-      const api = ensureNativeApi();
-      return api.server.getEnvironment();
-    },
-    staleTime: Infinity,
-  });
-}
-
 export function serverSettingsQueryOptions() {
   return queryOptions({
     queryKey: serverQueryKeys.settings(),
