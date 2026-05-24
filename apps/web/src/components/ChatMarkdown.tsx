@@ -650,11 +650,15 @@ function ChatMarkdown({
   }, []);
   const markdownComponents = useMemo<Components>(
     () => ({
-      a({ node: _node, href, ...props }) {
+      a({ node: _node, href, children, ...props }) {
         const restoredHref = href ? restoreLiteralDollarPlaceholders(href) : href;
         const targetPath = resolveMarkdownFileLinkTarget(restoredHref, cwd);
         if (!targetPath) {
-          return <a {...props} href={restoredHref} target="_blank" rel="noopener noreferrer" />;
+          return (
+            <a {...props} href={restoredHref} target="_blank" rel="noopener noreferrer">
+              {children}
+            </a>
+          );
         }
 
         return (
@@ -671,7 +675,9 @@ function ChatMarkdown({
                 console.warn("Native API not found. Unable to open file in editor.");
               }
             }}
-          />
+          >
+            {children}
+          </a>
         );
       },
       pre({ node: _node, children, ...props }) {

@@ -92,7 +92,7 @@ export const ProviderUsagePanelContent = memo(function ProviderUsagePanelContent
           rel="noopener noreferrer"
           className="flex items-center gap-1 pt-0.5 text-[length:var(--app-font-size-chat-meta,10px)] text-muted-foreground transition-colors hover:text-foreground"
         >
-          Learn more
+          View provider usage documentation
           <ExternalLinkIcon className="size-3" />
         </a>
       ) : null}
