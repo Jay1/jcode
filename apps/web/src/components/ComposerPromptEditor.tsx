@@ -32,9 +32,8 @@ import {
 } from "lexical";
 import {
   createContext,
-  forwardRef,
+  use,
   useCallback,
-  useContext,
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
@@ -477,6 +476,7 @@ export interface ComposerPromptEditorHandle {
 }
 
 interface ComposerPromptEditorProps {
+  ref?: Ref<ComposerPromptEditorHandle>;
   value: string;
   cursor: number;
   terminalContexts: ReadonlyArray<TerminalContextDraft>;
@@ -662,7 +662,7 @@ function ComposerInlineTokenSelectionNormalizePlugin() {
 
 function ComposerInlineTokenBackspacePlugin() {
   const [editor] = useLexicalComposerContext();
-  const { onRemoveTerminalContext } = useContext(ComposerTerminalContextActionsContext);
+  const { onRemoveTerminalContext } = use(ComposerTerminalContextActionsContext);
 
   useEffect(() => {
     return editor.registerCommand(
@@ -986,25 +986,20 @@ function ComposerPromptEditorInner({
   );
 }
 
-export const ComposerPromptEditor = forwardRef<
-  ComposerPromptEditorHandle,
-  ComposerPromptEditorProps
->(function ComposerPromptEditor(
-  {
-    value,
-    cursor,
-    terminalContexts,
-    mentionReferences,
-    disabled,
-    placeholder,
-    className,
-    onRemoveTerminalContext,
-    onChange,
-    onCommandKeyDown,
-    onPaste,
-  },
-  ref,
-) {
+export function ComposerPromptEditor({
+  value,
+  cursor,
+  terminalContexts,
+  mentionReferences,
+  disabled,
+  placeholder,
+  className,
+  onRemoveTerminalContext,
+  onChange,
+  onCommandKeyDown,
+  onPaste,
+  ref = null,
+}: ComposerPromptEditorProps) {
   const initialValueRef = useRef(value);
   const initialTerminalContextsRef = useRef(terminalContexts);
   // Normalize once at the wrapper boundary so the inner editor can treat mention refs as concrete.
@@ -1052,4 +1047,4 @@ export const ComposerPromptEditor = forwardRef<
       />
     </LexicalComposer>
   );
-});
+}
