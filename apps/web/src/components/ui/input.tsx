@@ -1,21 +1,18 @@
 "use client";
 
 import { Input as InputPrimitive } from "@base-ui/react/input";
-import { forwardRef, type ComponentPropsWithoutRef } from "react";
+import { type ComponentPropsWithoutRef, type Ref } from "react";
 
 import { cn } from "~/lib/utils";
 
 type InputProps = Omit<ComponentPropsWithoutRef<typeof InputPrimitive>, "size"> & {
+  ref?: Ref<HTMLInputElement>;
   size?: "sm" | "default" | "lg" | number;
   unstyled?: boolean;
   nativeInput?: boolean;
 };
 
-// Forward refs so the browser address bar can autofocus and select reliably.
-const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { className, size = "default", unstyled = false, nativeInput = false, ...props },
-  ref,
-) {
+function Input({ className, ref, size = "default", unstyled = false, nativeInput = false, ...props }: InputProps) {
   const inputClassName = cn(
     "font-system-ui h-8.5 w-full min-w-0 rounded-[inherit] px-[calc(--spacing(3)-1px)] leading-8.5 outline-none placeholder:text-muted-foreground/72 sm:h-7.5 sm:leading-7.5 [transition:background-color_5000000s_ease-in-out_0s]",
     size === "sm" && "h-7.5 px-[calc(--spacing(2.5)-1px)] leading-7.5 sm:h-6.5 sm:leading-6.5",
@@ -57,6 +54,6 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       )}
     </span>
   );
-});
+}
 
 export { Input, type InputProps };
