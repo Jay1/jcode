@@ -1036,17 +1036,19 @@ async function waitForElement<T extends Element>(
   query: () => T | null,
   errorMessage: string,
 ): Promise<T> {
-  let element: T | null = null;
-  await vi.waitFor(
-    () => {
-      element = query();
-      expect(element, errorMessage).toBeTruthy();
-    },
-    {
-      timeout: 8_000,
-      interval: 16,
-    },
-  );
+  let element = query();
+  if (!element) {
+    await vi.waitFor(
+      () => {
+        element = query();
+        expect(element, errorMessage).toBeTruthy();
+      },
+      {
+        timeout: 8_000,
+        interval: 16,
+      },
+    );
+  }
   if (!element) {
     throw new Error(errorMessage);
   }
