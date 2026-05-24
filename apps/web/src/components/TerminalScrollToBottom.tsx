@@ -45,7 +45,7 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
     };
   }, [terminal, scheduleVisibilityCheck]);
 
-  const handleClick = () => terminal?.scrollToBottom();
+  const scrollTerminalToBottom = () => terminal?.scrollToBottom();
 
   return (
     <div
@@ -56,7 +56,7 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
     >
       <button
         type="button"
-        onClick={handleClick}
+        onClick={scrollTerminalToBottom}
         className="flex size-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
         aria-label="Scroll to bottom"
       >
