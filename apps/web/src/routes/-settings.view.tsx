@@ -616,7 +616,7 @@ export function SettingsRouteView() {
     Partial<Record<ProviderKind, string | null>>
   >({});
   const [showAllCustomModels, setShowAllCustomModels] = useState(false);
-  const [browserNotificationPermission, setBrowserNotificationPermission] = useState(
+  const [browserNotificationPermission, setBrowserNotificationPermission] = useState(() =>
     readBrowserNotificationPermissionState(),
   );
   const shouldShowFontSmoothing = isMacPlatform(
@@ -863,10 +863,6 @@ export function SettingsRouteView() {
         setIsOpeningKeybindings(false);
       });
   }, [availableEditors, keybindingsConfigPath]);
-
-  useEffect(() => {
-    setBrowserNotificationPermission(readBrowserNotificationPermissionState());
-  }, []);
 
   const addCustomModel = useCallback(
     (provider: ProviderKind) => {
