@@ -34,6 +34,14 @@
 - Do not commit local agent/editor state such as `.sisyphus/`, `.brainstorm/`, `.vscode/`, or `.playwright-mcp/`.
 - If using git commands in OpenCode with the git-master skill active, prefix every git invocation with `GIT_MASTER=1`.
 
+## Upstream Watch
+
+- DPCode and T3Code are source material, not automatic merge targets; import decisions remain manual and strategy-driven.
+- Use `bun run upstream:watch -- --dry-run` to preview new upstream PR/release deltas without advancing local cursors.
+- Use `bun run upstream:watch` to record a local cursor after reviewing the report.
+- Upstream watch state lives under `.jcode/upstream-watch/` and must not be committed.
+- See `docs/runbooks/upstream-watch.md` and `CONTEXT.md` for the upstream delta ledger semantics.
+
 ## Area Guides
 
 - Server runtime and providers: see `apps/server/AGENTS.md`.
