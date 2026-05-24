@@ -199,23 +199,6 @@ export function gitInitMutationOptions(input: { cwd: string | null; queryClient:
   });
 }
 
-export function gitCheckoutMutationOptions(input: {
-  cwd: string | null;
-  queryClient: QueryClient;
-}) {
-  return mutationOptions({
-    mutationKey: gitMutationKeys.checkout(input.cwd),
-    mutationFn: async (branch: string) => {
-      const api = ensureNativeApi();
-      if (!input.cwd) throw new Error("Git checkout is unavailable.");
-      return api.git.checkout({ cwd: input.cwd, branch });
-    },
-    onSuccess: async () => {
-      await invalidateGitQueries(input.queryClient);
-    },
-  });
-}
-
 export function gitRunStackedActionMutationOptions(input: {
   cwd: string | null;
   queryClient: QueryClient;
@@ -290,20 +273,6 @@ export function gitCreateWorktreeMutationOptions(input: { queryClient: QueryClie
       return api.git.createWorktree({ cwd, branch, newBranch, path: path ?? null });
     },
     mutationKey: ["git", "mutation", "create-worktree"] as const,
-    onSettled: async () => {
-      await invalidateGitQueries(input.queryClient);
-    },
-  });
-}
-
-export function gitCreateDetachedWorktreeMutationOptions(input: { queryClient: QueryClient }) {
-  return mutationOptions({
-    mutationFn: async ({ cwd, ref, path }: { cwd: string; ref: string; path?: string | null }) => {
-      const api = ensureNativeApi();
-      if (!cwd) throw new Error("Git worktree creation is unavailable.");
-      return api.git.createDetachedWorktree({ cwd, ref, path: path ?? null });
-    },
-    mutationKey: ["git", "mutation", "create-detached-worktree"] as const,
     onSettled: async () => {
       await invalidateGitQueries(input.queryClient);
     },
