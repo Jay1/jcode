@@ -892,8 +892,8 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
   describe("updateProvider", () => {
     it.effect("runs provider update commands through a shell on Windows", () => {
       const calls: Array<{
-        args: ReadonlyArray<string>;
         command: string;
+        args: ReadonlyArray<string>;
         shell: ChildProcess.CommandOptions["shell"];
       }> = [];
 
@@ -906,39 +906,11 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
           assert.strictEqual(result.providers.length, 0);
           assert.deepStrictEqual(calls, [
             {
-              args: ["update"],
               command: "agent",
+              args: ["update"],
               shell: true,
             },
           ]);
-        }),
-      ).pipe(
-        Effect.provide(ProviderHealthLive),
-        Effect.provide(
-          mockSpawnerLayer((args, command, options) => {
-            calls.push({ args, command, shell: options.shell });
-            return { stdout: "", stderr: "update failed", code: 1 };
-          }),
-        ),
-        Effect.provide(ServerSettingsService.layerTest()),
-        Effect.provide(ServerConfig.layerTest(process.cwd(), { prefix: "jcode-provider-health-" })),
-      );
-    });
-  });
-
-  describe("updateProvider", () => {
-    it.effect("runs provider update commands through a shell on Windows", () => {
-      const calls: Array<{
-        command: string;
-        args: ReadonlyArray<string>;
-        shell: ChildProcess.CommandOptions["shell"];
-      }> = [];
-
-      return withProcessPlatform(
-        "win32",
-        Effect.gen(function* () {
-          const providerHealth = yield* ProviderHealth;
-          yield* providerHealth.updateProvider({ provider: "cursor" });
         }).pipe(
           Effect.provide(ProviderHealthLive),
           Effect.provide(ServerSettingsService.layerTest()),
@@ -951,12 +923,6 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
               return { stdout: "", stderr: "update failed\n", code: 1 };
             }),
           ),
-        ),
-      ).pipe(
-        Effect.tap(() =>
-          Effect.sync(() => {
-            assert.deepStrictEqual(calls, [{ command: "agent", args: ["update"], shell: true }]);
-          }),
         ),
       );
     });

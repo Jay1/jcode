@@ -1,15 +1,15 @@
 # Upstream Quality Imports Design
 
-| Field           | Value                                                                                          |
-| --------------- | ---------------------------------------------------------------------------------------------- |
-| Status          | Draft                                                                                          |
-| Type            | Design specification                                                                           |
-| Owner           | Engineering                                                                                    |
-| Audience        | Maintainers and automation agents                                                              |
-| Canonical path  | `docs/superpowers/specs/2026-05-24-upstream-quality-imports-design.md`                         |
-| Last reviewed   | 2026-05-24                                                                                     |
-| Review cadence  | Event-driven; review when DPCode/T3Code import candidates or JCode quality priorities change   |
-| Source of truth | `docs/jcode-operating-model.md`, `.jcode/upstream-watch/state.json`, and fetched upstream refs |
+| Field           | Value                                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Status          | Draft                                                                                                                     |
+| Type            | Design specification                                                                                                      |
+| Owner           | Engineering                                                                                                               |
+| Audience        | Maintainers and automation agents                                                                                         |
+| Canonical path  | `docs/superpowers/specs/2026-05-24-upstream-quality-imports-design.md`                                                    |
+| Last reviewed   | 2026-05-24                                                                                                                |
+| Review cadence  | Event-driven; review when DPCode/T3Code import candidates or JCode quality priorities change                              |
+| Source of truth | `docs/jcode-operating-model.md`, `docs/runbooks/upstream-watch.md`, `scripts/upstream-watch.ts`, and linked upstream refs |
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:writing-plans before implementation. Treat DPCode and T3Code as source material; do not merge or cherry-pick upstream wholesale.
 
@@ -17,13 +17,13 @@
 
 ## Context
 
-JCode is synced to `origin/main` after PR #3 and has local upstream watch state recorded for DPCode and T3Code deltas. Recent upstream discovery highlighted:
+JCode is synced to `origin/main` after PR #3. Upstream watch state is local and intentionally ignored under `.jcode/upstream-watch/`; see `docs/runbooks/upstream-watch.md` and `scripts/upstream-watch.ts` for the source repositories and state semantics. Recent upstream discovery highlighted:
 
-- DPCode `v0.0.49` and PR #129: diff loading, startup hot paths, projection snapshot query, checkpoint diff query, runtime ingestion, and thread retention improvements.
-- T3Code #2760: provider-scoped reasoning/model option preservation.
-- T3Code #2779: idempotent theme DOM synchronization.
-- T3Code #2781: provider update commands running through a shell on Windows.
-- T3Code #2794/#2792/#2780/#2791: render-health, settings navigation, shell snapshot, and Effect idiom work.
+- DPCode [`v0.0.49`](https://github.com/Emanuele-web04/dpcode/releases/tag/v0.0.49) and [PR #129](https://github.com/Emanuele-web04/dpcode/pull/129): diff loading, startup hot paths, projection snapshot query, checkpoint diff query, runtime ingestion, and thread retention improvements.
+- T3Code [#2760](https://github.com/pingdotgg/t3code/pull/2760): provider-scoped reasoning/model option preservation.
+- T3Code [#2779](https://github.com/pingdotgg/t3code/pull/2779): idempotent theme DOM synchronization.
+- T3Code [#2781](https://github.com/pingdotgg/t3code/pull/2781): provider update commands running through a shell on Windows.
+- T3Code [#2794](https://github.com/pingdotgg/t3code/pull/2794), [#2792](https://github.com/pingdotgg/t3code/pull/2792), [#2780](https://github.com/pingdotgg/t3code/pull/2780), and [#2791](https://github.com/pingdotgg/t3code/pull/2791): render-health, settings navigation, shell snapshot, and Effect idiom work.
 
 Direct inspection found that JCode already has substantial provider-scoped model option preservation tests and behavior in `apps/web/src/composerDraftStore.ts` and `apps/web/src/composerDraftStore.test.ts`, so T3Code #2760 is not the best first import.
 
@@ -91,7 +91,7 @@ Expected behavior:
 ## Acceptance Criteria
 
 - [ ] Theme sync repeated-input no-op behavior is tested and implemented.
-- [ ] Provider update commands run with resolved provider environment and are tested.
+- [ ] Provider update commands run with the provider-specific environment resolved by `ProviderHealthLive` and are tested.
 - [ ] One narrow DPCode #129 diff/checkpoint hot-path improvement is tested and implemented.
 - [ ] No upstream branch is merged wholesale.
 - [ ] No unrelated provider/product surface area is introduced.
