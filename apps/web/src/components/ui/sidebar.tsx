@@ -79,7 +79,7 @@ const SidebarContext = React.createContext<SidebarContextProps | null>(null);
 const SidebarInstanceContext = React.createContext<SidebarInstanceContextProps | null>(null);
 
 function useSidebar() {
-  const context = React.useContext(SidebarContext);
+  const context = React.use(SidebarContext);
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.");
   }
@@ -385,7 +385,7 @@ function SidebarRail({
   ...props
 }: React.ComponentProps<"button">) {
   const { open, toggleSidebar } = useSidebar();
-  const sidebarInstance = React.useContext(SidebarInstanceContext);
+  const sidebarInstance = React.use(SidebarInstanceContext);
   const railRef = React.useRef<HTMLButtonElement | null>(null);
   const suppressClickRef = React.useRef(false);
   const resizeStateRef = React.useRef<{
