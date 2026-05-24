@@ -1225,9 +1225,7 @@ export default function Sidebar() {
   const [dismissedThreadStatusKeyByThreadId, setDismissedThreadStatusKeyByThreadId] = useState<
     Record<string, string>
   >(() => readSidebarUiState().dismissedThreadStatusKeyByThreadId);
-  const [lastThreadRoute, setLastThreadRoute] = useState(
-    () => readSidebarUiState().lastThreadRoute,
-  );
+  const lastThreadRouteRef = useRef(readSidebarUiState().lastThreadRoute);
   const [optimisticActiveThreadId, setOptimisticActiveThreadId] = useState<ThreadId | null>(null);
   const [expandedSubagentParentIds, setExpandedSubagentParentIds] = useState<ReadonlySet<ThreadId>>(
     () => new Set(),
@@ -1718,7 +1716,7 @@ export default function Sidebar() {
       }
 
       const restorableRoute = resolveRestorableThreadRoute({
-        lastThreadRoute,
+        lastThreadRoute: lastThreadRouteRef.current,
         availableThreadIds: new Set(Object.keys(sidebarThreadSummaryById)),
       });
       if (restorableRoute) {
@@ -1736,7 +1734,6 @@ export default function Sidebar() {
     },
     [
       handleNewChat,
-      lastThreadRoute,
       navigate,
       navigateToWorkspace,
       routeWorkspaceId,
@@ -3066,7 +3063,7 @@ export default function Sidebar() {
 
   const rememberLastThreadRouteNow = useCallback(
     (nextLastThreadRoute: LastThreadRoute) => {
-      setLastThreadRoute(nextLastThreadRoute);
+      lastThreadRouteRef.current = nextLastThreadRoute;
       persistSidebarUiState({
         chatSectionExpanded,
         chatThreadListExpanded,
@@ -3542,14 +3539,13 @@ export default function Sidebar() {
       chatThreadListExpanded,
       expandedProjectThreadListCwds: [...expandedThreadListsByProject],
       dismissedThreadStatusKeyByThreadId,
-      lastThreadRoute,
+      lastThreadRoute: lastThreadRouteRef.current,
     });
   }, [
     chatSectionExpanded,
     chatThreadListExpanded,
     dismissedThreadStatusKeyByThreadId,
     expandedThreadListsByProject,
-    lastThreadRoute,
   ]);
 
   useEffect(() => {
@@ -3561,16 +3557,21 @@ export default function Sidebar() {
       threadId: routeThreadId,
       ...(routeSearch.splitViewId ? { splitViewId: routeSearch.splitViewId } : {}),
     };
-    setLastThreadRoute((current) => {
-      if (
-        current?.threadId === nextLastThreadRoute.threadId &&
-        current?.splitViewId === nextLastThreadRoute.splitViewId
-      ) {
-        return current;
-      }
-      return nextLastThreadRoute;
-    });
-  }, [isOnSettings, isOnWorkspace, routeSearch.splitViewId, routeThreadId]);
+    const current = lastThreadRouteRef.current;
+    if (
+      current?.threadId === nextLastThreadRoute.threadId &&
+      current?.splitViewId === nextLastThreadRoute.splitViewId
+    ) {
+      return;
+    }
+    rememberLastThreadRouteNow(nextLastThreadRoute);
+  }, [
+    isOnSettings,
+    isOnWorkspace,
+    rememberLastThreadRouteNow,
+    routeSearch.splitViewId,
+    routeThreadId,
+  ]);
 
   useEffect(() => {
     if (!activeSidebarThreadId) {
