@@ -72,13 +72,15 @@ async function fixupHomeChatProject(homeDir: string): Promise<void> {
     });
   }
 
-  for (const duplicateProjectId of duplicateProjectIds) {
-    await api.orchestration.dispatchCommand({
-      type: "project.delete",
-      commandId: newCommandId(),
-      projectId: duplicateProjectId,
-    });
-  }
+  await Promise.all(
+    duplicateProjectIds.map((duplicateProjectId) =>
+      api.orchestration.dispatchCommand({
+        type: "project.delete",
+        commandId: newCommandId(),
+        projectId: duplicateProjectId,
+      }),
+    ),
+  );
 }
 
 function scheduleHomeChatFixup(homeDir: string): void {
