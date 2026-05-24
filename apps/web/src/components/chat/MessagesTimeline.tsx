@@ -978,9 +978,9 @@ export const MessagesTimeline = memo(function MessagesTimeline({
             )}
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse" />
-            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:200ms]" />
-            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:400ms]" />
+            <span className="size-1 rounded-full bg-muted-foreground/30 animate-pulse" />
+            <span className="size-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:200ms]" />
+            <span className="size-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:400ms]" />
           </span>
         </div>
       )}
