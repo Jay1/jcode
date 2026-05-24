@@ -413,7 +413,6 @@ function SettingsRow({
   resetAction,
   control,
   children,
-  onClick,
 }: {
   title: string;
   description: string;
@@ -421,20 +420,13 @@ function SettingsRow({
   resetAction?: ReactNode;
   control?: ReactNode;
   children?: ReactNode;
-  onClick?: () => void;
 }) {
   return (
     <div
       className="rounded-xl border border-[color:var(--color-border-light)] bg-[var(--color-background-panel)] px-4 py-3.5 transition-colors hover:bg-[var(--sidebar-accent)]"
       data-slot="settings-row"
     >
-      <div
-        className={cn(
-          "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
-          onClick && "cursor-pointer",
-        )}
-        onClick={onClick}
-      >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex min-h-5 items-center gap-1.5">
             <h3 className="text-sm font-medium text-foreground">{title}</h3>
