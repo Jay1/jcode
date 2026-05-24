@@ -384,6 +384,9 @@ export const TraitsPicker = memo(function TraitsPicker({
     },
     [onOpenChange, open],
   );
+  const handleSelectionComplete = useCallback(() => {
+    setMenuOpen(false);
+  }, [setMenuOpen]);
   const {
     caps,
     effort,
@@ -545,7 +548,7 @@ export const TraitsPicker = memo(function TraitsPicker({
           onPromptChange={onPromptChange}
           includeFastMode={includeFastMode}
           modelOptions={modelOptions}
-          onSelectionComplete={() => setMenuOpen(false)}
+          onSelectionComplete={handleSelectionComplete}
         />
       </MenuPopup>
     </Menu>

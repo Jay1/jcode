@@ -71,6 +71,7 @@ import {
 } from "./composer-nodes";
 
 const COMPOSER_EDITOR_HMR_KEY = `composer-editor-${Math.random().toString(36).slice(2)}`;
+const EMPTY_MENTION_REFERENCES: ReadonlyArray<ProviderMentionReference> = [];
 
 const ComposerTerminalContextActionsContext = createContext<{
   onRemoveTerminalContext: (contextId: string) => void;
@@ -731,7 +732,7 @@ function ComposerPromptEditorInner({
   value,
   cursor,
   terminalContexts,
-  mentionReferences = [],
+  mentionReferences = EMPTY_MENTION_REFERENCES,
   disabled,
   placeholder,
   className,
