@@ -476,9 +476,9 @@ function ChatRouteGlobalShortcuts() {
 }
 
 const SIDEBAR_GAP_CLASS = {
-  left: "overflow-hidden after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-[color:var(--color-border-light)]",
+  left: "overflow-hidden after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-[color:var(--color-border-light)] after:opacity-80",
   right:
-    "overflow-hidden after:absolute after:inset-y-0 after:left-0 after:w-px after:bg-[color:var(--color-border-light)]",
+    "overflow-hidden after:absolute after:inset-y-0 after:left-0 after:w-px after:bg-[color:var(--color-border-light)] after:opacity-80",
 } as const;
 
 const SIDEBAR_INNER_CLASS = {

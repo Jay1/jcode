@@ -3,7 +3,7 @@ import { describe, it, assert } from "@effect/vitest";
 import { DEFAULT_SERVER_SETTINGS } from "@jcode/contracts";
 import { Effect, FileSystem, Layer, Path, Sink, Stream } from "effect";
 import * as PlatformError from "effect/PlatformError";
-import { ChildProcessSpawner } from "effect/unstable/process";
+import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 import {
   checkClaudeProviderStatus,
@@ -19,8 +19,12 @@ import {
   makeCheckOpenCodeProviderStatus,
   parseAuthStatusFromOutput,
   parseClaudeAuthStatusFromOutput,
+  ProviderHealthLive,
   readCodexConfigModelProvider,
 } from "./ProviderHealth";
+import { ServerConfig } from "../../config";
+import { ServerSettingsService } from "../../serverSettings";
+import { ProviderHealth } from "../Services/ProviderHealth";
 
 // ── Test helpers ────────────────────────────────────────────────────
 
@@ -45,6 +49,7 @@ function mockSpawnerLayer(
   handler: (
     args: ReadonlyArray<string>,
     command: string,
+    options: ChildProcess.CommandOptions,
   ) => {
     stdout: string;
     stderr: string;
@@ -54,9 +59,33 @@ function mockSpawnerLayer(
   return Layer.succeed(
     ChildProcessSpawner.ChildProcessSpawner,
     ChildProcessSpawner.make((command) => {
-      const cmd = command as unknown as { command: string; args: ReadonlyArray<string> };
-      return Effect.succeed(mockHandle(handler(cmd.args, cmd.command)));
+      const cmd = command as unknown as {
+        command: string;
+        args: ReadonlyArray<string>;
+        options: ChildProcess.CommandOptions;
+      };
+      return Effect.succeed(mockHandle(handler(cmd.args, cmd.command, cmd.options)));
     }),
+  );
+}
+
+function withProcessPlatform<A, E, R>(
+  platform: NodeJS.Platform,
+  effect: Effect.Effect<A, E, R>,
+): Effect.Effect<A, E, R> {
+  return Effect.acquireUseRelease(
+    Effect.sync(() => {
+      const descriptor = Object.getOwnPropertyDescriptor(process, "platform");
+      Object.defineProperty(process, "platform", { value: platform });
+      return descriptor;
+    }),
+    () => effect,
+    (descriptor) =>
+      Effect.sync(() => {
+        if (descriptor) {
+          Object.defineProperty(process, "platform", descriptor);
+        }
+      }),
   );
 }
 
@@ -856,6 +885,47 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
         ),
       ),
     );
+  });
+
+  // ── provider update command tests ──────────────────────────────────
+
+  describe("updateProvider", () => {
+    it.effect("runs provider update commands through a shell on Windows", () => {
+      const calls: Array<{
+        command: string;
+        args: ReadonlyArray<string>;
+        shell: ChildProcess.CommandOptions["shell"];
+      }> = [];
+
+      return withProcessPlatform(
+        "win32",
+        Effect.gen(function* () {
+          const providerHealth = yield* ProviderHealth;
+          const result = yield* providerHealth.updateProvider({ provider: "cursor" });
+
+          assert.strictEqual(result.providers.length, 0);
+          assert.deepStrictEqual(calls, [
+            {
+              command: "agent",
+              args: ["update"],
+              shell: true,
+            },
+          ]);
+        }).pipe(
+          Effect.provide(ProviderHealthLive),
+          Effect.provide(ServerSettingsService.layerTest()),
+          Effect.provide(
+            ServerConfig.layerTest(process.cwd(), { prefix: "jcode-provider-health-" }),
+          ),
+          Effect.provide(
+            mockSpawnerLayer((args, command, options) => {
+              calls.push({ command, args, shell: options.shell });
+              return { stdout: "", stderr: "update failed\n", code: 1 };
+            }),
+          ),
+        ),
+      );
+    });
   });
 
   // ── parseClaudeAuthStatusFromOutput pure tests ────────────────────

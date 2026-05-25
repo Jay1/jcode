@@ -48,6 +48,18 @@ const TOAST_ICONS = {
   warning: TriangleAlertIcon,
 } as const;
 
+function resolveToastSurfaceClass(type: ToastObject<ThreadToastData>["type"]): string {
+  if (type === "error") {
+    return "border-[color:var(--app-status-error-border)] bg-[var(--app-status-error-bg)]";
+  }
+
+  if (type === "warning") {
+    return "border-[color:var(--app-status-warning-border)] bg-[var(--app-status-warning-bg)]";
+  }
+
+  return "border-[color:var(--color-border-light)] bg-[var(--app-surface-card)]";
+}
+
 type ToastPosition =
   | "top-left"
   | "top-center"
@@ -288,7 +300,8 @@ function Toasts({ position = "top-right" }: { position: ToastPosition }) {
           return (
             <Toast.Root
               className={cn(
-                "absolute z-[calc(9999-var(--toast-index))] h-(--toast-calc-height) w-full select-none rounded-lg border bg-popover not-dark:bg-clip-padding text-popover-foreground shadow-lg/5 [transition:transform_.5s_cubic-bezier(.22,1,.36,1),opacity_.5s,height_.15s] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+                "absolute z-[calc(9999-var(--toast-index))] h-(--toast-calc-height) w-full select-none rounded-lg border not-dark:bg-clip-padding text-popover-foreground shadow-lg/5 [transition:transform_.5s_cubic-bezier(.22,1,.36,1),opacity_.5s,height_.15s] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+                resolveToastSurfaceClass(toast.type),
                 // Base positioning using data-position
                 "data-[position*=right]:right-0 data-[position*=right]:left-auto",
                 "data-[position*=left]:right-auto data-[position*=left]:left-0",
@@ -432,7 +445,8 @@ function AnchoredToasts() {
               >
                 <Toast.Root
                   className={cn(
-                    "relative text-balance border bg-popover not-dark:bg-clip-padding text-popover-foreground text-xs transition-[scale,opacity] before:pointer-events-none before:absolute before:inset-0 before:shadow-[0_1px_--theme(--color-black/4%)] data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+                    "relative text-balance border not-dark:bg-clip-padding text-popover-foreground text-xs transition-[scale,opacity] before:pointer-events-none before:absolute before:inset-0 before:shadow-[0_1px_--theme(--color-black/4%)] data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+                    resolveToastSurfaceClass(toast.type),
                     tooltipStyle
                       ? "rounded-md shadow-md/5 before:rounded-[calc(var(--radius-md)-1px)]"
                       : "rounded-lg shadow-lg/5 before:rounded-[calc(var(--radius-lg)-1px)]",

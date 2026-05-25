@@ -82,6 +82,26 @@ const IGNORED_TERMINAL_TITLE_COMMANDS = new Set([
   "unset",
 ]);
 
+const ESC = "\\x1b";
+const BEL = "\\x07";
+const C1_STRING_TERMINATOR = "\\x9c";
+const NULL = "\\x00";
+const UNIT_SEPARATOR = "\\x1f";
+const DELETE = "\\x7f";
+const C1_CONTROL_END = "\\x9f";
+
+const ANSI_CSI_SEQUENCE_PATTERN = new RegExp(`${ESC}\\[[0-?]*[ -/]*[@-~]`, "g");
+const ANSI_OSC_SEQUENCE_PATTERN = new RegExp(`${ESC}\\][^${BEL}${ESC}]*(?:${BEL}|${ESC}\\\\)`, "g");
+const ANSI_CONTROL_STRING_PATTERN = new RegExp(
+  `${ESC}[P^_].*?(?:${ESC}\\\\|${BEL}|${C1_STRING_TERMINATOR})`,
+  "g",
+);
+const ANSI_SINGLE_ESCAPE_SEQUENCE_PATTERN = new RegExp(`${ESC}[@-_]`, "g");
+const CONTROL_CHARACTER_PATTERN = new RegExp(
+  `[${NULL}-${UNIT_SEPARATOR}${DELETE}-${C1_CONTROL_END}]`,
+  "g",
+);
+
 function truncateTerminalTitle(title: string): string {
   return title.length <= MAX_TERMINAL_TITLE_LENGTH
     ? title
@@ -90,11 +110,11 @@ function truncateTerminalTitle(title: string): string {
 
 function normalizeTextForIdentityDetection(value: string): string {
   return value
-    .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, " ")
-    .replace(/\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)/g, " ")
-    .replace(/\u001b[P^_].*?(?:\u001b\\|\u0007|\u009c)/g, " ")
-    .replace(/\u001b[@-_]/g, " ")
-    .replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
+    .replace(ANSI_CSI_SEQUENCE_PATTERN, " ")
+    .replace(ANSI_OSC_SEQUENCE_PATTERN, " ")
+    .replace(ANSI_CONTROL_STRING_PATTERN, " ")
+    .replace(ANSI_SINGLE_ESCAPE_SEQUENCE_PATTERN, " ")
+    .replace(CONTROL_CHARACTER_PATTERN, " ")
     .replace(/\s+/g, " ")
     .trim();
 }

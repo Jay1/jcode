@@ -226,9 +226,29 @@
   );
   --terminal-font-family: "JetBrainsMono NFM", "JetBrainsMono NF", "JetBrains Mono", monospace;
   --app-shell-background: transparent;
+  --app-surface-canvas: var(--background);
+  --app-surface-sidebar: var(--card);
+  --app-surface-topbar: var(--background);
+  --app-surface-panel: var(--card);
+  --app-surface-card: var(--card);
+  --app-surface-card-header: var(--muted);
+  --app-surface-composer: var(--card);
+  --app-state-hover: var(--accent);
+  --app-state-selected: var(--sidebar-accent-active);
+  --app-state-selected-border: var(--primary);
+  --app-state-focus: var(--ring);
+  --app-status-error-bg: var(--destructive);
+  --app-status-error-border: var(--destructive);
+  --app-status-warning-bg: var(--warning);
+  --app-status-warning-border: var(--warning);
+  --app-diff-card-bg: var(--card);
+  --app-diff-card-header-bg: var(--muted);
+  --app-accent-soft: var(--accent);
+  --app-accent-muted: var(--accent);
+  --app-accent-strong: var(--primary);
   --app-sidebar-backdrop-filter: none;
   --app-sidebar-shadow: none;
-  --app-sidebar-surface: var(--card);
+  --app-sidebar-surface: var(--app-surface-sidebar, var(--card));
   --background: #fcfcfc;
   --foreground: var(--color-neutral-800);
   --card: var(--color-white);
@@ -868,15 +888,22 @@ diffs-container {
    Dark mode keeps the user-bubble surface treatment we aligned elsewhere. The same
    tone is reused for popover/menu/chip surfaces so they line up with the composer. */
 :root {
-  --composer-surface: color-mix(in srgb, var(--color-background-surface-under) 97%, white 3%);
+  --composer-surface: var(
+    --app-surface-composer,
+    color-mix(in srgb, var(--color-background-surface-under) 97%, white 3%)
+  );
 }
 
 .dark {
-  --composer-surface: color-mix(in srgb, var(--background) 96%, var(--color-white));
+  --composer-surface: var(
+    --app-surface-composer,
+    color-mix(in srgb, var(--background) 96%, var(--color-white))
+  );
 }
 
 .chat-composer-surface {
   background: var(--composer-surface);
+  border-color: var(--color-border-light);
 }
 
 @keyframes ultrathink-rainbow {

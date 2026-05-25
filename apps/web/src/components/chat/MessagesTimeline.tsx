@@ -838,8 +838,8 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                     correspondingUserMessageId != null &&
                     revertTurnCountByUserMessageId.has(correspondingUserMessageId);
                   return (
-                    <div className="mt-5 overflow-hidden rounded-xl border border-[color:var(--color-border-light)] bg-[var(--composer-surface)]">
-                      <div className="flex items-center justify-between gap-2 border-b border-[color:var(--color-border-light)] px-3 py-2">
+                    <div className="mt-5 overflow-hidden rounded-xl border border-[color:var(--color-border-light)] bg-[var(--app-diff-card-bg)]">
+                      <div className="flex items-center justify-between gap-2 border-b border-[color:var(--color-border-light)] bg-[var(--app-diff-card-header-bg)] px-3 py-2">
                         <span
                           className="truncate font-normal text-foreground/92"
                           style={{ fontSize: chatTypographyStyle.fontSize }}
@@ -851,7 +851,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                         <div className="flex items-center gap-4">
                           <button
                             type="button"
-                            className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground/70 transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground/80"
+                            className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground/70 transition-colors hover:bg-[var(--app-state-hover)] hover:text-foreground/80"
                             aria-expanded={fileChangesExpanded}
                             aria-label={
                               fileChangesExpanded
@@ -883,12 +883,12 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                         </div>
                       </div>
                       {fileChangesExpanded && (
-                        <div className="bg-[var(--composer-surface)]">
+                        <div className="bg-[var(--app-diff-card-bg)]">
                           {checkpointFiles.map((file) => (
                             <button
                               key={file.path}
                               type="button"
-                              className="group flex w-full items-center gap-2 border-t border-[color:var(--color-border-light)] px-3 py-1.5 text-left first:border-t-0 transition-colors hover:bg-[var(--color-background-button-secondary-hover)]"
+                              className="group flex w-full items-center gap-2 border-t border-[color:var(--color-border-light)] px-3 py-1.5 text-left first:border-t-0 transition-colors hover:bg-[var(--app-state-hover)]"
                               onClick={() => onOpenTurnDiff(turnSummary.turnId, file.path)}
                             >
                               <FileEntryIcon
