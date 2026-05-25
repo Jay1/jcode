@@ -26,14 +26,10 @@ the repo should only carry generic examples.
 
 ## Auth Mode
 
-Keep JCode app auth enabled for local and tailnet deployments. The browser app
-uses pairing credentials to bootstrap owner/client sessions, and the backend
-must answer `/api/auth/bootstrap`, `/api/auth/bootstrap/bearer`, and
-`/api/auth/session` preflight/requests with CORS headers so a local app origin
-can pair against a tailnet backend.
+For Jay's current tailnet-only deployment, app auth may be disabled at the
+service layer because network access is already restricted.
 
-Owner startup pairing URLs are short lived. Do not commit generated pairing
-links, session cookies, or tailnet hostnames as defaults.
+For a public/default setup, app auth should remain enabled.
 
 ## Promotion Checklist
 
@@ -41,7 +37,6 @@ Before switching the live service from DPCode to JCode:
 
 1. Build JCode from `/home/jay/code/jcode`.
 2. Start it locally with a separate state directory.
-3. Verify `/health` and authenticated `/api/auth/session` after pairing.
-4. Verify project list, thread open, agent start, and restart recovery.
-5. Tag the known-good state.
-6. Switch the service path and keep the previous service path as rollback.
+3. Verify project list, thread open, agent start, and restart recovery.
+4. Tag the known-good state.
+5. Switch the service path and keep the previous DPCode service path as rollback.
