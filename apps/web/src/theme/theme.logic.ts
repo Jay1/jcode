@@ -129,6 +129,21 @@ type RgbColor = {
   blue: number;
 };
 
+type CatppuccinPalette = {
+  accent: string;
+  base: string;
+  blue: string;
+  crust: string;
+  green: string;
+  mantle: string;
+  mauve: string;
+  peach: string;
+  red: string;
+  surface0: string;
+  surface1: string;
+  yellow: string;
+};
+
 const BLACK: RgbColor = { blue: 0, green: 0, red: 0 };
 const WHITE: RgbColor = { blue: 255, green: 255, red: 255 };
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
@@ -142,6 +157,36 @@ const SURFACE_UNDER_BASE_ALPHA: Record<ThemeVariant, number> = {
 const SURFACE_UNDER_CONTRAST_STEP: Record<ThemeVariant, number> = {
   dark: 0.0015,
   light: 0.0012,
+};
+const CATPPUCCIN_PALETTE: Record<ThemeVariant, CatppuccinPalette> = {
+  dark: {
+    accent: "#cba6f7",
+    base: "#1e1e2e",
+    blue: "#89b4fa",
+    crust: "#11111b",
+    green: "#a6e3a1",
+    mantle: "#181825",
+    mauve: "#cba6f7",
+    peach: "#fab387",
+    red: "#f38ba8",
+    surface0: "#313244",
+    surface1: "#45475a",
+    yellow: "#f9e2af",
+  },
+  light: {
+    accent: "#8839ef",
+    base: "#eff1f5",
+    blue: "#1e66f5",
+    crust: "#dce0e8",
+    green: "#40a02b",
+    mantle: "#e6e9ef",
+    mauve: "#8839ef",
+    peach: "#fe640b",
+    red: "#d20f39",
+    surface0: "#ccd0da",
+    surface1: "#bcc0cc",
+    yellow: "#df8e1d",
+  },
 };
 const PANEL_BASE_ALPHA: Record<ThemeVariant, number> = {
   dark: 0.03,
@@ -671,6 +716,7 @@ export function buildThemeCssVariables(
     variant,
     resolvedTokens.computed.panel,
   );
+  const appDepthVariables = buildAppDepthVariables(pack, variant, resolvedTokens);
   const appVariables: Record<string, string> = {
     "--accent": readCodexVariable("--color-background-accent"),
     "--accent-foreground": readCodexVariable("--color-text-foreground"),
@@ -735,8 +781,80 @@ export function buildThemeCssVariables(
     variables: {
       ...codexVariables,
       ...resolvedTokens.aliases,
+      ...appDepthVariables,
       ...appVariables,
     },
+  };
+}
+
+function buildAppDepthVariables(
+  pack: ThemePack,
+  variant: ThemeVariant,
+  resolvedTokens: ResolvedThemeTokens,
+): Record<string, string> {
+  if (pack.codeThemeId === "catppuccin") {
+    const palette = CATPPUCCIN_PALETTE[variant];
+    const accent = parseHexColor(pack.theme.accent);
+    const diffRemoved = parseHexColor(pack.theme.semanticColors.diffRemoved);
+    return {
+      "--app-accent-muted": formatRgba(accent, variant === "dark" ? 0.28 : 0.2),
+      "--app-accent-soft": formatRgba(accent, variant === "dark" ? 0.14 : 0.1),
+      "--app-accent-strong": pack.theme.accent,
+      "--app-diff-card-bg": palette.mantle,
+      "--app-diff-card-header-bg": palette.surface0,
+      "--app-state-focus": palette.blue,
+      "--app-state-hover": palette.surface0,
+      "--app-state-selected": formatRgba(accent, variant === "dark" ? 0.14 : 0.12),
+      "--app-state-selected-border": pack.theme.accent,
+      "--app-status-error-bg": formatRgba(diffRemoved, variant === "dark" ? 0.14 : 0.1),
+      "--app-status-error-border": formatRgba(diffRemoved, variant === "dark" ? 0.42 : 0.32),
+      "--app-status-warning-bg": formatRgba(
+        parseHexColor(palette.peach),
+        variant === "dark" ? 0.13 : 0.1,
+      ),
+      "--app-status-warning-border": formatRgba(
+        parseHexColor(palette.peach),
+        variant === "dark" ? 0.38 : 0.28,
+      ),
+      "--app-surface-canvas": variant === "dark" ? palette.crust : palette.base,
+      "--app-surface-card": palette.base,
+      "--app-surface-card-header": palette.surface0,
+      "--app-surface-composer": variant === "dark" ? palette.base : "#ffffff",
+      "--app-surface-panel": variant === "dark" ? palette.mantle : "#ffffff",
+      "--app-surface-sidebar": variant === "dark" ? palette.mantle : palette.mantle,
+      "--app-surface-topbar": variant === "dark" ? palette.mantle : palette.mantle,
+    };
+  }
+
+  const accent = parseHexColor(pack.theme.accent);
+  const diffRemoved = parseHexColor(pack.theme.semanticColors.diffRemoved);
+  const warning = variant === "dark" ? parseHexColor("#f5b44a") : parseHexColor("#d97706");
+  const cardHeader =
+    variant === "dark"
+      ? mixHex(resolvedTokens.computed.panel, pack.theme.ink, 0.08)
+      : mixHex(resolvedTokens.computed.panel, pack.theme.ink, 0.06);
+
+  return {
+    "--app-accent-muted": formatRgba(accent, variant === "dark" ? 0.28 : 0.18),
+    "--app-accent-soft": formatRgba(accent, variant === "dark" ? 0.12 : 0.08),
+    "--app-accent-strong": pack.theme.accent,
+    "--app-diff-card-bg": resolvedTokens.computed.surfaceUnder,
+    "--app-diff-card-header-bg": cardHeader,
+    "--app-state-focus": resolvedTokens.derived.borderFocus,
+    "--app-state-hover": resolvedTokens.derived.buttonSecondaryBackgroundHover,
+    "--app-state-selected": formatRgba(accent, variant === "dark" ? 0.12 : 0.1),
+    "--app-state-selected-border": pack.theme.accent,
+    "--app-status-error-bg": formatRgba(diffRemoved, variant === "dark" ? 0.12 : 0.08),
+    "--app-status-error-border": formatRgba(diffRemoved, variant === "dark" ? 0.36 : 0.28),
+    "--app-status-warning-bg": formatRgba(warning, variant === "dark" ? 0.12 : 0.08),
+    "--app-status-warning-border": formatRgba(warning, variant === "dark" ? 0.34 : 0.24),
+    "--app-surface-canvas": resolvedTokens.computed.surfaceUnder,
+    "--app-surface-card": resolvedTokens.computed.panel,
+    "--app-surface-card-header": cardHeader,
+    "--app-surface-composer": resolvedTokens.derived.elevatedPrimaryOpaque,
+    "--app-surface-panel": resolvedTokens.computed.panel,
+    "--app-surface-sidebar": resolvedTokens.computed.surfaceUnder,
+    "--app-surface-topbar": resolvedTokens.computed.surfaceUnder,
   };
 }
 

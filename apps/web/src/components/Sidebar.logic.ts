@@ -240,32 +240,18 @@ export function resolveThreadRowClassName(input: {
 }): string {
   // Reserve room for the absolute fork/worktree/timestamp cluster so long titles truncate cleanly.
   const baseClassName =
-    "h-8 w-full translate-x-0 cursor-pointer justify-start rounded-md pr-[4.25rem] pl-8 text-left text-[13px] select-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring";
+    "h-8 w-full translate-x-0 cursor-pointer justify-start rounded-md border-l-[3px] border-l-transparent pr-[4.25rem] pl-8 text-left text-[13px] select-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--app-state-focus)]";
 
-  if (input.isSelected && input.isActive) {
+  if (input.isSelected || input.isActive) {
     return cn(
       baseClassName,
-      "bg-[var(--color-background-button-secondary)] text-[var(--color-text-foreground)] hover:bg-[var(--color-background-button-secondary)] hover:text-[var(--color-text-foreground)]",
-    );
-  }
-
-  if (input.isSelected) {
-    return cn(
-      baseClassName,
-      "bg-[var(--color-background-elevated-secondary)] text-[var(--color-text-foreground)] hover:bg-[var(--color-background-elevated-secondary)] hover:text-[var(--color-text-foreground)]",
-    );
-  }
-
-  if (input.isActive) {
-    return cn(
-      baseClassName,
-      "bg-[var(--color-background-button-secondary)] text-[var(--color-text-foreground)] hover:bg-[var(--color-background-button-secondary)] hover:text-[var(--color-text-foreground)]",
+      "border-l-[color:var(--app-state-selected-border)] bg-[var(--app-state-selected)] text-[var(--color-text-foreground)] hover:bg-[var(--app-state-selected)] hover:text-[var(--color-text-foreground)]",
     );
   }
 
   return cn(
     baseClassName,
-    "text-[var(--color-text-foreground-secondary)] hover:bg-[var(--color-background-button-secondary)] hover:text-[var(--color-text-foreground)]",
+    "text-[var(--color-text-foreground-secondary)] hover:bg-[var(--app-state-hover)] hover:text-[var(--color-text-foreground)]",
   );
 }
 

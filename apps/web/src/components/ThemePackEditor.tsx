@@ -28,6 +28,7 @@ import { cn } from "../lib/utils";
 import {
   CODE_THEME_OPTIONS,
   DEFAULT_THEME_STATE,
+  buildThemeCssVariables,
   getAvailableCodeThemes,
   getCodeThemeSeed,
   resolveThemePack,
@@ -82,6 +83,16 @@ export function ThemePackEditor({
     : mode === "system"
       ? `Used when your system switches to ${variant}.`
       : `Inactive while the app is locked to ${mode}.`;
+  const depthPreview = useMemo(() => {
+    const variables = buildThemeCssVariables(pack, variant).variables;
+    return {
+      canvas: variables["--app-surface-canvas"] ?? theme.surface,
+      card: variables["--app-surface-card"] ?? theme.surface,
+      header: variables["--app-surface-card-header"] ?? theme.surface,
+      selected: variables["--app-state-selected"] ?? theme.accent,
+      sidebar: variables["--app-surface-sidebar"] ?? theme.surface,
+    };
+  }, [pack, theme.accent, theme.surface, variant]);
 
   const handleCopy = async () => {
     try {
@@ -162,6 +173,46 @@ export function ThemePackEditor({
       </div>
       <div className="px-4 pb-3 text-[11px] text-[var(--color-text-foreground-secondary)] sm:px-4">
         {contextLabel}
+      </div>
+
+      <div className="px-4 pb-4">
+        <div
+          className="grid grid-cols-[4.5rem_1fr] gap-2 rounded-xl border border-[color:var(--color-border-light)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+          style={{ backgroundColor: depthPreview.canvas }}
+          aria-label={`${titleLabel} surface depth preview`}
+        >
+          <div className="rounded-lg p-1.5" style={{ backgroundColor: depthPreview.sidebar }}>
+            <div
+              className="mb-1 h-2 w-8 rounded-full opacity-70"
+              style={{ backgroundColor: theme.ink }}
+            />
+            <div className="h-4 rounded-md" style={{ backgroundColor: depthPreview.selected }} />
+            <div
+              className="mt-1 h-4 rounded-md opacity-70"
+              style={{ backgroundColor: depthPreview.header }}
+            />
+          </div>
+          <div
+            className="overflow-hidden rounded-lg"
+            style={{ backgroundColor: depthPreview.card }}
+          >
+            <div
+              className="h-5 border-b"
+              style={{
+                backgroundColor: depthPreview.header,
+                borderColor: mixColor(depthPreview.header, theme.ink, 0.12),
+              }}
+            />
+            <div className="space-y-1.5 p-2">
+              <div className="h-2.5 w-2/3 rounded-full" style={{ backgroundColor: theme.accent }} />
+              <div className="h-2 rounded-full opacity-70" style={{ backgroundColor: theme.ink }} />
+              <div
+                className="h-2 w-4/5 rounded-full opacity-45"
+                style={{ backgroundColor: theme.ink }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="border-t border-border/40">

@@ -659,7 +659,7 @@ function SidebarInset({ className, children, ...props }: React.ComponentProps<"m
       {/* Inner surface lives inside the content-box so rounded corners
           and bg are visible even when padding offsets the sidebar area. */}
       <div
-        className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-inherit"
+        className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--app-surface-canvas)] text-inherit"
         data-slot="sidebar-inset-surface"
       >
         {children}

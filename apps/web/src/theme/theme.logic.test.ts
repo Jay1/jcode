@@ -333,4 +333,84 @@ describe("buildThemeCssVariables", () => {
     expect(tokens.derived.textButtonPrimary).toBe(DEFAULT_THEME_STATE.chromeThemes.light.surface);
     expect(tokens.derived.textButtonPrimary).not.toBe(tokens.derived.buttonPrimaryBackground);
   });
+
+  it("emits Catppuccin Mocha app-depth tokens from official palette layers", () => {
+    const cssVariables = buildThemeCssVariables(
+      {
+        codeThemeId: "catppuccin",
+        theme: getCodeThemeSeed("catppuccin", "dark"),
+      },
+      "dark",
+    );
+
+    expect(cssVariables.variables["--app-surface-canvas"]).toBe("#11111b");
+    expect(cssVariables.variables["--app-surface-sidebar"]).toBe("#181825");
+    expect(cssVariables.variables["--app-surface-topbar"]).toBe("#181825");
+    expect(cssVariables.variables["--app-surface-card"]).toBe("#1e1e2e");
+    expect(cssVariables.variables["--app-surface-card-header"]).toBe("#313244");
+    expect(cssVariables.variables["--app-state-hover"]).toBe("#313244");
+    expect(cssVariables.variables["--app-state-selected"]).toBe("rgba(203, 166, 247, 0.14)");
+    expect(cssVariables.variables["--app-state-selected-border"]).toBe("#cba6f7");
+    expect(cssVariables.variables["--app-status-error-bg"]).toBe("rgba(243, 139, 168, 0.14)");
+    expect(cssVariables.variables["--app-diff-card-bg"]).toBe("#181825");
+  });
+
+  it("emits non-empty app-depth tokens for non-Catppuccin themes", () => {
+    const cssVariables = buildThemeCssVariables(
+      {
+        codeThemeId: "codex",
+        theme: DEFAULT_THEME_STATE.chromeThemes.dark,
+      },
+      "dark",
+    );
+
+    const depthTokenNames = [
+      "--app-surface-canvas",
+      "--app-surface-sidebar",
+      "--app-surface-topbar",
+      "--app-surface-panel",
+      "--app-surface-card",
+      "--app-surface-card-header",
+      "--app-surface-composer",
+      "--app-state-hover",
+      "--app-state-selected",
+      "--app-state-selected-border",
+      "--app-state-focus",
+      "--app-status-error-bg",
+      "--app-status-error-border",
+      "--app-status-warning-bg",
+      "--app-status-warning-border",
+      "--app-diff-card-bg",
+      "--app-diff-card-header-bg",
+      "--app-accent-soft",
+      "--app-accent-muted",
+      "--app-accent-strong",
+    ];
+
+    for (const tokenName of depthTokenNames) {
+      expect(cssVariables.variables[tokenName], tokenName).toEqual(expect.any(String));
+      expect(cssVariables.variables[tokenName]?.length, tokenName).toBeGreaterThan(0);
+    }
+  });
+
+  it("lets Catppuccin theme edits drive accent and selected-state depth tokens", () => {
+    const pack = {
+      codeThemeId: "catppuccin",
+      theme: getCodeThemeSeed("catppuccin", "dark"),
+    };
+    const cssVariables = buildThemeCssVariables(
+      {
+        ...pack,
+        theme: {
+          ...pack.theme,
+          accent: "#ff00aa",
+        },
+      },
+      "dark",
+    );
+
+    expect(cssVariables.variables["--app-accent-strong"]).toBe("#ff00aa");
+    expect(cssVariables.variables["--app-state-selected-border"]).toBe("#ff00aa");
+    expect(cssVariables.variables["--app-state-selected"]).toBe("rgba(255, 0, 170, 0.14)");
+  });
 });
