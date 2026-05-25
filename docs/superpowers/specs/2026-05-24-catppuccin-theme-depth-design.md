@@ -1,14 +1,14 @@
 # Catppuccin Theme Depth Design
 
-| Field           | Value                                                                                                       |
-| --------------- | ----------------------------------------------------------------------------------------------------------- |
-| Status          | Approved                                                                                                    |
-| Type            | Design specification                                                                                        |
-| Owner           | Engineering                                                                                                 |
-| Audience        | Maintainers and automation agents                                                                           |
-| Canonical path  | `docs/superpowers/specs/2026-05-24-catppuccin-theme-depth-design.md`                                        |
-| Last reviewed   | 2026-05-24                                                                                                  |
-| Review cadence  | Event-driven; review when adding richer theme levers or porting depth to another bundled community theme    |
+| Field           | Value                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------ |
+| Status          | Approved                                                                                                     |
+| Type            | Design specification                                                                                         |
+| Owner           | Engineering                                                                                                  |
+| Audience        | Maintainers and automation agents                                                                            |
+| Canonical path  | `docs/superpowers/specs/2026-05-24-catppuccin-theme-depth-design.md`                                         |
+| Last reviewed   | 2026-05-24                                                                                                   |
+| Review cadence  | Event-driven; review when adding richer theme levers or porting depth to another bundled community theme     |
 | Source of truth | Catppuccin palette/style guide, JCode theme logic, screenshot review, and existing web component conventions |
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:writing-plans before implementation. For implementation, use frontend-design, test-driven-development, webapp-testing, verification-before-completion, and aikido-security.
