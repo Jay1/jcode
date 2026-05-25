@@ -60,6 +60,21 @@ function parseCookies(cookieHeader: string | undefined): Record<string, string |
   return cookies;
 }
 
+export function authCorsHeadersForRequest(
+  headers: Record<string, string | ReadonlyArray<string> | undefined>,
+): Record<string, string> {
+  // Browser pairing can originate from a local app URL and exchange against a tailnet backend.
+  const origin = headers.origin;
+  const allowOrigin = Array.isArray(origin) ? origin[0] : origin;
+  return {
+    "Access-Control-Allow-Origin": allowOrigin || "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, content-type",
+    "Access-Control-Max-Age": "86400",
+    Vary: "Origin",
+  };
+}
+
 export function makeNodeAuthRequest(input: {
   readonly req: http.IncomingMessage;
   readonly url: URL;
@@ -160,8 +175,11 @@ export function respondToAuthError(respond: Respond, error: AuthError) {
   respondJson(respond, error.status ?? 500, { error: error.message });
 }
 
-export function authErrorResponse(error: AuthError) {
-  return HttpServerResponse.jsonUnsafe({ error: error.message }, { status: error.status ?? 500 });
+export function authErrorResponse(error: AuthError, headers: Record<string, string> = {}) {
+  return HttpServerResponse.jsonUnsafe(
+    { error: error.message },
+    { status: error.status ?? 500, headers },
+  );
 }
 
 function deriveRequestClientMetadata(req: http.IncomingMessage, label?: string) {
@@ -193,11 +211,17 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
   const method = input.req.method ?? "GET";
   const authRequest = makeNodeAuthRequest({ req: input.req, url: input.url });
   const headers = authRequest.headers;
+  const corsHeaders = authCorsHeadersForRequest(headers);
+
+  if (method === "OPTIONS") {
+    input.respond(204, corsHeaders);
+    return true;
+  }
 
   const route = Effect.gen(function* () {
     if (method === "GET" && input.url.pathname === "/api/auth/session") {
       const session = yield* input.serverAuth.getSessionState(authRequest);
-      respondJson(input.respond, 200, session);
+      respondJson(input.respond, 200, session, corsHeaders);
       return;
     }
 
@@ -221,6 +245,7 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
         deriveRequestClientMetadata(input.req),
       );
       respondJson(input.respond, 200, result.response, {
+        ...corsHeaders,
         "Set-Cookie": encodeCookie({
           name: input.sessionCredentials.cookieName,
           value: result.sessionToken,
@@ -249,14 +274,14 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
         payload.credential,
         deriveRequestClientMetadata(input.req),
       );
-      respondJson(input.respond, 200, result);
+      respondJson(input.respond, 200, result, corsHeaders);
       return;
     }
 
     if (method === "POST" && input.url.pathname === "/api/auth/ws-token") {
       const session = yield* input.serverAuth.authenticateHttpRequest(authRequest);
       const result = yield* input.serverAuth.issueWebSocketToken(session);
-      respondJson(input.respond, 200, result);
+      respondJson(input.respond, 200, result, corsHeaders);
       return;
     }
 
@@ -285,14 +310,14 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
           )
         : {};
       const result = yield* input.serverAuth.issuePairingCredential(payload);
-      respondJson(input.respond, 200, result);
+      respondJson(input.respond, 200, result, corsHeaders);
       return;
     }
 
     if (method === "GET" && input.url.pathname === "/api/auth/pairing-links") {
       yield* authenticateOwnerSession({ serverAuth: input.serverAuth, authRequest });
       const pairingLinks = yield* input.serverAuth.listPairingLinks();
-      respondJson(input.respond, 200, pairingLinks);
+      respondJson(input.respond, 200, pairingLinks, corsHeaders);
       return;
     }
 
@@ -313,7 +338,7 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
         ),
       );
       const revoked = yield* input.serverAuth.revokePairingLink(payload.id);
-      respondJson(input.respond, 200, { revoked });
+      respondJson(input.respond, 200, { revoked }, corsHeaders);
       return;
     }
 
@@ -323,7 +348,7 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
         authRequest,
       });
       const clients = yield* input.serverAuth.listClientSessions(session.sessionId);
-      respondJson(input.respond, 200, clients);
+      respondJson(input.respond, 200, clients, corsHeaders);
       return;
     }
 
@@ -350,7 +375,7 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
         session.sessionId,
         payload.sessionId,
       );
-      respondJson(input.respond, 200, { revoked });
+      respondJson(input.respond, 200, { revoked }, corsHeaders);
       return;
     }
 
@@ -360,14 +385,16 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
         authRequest,
       });
       const revokedCount = yield* input.serverAuth.revokeOtherClientSessions(session.sessionId);
-      respondJson(input.respond, 200, { revokedCount });
+      respondJson(input.respond, 200, { revokedCount }, corsHeaders);
       return;
     }
 
-    input.respond(404, { "Content-Type": "text/plain" }, "Not Found");
+    input.respond(404, { "Content-Type": "text/plain", ...corsHeaders }, "Not Found");
   }).pipe(
     Effect.catchTag("AuthError", (error) =>
-      Effect.sync(() => respondToAuthError(input.respond, error)),
+      Effect.sync(() =>
+        respondJson(input.respond, error.status ?? 500, { error: error.message }, corsHeaders),
+      ),
     ),
   );
 

@@ -321,6 +321,100 @@ describe("createHttpRequestHandler", () => {
     });
   });
 
+  it("answers auth bearer bootstrap preflight with CORS headers", async () => {
+    const config = await makeConfig({ devUrl: new URL("http://localhost:5173/") });
+    const handler = await makeHandler(config, {
+      serverAuth: makeFakeServerAuth(),
+      cookieName: "t3_session",
+    });
+
+    await withServer(handler, async (origin) => {
+      const response = await fetch(`${origin}/api/auth/bootstrap/bearer`, {
+        method: "OPTIONS",
+        headers: {
+          Origin: "http://localhost:5173",
+          "Access-Control-Request-Headers": "content-type",
+        },
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(204);
+      expect(response.headers.get("access-control-allow-origin")).toBe("http://localhost:5173");
+      expect(response.headers.get("access-control-allow-methods")).toContain("POST");
+      expect(response.headers.get("access-control-allow-headers")).toContain("content-type");
+    });
+  });
+
+  it("exchanges bearer bootstrap credentials and authenticates the returned session", async () => {
+    const config = await makeConfig({ devUrl: new URL("http://localhost:5173/") });
+    const sessionExpiresAt = Effect.runSync(DateTime.now);
+    const authDescriptor = {
+      policy: "loopback-browser" as const,
+      bootstrapMethods: ["one-time-token" as const],
+      sessionMethods: ["browser-session-cookie" as const, "bearer-session-token" as const],
+      sessionCookieName: "t3_session",
+    };
+    const handler = await makeHandler(config, {
+      serverAuth: makeFakeServerAuth({
+        getSessionState: (request) =>
+          Effect.succeed(
+            request.headers.authorization === "Bearer bearer-session-token"
+              ? {
+                  authenticated: true,
+                  auth: authDescriptor,
+                  role: "client",
+                  sessionMethod: "bearer-session-token",
+                  expiresAt: sessionExpiresAt,
+                }
+              : {
+                  authenticated: false,
+                  auth: authDescriptor,
+                },
+          ),
+      }),
+      cookieName: "t3_session",
+    });
+
+    await withServer(handler, async (origin) => {
+      const bootstrapResponse = await fetch(`${origin}/api/auth/bootstrap/bearer`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "http://localhost:5173",
+        },
+        body: JSON.stringify({ credential: "PAIRINGTOKEN" }),
+      });
+
+      expect(bootstrapResponse.status).toBe(200);
+      expect(bootstrapResponse.headers.get("access-control-allow-origin")).toBe(
+        "http://localhost:5173",
+      );
+      const bootstrapBody = (await bootstrapResponse.json()) as { sessionToken: string };
+      expect(bootstrapBody).toMatchObject({
+        authenticated: true,
+        sessionMethod: "bearer-session-token",
+        sessionToken: "bearer-session-token",
+      });
+
+      const sessionResponse = await fetch(`${origin}/api/auth/session`, {
+        headers: {
+          Authorization: `Bearer ${bootstrapBody.sessionToken}`,
+          Origin: "http://localhost:5173",
+        },
+        redirect: "manual",
+      });
+
+      expect(sessionResponse.status).toBe(200);
+      expect(sessionResponse.headers.get("access-control-allow-origin")).toBe(
+        "http://localhost:5173",
+      );
+      await expect(sessionResponse.json()).resolves.toMatchObject({
+        authenticated: true,
+        sessionMethod: "bearer-session-token",
+      });
+    });
+  });
+
   it("sets a session cookie on auth bootstrap", async () => {
     const config = await makeConfig();
     const handler = await makeHandler(config, {
