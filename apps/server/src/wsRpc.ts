@@ -691,6 +691,24 @@ export const makeWsRpcLayer = () =>
               ),
             "Failed to update keybinding",
           ),
+        [WS_METHODS.serverResetKeybinding]: (input) =>
+          rpcEffect(
+            keybindings
+              .resetKeybindingCommand(input.command)
+              .pipe(
+                Effect.map((keybindingsConfig) => ({ keybindings: keybindingsConfig, issues: [] })),
+              ),
+            "Failed to reset keybinding",
+          ),
+        [WS_METHODS.serverResetAllKeybindings]: () =>
+          rpcEffect(
+            keybindings
+              .resetAllKeybindings()
+              .pipe(
+                Effect.map((keybindingsConfig) => ({ keybindings: keybindingsConfig, issues: [] })),
+              ),
+            "Failed to reset keybindings",
+          ),
         [WS_METHODS.subscribeServerLifecycle]: () =>
           Stream.concat(
             Stream.fromEffect(

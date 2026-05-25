@@ -345,6 +345,52 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
     }).pipe(Effect.provide(makeKeybindingsLayer())),
   );
 
+  it.effect("resets one custom keybinding back to the default binding", () =>
+    Effect.gen(function* () {
+      const { keybindingsConfigPath } = yield* ServerConfig;
+      yield* writeKeybindingsConfig(keybindingsConfigPath, [
+        { key: "mod+shift+b", command: "sidebar.toggle" },
+        { key: "mod+shift+r", command: "script.run-tests.run" },
+      ]);
+
+      const resolved = yield* Effect.gen(function* () {
+        const keybindings = yield* Keybindings;
+        return yield* keybindings.resetKeybindingCommand("sidebar.toggle");
+      });
+
+      const persisted = yield* readKeybindingsConfig(keybindingsConfigPath);
+      assert.deepEqual(
+        persisted.map(({ key, command }) => ({ key, command })),
+        [{ key: "mod+shift+r", command: "script.run-tests.run" }],
+      );
+      assert.isTrue(
+        resolved.some((entry) => entry.command === "sidebar.toggle" && entry.shortcut.key === "b"),
+      );
+    }).pipe(Effect.provide(makeKeybindingsLayer())),
+  );
+
+  it.effect("resets all custom keybindings back to defaults", () =>
+    Effect.gen(function* () {
+      const { keybindingsConfigPath } = yield* ServerConfig;
+      yield* writeKeybindingsConfig(keybindingsConfigPath, [
+        { key: "mod+shift+b", command: "sidebar.toggle" },
+        { key: "mod+shift+r", command: "script.run-tests.run" },
+      ]);
+
+      const resolved = yield* Effect.gen(function* () {
+        const keybindings = yield* Keybindings;
+        return yield* keybindings.resetAllKeybindings();
+      });
+
+      const persisted = yield* readKeybindingsConfig(keybindingsConfigPath);
+      assert.deepEqual(persisted, []);
+      assert.isTrue(
+        resolved.some((entry) => entry.command === "sidebar.toggle" && entry.shortcut.key === "b"),
+      );
+      assert.isFalse(resolved.some((entry) => entry.command === "script.run-tests.run"));
+    }).pipe(Effect.provide(makeKeybindingsLayer())),
+  );
+
   it.effect("refuses to overwrite malformed keybindings config", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;

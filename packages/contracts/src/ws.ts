@@ -69,6 +69,7 @@ import {
   ServerGetProviderUsageSnapshotInput,
   ServerProviderStatusesUpdatedPayload,
   ServerSettingsUpdatedPayload,
+  ServerResetKeybindingInput,
   ServerVoiceTranscriptionInput,
 } from "./server";
 import {
@@ -142,6 +143,8 @@ export const WS_METHODS = {
   serverGetDiagnostics: "server.getDiagnostics",
   serverTranscribeVoice: "server.transcribeVoice",
   serverUpsertKeybinding: "server.upsertKeybinding",
+  serverResetKeybinding: "server.resetKeybinding",
+  serverResetAllKeybindings: "server.resetAllKeybindings",
   subscribeServerLifecycle: "server.subscribeLifecycle",
   subscribeServerConfig: "server.subscribeConfig",
   subscribeServerProviderStatuses: "server.subscribeProviderStatuses",
@@ -261,6 +264,8 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(WS_METHODS.serverGetDiagnostics, Schema.Struct({})),
   tagRequestBody(WS_METHODS.serverTranscribeVoice, ServerVoiceTranscriptionInput),
   tagRequestBody(WS_METHODS.serverUpsertKeybinding, KeybindingRule),
+  tagRequestBody(WS_METHODS.serverResetKeybinding, ServerResetKeybindingInput),
+  tagRequestBody(WS_METHODS.serverResetAllKeybindings, Schema.Struct({})),
   tagRequestBody(WS_METHODS.subscribeAuthAccess, Schema.Struct({})),
 
   // Provider discovery

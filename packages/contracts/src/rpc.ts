@@ -92,6 +92,8 @@ import {
   ServerProviderUpdateInput,
   ServerProviderUpdateResult,
   ServerRefreshProvidersResult,
+  ServerResetKeybindingInput,
+  ServerResetKeybindingsResult,
   ServerUpdateSettingsInput,
   ServerUpdateSettingsResult,
   ServerUpsertKeybindingResult,
@@ -480,6 +482,18 @@ export const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybi
   error: WsRpcError,
 });
 
+export const WsServerResetKeybindingRpc = Rpc.make(WS_METHODS.serverResetKeybinding, {
+  payload: ServerResetKeybindingInput,
+  success: ServerResetKeybindingsResult,
+  error: WsRpcError,
+});
+
+export const WsServerResetAllKeybindingsRpc = Rpc.make(WS_METHODS.serverResetAllKeybindings, {
+  payload: Schema.Struct({}),
+  success: ServerResetKeybindingsResult,
+  error: WsRpcError,
+});
+
 export const WsSubscribeServerLifecycleRpc = Rpc.make(WS_METHODS.subscribeServerLifecycle, {
   payload: Schema.Struct({}),
   success: ServerLifecycleStreamEvent,
@@ -632,6 +646,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerGetDiagnosticsRpc,
   WsServerTranscribeVoiceRpc,
   WsServerUpsertKeybindingRpc,
+  WsServerResetKeybindingRpc,
+  WsServerResetAllKeybindingsRpc,
   WsSubscribeServerLifecycleRpc,
   WsSubscribeServerConfigRpc,
   WsSubscribeServerProviderStatusesRpc,
