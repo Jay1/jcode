@@ -8,6 +8,42 @@ import type { WhatsNewEntry } from "./logic";
 
 export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
   {
+    version: "0.0.49",
+    date: "May 25",
+    features: [
+      {
+        id: "keybindings-are-first-class",
+        title: "Keybindings are first-class",
+        description:
+          "Settings now includes a dedicated Keybindings section with search, command groups, source badges, and conflict filters.",
+      },
+      {
+        id: "shortcut-editing-is-safer",
+        title: "Shortcut editing is safer",
+        description:
+          "The recorder blocks unsafe plain letter/number shortcuts and warns before saving over an existing binding.",
+      },
+      {
+        id: "reset-paths-are-built-in",
+        title: "Reset paths are built in",
+        description:
+          "Individual shortcuts and the full keybindings set can be reset back to defaults from the UI.",
+      },
+      {
+        id: "advanced-users-keep-control",
+        title: "Advanced users keep control",
+        description:
+          "The persisted `keybindings.json` remains available as the durable source and advanced escape hatch.",
+      },
+      {
+        id: "release-prep-is-easier-to-repeat",
+        title: "Release prep is easier to repeat",
+        description:
+          "Agent guidance now documents how to prepare future release notes without accidentally publishing early.",
+      },
+    ],
+  },
+  {
     version: "0.0.48",
     date: "May 24",
     features: [
