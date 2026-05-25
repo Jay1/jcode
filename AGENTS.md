@@ -34,6 +34,18 @@
 - Do not commit local agent/editor state such as `.sisyphus/`, `.brainstorm/`, `.vscode/`, or `.playwright-mcp/`.
 - If using git commands in OpenCode with the git-master skill active, prefix every git invocation with `GIT_MASTER=1`.
 
+## Release Preparation Trigger
+
+When the user says “prepare a new release for me”, treat it as release-prep work, not as permission to publish immediately.
+
+- Read `docs/release.md`, `docs/runbooks/release-operations.md`, and `docs/adr/0002-release-notes-and-latest-package-retention.md` before changing release files.
+- Determine the intended next version from package versions, recent commits, and user guidance; ask one short question if the version or release type is ambiguous.
+- Add or update `docs/releases/vX.Y.Z.md` using the compact release-note style: title, one-sentence summary, three to five highlights, optional important fixes, and optional upgrade note.
+- Run `bun run release:notes -- --write` to regenerate `apps/web/src/whatsNew/entries.ts`.
+- Verify with `bun run release:notes -- --check --version X.Y.Z` plus focused tests for touched release scripts when release tooling changed.
+- Do not create or push `vX.Y.Z` tags, publish GitHub Releases, or delete old release assets unless the user explicitly asks to release/publish/tag.
+- If the user explicitly asks to publish, use `.github/workflows/release.yml`: tag pushes `vX.Y.Z` trigger the release, and manual dispatch accepts a `version` input.
+
 ## Upstream Watch
 
 - DPCode and T3Code are source material, not automatic merge targets; import decisions remain manual and strategy-driven.
