@@ -550,6 +550,22 @@ export interface KeybindingsShape {
   readonly upsertKeybindingRule: (
     rule: KeybindingRule,
   ) => Effect.Effect<ResolvedKeybindingsConfig, KeybindingsConfigError>;
+
+  /**
+   * Remove one persisted custom keybinding rule so the command falls back to
+   * the server default binding when one exists.
+   */
+  readonly resetKeybindingCommand: (
+    command: KeybindingRule["command"],
+  ) => Effect.Effect<ResolvedKeybindingsConfig, KeybindingsConfigError>;
+
+  /**
+   * Clear all persisted custom keybinding rules so only defaults remain.
+   */
+  readonly resetAllKeybindings: () => Effect.Effect<
+    ResolvedKeybindingsConfig,
+    KeybindingsConfigError
+  >;
 }
 
 /**
@@ -914,6 +930,42 @@ const makeKeybindings = Effect.gen(function* () {
           const nextResolved = mergeWithDefaultKeybindings(
             compileResolvedKeybindingsConfig(cappedConfig),
           );
+          yield* Cache.set(resolvedConfigCache, resolvedConfigCacheKey, {
+            keybindings: nextResolved,
+            issues: [],
+          });
+          yield* emitChange({
+            keybindings: nextResolved,
+            issues: [],
+          });
+          return nextResolved;
+        }),
+      ),
+    resetKeybindingCommand: (command) =>
+      upsertSemaphore.withPermits(1)(
+        Effect.gen(function* () {
+          const customConfig = yield* loadWritableCustomKeybindingsConfig();
+          const nextConfig = customConfig.filter((entry) => entry.command !== command);
+          yield* writeConfigAtomically(nextConfig);
+          const nextResolved = mergeWithDefaultKeybindings(
+            compileResolvedKeybindingsConfig(nextConfig),
+          );
+          yield* Cache.set(resolvedConfigCache, resolvedConfigCacheKey, {
+            keybindings: nextResolved,
+            issues: [],
+          });
+          yield* emitChange({
+            keybindings: nextResolved,
+            issues: [],
+          });
+          return nextResolved;
+        }),
+      ),
+    resetAllKeybindings: () =>
+      upsertSemaphore.withPermits(1)(
+        Effect.gen(function* () {
+          yield* writeConfigAtomically([]);
+          const nextResolved = mergeWithDefaultKeybindings([]);
           yield* Cache.set(resolvedConfigCache, resolvedConfigCacheKey, {
             keybindings: nextResolved,
             issues: [],

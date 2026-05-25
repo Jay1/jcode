@@ -44,6 +44,7 @@ import {
 import { APP_VERSION } from "../branding";
 import { SidebarHeaderNavigationControls } from "../components/SidebarHeaderNavigationControls";
 import { ConnectionsSettingsPanel } from "../components/ConnectionsSettingsPanel";
+import { KeybindingsSettingsPanel } from "../components/KeybindingsSettingsPanel";
 import { OpenCodeRuntimeSettingsPanel } from "../components/OpenCodeRuntimeSettingsPanel";
 import {
   ClaudeAI,
@@ -3125,6 +3126,17 @@ function SettingsRouteView() {
     </div>
   );
 
+  const renderKeybindingsPanel = () => (
+    <KeybindingsSettingsPanel
+      keybindings={serverConfigQuery.data?.keybindings ?? []}
+      issues={serverConfigQuery.data?.issues ?? []}
+      configPath={keybindingsConfigPath}
+      isOpeningConfigFile={isOpeningKeybindings}
+      openConfigFileError={openKeybindingsError}
+      onOpenConfigFile={openKeybindingsFile}
+    />
+  );
+
   const renderActivePanel = () => {
     switch (activeSection) {
       case "general":
@@ -3137,6 +3149,8 @@ function SettingsRouteView() {
         return renderBehaviorPanel();
       case "worktrees":
         return renderWorktreesPanel();
+      case "keybindings":
+        return renderKeybindingsPanel();
       case "connections":
         return <ConnectionsSettingsPanel />;
       case "archived":

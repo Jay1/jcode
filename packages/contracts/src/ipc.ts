@@ -68,6 +68,8 @@ import type {
   ServerProviderUpdateInput,
   ServerProviderUpdateResult,
   ServerRefreshProvidersResult,
+  ServerResetKeybindingInput,
+  ServerResetKeybindingsResult,
   ServerUpdateSettingsInput,
   ServerUpdateSettingsResult,
   ServerUpsertKeybindingInput,
@@ -451,6 +453,8 @@ export interface NativeApi {
       input: ServerVoiceTranscriptionInput,
     ) => Promise<ServerVoiceTranscriptionResult>;
     upsertKeybinding: (input: ServerUpsertKeybindingInput) => Promise<ServerUpsertKeybindingResult>;
+    resetKeybinding: (input: ServerResetKeybindingInput) => Promise<ServerResetKeybindingsResult>;
+    resetAllKeybindings: () => Promise<ServerResetKeybindingsResult>;
   };
   provider: {
     getComposerCapabilities: (
