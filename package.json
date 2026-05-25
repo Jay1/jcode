@@ -45,6 +45,7 @@
     "test:browser:install:deps": "bun run --cwd apps/web test:browser:install:deps",
     "test:coverage": "turbo run test -- --coverage",
     "test:desktop-smoke": "turbo run smoke-test --filter=@jcode/desktop",
+    "release:notes": "bun scripts/release-notes.ts",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "build:contracts": "turbo run build --filter=@jcode/contracts",

@@ -146,6 +146,38 @@ The desktop shell is the Electron packaging boundary for local distribution. It 
 
 Treat preload bridge changes as API changes because they alter expectations between desktop main process, renderer, and shared contracts.
 
+### Release Retention Policy
+
+Release retention is the public GitHub distribution policy for desktop release pages and compiled installer assets. JCode should keep the latest public stable GitHub Release and, during active testing, the latest prerelease GitHub Release visible for download.
+
+Older GitHub Release pages and their assets are disposable distribution outputs. Git tags and published npm package versions are durable audit and ecosystem records and should not be deleted by release pruning automation.
+
+Release pruning runs after the new release is published. If pruning fails, the release workflow should fail loudly so maintainers know the public GitHub retention policy was not satisfied.
+
+Historical changelog content remains in git and in the app's generated Release history. GitHub Releases is a latest-package distribution surface, not the long-term changelog archive.
+
+Prerelease history is disposable. Publishing a prerelease should prune older prereleases, and publishing a stable release should prune all older stable and prerelease release pages.
+
+Release workflow artifacts are job-to-job transport outputs, not distribution packages. They should use one-day retention so GitHub does not keep stale compiled bundles beyond the release run.
+
+### Release Note Source
+
+The release note source is the curated, per-version changelog record that explains what shipped in maintainer and user language. It is the source of truth for both the GitHub Release body and the in-app What's New / Release history surfaces.
+
+GitHub-generated release notes are supporting automation, not the canonical changelog style. Avoid maintaining separate handwritten release summaries for GitHub and the app because they drift.
+
+Release note sources are authored as per-version Markdown files with structured frontmatter under `docs/releases/`. The Markdown is the human editing surface; generated TypeScript app data and GitHub release bodies are derived outputs.
+
+JCode release notes should be product-first and extremely concise. They should explain the useful user-visible outcome without screenshots and without dumping commit-level implementation detail.
+
+The compact release note template is: title, one-sentence summary, three to five highlights, optional important fixes, and optional upgrade note. Omit empty sections rather than publishing filler.
+
+Release-note generation is enforced strictly. A release version must have a matching source file, and generated release outputs must be current before the release workflow can publish packages.
+
+The generated app release-history TypeScript data is committed because the app consumes it at build time. The GitHub Release body is generated during the release workflow from the same source file and should not be committed as a duplicate artifact.
+
+Release-note validation runs in both normal CI and the release workflow. CI catches stale generated app data during review; the release workflow blocks publishing when the target version lacks a valid release note source.
+
 ### Server Auth Boundary
 
 The server auth boundary describes how the local server decides whether a browser, desktop shell, or remote-reachable client may access JCode. Current policies distinguish desktop-managed local usage, loopback browser usage, remote-reachable usage, and explicit unsafe no-auth operation.

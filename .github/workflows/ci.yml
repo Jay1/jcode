@@ -101,3 +101,6 @@ jobs:
 
       - name: Exercise release-only workflow steps
         run: node scripts/release-smoke.ts
+
+      - name: Validate release notes
+        run: bun scripts/release-notes.ts --check

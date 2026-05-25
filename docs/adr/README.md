@@ -15,9 +15,10 @@
 
 ## Records
 
-| ADR                                        | Status   | Topic                                 |
-| ------------------------------------------ | -------- | ------------------------------------- |
-| [0001](0001-local-coding-agent-cockpit.md) | Accepted | JCode as a local coding-agent cockpit |
+| ADR                                                        | Status   | Topic                                      |
+| ---------------------------------------------------------- | -------- | ------------------------------------------ |
+| [0001](0001-local-coding-agent-cockpit.md)                 | Accepted | JCode as a local coding-agent cockpit      |
+| [0002](0002-release-notes-and-latest-package-retention.md) | Accepted | Release notes and latest-package retention |
 
 ## When To Add An ADR
 

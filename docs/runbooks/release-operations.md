@@ -35,6 +35,9 @@ Use focused package tests first when changing a specific release helper.
 | `apps/desktop`                      | Electron main process, preload bridge, packaging output |
 | `apps/server`                       | Bundled local server runtime used by desktop packaging  |
 | `scripts/build-desktop-artifact.ts` | Artifact assembly and platform configuration            |
+| `scripts/release-notes.ts`          | Curated changelog validation and generated app data     |
+| `scripts/release-retention.ts`      | GitHub Release pruning policy                           |
+| `docs/releases/`                    | Per-version release note source files                   |
 | `.github/workflows/release.yml`     | Remote release orchestration                            |
 
 ## Rollback

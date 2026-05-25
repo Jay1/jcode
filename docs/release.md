@@ -14,9 +14,18 @@ This document covers how to run desktop releases from one tag, first without sig
 - Publishes one GitHub Release with all produced files.
   - Versions with a suffix after `X.Y.Z` (for example `1.2.3-alpha.1`) are published as GitHub prereleases.
   - Only plain `X.Y.Z` releases are marked as the repository's latest release.
+  - The release body is generated from the matching `docs/releases/vX.Y.Z.md` source.
+  - Older GitHub Release pages and compiled assets are pruned after publish; git tags and npm package versions are retained.
 - Includes Electron auto-update metadata (for example `latest*.yml` and `*.blockmap`) in release assets.
 - Publishes the server package (`apps/server`, npm package `@jcode/server`) with OIDC trusted publishing.
 - Signing is optional and auto-detected per platform from secrets.
+
+## Changelog style
+
+- Author one compact release note per version at `docs/releases/vX.Y.Z.md`.
+- Keep notes product-first and concise: title, one-sentence summary, three to five highlights, optional important fixes, and optional upgrade note.
+- Regenerate app release history with `bun run release:notes -- --write`.
+- Verify generated release history with `bun run release:notes -- --check --version X.Y.Z`.
 
 ## Desktop auto-update notes
 
@@ -142,13 +151,16 @@ Checklist:
 
 1. Ensure `main` is green in CI.
 2. Bump app version as needed.
-3. Create release tag: `vX.Y.Z`.
-4. Push tag.
-5. Verify workflow steps:
+3. Add or update `docs/releases/vX.Y.Z.md`.
+4. Run `bun run release:notes -- --write`.
+5. Create release tag: `vX.Y.Z`.
+6. Push tag.
+7. Verify workflow steps:
    - preflight passes
    - all matrix builds pass
    - release job uploads expected files
-6. Smoke test downloaded artifacts.
+   - release job prunes older GitHub Release pages and assets
+8. Smoke test downloaded artifacts.
 
 ## 5) Troubleshooting
 

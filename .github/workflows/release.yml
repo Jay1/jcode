@@ -69,6 +69,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Validate release notes
+        run: bun scripts/release-notes.ts --version "${{ steps.release_meta.outputs.version }}" --check
+
       - name: Lint
         run: bun run lint
 
@@ -246,6 +249,7 @@ jobs:
           name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
           path: release-publish/*
           if-no-files-found: error
+          retention-days: 1
 
   publish_cli:
     name: Publish CLI to npm
@@ -317,13 +321,16 @@ jobs:
             release-assets/latest-mac-x64.yml
           rm -f release-assets/latest-mac-x64.yml
 
+      - name: Generate GitHub release body
+        run: bun scripts/release-notes.ts --version "${{ needs.preflight.outputs.version }}" --github-body release-body.md
+
       - name: Publish release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
         with:
           tag_name: ${{ needs.preflight.outputs.tag }}
           target_commitish: ${{ needs.preflight.outputs.ref }}
           name: JCode v${{ needs.preflight.outputs.version }}
-          generate_release_notes: true
+          body_path: release-body.md
           prerelease: ${{ needs.preflight.outputs.is_prerelease }}
           make_latest: ${{ needs.preflight.outputs.make_latest }}
           files: |
@@ -336,20 +343,10 @@ jobs:
           fail_on_unmatched_files: true
 
       - name: Prune older GitHub Releases
-        if: ${{ needs.preflight.outputs.is_prerelease == 'false' }}
         env:
           CURRENT_TAG: ${{ needs.preflight.outputs.tag }}
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api --paginate "repos/${GITHUB_REPOSITORY}/releases" \
-            --jq '.[] | select(.draft == false) | [.id, .tag_name] | @tsv' |
-            while IFS=$'\t' read -r release_id tag_name; do
-              if [[ -z "$release_id" || "$tag_name" == "$CURRENT_TAG" ]]; then
-                continue
-              fi
-              echo "Deleting older release ${tag_name} (${release_id})"
-              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
-            done
+        run: node scripts/release-retention.ts
 
   finalize:
     name: Finalize release
