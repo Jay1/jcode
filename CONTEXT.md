@@ -14,6 +14,12 @@ A cockpit is the user-facing control surface for coding-agent work. In JCode thi
 
 The cockpit coordinates local tools and provider runtimes; it should not leak raw provider protocol details directly into ordinary user-facing concepts.
 
+### Keybindings
+
+Keybindings are the user-facing command shortcuts that let the cockpit react to keyboard input. They map a command, shortcut, and optional context condition into the active behavior the web and desktop clients use.
+
+Keybindings should be editable from a first-class Settings surface. The persisted keybindings file remains the durable source and advanced escape hatch, but ordinary keybinding discovery and editing should not require opening JSON directly.
+
 ### Provider
 
 A provider is a coding-agent runtime family that can execute turns for a thread. Current provider kinds include Codex, Claude Agent, Cursor, Gemini, Kilo, OpenCode, and Pi.
