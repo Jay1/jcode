@@ -206,7 +206,7 @@ function serializeFeature(item: ReleaseNoteItem, indent = "      "): string {
 }
 
 export function generateWhatsNewEntriesSource(notes: readonly ReleaseNote[]): string {
-  const entries = [...notes].sort(compareVersionsDescending).map((note) => {
+  const entries = notes.toSorted(compareVersionsDescending).map((note) => {
     const features = [...note.highlights, ...note.fixes];
     if (note.upgradeNote) {
       features.push({ id: "upgrade-note", title: "Upgrade note", description: note.upgradeNote });

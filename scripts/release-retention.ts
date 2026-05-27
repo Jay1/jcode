@@ -27,7 +27,7 @@ function releaseTimestamp(release: GitHubReleaseSummary): number {
 function latestRelease(
   releases: readonly GitHubReleaseSummary[],
 ): GitHubReleaseSummary | undefined {
-  return [...releases].sort((a, b) => releaseTimestamp(b) - releaseTimestamp(a))[0];
+  return releases.toSorted((a, b) => releaseTimestamp(b) - releaseTimestamp(a))[0];
 }
 
 export function planGitHubReleasePrune(input: {

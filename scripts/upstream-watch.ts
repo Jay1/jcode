@@ -322,7 +322,7 @@ async function fetchGitHubJson<T>(url: string, token: string | undefined): Promi
     });
   } catch (error) {
     if (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError")) {
-      throw new Error(`GitHub request timed out for ${url}`);
+      throw new Error(`GitHub request timed out for ${url}`, { cause: error });
     }
     throw error;
   }
