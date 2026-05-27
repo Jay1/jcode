@@ -2,7 +2,6 @@ import { execFile } from "node:child_process";
 import { realpathSync } from "node:fs";
 
 import {
-  CommandId,
   type AuthAccessStreamEvent,
   type AuthClientSession,
   type AuthSessionId,

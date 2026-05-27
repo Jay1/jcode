@@ -46,7 +46,7 @@ function valueName(value: unknown): string | null {
 }
 
 function uniqueSorted(values: Iterable<string>): string[] {
-  return [...new Set([...values].map((value) => value.trim()).filter(Boolean))].sort(
+  return [...new Set([...values].map((value) => value.trim()).filter(Boolean))].toSorted(
     (left, right) => left.localeCompare(right),
   );
 }

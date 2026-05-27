@@ -132,7 +132,7 @@ export const createEffectServer = Effect.fn(function* () {
     payload: {
       cwd: config.cwd,
       homeDir: config.homeDir,
-      projectName: config.cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? config.cwd,
+      projectName: config.cwd.split(/[\\/]/).findLast((part) => part.length > 0) ?? config.cwd,
     },
   });
   yield* lifecycleEvents.publish({

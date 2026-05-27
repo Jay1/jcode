@@ -274,7 +274,7 @@ export function buildOpenCodeServerProcessEnv(input: {
         }),
     ...(input.homePath?.trim() ? { HOME: input.homePath.trim() } : {}),
     ...(input.xdgConfigHome?.trim() ? { XDG_CONFIG_HOME: input.xdgConfigHome.trim() } : {}),
-    ...(input.extraEnv ?? {}),
+    ...input.extraEnv,
   };
 }
 
@@ -543,7 +543,7 @@ function parseOpenCodeCliModelJson(
     variants,
     supportedReasoningEfforts,
     ...(defaultReasoningEffort ? { defaultReasoningEffort } : {}),
-    ...(contextWindowOptions ?? {}),
+    ...contextWindowOptions,
     ...(typeof isFree === "boolean" ? { isFree } : {}),
   };
 }

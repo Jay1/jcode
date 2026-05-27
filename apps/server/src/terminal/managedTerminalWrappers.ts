@@ -24,7 +24,7 @@ export interface ManagedTerminalWrapperState {
 }
 
 function shellQuote(value: string): string {
-  return `'${value.replaceAll("'", `'\"'\"'`)}'`;
+  return `'${value.replaceAll("'", `'"'"'`)}'`;
 }
 
 function envPathKeyFor(env: NodeJS.ProcessEnv): "PATH" | "Path" | "path" {
@@ -96,7 +96,7 @@ else
 fi
 
 _jcode_extract_event() {
-  printf '%s' "$_jcode_hook_input" | sed -n "s/.*\\\"$1\\\"[[:space:]]*:[[:space:]]*\\\"\\([^\\\"]*\\)\\\".*/\\1/p" | head -n 1
+  printf '%s' "$_jcode_hook_input" | sed -n "s/.*\\"$1\\"[[:space:]]*:[[:space:]]*\\"\\([^\\"]*\\)\\".*/\\1/p" | head -n 1
 }
 
 _jcode_event="$(_jcode_extract_event hook_event_name)"

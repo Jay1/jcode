@@ -250,9 +250,12 @@ const authEffectRouteLayer = HttpRouter.add(
 
     if (request.method === "GET" && url.pathname === "/api/auth/clients") {
       const session = yield* ownerSession;
-      return HttpServerResponse.jsonUnsafe(yield* serverAuth.listClientSessions(session.sessionId), {
-        headers: corsHeaders,
-      });
+      return HttpServerResponse.jsonUnsafe(
+        yield* serverAuth.listClientSessions(session.sessionId),
+        {
+          headers: corsHeaders,
+        },
+      );
     }
 
     if (request.method === "POST" && url.pathname === "/api/auth/clients/revoke") {

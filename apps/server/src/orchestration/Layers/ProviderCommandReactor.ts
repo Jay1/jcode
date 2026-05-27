@@ -121,6 +121,24 @@ const serverCommandId = (tag: string): CommandId =>
 const HANDLED_TURN_START_KEY_MAX = 10_000;
 const HANDLED_TURN_START_KEY_TTL = Duration.minutes(30);
 const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";
+
+function resolveSubagentProviderThreadId(
+  threadId: ThreadId,
+  parentThreadId: ThreadId | null | undefined,
+): string | undefined {
+  if (!parentThreadId) {
+    return undefined;
+  }
+
+  const prefix = `subagent:${parentThreadId}:`;
+  const rawThreadId = threadId as string;
+  return rawThreadId.startsWith(prefix) ? rawThreadId.slice(prefix.length) : undefined;
+}
+
+function editResendTurnStartKey(threadId: ThreadId, messageId: string): string {
+  return `${threadId}:${messageId}`;
+}
+
 const HANDOFF_CONTEXT_WRAPPER_OVERHEAD =
   "<handoff_context>\n\n</handoff_context>\n\n<latest_user_message>\n\n</latest_user_message>"
     .length;
@@ -383,19 +401,6 @@ const make = Effect.gen(function* () {
     return parentThread ?? thread;
   });
 
-  const resolveSubagentProviderThreadId = (
-    threadId: ThreadId,
-    parentThreadId: ThreadId | null | undefined,
-  ): string | undefined => {
-    if (!parentThreadId) {
-      return undefined;
-    }
-
-    const prefix = `subagent:${parentThreadId}:`;
-    const rawThreadId = threadId as string;
-    return rawThreadId.startsWith(prefix) ? rawThreadId.slice(prefix.length) : undefined;
-  };
-
   const enqueueQueuedTurnStart = (
     payload: Extract<ProviderIntentEvent, { type: "thread.turn-queued" }>["payload"],
   ) =>
@@ -449,9 +454,6 @@ const make = Effect.gen(function* () {
           .get(threadId)
           ?.some((payload) => payload.messageId === messageId) ?? false,
     );
-
-  const editResendTurnStartKey = (threadId: ThreadId, messageId: string) =>
-    `${threadId}:${messageId}`;
 
   const clearEditResendTurnStartKeysForThread = (threadId: ThreadId) =>
     Effect.sync(() => {
@@ -1214,7 +1216,6 @@ const make = Effect.gen(function* () {
         ? "queue"
         : event.payload.dispatchMode;
     const editResendKey = editResendTurnStartKey(event.payload.threadId, event.payload.messageId);
-    const isEditResendTurn = editResendTurnStartKeys.has(editResendKey);
 
     yield* dispatchTurnForThread({
       threadId: event.payload.threadId,
