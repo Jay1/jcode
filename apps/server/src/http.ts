@@ -100,6 +100,20 @@ const readEffectJson = (request: HttpServerRequest.HttpServerRequest, message: s
     ),
   );
 
+function corsHeadersForRequest(
+  request: HttpServerRequest.HttpServerRequest,
+): Record<string, string> {
+  const origin = request.headers.origin;
+  const allowOrigin = Array.isArray(origin) ? origin[0] : origin;
+  return {
+    "Access-Control-Allow-Origin": allowOrigin || "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, content-type",
+    "Access-Control-Max-Age": "86400",
+    Vary: "Origin",
+  };
+}
+
 const authEffectRouteLayer = HttpRouter.add(
   "*",
   "/api/auth/*",
@@ -108,11 +122,17 @@ const authEffectRouteLayer = HttpRouter.add(
     const serverAuth = yield* ServerAuth;
     const sessions = yield* SessionCredentialService;
     const url = HttpServerRequest.toURL(request);
-    if (!url) return HttpServerResponse.text("Bad Request", { status: 400 });
+    const corsHeaders = corsHeadersForRequest(request);
+    if (request.method === "OPTIONS") {
+      return HttpServerResponse.empty({ status: 204, headers: corsHeaders });
+    }
+    if (!url) return HttpServerResponse.text("Bad Request", { status: 400, headers: corsHeaders });
     const authRequest = makeEffectAuthRequest(request);
 
     if (request.method === "GET" && url.pathname === "/api/auth/session") {
-      return HttpServerResponse.jsonUnsafe(yield* serverAuth.getSessionState(authRequest));
+      return HttpServerResponse.jsonUnsafe(yield* serverAuth.getSessionState(authRequest), {
+        headers: corsHeaders,
+      });
     }
 
     if (request.method === "POST" && url.pathname === "/api/auth/bootstrap") {
@@ -132,6 +152,7 @@ const authEffectRouteLayer = HttpRouter.add(
       });
       return HttpServerResponse.jsonUnsafe(result.response, {
         headers: {
+          ...corsHeaders,
           "Set-Cookie": encodeCookie({
             name: sessions.cookieName,
             value: result.sessionToken,
@@ -157,12 +178,15 @@ const authEffectRouteLayer = HttpRouter.add(
             remoteAddress: request.remoteAddress ?? null,
           }),
         }),
+        { headers: corsHeaders },
       );
     }
 
     if (request.method === "POST" && url.pathname === "/api/auth/ws-token") {
       const session = yield* serverAuth.authenticateHttpRequest(authRequest);
-      return HttpServerResponse.jsonUnsafe(yield* serverAuth.issueWebSocketToken(session));
+      return HttpServerResponse.jsonUnsafe(yield* serverAuth.issueWebSocketToken(session), {
+        headers: corsHeaders,
+      });
     }
 
     if (request.method === "POST" && url.pathname === "/api/auth/pairing-token") {
@@ -170,7 +194,7 @@ const authEffectRouteLayer = HttpRouter.add(
       if (session.role !== "owner")
         return HttpServerResponse.jsonUnsafe(
           { error: "Only owner sessions can create pairing credentials." },
-          { status: 403 },
+          { status: 403, headers: corsHeaders },
         );
       const payload =
         Number(request.headers["content-length"] ?? "0") > 0
@@ -183,7 +207,9 @@ const authEffectRouteLayer = HttpRouter.add(
               })),
             )
           : {};
-      return HttpServerResponse.jsonUnsafe(yield* serverAuth.issuePairingCredential(payload));
+      return HttpServerResponse.jsonUnsafe(yield* serverAuth.issuePairingCredential(payload), {
+        headers: corsHeaders,
+      });
     }
 
     const ownerSession = Effect.gen(function* () {
@@ -199,7 +225,9 @@ const authEffectRouteLayer = HttpRouter.add(
 
     if (request.method === "GET" && url.pathname === "/api/auth/pairing-links") {
       yield* ownerSession;
-      return HttpServerResponse.jsonUnsafe(yield* serverAuth.listPairingLinks());
+      return HttpServerResponse.jsonUnsafe(yield* serverAuth.listPairingLinks(), {
+        headers: corsHeaders,
+      });
     }
 
     if (request.method === "POST" && url.pathname === "/api/auth/pairing-links/revoke") {
@@ -212,14 +240,19 @@ const authEffectRouteLayer = HttpRouter.add(
           cause,
         })),
       );
-      return HttpServerResponse.jsonUnsafe({
-        revoked: yield* serverAuth.revokePairingLink(payload.id),
-      });
+      return HttpServerResponse.jsonUnsafe(
+        {
+          revoked: yield* serverAuth.revokePairingLink(payload.id),
+        },
+        { headers: corsHeaders },
+      );
     }
 
     if (request.method === "GET" && url.pathname === "/api/auth/clients") {
       const session = yield* ownerSession;
-      return HttpServerResponse.jsonUnsafe(yield* serverAuth.listClientSessions(session.sessionId));
+      return HttpServerResponse.jsonUnsafe(yield* serverAuth.listClientSessions(session.sessionId), {
+        headers: corsHeaders,
+      });
     }
 
     if (request.method === "POST" && url.pathname === "/api/auth/clients/revoke") {
@@ -232,23 +265,30 @@ const authEffectRouteLayer = HttpRouter.add(
           cause,
         })),
       );
-      return HttpServerResponse.jsonUnsafe({
-        revoked: yield* serverAuth.revokeClientSession(session.sessionId, payload.sessionId),
-      });
+      return HttpServerResponse.jsonUnsafe(
+        {
+          revoked: yield* serverAuth.revokeClientSession(session.sessionId, payload.sessionId),
+        },
+        { headers: corsHeaders },
+      );
     }
 
     if (request.method === "POST" && url.pathname === "/api/auth/clients/revoke-others") {
       const session = yield* ownerSession;
-      return HttpServerResponse.jsonUnsafe({
-        revokedCount: yield* serverAuth.revokeOtherClientSessions(session.sessionId),
-      });
+      return HttpServerResponse.jsonUnsafe(
+        {
+          revokedCount: yield* serverAuth.revokeOtherClientSessions(session.sessionId),
+        },
+        { headers: corsHeaders },
+      );
     }
 
-    return HttpServerResponse.text("Not Found", { status: 404 });
+    return HttpServerResponse.text("Not Found", { status: 404, headers: corsHeaders });
   }).pipe(
     Effect.catch((error) =>
-      Effect.succeed(
-        HttpServerResponse.jsonUnsafe(
+      Effect.gen(function* () {
+        const request = yield* HttpServerRequest.HttpServerRequest;
+        return HttpServerResponse.jsonUnsafe(
           {
             error:
               error instanceof Error
@@ -260,16 +300,20 @@ const authEffectRouteLayer = HttpRouter.add(
               typeof (error as { status?: unknown }).status === "number"
                 ? (error as { status: number }).status
                 : 500,
+            headers: corsHeadersForRequest(request),
           },
-        ),
-      ),
+        );
+      }),
     ),
   ),
 );
 
 const environmentDescriptorEffect = Effect.gen(function* () {
+  const request = yield* HttpServerRequest.HttpServerRequest;
   const serverEnvironment = yield* ServerEnvironment;
-  return HttpServerResponse.jsonUnsafe(yield* serverEnvironment.getDescriptor);
+  return HttpServerResponse.jsonUnsafe(yield* serverEnvironment.getDescriptor, {
+    headers: corsHeadersForRequest(request),
+  });
 });
 
 const environmentDescriptorEffectRouteLayer = Layer.mergeAll(
