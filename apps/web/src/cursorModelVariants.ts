@@ -137,10 +137,11 @@ export function collapseCursorModelVariants(
   }
 
   return Array.from(groups.entries()).map(([baseSlug, variants]) => {
+    const primaryVariant = variants[0];
     const preferredName =
       variants.find((variant) => variant.slug === baseSlug)?.name ??
       variants.find((variant) => !variant.slug.endsWith("-fast"))?.name ??
-      variants[0]?.name ??
+      primaryVariant?.name ??
       baseSlug;
     const efforts = uniqueByValue(
       variants.flatMap((variant) => [
@@ -168,39 +169,43 @@ export function collapseCursorModelVariants(
       ...(hasOneMillionContext ? [{ value: "1m", label: "1M", isDefault: true as const }] : []),
     ]);
 
-    return {
-      slug: baseSlug,
-      name: removeVariantNameSuffix(preferredName),
-      ...(variants[0]?.upstreamProviderId
-        ? { upstreamProviderId: variants[0].upstreamProviderId }
-        : {}),
-      ...(variants[0]?.upstreamProviderName
-        ? { upstreamProviderName: variants[0].upstreamProviderName }
-        : {}),
-      ...(efforts.length > 0
+    return Object.assign(
+      {
+        slug: baseSlug,
+        name: removeVariantNameSuffix(preferredName),
+      },
+      primaryVariant?.upstreamProviderId
+        ? { upstreamProviderId: primaryVariant.upstreamProviderId }
+        : {},
+      primaryVariant?.upstreamProviderName
+        ? { upstreamProviderName: primaryVariant.upstreamProviderName }
+        : {},
+      efforts.length > 0
         ? {
-            supportedReasoningEfforts: efforts.map((effort) => ({
-              value: effort.value,
-              label: effort.label,
-              ...(effort.value === defaultEffort ? { isDefault: true as const } : {}),
-            })),
-            ...(defaultEffort ? { defaultReasoningEffort: defaultEffort } : {}),
+            supportedReasoningEfforts: efforts.map((effort) =>
+              Object.assign(
+                { value: effort.value },
+                effort.label ? { label: effort.label } : {},
+                effort.value === defaultEffort ? { isDefault: true as const } : {},
+              ),
+            ),
           }
-        : {}),
-      ...(variants.some((variant) => variant.supportsFastMode === true)
+        : {},
+      defaultEffort ? { defaultReasoningEffort: defaultEffort } : {},
+      variants.some((variant) => variant.supportsFastMode === true)
         ? { supportsFastMode: true as const }
-        : {}),
-      ...(variants.some((variant) => variant.supportsThinkingToggle === true)
+        : {},
+      variants.some((variant) => variant.supportsThinkingToggle === true)
         ? { supportsThinkingToggle: true as const }
-        : {}),
-      ...(contextWindowOptions.length > 0
+        : {},
+      contextWindowOptions.length > 0
         ? {
             contextWindowOptions,
             defaultContextWindow:
               contextWindowOptions.find((option) => option.isDefault === true)?.value ??
               contextWindowOptions[0]?.value,
           }
-        : {}),
-    };
+        : {},
+    );
   });
 }

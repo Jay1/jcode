@@ -76,15 +76,17 @@ function isStoredProfile(value: unknown): value is StoredSavedConnectionProfile 
 }
 
 function publicProfile(profile: StoredSavedConnectionProfile): SavedConnectionProfile {
-  return {
-    id: profile.id,
-    label: profile.label,
-    httpBaseUrl: profile.httpBaseUrl,
-    wsBaseUrl: profile.wsBaseUrl,
-    createdAt: profile.createdAt,
-    lastConnectedAt: profile.lastConnectedAt,
-    ...(profile.role ? { role: profile.role } : {}),
-  };
+  return Object.assign(
+    {
+      id: profile.id,
+      label: profile.label,
+      httpBaseUrl: profile.httpBaseUrl,
+      wsBaseUrl: profile.wsBaseUrl,
+      createdAt: profile.createdAt,
+      lastConnectedAt: profile.lastConnectedAt,
+    },
+    profile.role ? { role: profile.role } : {},
+  );
 }
 
 export function readSavedConnectionProfiles(): ReadonlyArray<SavedConnectionProfile> {
@@ -161,7 +163,7 @@ export function writeSavedConnectionSecret(id: string, secret: string): boolean 
     profiles: document.profiles.map((profile) => {
       if (profile.id !== id) return profile;
       found = true;
-      return { ...profile, bearerToken: secret };
+      return Object.assign({}, profile, { bearerToken: secret });
     }),
   });
   return found;
