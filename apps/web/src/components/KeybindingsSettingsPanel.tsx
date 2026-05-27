@@ -76,6 +76,13 @@ function issueText(issue: ServerConfigIssue): string {
   return issue.message;
 }
 
+function issueKey(issue: ServerConfigIssue): string {
+  if (issue.kind === "keybindings.invalid-entry") {
+    return `${issue.kind}-${issue.index}-${issue.message}`;
+  }
+  return `${issue.kind}-${issue.message}`;
+}
+
 function formatWhenNode(node: KeybindingWhenNode | undefined): string | null {
   if (!node) return null;
   switch (node.type) {
@@ -269,8 +276,8 @@ export function KeybindingsSettingsPanel(props: KeybindingsSettingsPanelProps) {
           <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/8 p-3 text-sm text-destructive">
             <p className="font-medium">Keybindings file has issues</p>
             <ul className="mt-2 space-y-1">
-              {props.issues.map((issue, index) => (
-                <li key={`${issue.kind}-${index}`}>{issueText(issue)}</li>
+              {props.issues.map((issue) => (
+                <li key={issueKey(issue)}>{issueText(issue)}</li>
               ))}
             </ul>
           </div>

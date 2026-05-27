@@ -42,6 +42,7 @@ const THREAD_SIDEBAR_WIDTH_STORAGE_KEY = "chat_thread_sidebar_width";
 const THREAD_SIDEBAR_MIN_WIDTH = 13 * 16;
 const THREAD_MAIN_CONTENT_MIN_WIDTH = 40 * 16;
 const MAINTENANCE_EVENT_STALE_MS = 5 * 60 * 1000;
+const EMPTY_PROVIDER_STATUSES = [] as const;
 
 type MaintenanceToastId = ReturnType<typeof toastManager.add>;
 
@@ -219,7 +220,7 @@ function ChatRouteGlobalShortcuts() {
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const keybindings = serverConfigQuery.data?.keybindings ?? EMPTY_KEYBINDINGS;
   const platform = typeof navigator === "undefined" ? "" : navigator.platform;
-  const providerStatuses = serverConfigQuery.data?.providers ?? [];
+  const providerStatuses = serverConfigQuery.data?.providers ?? EMPTY_PROVIDER_STATUSES;
   const activeThreadTerminalState = useTerminalStateStore((state) =>
     activeContextThreadId
       ? selectThreadTerminalState(state.terminalStateByThreadId, activeContextThreadId)
@@ -426,6 +427,7 @@ function ChatRouteGlobalShortcuts() {
     handleNewThread,
     keybindings,
     latestUsableProjectId,
+    platform,
     appSettings.claudeBinaryPath,
     appSettings.codexBinaryPath,
     appSettings.cursorBinaryPath,

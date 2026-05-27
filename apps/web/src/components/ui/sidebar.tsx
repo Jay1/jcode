@@ -352,7 +352,7 @@ function SidebarHeaderTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { isMobile, open, toggleSidebar } = useSidebar();
+  const { isMobile, open } = useSidebar();
   const { settings } = useAppSettings();
 
   if (!isMobile && open) {

@@ -51,10 +51,7 @@ import {
   isCollapsedCursorAdjacentToInlineToken,
 } from "~/composer-logic";
 import { splitPromptIntoComposerSegments } from "~/composer-editor-mentions";
-import {
-  INLINE_TERMINAL_CONTEXT_PLACEHOLDER,
-  type TerminalContextDraft,
-} from "~/lib/terminalContext";
+import { type TerminalContextDraft } from "~/lib/terminalContext";
 import type { ProviderMentionReference } from "@jcode/contracts";
 import { cn } from "~/lib/utils";
 import {
@@ -67,7 +64,6 @@ import {
   $createComposerAgentMentionNode,
   $createComposerTerminalContextNode,
   isComposerInlineTokenNode,
-  COMPOSER_NODE_CLASSES,
   type ComposerInlineTokenNode,
 } from "./composer-nodes";
 

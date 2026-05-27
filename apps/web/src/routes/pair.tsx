@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { APP_DISPLAY_NAME } from "../branding";
 import { addSavedConnectionFromPairing } from "../connection/savedConnectionManager";
@@ -49,43 +49,46 @@ export function PairRoute() {
   );
   const [error, setError] = useState<string | null>(null);
 
-  const submitPairing = async (value: string) => {
-    const nextCredential = value.trim();
-    if (!nextCredential) return;
-    setStatus("pairing");
-    setError(null);
-    try {
-      if (hasRemoteHost(window.location.href)) {
-        await addSavedConnectionFromPairing({ pairingUrl: window.location.href });
+  const submitPairing = useCallback(
+    async (value: string) => {
+      const nextCredential = value.trim();
+      if (!nextCredential) return;
+      setStatus("pairing");
+      setError(null);
+      try {
+        if (hasRemoteHost(window.location.href)) {
+          await addSavedConnectionFromPairing({ pairingUrl: window.location.href });
+          window.history.replaceState(
+            null,
+            "",
+            stripPairingTokenFromUrl(window.location.href).toString(),
+          );
+          toastManager.add({ type: "success", title: "Remote backend paired" });
+          window.location.assign("/");
+          return;
+        }
+
+        await bootstrapSameOrigin(nextCredential);
         window.history.replaceState(
           null,
           "",
           stripPairingTokenFromUrl(window.location.href).toString(),
         );
-        toastManager.add({ type: "success", title: "Remote backend paired" });
-        window.location.assign("/");
-        return;
+        setStatus("paired");
+        toastManager.add({ type: "success", title: "Client paired" });
+        void navigate({ to: "/" });
+      } catch (caught) {
+        setError((caught as Error).message);
+        setStatus("error");
       }
-
-      await bootstrapSameOrigin(nextCredential);
-      window.history.replaceState(
-        null,
-        "",
-        stripPairingTokenFromUrl(window.location.href).toString(),
-      );
-      setStatus("paired");
-      toastManager.add({ type: "success", title: "Client paired" });
-      void navigate({ to: "/" });
-    } catch (caught) {
-      setError((caught as Error).message);
-      setStatus("error");
-    }
-  };
+    },
+    [navigate],
+  );
 
   useEffect(() => {
     if (!initialCredential) return;
     void submitPairing(initialCredential);
-  }, [initialCredential]);
+  }, [initialCredential, submitPairing]);
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background px-4 text-foreground">
