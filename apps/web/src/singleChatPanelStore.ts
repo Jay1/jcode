@@ -6,6 +6,7 @@
 import type { ThreadId, TurnId } from "@jcode/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { getLocalStorage } from "./lib/storage";
 import type { ChatRightPanel } from "./diffRouteSearch";
 
 export interface SingleChatPanelState {
@@ -81,7 +82,7 @@ export const useSingleChatPanelStore = create<SingleChatPanelStore>()(
     }),
     {
       name: SINGLE_CHAT_PANEL_STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => getLocalStorage()),
     },
   ),
 );

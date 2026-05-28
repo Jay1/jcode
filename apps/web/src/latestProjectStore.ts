@@ -1,6 +1,7 @@
 import type { ProjectId } from "@jcode/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { getLocalStorage } from "./lib/storage";
 
 const LATEST_PROJECT_STORAGE_KEY = "jcode:latest-project:v1";
 
@@ -28,7 +29,7 @@ export const useLatestProjectStore = create<LatestProjectStore>()(
     }),
     {
       name: LATEST_PROJECT_STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => getLocalStorage()),
     },
   ),
 );
