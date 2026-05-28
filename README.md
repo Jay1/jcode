@@ -16,7 +16,6 @@ A local cockpit for coding agents, tuned for low-level and cybersecurity workflo
 
 ## Installation
 
-
 ### Linux and macOS
 
 #### Homebrew
@@ -26,7 +25,7 @@ brew tap Jay1/jcode https://github.com/Jay1/jcode
 brew install --cask jcode
 ```
 
-#### Download the latest macOS 
+#### Download the latest macOS
 
 `JCode-<version>-arm64.dmg` or
 `JCode-<version>-x64.dmg`, or the latest Linux `JCode-<version>-x64.AppImage`, from
@@ -34,7 +33,7 @@ brew install --cask jcode
 
 ### Windows
 
-#### Scoop 
+#### Scoop
 
 If you do not have Scoop yet, follow the [official Scoop installation guide](https://scoop.sh/):
 
@@ -43,7 +42,7 @@ scoop bucket add jcode https://github.com/Jay1/scoop-jcode
 scoop install jcode
 ```
 
-#### Winget 
+#### Winget
 
 ```powershell
 winget install Jay1.JCode
