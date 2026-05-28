@@ -813,7 +813,7 @@ function AppWordmarkPrefix() {
   return (
     <span
       aria-label={APP_WORDMARK_PREFIX}
-      className="shrink-0 text-[14px] font-semibold text-foreground"
+      className="shrink-0 text-[18px] font-semibold text-[#8a0303]"
     >
       {APP_WORDMARK_PREFIX}
     </span>
@@ -5366,7 +5366,7 @@ export default function Sidebar() {
           <div className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 font-system-ui">
             <div className="flex min-w-0 items-center gap-0">
               <AppWordmarkPrefix />
-              <span className="truncate text-[14px] font-normal text-foreground/89">
+              <span className="truncate text-[18px] font-normal text-foreground/89">
                 {APP_WORDMARK_SUFFIX}
               </span>
             </div>

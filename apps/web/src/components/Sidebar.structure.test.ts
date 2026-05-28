@@ -14,4 +14,9 @@ describe("Sidebar structure", () => {
     expect(sidebarSource).toContain("sidebar-section-header");
     expect(sidebarSource).toContain("sidebar-section-header-icon");
   });
+
+  it("renders the navbar wordmark larger with a blood-red J", () => {
+    expect(sidebarSource).toContain("text-[18px] font-semibold text-[#8a0303]");
+    expect(sidebarSource).toContain("text-[18px] font-normal text-foreground/89");
+  });
 });
