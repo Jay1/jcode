@@ -1167,6 +1167,41 @@ describe("deriveWorkLogEntries", () => {
     ]);
   });
 
+  it("shows a completion detail for completed commands with no output", () => {
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "silent-command-complete",
+        createdAt: "2026-05-05T15:40:03.000Z",
+        kind: "tool.completed",
+        summary: "Ran command",
+        payload: {
+          itemType: "command_execution",
+          status: "completed",
+          title: "Ran command",
+          data: {
+            toolCallId: "silent-command-1",
+            kind: "execute",
+            command: "tsc --noEmit",
+            item: {
+              status: "completed",
+              exitCode: 0,
+              durationMs: 2_300,
+            },
+          },
+        },
+      }),
+    ];
+
+    expect(deriveWorkLogEntries(activities, undefined)).toMatchObject([
+      {
+        id: "silent-command-complete",
+        command: "tsc --noEmit",
+        detail: "Completed in 2.3s (exit 0)",
+        itemType: "command_execution",
+      },
+    ]);
+  });
+
   it("recovers Codex command text from nested JSON tool arguments", () => {
     const activities: OrchestrationThreadActivity[] = [
       makeActivity({
