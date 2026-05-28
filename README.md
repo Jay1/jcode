@@ -18,15 +18,16 @@ A local cockpit for coding agents, tuned for low-level and cybersecurity workflo
 
 ### Linux and macOS
 
-Install with Homebrew after the JCode tap is published. Homebrew supports Linux
-and macOS:
+#### Homebrew
 
 ```bash
 brew tap Jay1/jcode https://github.com/Jay1/jcode
 brew install --cask jcode
 ```
 
-Until then, download the latest macOS `JCode-<version>-arm64.dmg` or
+#### Download the latest macOS 
+
+`JCode-<version>-arm64.dmg` or
 `JCode-<version>-x64.dmg`, or the latest Linux `JCode-<version>-x64.AppImage`, from
 [GitHub Releases](https://github.com/Jay1/jcode/releases).
 
@@ -47,7 +48,7 @@ scoop install jcode
 winget install Jay1.JCode
 ```
 
-#### Releases
+#### Download the latest Windows
 
 Latest `JCode-<version>-x64.exe` installer from
 [GitHub Releases](https://github.com/Jay1/jcode/releases).
