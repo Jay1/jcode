@@ -7,8 +7,8 @@
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/Jay1/jcode/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/badge/Release-Desktop-6f42c1?logo=github&logoColor=white)](https://github.com/Jay1/jcode/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/github/license/Jay1/jcode)](./LICENSE)
-![Bun](https://img.shields.io/badge/Bun-1.3.9-000000?logo=bun&logoColor=white)
-![Node.js](https://img.shields.io/badge/Node.js-24.13-5FA04E?logo=nodedotjs&logoColor=white)
+![Bun](https://img.shields.io/badge/Bun-1.3-000000?logo=bun&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-24-5FA04E?logo=nodedotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Jay1%2Fjcode?utm_source=oss&utm_medium=github&utm_campaign=Jay1%2Fjcode&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
@@ -18,41 +18,22 @@ A local cockpit for coding agents, tuned for low-level and cybersecurity workflo
 
 ### AI-Driven Install
 
-Copy the prompt below into your preferred AI coding tool (Claude, Codex, OpenClaw, etc.) and it will handle the full setup:
+Copy the prompt below and paste it into your AI tool (Claude, Codex, OpenClaw, etc.) to install JCode on this machine:
 
 ````markdown
-Install and set up JCode from https://github.com/Jay1/jcode on this machine.
+Install JCode desktop app on this machine. JCode is at https://github.com/Jay1/jcode
 
-Steps:
+1. Go to https://github.com/Jay1/jcode/releases/latest
+2. Detect the current OS and architecture (macOS ARM/x64, Windows x64, or Linux x64).
+3. Download the matching installer:
+   - macOS ARM: `JCode-*-arm64.dmg`
+   - macOS Intel: `JCode-*-x64.dmg`
+   - Windows: `JCode-*-x64.exe`
+   - Linux: `JCode-*-x86_64.AppImage`
+4. Run the installer or mount the DMG and drag JCode to Applications.
+5. Launch JCode and confirm it opens.
 
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/Jay1/jcode.git
-   cd jcode
-   ```
-
-2. Install the required toolchain. The project pins Node 24.13.1 and Bun 1.3.9 (see `.mise.toml`).
-   If you have mise available, run `mise install`. Otherwise install Node and Bun at those
-   versions through whatever package manager is on this system.
-
-3. Install dependencies and build:
-   ```bash
-   bun install
-   bun run build
-   ```
-
-4. Start the dev server:
-   ```bash
-   bun run dev
-   ```
-
-5. Verify the typecheck passes:
-   ```bash
-   bun run typecheck
-   ```
-
-If any step fails, diagnose the error, fix it, and re-run until the full
-sequence completes cleanly.
+If the latest release page or assets cannot be found, report the error.
 ````
 
 ### Linux and macOS
