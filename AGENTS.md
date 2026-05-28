@@ -16,7 +16,7 @@
 
 ## Environment
 
-- Tool versions are pinned in `.mise.toml`: Node `24.13.1`, Bun `1.3.9`.
+- Tool versions are pinned in `.mise.toml`: Node `26.2.0`, Bun `1.3.9`.
 - If LSP or tooling exits with a mise trust error, report that `.mise.toml` is untrusted instead of changing trust settings automatically.
 - Keep committed defaults publishable: no tokens, owner pairing links, private tailnet URLs, or machine-specific service files.
 

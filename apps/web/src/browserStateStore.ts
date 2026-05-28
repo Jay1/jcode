@@ -8,6 +8,7 @@
 import type { ThreadBrowserState, ThreadId } from "@jcode/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { getLocalStorage } from "./lib/storage";
 
 const BROWSER_STATE_STORAGE_KEY = "jcode:browser-state:v1";
 const BROWSER_HISTORY_LIMIT = 12;
@@ -137,7 +138,7 @@ export const useBrowserStateStore = create<BrowserStateStore>()(
     }),
     {
       name: BROWSER_STATE_STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => getLocalStorage()),
       partialize: (state) => ({
         recentHistoryByThreadId: state.recentHistoryByThreadId,
       }),
