@@ -459,6 +459,7 @@ label:has(> select#reasoning-effort) select {
 .chat-markdown ol,
 .chat-markdown blockquote,
 .chat-markdown pre,
+.chat-markdown-table-scroll,
 .chat-markdown table {
   margin: 0.65rem 0;
 }
@@ -923,6 +924,16 @@ label:has(> select#reasoning-effort) select {
 .chat-markdown table {
   width: 100%;
   border-collapse: collapse;
+}
+
+.chat-markdown-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.chat-markdown-table-scroll > table {
+  min-width: 100%;
 }
 
 .chat-markdown th,
