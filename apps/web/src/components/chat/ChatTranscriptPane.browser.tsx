@@ -29,6 +29,13 @@ const TIMELINE_ENTRIES = [
     },
   },
 ];
+const DIFF_TABLE_MESSAGE = [
+  "Here are the repository changes:",
+  "",
+  "| File | Status | Notes |",
+  "| --- | --- | --- |",
+  "| `apps/web/src/components/chat/MessagesTimeline.browser-regression-with-a-very-long-file-name.tsx` | Modified | Rendered at completion after the assistant summarizes the diff changes. |",
+].join("\n");
 
 function TranscriptPerfHarness(props: { onTranscriptRender: () => void }) {
   const [composerValue, setComposerValue] = useState("");
@@ -154,6 +161,78 @@ describe("ChatTranscriptPane", () => {
       });
 
       expect(transcriptCommitCount).toBe(baselineCommitCount);
+    } finally {
+      await screen.unmount();
+    }
+  });
+
+  it("contains completed markdown diff tables within the transcript row", async () => {
+    const screen = await render(
+      <ChatTranscriptPane
+        activeThreadId="thread-diff-table"
+        activeTurnInProgress={false}
+        activeTurnStartedAt={null}
+        chatFontSizePx={15}
+        completionDividerBeforeEntryId={null}
+        completionSummary={null}
+        emptyStateProjectName={undefined}
+        hasMessages
+        isRevertingCheckpoint={false}
+        isWorking={false}
+        followLiveOutput
+        listRef={{ current: null }}
+        markdownCwd={undefined}
+        onExpandTimelineImage={NOOP}
+        onMessagesClickCapture={NOOP}
+        onMessagesMouseUp={NOOP}
+        onMessagesPointerCancel={NOOP}
+        onMessagesPointerDown={NOOP}
+        onMessagesPointerUp={NOOP}
+        onMessagesScroll={NOOP}
+        onMessagesTouchEnd={NOOP}
+        onMessagesTouchMove={NOOP}
+        onMessagesTouchStart={NOOP}
+        onMessagesWheel={NOOP}
+        onIsAtEndChange={NOOP}
+        onOpenTurnDiff={NOOP}
+        onOpenThread={NOOP}
+        onRevertUserMessage={NOOP}
+        onScrollToBottom={NOOP}
+        resolvedTheme="dark"
+        revertTurnCountByUserMessageId={EMPTY_REVERT_COUNTS}
+        scrollButtonVisible={false}
+        terminalWorkspaceTerminalTabActive={false}
+        timelineEntries={[
+          {
+            id: "assistant-diff-table-entry",
+            kind: "message",
+            createdAt: "2026-03-17T19:12:28.000Z",
+            message: {
+              id: MessageId.makeUnsafe("assistant-message-diff-table"),
+              role: "assistant",
+              text: DIFF_TABLE_MESSAGE,
+              createdAt: "2026-03-17T19:12:28.000Z",
+              completedAt: "2026-03-17T19:12:29.000Z",
+              streaming: false,
+            },
+          },
+        ]}
+        timestampFormat="locale"
+        turnDiffSummaryByAssistantMessageId={EMPTY_TURN_DIFFS}
+        workspaceRoot={undefined}
+      />,
+    );
+
+    try {
+      await vi.waitFor(() => {
+        expect(page.getByText("repository changes")).toBeVisible();
+      });
+
+      const tableScroll = screen.container.querySelector<HTMLElement>(
+        ".chat-markdown-table-scroll",
+      );
+      expect(tableScroll).not.toBeNull();
+      expect(tableScroll!.querySelector("table")).not.toBeNull();
     } finally {
       await screen.unmount();
     }

@@ -720,6 +720,13 @@ function ChatMarkdown({
         }
         return <img {...props} src={restoredSrc} alt={alt} loading="lazy" />;
       },
+      table({ node: _node, children, ...props }) {
+        return (
+          <div className="chat-markdown-table-scroll">
+            <table {...props}>{children}</table>
+          </div>
+        );
+      },
     }),
     [cwd, diffThemeName, isStreaming, onImageExpand],
   );
