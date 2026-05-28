@@ -15,7 +15,7 @@
 
 The sidebar currently exposes a compact add-project flow from the `+` button in the Threads header. The flow can browse for a folder in Electron or reveal a manual path input, then dispatch `project.create` with the chosen workspace root.
 
-This is under-designed for repeated local use because the user usually keeps projects under one parent folder, such as `/home/jay/code`, and should not need to type or browse every path manually.
+This is under-designed for repeated local use because the user usually keeps projects under one parent folder, such as `~/code`, and should not need to type or browse every path manually.
 
 JCode already has the needed building blocks:
 

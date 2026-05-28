@@ -1,65 +1,45 @@
 # Contributing
 
-## Read This First
+Thanks for taking the time to improve JCode. This project is still evolving, so the best contributions are focused, well-explained, and easy to review.
 
-We are not actively accepting contributions right now.
+## Before You Start
 
-You can still open an issue or PR, but please do so knowing there is a high chance we close it, defer it forever, or never look at it.
+Open an issue first for non-trivial changes, product behavior changes, broad refactors, dependency swaps, or anything that changes project direction. Small bug fixes, typo fixes, and tightly scoped maintenance PRs can usually go straight to a pull request.
 
-If that sounds annoying, that is because it is. This project is still early and we are trying to keep scope, quality, and direction under control.
+PRs are automatically labeled with a `vouch:*` trust status and a `size:*` diff size based on changed lines. External contributors may start as `vouch:unvouched` until we explicitly add them to [.github/VOUCHED.td](.github/VOUCHED.td).
 
-PRs are automatically labeled with a `vouch:*` trust status and a `size:*` diff size based on changed lines.
+## What Makes A Good PR
 
-If you are an external contributor, expect `vouch:unvouched` until we explicitly add you to [.github/VOUCHED.td](.github/VOUCHED.td).
+- Keep the change small and focused.
+- Explain what changed and why it should exist.
+- Include tests or a clear validation note for the affected area.
+- Include before/after screenshots for UI changes.
+- Include a short recording for animation, timing, or interaction changes.
+- Avoid mixing unrelated fixes in one PR.
+- Do not include secrets, personal environment files, build output, logs, or local editor state.
 
-## What We Are Most Likely To Accept
+## Development Basics
 
-Small, focused bug fixes.
+Install dependencies with:
 
-Small reliability fixes.
+```bash
+bun install
+```
 
-Small performance improvements.
+Use focused checks while developing:
 
-Tightly scoped maintenance work that clearly improves the project without changing its direction.
+```bash
+bun run --cwd <workspace> test <path>
+bun run --cwd <workspace> build
+bun run --cwd <workspace> typecheck
+```
 
-## What We Are Least Likely To Accept
+Run only the checks that match the files you changed unless a maintainer asks for a broader verification pass.
 
-Large PRs.
+## Project Boundaries
 
-Drive-by feature work.
+JCode is a local-first Bun/TypeScript monorepo for a coding-agent cockpit. Changes should preserve the local workflow, publishable defaults, MIT attribution, and the project boundaries documented in [AGENTS.md](./AGENTS.md), [CONTEXT.md](./CONTEXT.md), and [CREDITS.md](./CREDITS.md).
 
-Opinionated rewrites.
+## Review Expectations
 
-Anything that expands product scope without us asking for it first.
-
-If you open a 1,000+ line PR full of new features, we will probably close it quickly and remember that you ignored the clearly written instructions.
-
-## If You Still Want To Open A PR
-
-Keep it small.
-
-Explain exactly what changed.
-
-Explain exactly why the change should exist.
-
-Do not mix unrelated fixes together.
-
-If the PR makes anything resembling a UI change, include clear before/after images.
-
-If the change depends on motion, timing, transitions, or interaction details, include a short video.
-
-If we have to guess what changed, we are much less likely to review it.
-
-## Issues First
-
-If you are thinking about a non-trivial change, open an issue first.
-
-That still does not mean we will want the PR, but it gives you a chance to avoid wasting your time.
-
-## Be Realistic
-
-Opening a PR does not create an obligation on our side.
-
-We may close it. We may ignore it. We may ask you to shrink it. We may reimplement the idea ourselves later.
-
-If you are fine with that, proceed.
+Maintainers may ask you to reduce scope, add tests, update docs, or split a PR before merging. A clear, focused PR with reproducible validation is the fastest path to review.

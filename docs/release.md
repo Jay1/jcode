@@ -71,7 +71,7 @@ Checklist:
 
 ## JCode notes
 
-- `JCode` keeps the same release architecture as upstream `T3Code`, but publishes desktop artifacts under JCode branding.
+- `JCode` owns its release process and publishes desktop artifacts under JCode branding.
 - The desktop updater expects the GitHub Release in this repository to include the generated updater metadata files, not just the installers.
 - The published release title should read `JCode vX.Y.Z`.
 - By default, the first-party desktop release path does not require CLI publish or post-release version-bump automation.

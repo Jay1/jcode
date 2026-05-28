@@ -12,7 +12,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a local-only upstream delta ledger CLI for reviewing new DPCode and T3Code PR/release activity without rechecking all upstream history.
+**Goal:** Add a local-only lineage delta ledger CLI for reviewing new DPCode and T3Code PR/release activity without rechecking all lineage-project history.
 
 ## File Structure
 
@@ -29,7 +29,7 @@
 - A second normal run over unchanged upstream data reports no duplicate deltas.
 - The tool never creates branches, commits, merges, or cherry-picks.
 - Focused script tests cover PR/release filtering, dry-run no-write behavior, and cursor advancement.
-- Docs explain that import decisions remain manual and strategy-driven.
+- Docs explain that adaptation decisions remain manual and JCode-directed.
 
 ## Tasks
 

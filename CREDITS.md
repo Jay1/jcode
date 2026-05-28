@@ -1,15 +1,17 @@
 # Credits
 
-JCode is a local coding-agent cockpit built around OpenCode.
+JCode is an independently directed local coding-agent cockpit built around
+OpenCode.
 
-It is derived from DPCode, which was derived from T3Code. JCode is independently
-maintained, but it preserves that lineage clearly and respectfully.
+The repository began from DPCode and T3Code lineage, and JCode preserves that
+history clearly and respectfully. Current product direction, release decisions,
+and contribution expectations are JCode-specific.
 
 ## Lineage
 
 - OpenCode: agent engine and lower-level coding runtime.
-- DPCode: source baseline for this repository.
-- T3Code: original web cockpit lineage.
+- DPCode: historical source lineage for this repository.
+- T3Code: earlier web cockpit lineage.
 
 ## License
 
@@ -18,8 +20,8 @@ copyright notice and adds the JCode copyright notice for JCode-specific changes.
 
 ## Attribution Text
 
-A simple user-facing credit line is enough:
+A simple user-facing credit line is enough when attribution is needed:
 
 ```text
-Built from DPCode and T3Code, with love ❤️. Powered by OpenCode.
+JCode builds on OpenCode and preserves attribution for its DPCode and T3Code lineage.
 ```

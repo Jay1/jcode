@@ -1,4 +1,4 @@
-# Upstream Quality Imports Design
+# Lineage Reference Adaptations Design
 
 | Field           | Value                                                                                                                     |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -8,16 +8,16 @@
 | Audience        | Maintainers and automation agents                                                                                         |
 | Canonical path  | `docs/superpowers/specs/2026-05-24-upstream-quality-imports-design.md`                                                    |
 | Last reviewed   | 2026-05-24                                                                                                                |
-| Review cadence  | Event-driven; review when DPCode/T3Code import candidates or JCode quality priorities change                              |
+| Review cadence  | Event-driven; review when lineage-reference candidates or JCode quality priorities change                                 |
 | Source of truth | `docs/jcode-operating-model.md`, `docs/runbooks/upstream-watch.md`, `scripts/upstream-watch.ts`, and linked upstream refs |
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:writing-plans before implementation. Treat DPCode and T3Code as source material; do not merge or cherry-pick upstream wholesale.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:writing-plans before implementation. Treat DPCode and T3Code as lineage references; do not merge or cherry-pick upstream wholesale.
 
-**Goal:** Import the best recent DPCode and T3Code ideas into JCode with high quality, adapting the ideas to JCode seams instead of copying upstream 1:1.
+**Goal:** Adapt the best recent DPCode and T3Code ideas into JCode with high quality, fitting them to JCode seams instead of copying upstream 1:1.
 
 ## Context
 
-JCode is synced to `origin/main` after PR #3. Upstream watch state is local and intentionally ignored under `.jcode/upstream-watch/`; see `docs/runbooks/upstream-watch.md` and `scripts/upstream-watch.ts` for the source repositories and state semantics. Recent upstream discovery highlighted:
+JCode is synced to `origin/main` after PR #3. Upstream watch state is local and intentionally ignored under `.jcode/upstream-watch/`; see `docs/runbooks/upstream-watch.md` and `scripts/upstream-watch.ts` for the lineage reference repositories and state semantics. Recent lineage discovery highlighted:
 
 - DPCode [`v0.0.49`](https://github.com/Emanuele-web04/dpcode/releases/tag/v0.0.49) and [PR #129](https://github.com/Emanuele-web04/dpcode/pull/129): diff loading, startup hot paths, projection snapshot query, checkpoint diff query, runtime ingestion, and thread retention improvements.
 - T3Code [#2760](https://github.com/pingdotgg/t3code/pull/2760): provider-scoped reasoning/model option preservation.
@@ -66,9 +66,9 @@ Expected behavior:
 - Existing provider update locking and result reporting stays unchanged.
 - Failures continue to surface through existing provider update messages.
 
-### Slice 3: Narrow Diff Hot-Path Import
+### Slice 3: Narrow Diff Hot-Path Adaptation
 
-Use DPCode #129 as source material, but import only the smallest local improvement that can be proven with tests. Candidate adaptations:
+Use DPCode #129 as lineage reference material, but adapt only the smallest local improvement that can be proven with tests. Candidate adaptations:
 
 - Avoid broad checkpoint/diff reads when a selected turn or conversation range is already known.
 - Reuse projection snapshot query results through a deeper server-side query seam.
