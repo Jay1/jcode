@@ -19,22 +19,32 @@ It is a small Bun/TypeScript monorepo with a web UI, desktop packaging, and a lo
 ## Installation
 
 Desktop builds are published from GitHub Releases. Package-manager installs become
-available after the corresponding Homebrew tap and Winget manifests are published.
+available after the corresponding Homebrew tap, Scoop bucket, and Winget manifests
+are published.
 
-### macOS
+### Linux and macOS
 
-Install with Homebrew after the JCode tap is published:
+Install with Homebrew after the JCode tap is published. Homebrew supports Linux
+and macOS:
 
 ```bash
 brew tap Jay1/jcode https://github.com/Jay1/jcode
 brew install --cask jcode
 ```
 
-Until then, download the latest `JCode-<version>-arm64.dmg` or
-`JCode-<version>-x64.dmg` from
+Until then, download the latest macOS `JCode-<version>-arm64.dmg` or
+`JCode-<version>-x64.dmg`, or the latest Linux `JCode-<version>-x64.AppImage`, from
 [GitHub Releases](https://github.com/Jay1/jcode/releases).
 
 ### Windows
+
+Install with Scoop after the JCode bucket is published. If you do not have Scoop
+yet, follow the [official Scoop installation guide](https://scoop.sh/):
+
+```powershell
+scoop bucket add jcode https://github.com/Jay1/scoop-jcode
+scoop install jcode
+```
 
 Install with Winget after the `Jay1.JCode` package is accepted into the Windows
 Package Manager community repository:
