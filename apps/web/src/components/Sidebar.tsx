@@ -3573,7 +3573,9 @@ export default function Sidebar() {
   );
 
   // Reset per-project preview expansion when a folder closes so reopening starts at five rows again.
-  const previousProjectExpandedRef = useRef<ReadonlyMap<string, boolean>>(EMPTY_PROJECT_EXPANDED_MAP);
+  const previousProjectExpandedRef = useRef<ReadonlyMap<string, boolean>>(
+    EMPTY_PROJECT_EXPANDED_MAP,
+  );
   useEffect(() => {
     const nextExpanded = new Map(
       standardProjects.map((project) => [project.cwd, project.expanded] as const),
