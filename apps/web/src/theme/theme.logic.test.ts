@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  CODE_THEME_OPTIONS,
   DEFAULT_THEME_STATE,
   buildResolvedThemeTokens,
   buildThemeCssVariables,
@@ -22,6 +23,46 @@ import {
 
 const PROVIDED_THEME_STRING =
   'codex-theme-v1:{"codeThemeId":"linear","theme":{"accent":"#606acc","contrast":30,"fonts":{"code":"\\"Jetbrains Mono\\"","ui":"Inter"},"ink":"#e3e4e6","opaqueWindows":true,"semanticColors":{"diffAdded":"#69c967","diffRemoved":"#ff7e78","skill":"#c2a1ff"},"surface":"#0f0f11"},"variant":"dark"}';
+
+const REQUIRED_APP_DEPTH_TOKENS = [
+  "--app-surface-canvas",
+  "--app-surface-sidebar",
+  "--app-surface-topbar",
+  "--app-surface-panel",
+  "--app-surface-card",
+  "--app-surface-card-header",
+  "--app-surface-composer",
+  "--app-state-hover",
+  "--app-state-selected",
+  "--app-state-selected-border",
+  "--app-state-focus",
+  "--app-status-error-bg",
+  "--app-status-error-border",
+  "--app-status-warning-bg",
+  "--app-status-warning-border",
+  "--app-chat-heading",
+  "--app-chat-link",
+  "--app-chat-file",
+  "--app-chat-token",
+  "--app-chat-command",
+  "--app-chat-success",
+  "--app-chat-success-bg",
+  "--app-chat-warning",
+  "--app-chat-warning-bg",
+  "--app-chat-error",
+  "--app-chat-error-bg",
+  "--app-chat-chip-bg",
+  "--app-chat-chip-border",
+  "--app-chat-code-bg",
+  "--app-chat-code-border",
+  "--app-chat-code-copy-bg",
+  "--app-chat-code-copy-fg",
+  "--app-diff-card-bg",
+  "--app-diff-card-header-bg",
+  "--app-accent-soft",
+  "--app-accent-muted",
+  "--app-accent-strong",
+] as const;
 
 describe("parseStoredThemeState", () => {
   it("migrates the legacy mode-only value into the new theme store", () => {
@@ -390,50 +431,166 @@ describe("buildThemeCssVariables", () => {
       "dark",
     );
 
-    const depthTokenNames = [
-      "--app-surface-canvas",
-      "--app-surface-sidebar",
-      "--app-surface-topbar",
-      "--app-surface-panel",
-      "--app-surface-card",
-      "--app-surface-card-header",
-      "--app-surface-composer",
-      "--app-state-hover",
-      "--app-state-selected",
-      "--app-state-selected-border",
-      "--app-state-focus",
-      "--app-status-error-bg",
-      "--app-status-error-border",
-      "--app-status-warning-bg",
-      "--app-status-warning-border",
-      "--app-chat-heading",
-      "--app-chat-link",
-      "--app-chat-file",
-      "--app-chat-token",
-      "--app-chat-command",
-      "--app-chat-success",
-      "--app-chat-success-bg",
-      "--app-chat-warning",
-      "--app-chat-warning-bg",
-      "--app-chat-error",
-      "--app-chat-error-bg",
-      "--app-chat-chip-bg",
-      "--app-chat-chip-border",
-      "--app-chat-code-bg",
-      "--app-chat-code-border",
-      "--app-chat-code-copy-bg",
-      "--app-chat-code-copy-fg",
-      "--app-diff-card-bg",
-      "--app-diff-card-header-bg",
-      "--app-accent-soft",
-      "--app-accent-muted",
-      "--app-accent-strong",
-    ];
-
-    for (const tokenName of depthTokenNames) {
+    for (const tokenName of REQUIRED_APP_DEPTH_TOKENS) {
       expect(cssVariables.variables[tokenName], tokenName).toEqual(expect.any(String));
       expect(cssVariables.variables[tokenName]?.length, tokenName).toBeGreaterThan(0);
     }
+  });
+
+  it("emits complete app-depth tokens for every bundled theme variant", () => {
+    for (const option of CODE_THEME_OPTIONS) {
+      for (const variant of option.variants) {
+        const cssVariables = buildThemeCssVariables(
+          {
+            codeThemeId: option.id,
+            theme: getCodeThemeSeed(option.id, variant),
+          },
+          variant,
+        );
+
+        for (const tokenName of REQUIRED_APP_DEPTH_TOKENS) {
+          const value = cssVariables.variables[tokenName];
+          expect(value, `${option.id}/${variant}/${tokenName}`).toEqual(expect.any(String));
+          expect(value?.length, `${option.id}/${variant}/${tokenName}`).toBeGreaterThan(0);
+          expect(value, `${option.id}/${variant}/${tokenName}`).not.toContain("NaN");
+        }
+      }
+    }
+  });
+
+  it("separates major app-depth surfaces for every bundled theme variant", () => {
+    for (const option of CODE_THEME_OPTIONS) {
+      for (const variant of option.variants) {
+        const variables = buildThemeCssVariables(
+          {
+            codeThemeId: option.id,
+            theme: getCodeThemeSeed(option.id, variant),
+          },
+          variant,
+        ).variables;
+
+        expect(variables["--app-surface-sidebar"], `${option.id}/${variant}/sidebar`).not.toBe(
+          variables["--app-surface-canvas"],
+        );
+        expect(variables["--app-surface-topbar"], `${option.id}/${variant}/topbar`).not.toBe(
+          variables["--app-surface-canvas"],
+        );
+        expect(variables["--app-surface-card-header"], `${option.id}/${variant}/header`).not.toBe(
+          variables["--app-surface-card"],
+        );
+      }
+    }
+  });
+
+  it("locks representative bundled theme-depth profile values", () => {
+    const expectations = [
+      ["dp-code", "dark", "#0b0b0b", "#141414", "#313131", "rgba(96, 115, 204, 0.14)", "#f5b44a"],
+      ["dp-code", "light", "#eeeeee", "#e8e8e8", "#f0f0f0", "rgba(82, 111, 255, 0.1)", "#d97706"],
+      ["codex", "dark", "#0e0e0e", "#181818", "#303030", "rgba(1, 105, 204, 0.12)", "#f5b44a"],
+      ["codex", "light", "#f5f5f5", "#eeeeee", "#f0f0f0", "rgba(1, 105, 204, 0.09)", "#d97706"],
+      ["linear", "dark", "#0d0d0e", "#161617", "#2b2b2d", "rgba(96, 106, 204, 0.12)", "#f5b44a"],
+      ["github", "light", "#f6f6f6", "#efefef", "#f2f2f2", "rgba(9, 105, 218, 0.09)", "#d97706"],
+      ["github", "dark", "#0b0e13", "#15181d", "#2e3339", "rgba(31, 111, 235, 0.13)", "#f5b44a"],
+      ["gruvbox", "dark", "#222222", "#2c2b29", "#47453f", "rgba(69, 133, 136, 0.14)", "#fabd2f"],
+      [
+        "rose-pine",
+        "dark",
+        "#1d1c2d",
+        "#272637",
+        "#424055",
+        "rgba(234, 154, 151, 0.14)",
+        "#f6c177",
+      ],
+      [
+        "tokyo-night",
+        "dark",
+        "#161720",
+        "#1d1e28",
+        "#303240",
+        "rgba(61, 89, 161, 0.13)",
+        "#e0af68",
+      ],
+      ["vercel", "light", "#f7f7f7", "#f0f0f0", "#f1f1f1", "rgba(0, 106, 255, 0.09)", "#d97706"],
+      ["vercel", "dark", "#000000", "#090909", "#1e1e1e", "rgba(0, 110, 254, 0.12)", "#f5b44a"],
+      [
+        "vscode-plus",
+        "light",
+        "#f5f5f5",
+        "#ededed",
+        "#f0f0f0",
+        "rgba(0, 122, 204, 0.09)",
+        "#d97706",
+      ],
+      [
+        "vscode-plus",
+        "dark",
+        "#191919",
+        "#212121",
+        "#3a3a3a",
+        "rgba(0, 122, 204, 0.13)",
+        "#f5b44a",
+      ],
+      ["matrix", "dark", "#030704", "#0d150f", "#233326", "rgba(30, 255, 90, 0.16)", "#b7ff5a"],
+      ["lobster", "dark", "#0e1421", "#1a1f2c", "#353b48", "rgba(255, 92, 92, 0.16)", "#f5b44a"],
+    ] as const;
+
+    for (const [
+      codeThemeId,
+      variant,
+      canvas,
+      sidebar,
+      cardHeader,
+      selected,
+      warning,
+    ] of expectations) {
+      const variables = buildThemeCssVariables(
+        {
+          codeThemeId,
+          theme: getCodeThemeSeed(codeThemeId, variant),
+        },
+        variant,
+      ).variables;
+
+      expect(variables["--app-surface-canvas"], `${codeThemeId}/${variant}/canvas`).toBe(canvas);
+      expect(variables["--app-surface-sidebar"], `${codeThemeId}/${variant}/sidebar`).toBe(sidebar);
+      expect(variables["--app-surface-card-header"], `${codeThemeId}/${variant}/header`).toBe(
+        cardHeader,
+      );
+      expect(variables["--app-state-selected"], `${codeThemeId}/${variant}/selected`).toBe(
+        selected,
+      );
+      expect(variables["--app-chat-warning"], `${codeThemeId}/${variant}/warning`).toBe(warning);
+    }
+  });
+
+  it("keeps custom imported themes on complete fallback app-depth derivation", () => {
+    const variables = buildThemeCssVariables(
+      {
+        codeThemeId: "custom-aurora",
+        theme: {
+          accent: "#66d9ef",
+          contrast: 50,
+          fonts: { code: null, ui: null },
+          ink: "#f8f8f2",
+          opaqueWindows: false,
+          semanticColors: {
+            diffAdded: "#a6e22e",
+            diffRemoved: "#f92672",
+            skill: "#ae81ff",
+          },
+          surface: "#1b1d2a",
+        },
+      },
+      "dark",
+    ).variables;
+
+    for (const tokenName of REQUIRED_APP_DEPTH_TOKENS) {
+      expect(variables[tokenName], tokenName).toEqual(expect.any(String));
+      expect(variables[tokenName]?.length, tokenName).toBeGreaterThan(0);
+      expect(variables[tokenName], tokenName).not.toContain("NaN");
+    }
+    expect(variables["--app-surface-sidebar"]).not.toBe(variables["--app-surface-canvas"]);
+    expect(variables["--app-surface-card-header"]).not.toBe(variables["--app-surface-card"]);
   });
 
   it("lets Catppuccin theme edits drive accent and selected-state depth tokens", () => {
