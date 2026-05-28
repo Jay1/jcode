@@ -1,15 +1,15 @@
 # All Theme Depth Design
 
-| Field           | Value                                                                                                   |
-| --------------- | ------------------------------------------------------------------------------------------------------- |
-| Status          | Approved                                                                                                |
-| Type            | Design specification                                                                                    |
-| Owner           | Engineering                                                                                             |
-| Audience        | Maintainers and automation agents                                                                       |
-| Canonical path  | `docs/superpowers/specs/2026-05-28-all-theme-depth-design.md`                                           |
-| Last reviewed   | 2026-05-28                                                                                              |
-| Review cadence  | Event-driven; review when bundled themes, app-depth tokens, or high-impact shell surfaces change        |
-| Source of truth | JCode theme seed catalog, Catppuccin depth implementation, theme logic tests, and screenshot review     |
+| Field           | Value                                                                                               |
+| --------------- | --------------------------------------------------------------------------------------------------- |
+| Status          | Approved                                                                                            |
+| Type            | Design specification                                                                                |
+| Owner           | Engineering                                                                                         |
+| Audience        | Maintainers and automation agents                                                                   |
+| Canonical path  | `docs/superpowers/specs/2026-05-28-all-theme-depth-design.md`                                       |
+| Last reviewed   | 2026-05-28                                                                                          |
+| Review cadence  | Event-driven; review when bundled themes, app-depth tokens, or high-impact shell surfaces change    |
+| Source of truth | JCode theme seed catalog, Catppuccin depth implementation, theme logic tests, and screenshot review |
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:writing-plans before implementation. For implementation, use frontend-design, test-driven-development, webapp-testing, verification-before-completion, and aikido-security.
 
