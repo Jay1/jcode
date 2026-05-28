@@ -969,6 +969,212 @@ describe("flattenOpenCodeModels", () => {
 });
 
 describe("OpenCodeAdapter runtime lifecycle", () => {
+  it("advertises OpenCode skill discovery capabilities", async () => {
+    const runtime = createMockOpenCodeRuntime();
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const getComposerCapabilities = adapter.getComposerCapabilities;
+        if (!getComposerCapabilities) {
+          throw new Error("Expected OpenCode adapter to expose composer capabilities.");
+        }
+        return yield* getComposerCapabilities();
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(result.supportsSkillDiscovery).toBe(true);
+    expect(result.supportsSkillMentions).toBe(true);
+  });
+
+  it("lists OpenCode skills from runtime console metadata", async () => {
+    const runtime = createMockOpenCodeRuntime({
+      inventory: {
+        providerList: { connected: [], all: [], default: {} },
+        agents: [],
+        consoleState: {
+          skills: [
+            {
+              name: "security-review",
+              path: "/home/test/.opencode/skills/security-review/SKILL.md",
+              description: "Security code review for vulnerabilities.",
+              interface: {
+                displayName: "Security Review",
+                shortDescription: "Review code for security issues",
+              },
+              scope: "user",
+            },
+            {
+              id: "legacy-skill",
+              source: { path: "/home/test/.opencode/skills/legacy/SKILL.md" },
+              summary: "Legacy metadata shape.",
+              disabled: true,
+            },
+          ],
+        } as never,
+      },
+    });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const listSkills = adapter.listSkills;
+        if (!listSkills) {
+          throw new Error("Expected OpenCode adapter to support skill listing.");
+        }
+        return yield* listSkills({
+          provider: "opencode",
+          cwd: process.cwd(),
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(result).toEqual({
+      skills: [
+        {
+          name: "security-review",
+          path: "/home/test/.opencode/skills/security-review/SKILL.md",
+          enabled: true,
+          description: "Security code review for vulnerabilities.",
+          scope: "user",
+          interface: {
+            displayName: "Security Review",
+            shortDescription: "Review code for security issues",
+          },
+        },
+        {
+          name: "legacy-skill",
+          path: "/home/test/.opencode/skills/legacy/SKILL.md",
+          enabled: false,
+          description: "Legacy metadata shape.",
+          interface: {
+            shortDescription: "Legacy metadata shape.",
+          },
+        },
+      ],
+      source: "opencode-runtime",
+      cached: false,
+    });
+  });
+
+  it("normalizes keyed and string OpenCode skill metadata", async () => {
+    const runtime = createMockOpenCodeRuntime({
+      inventory: {
+        providerList: { connected: [], all: [], default: {} },
+        agents: [],
+        consoleState: {
+          skills: {
+            "code-review": {
+              description: "Review code changes for correctness.",
+              file: "/home/test/.opencode/skills/code-review/SKILL.md",
+              title: "Code Review",
+            },
+            quickstart: true,
+            write: "write-a-skill",
+          },
+        } as never,
+      },
+    });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const listSkills = adapter.listSkills;
+        if (!listSkills) {
+          throw new Error("Expected OpenCode adapter to support skill listing.");
+        }
+        return yield* listSkills({
+          provider: "opencode",
+          cwd: process.cwd(),
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(result.skills).toEqual([
+      {
+        name: "code-review",
+        path: "/home/test/.opencode/skills/code-review/SKILL.md",
+        enabled: true,
+        description: "Review code changes for correctness.",
+        interface: {
+          displayName: "Code Review",
+          shortDescription: "Review code changes for correctness.",
+        },
+      },
+      {
+        name: "write-a-skill",
+        path: "opencode://skill/write-a-skill",
+        enabled: true,
+      },
+    ]);
+  });
+
+  it("returns an empty OpenCode skill list for missing metadata", async () => {
+    const runtime = createMockOpenCodeRuntime({
+      inventory: {
+        providerList: { connected: [], all: [], default: {} },
+        agents: [],
+        consoleState: null,
+      },
+    });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const listSkills = adapter.listSkills;
+        if (!listSkills) {
+          throw new Error("Expected OpenCode adapter to support skill listing.");
+        }
+        return yield* listSkills({
+          provider: "opencode",
+          cwd: process.cwd(),
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(result).toEqual({
+      skills: [],
+      source: "opencode-runtime",
+      cached: false,
+    });
+  });
+
   it("lists OpenCode models from the CLI before falling back to server inventory", async () => {
     const runtime = createMockOpenCodeRuntime({
       cliModels: [

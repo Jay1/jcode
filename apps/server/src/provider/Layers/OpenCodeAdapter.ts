@@ -7,6 +7,7 @@ import {
   type ProviderComposerCapabilities,
   type ProviderListAgentsResult,
   type ProviderListModelsResult,
+  type ProviderListSkillsResult,
   type ProviderRuntimeEvent,
   type ProviderSession,
   RuntimeItemId,
@@ -831,11 +832,13 @@ type OpenCodeModelInventory = {
   };
   readonly consoleState?: {
     readonly consoleManagedProviders: ReadonlyArray<string>;
+    readonly skills?: unknown;
   } | null;
 };
 
 type OpenCodeInventoryProvider = OpenCodeModelInventory["providerList"]["all"][number];
 type OpenCodeModelDescriptor = ProviderListModelsResult["models"][number];
+type OpenCodeSkillDescriptor = ProviderListSkillsResult["skills"][number];
 
 function asNonNegativeInteger(value: unknown): number | undefined {
   return typeof value === "number" &&
@@ -1118,6 +1121,111 @@ function trimNonEmptyString(value: unknown): string | undefined {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function asPlainRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function readFirstNonEmptyString(
+  record: Record<string, unknown> | undefined,
+  keys: readonly string[],
+): string | undefined {
+  if (!record) return undefined;
+  for (const key of keys) {
+    const value = trimNonEmptyString(record[key]);
+    if (value) return value;
+  }
+  return undefined;
+}
+
+function readOpenCodeSkillPath(record: Record<string, unknown> | undefined): string | undefined {
+  const directPath = readFirstNonEmptyString(record, ["path", "file", "filename"]);
+  if (directPath) return directPath;
+  return readFirstNonEmptyString(asPlainRecord(record?.source), ["path", "file", "filename"]);
+}
+
+function readOpenCodeSkillEnabled(record: Record<string, unknown> | undefined): boolean {
+  if (record?.enabled === false || record?.disabled === true) {
+    return false;
+  }
+  return true;
+}
+
+function normalizeOpenCodeSkillDescriptor(
+  value: unknown,
+  fallbackName?: string,
+): OpenCodeSkillDescriptor | undefined {
+  if (typeof value === "boolean" || value == null) {
+    return undefined;
+  }
+
+  if (typeof value === "string") {
+    const name = trimNonEmptyString(value);
+    return name
+      ? { name, path: `opencode://skill/${encodeURIComponent(name)}`, enabled: true }
+      : undefined;
+  }
+
+  const record = asPlainRecord(value);
+  if (!record) return undefined;
+  const interfaceRecord = asPlainRecord(record.interface);
+  const name =
+    readFirstNonEmptyString(record, ["name", "id", "key"]) ?? trimNonEmptyString(fallbackName);
+  if (!name) return undefined;
+
+  const description = readFirstNonEmptyString(record, [
+    "description",
+    "shortDescription",
+    "summary",
+  ]);
+  const displayName =
+    readFirstNonEmptyString(interfaceRecord, ["displayName"]) ??
+    readFirstNonEmptyString(record, ["displayName", "title"]);
+  const shortDescription =
+    readFirstNonEmptyString(interfaceRecord, ["shortDescription"]) ??
+    readFirstNonEmptyString(record, ["shortDescription", "summary"]);
+  const skillInterface =
+    displayName || shortDescription || description
+      ? {
+          ...(displayName ? { displayName } : {}),
+          ...((shortDescription ?? description)
+            ? { shortDescription: shortDescription ?? description }
+            : {}),
+        }
+      : undefined;
+  const scope = readFirstNonEmptyString(record, ["scope"]);
+
+  return {
+    name,
+    path: readOpenCodeSkillPath(record) ?? `opencode://skill/${encodeURIComponent(name)}`,
+    enabled: readOpenCodeSkillEnabled(record),
+    ...(description ? { description } : {}),
+    ...(scope ? { scope } : {}),
+    ...(skillInterface ? { interface: skillInterface } : {}),
+  };
+}
+
+function normalizeOpenCodeSkillDescriptors(
+  inventory: OpenCodeInventory,
+): OpenCodeSkillDescriptor[] {
+  const consoleState = asPlainRecord(inventory.consoleState);
+  const skills = consoleState?.skills;
+  if (Array.isArray(skills)) {
+    return skills.flatMap((skill) => {
+      const descriptor = normalizeOpenCodeSkillDescriptor(skill);
+      return descriptor ? [descriptor] : [];
+    });
+  }
+
+  const skillRecord = asPlainRecord(skills);
+  if (!skillRecord) return [];
+  return Object.entries(skillRecord).flatMap(([key, value]) => {
+    const descriptor = normalizeOpenCodeSkillDescriptor(value, key);
+    return descriptor ? [descriptor] : [];
+  });
 }
 
 function readOpenCodeInventoryVariantValue(
@@ -4032,6 +4140,15 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
           );
         });
 
+      const listSkills: NonNullable<OpenCodeAdapterShape["listSkills"]> = () =>
+        withDiscoveryInventory({}, ({ inventory }) =>
+          Effect.succeed({
+            skills: normalizeOpenCodeSkillDescriptors(inventory),
+            source: "opencode-runtime",
+            cached: false,
+          } satisfies ProviderListSkillsResult),
+        );
+
       const listModels: NonNullable<OpenCodeAdapterShape["listModels"]> = (input) => {
         const binaryPath = input.binaryPath?.trim() || adapterConfig.defaultBinaryPath;
         const freeOnlyProviderID = adapterConfig.provider === "kilo" ? "kilo" : undefined;
@@ -4118,8 +4235,8 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
       > = () =>
         Effect.succeed({
           provider,
-          supportsSkillMentions: false,
-          supportsSkillDiscovery: false,
+          supportsSkillMentions: provider === "opencode",
+          supportsSkillDiscovery: provider === "opencode",
           supportsNativeSlashCommandDiscovery: false,
           supportsPluginMentions: false,
           supportsPluginDiscovery: false,
@@ -4159,6 +4276,7 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
         compactThread,
         forkThread,
         stopAll,
+        listSkills,
         listModels,
         listAgents,
         getComposerCapabilities,
