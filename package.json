@@ -46,6 +46,7 @@
     "test:coverage": "turbo run test -- --coverage",
     "test:desktop-smoke": "turbo run smoke-test --filter=@jcode/desktop",
     "release:notes": "bun scripts/release-notes.ts",
+    "release:scoop": "node scripts/generate-scoop-manifest.ts",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "build:contracts": "turbo run build --filter=@jcode/contracts",
