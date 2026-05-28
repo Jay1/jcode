@@ -53,3 +53,12 @@ export function resolveDiffSelectAllArmed(
   }
   return false;
 }
+
+export function resolveDiffFileCopyButtonLabel(isCopied: boolean): {
+  ariaLabel: string;
+  text: string;
+} {
+  return isCopied
+    ? { ariaLabel: "Copied file path", text: "Copied" }
+    : { ariaLabel: "Copy file path", text: "Copy path" };
+}

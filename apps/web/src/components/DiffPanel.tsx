@@ -58,7 +58,11 @@ import { getProviderStartOptions, useAppSettings } from "../appSettings";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { formatShortTimestamp } from "../timestampFormat";
 import ChatMarkdown from "./ChatMarkdown";
-import { resolveDiffPanelThread, resolveDiffSelectAllArmed } from "./DiffPanel.logic";
+import {
+  resolveDiffFileCopyButtonLabel,
+  resolveDiffPanelThread,
+  resolveDiffSelectAllArmed,
+} from "./DiffPanel.logic";
 import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
 import { Button } from "./ui/button";
 import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./ui/menu";
@@ -406,6 +410,8 @@ export default function DiffPanel({
   const isSidebarMode = mode === "sidebar";
   const { copyToClipboard, isCopied: isSummaryCopied } = useCopyToClipboard();
   const { copyToClipboard: copyDiffToClipboard, isCopied: isDiffCopied } = useCopyToClipboard();
+  const { copyToClipboard: copyFilePathToClipboard, isCopied: isFilePathCopied } =
+    useCopyToClipboard();
   const renderablePatch = useMemo(
     () => getRenderablePatch(activeReviewPatch, `diff-panel:${resolvedTheme}`),
     [activeReviewPatch, resolvedTheme],
@@ -1091,6 +1097,7 @@ export default function DiffPanel({
                           const composedPath = nativeEvent.composedPath?.() ?? [];
                           const clickedHeader = composedPath.some((node) => {
                             if (!(node instanceof Element)) return false;
+                            if (node.hasAttribute("data-diff-copy-path")) return false;
                             return (
                               node.hasAttribute("data-diffs-header") ||
                               node.hasAttribute("data-file-info")
@@ -1125,10 +1132,41 @@ export default function DiffPanel({
                               style={{
                                 display: "inline-flex",
                                 alignItems: "center",
+                                gap: "6px",
                                 padding: "2px",
                                 color: "inherit",
                               }}
                             >
+                              <button
+                                type="button"
+                                data-diff-copy-path="true"
+                                aria-label={
+                                  resolveDiffFileCopyButtonLabel(isFilePathCopied).ariaLabel
+                                }
+                                title={resolveDiffFileCopyButtonLabel(isFilePathCopied).ariaLabel}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  copyFilePathToClipboard(filePath, undefined);
+                                }}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  border:
+                                    "1px solid color-mix(in srgb, currentColor 18%, transparent)",
+                                  borderRadius: "999px",
+                                  padding: "2px 6px",
+                                  color: "inherit",
+                                  opacity: 0.68,
+                                  background: "color-mix(in srgb, currentColor 5%, transparent)",
+                                  fontSize: "10px",
+                                  lineHeight: 1,
+                                }}
+                              >
+                                <CopyIcon style={{ width: "11px", height: "11px" }} />
+                                <span>{resolveDiffFileCopyButtonLabel(isFilePathCopied).text}</span>
+                              </button>
                               <ChevronDownIcon
                                 style={{
                                   width: "14px",

@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 
 import type { DraftThreadState } from "../composerDraftStore";
 import type { Thread } from "../types";
-import { resolveDiffPanelThread, resolveDiffSelectAllArmed } from "./DiffPanel.logic";
+import {
+  resolveDiffFileCopyButtonLabel,
+  resolveDiffPanelThread,
+  resolveDiffSelectAllArmed,
+} from "./DiffPanel.logic";
 
 const PROJECT_ID = ProjectId.makeUnsafe("project-1");
 const THREAD_ID = ThreadId.makeUnsafe("thread-1");
@@ -101,6 +105,19 @@ describe("resolveDiffPanelThread", () => {
         fallbackModelSelection: null,
       }),
     ).toBeUndefined();
+  });
+});
+
+describe("resolveDiffFileCopyButtonLabel", () => {
+  it("labels the diff file path copy button by copied state", () => {
+    expect(resolveDiffFileCopyButtonLabel(false)).toEqual({
+      ariaLabel: "Copy file path",
+      text: "Copy path",
+    });
+    expect(resolveDiffFileCopyButtonLabel(true)).toEqual({
+      ariaLabel: "Copied file path",
+      text: "Copied",
+    });
   });
 });
 
