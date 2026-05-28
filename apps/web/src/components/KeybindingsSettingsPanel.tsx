@@ -248,14 +248,14 @@ export function KeybindingsSettingsPanel(props: KeybindingsSettingsPanelProps) {
               for advanced bindings.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
-              size="sm"
-              variant="outline"
+              size="xs"
+              variant="link"
               disabled={!props.configPath || props.isOpeningConfigFile}
               onClick={props.onOpenConfigFile}
             >
-              {props.isOpeningConfigFile ? "Opening..." : "Open JSON"}
+              {props.isOpeningConfigFile ? "Opening..." : "Open keybindings.json"}
             </Button>
             <Button
               size="sm"
