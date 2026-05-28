@@ -16,58 +16,42 @@ A local cockpit for coding agents, tuned for low-level and cybersecurity workflo
 
 ## Installation
 
-### AI-Driven Install
-
-Copy the prompt below and paste it into your AI tool (Claude, Codex, OpenClaw, etc.) to install JCode on this machine:
-
-```markdown
-Install JCode desktop app on this machine. JCode is at https://github.com/Jay1/jcode
-
-1. Go to https://github.com/Jay1/jcode/releases/latest
-2. Detect the current OS and architecture (macOS ARM/x64, Windows x64, or Linux x64).
-3. Download the matching installer:
-   - macOS ARM: `JCode-*-arm64.dmg`
-   - macOS Intel: `JCode-*-x64.dmg`
-   - Windows: `JCode-*-x64.exe`
-   - Linux: `JCode-*-x86_64.AppImage`
-4. Run the installer or mount the DMG and drag JCode to Applications.
-5. Launch JCode and confirm it opens.
-
-If the latest release page or assets cannot be found, report the error.
-```
 
 ### Linux and macOS
 
-Install with Homebrew after the JCode tap is published. Homebrew supports Linux
-and macOS:
+#### Homebrew
 
 ```bash
 brew tap Jay1/jcode https://github.com/Jay1/jcode
 brew install --cask jcode
 ```
 
-Until then, download the latest macOS `JCode-<version>-arm64.dmg` or
+#### Download the latest macOS 
+
+`JCode-<version>-arm64.dmg` or
 `JCode-<version>-x64.dmg`, or the latest Linux `JCode-<version>-x64.AppImage`, from
 [GitHub Releases](https://github.com/Jay1/jcode/releases).
 
 ### Windows
 
-Install with Scoop after the JCode bucket is published. If you do not have Scoop
-yet, follow the [official Scoop installation guide](https://scoop.sh/):
+#### Scoop 
+
+If you do not have Scoop yet, follow the [official Scoop installation guide](https://scoop.sh/):
 
 ```powershell
 scoop bucket add jcode https://github.com/Jay1/scoop-jcode
 scoop install jcode
 ```
 
-Install with Winget after the `Jay1.JCode` package is accepted into the Windows
-Package Manager community repository:
+#### Winget 
 
 ```powershell
 winget install Jay1.JCode
 ```
 
-Until then, download the latest `JCode-<version>-x64.exe` installer from
+#### Download the latest Windows
+
+Latest `JCode-<version>-x64.exe` installer from
 [GitHub Releases](https://github.com/Jay1/jcode/releases).
 
 ## Development
