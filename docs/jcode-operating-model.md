@@ -2,23 +2,26 @@
 
 ## Intent
 
-JCode is Jay's personal OpenCode cockpit. It should optimize for daily utility,
-fast recovery, and low ceremony.
+JCode is an independent OpenCode cockpit. It should optimize for daily utility,
+fast recovery, local control, and low ceremony.
 
-It is intentionally not a product bet. If a few people use it, fine. The main
-job is to stay useful for Jay without depending on another maintainer's roadmap.
+It is intentionally practical before it is promotional. The main job is to stay
+useful without depending on another maintainer's roadmap, taste, or project
+philosophy.
 
-## Source Strategy
+## Project Direction
 
-Treat upstream projects as source material:
+JCode is independently directed. DPCode and T3Code are historical lineage and
+may still be useful references, but they do not define JCode's product
+philosophy, roadmap, contribution style, or release decisions.
 
 - OpenCode is the engine boundary.
-- DPCode is the current source baseline.
-- T3Code is a parts bin for specific features or fixes.
-- DPCode is also a parts bin after the baseline, not a boss.
+- JCode-specific user workflow is the product boundary.
+- External ideas are evaluated only when they fit JCode's local-first direction.
 
-Do not blindly merge upstream work into the stable branch. Review upstream work
-on short-lived feature branches, test it, then keep only the useful pieces.
+Do not blindly merge external work into the stable branch. Review any external
+idea on a short-lived feature branch, test it, then keep only the pieces that
+match JCode's architecture and maintenance standards.
 
 ## Branch Strategy
 
@@ -31,24 +34,24 @@ Tag known-good deployable points before risky changes:
 git tag -a jcode-known-good-YYYY-MM-DD -m "Known-good JCode state"
 ```
 
-## Upstream Workflow
+## External Reference Workflow
 
-Fetch both upstreams:
+When reviewing historical-lineage repositories or other external projects, fetch
+them explicitly and inspect changes before adapting any idea:
 
 ```bash
 git fetch upstream-dpcode
 git fetch upstream-t3code
 ```
 
-Inspect before cherry-picking:
+Inspect before adapting anything:
 
 ```bash
 git log --oneline main..upstream-dpcode/main
 git log --oneline main..upstream-t3code/main
 ```
 
-Prefer cherry-picks or small rebased branches over large merge commits until
-JCode has enough independent test coverage.
+Prefer small, JCode-native changes over large merge commits or wholesale imports.
 
 ## Public Repo Hygiene
 

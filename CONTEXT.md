@@ -4,7 +4,7 @@
 
 ### JCode
 
-JCode is a local-first coding-agent cockpit built around Jay's day-to-day OpenCode workflow. It packages a web UI, local server, desktop shell, and provider integrations so a maintainer can manage coding-agent sessions from a local machine rather than a hosted multi-tenant product.
+JCode is an independent local-first coding-agent cockpit built around day-to-day OpenCode workflow. It packages a web UI, local server, desktop shell, and provider integrations so a maintainer can manage coding-agent sessions from a local machine rather than a hosted multi-tenant product.
 
 Committed defaults should optimize for local utility, fast recovery, safe public repository hygiene, and publishable configuration. Do not assume hosted SaaS guarantees or enterprise multi-user tenancy unless a future ADR changes that product boundary.
 
@@ -210,15 +210,15 @@ The server auth boundary describes how the local server decides whether a browse
 
 Authentication defaults must preserve local-first safety and publishable configuration. Pairing credentials, bearer tokens, session cookies, and websocket tokens are runtime secrets and must not become committed defaults.
 
-### Source Material
+### Project Direction
 
-Source material is upstream code or releases that can inform JCode without controlling it. OpenCode is the engine boundary; DPCode is the current source baseline and later parts bin; T3Code is a parts bin for selected features or fixes.
+JCode is independently directed. OpenCode is the engine boundary; JCode's local-first coding-agent cockpit workflow is the product boundary. DPCode and T3Code are historical lineage and optional external references, not active product philosophy.
 
-Do not blindly merge source material into `main`. Review upstream work on short-lived feature branches or with the upstream delta ledger, test it, and keep only useful pieces.
+Do not blindly merge external work into `main`. Review any outside idea on short-lived feature branches or with the upstream delta ledger, test it, and keep only small JCode-native pieces.
 
 ### Upstream Delta Ledger
 
-A local-first workflow for tracking new PRs and releases from upstream source-material projects such as DPCode and T3Code. It records what has already been seen so maintainers can review only new upstream activity. It does not merge, cherry-pick, or create import branches automatically; import decisions remain manual and strategy-driven.
+A local-first workflow for tracking new PRs and releases from historical-lineage projects such as DPCode and T3Code. It records what has already been seen so maintainers can review only new external-reference activity. It does not merge, cherry-pick, or create import branches automatically; adaptation decisions remain manual and JCode-directed.
 
 Ledger state is local-only by default and belongs under `.jcode/upstream-watch/`. Committed repository files may define the tool, upstream list, and runbook, but personal cursors and review logs should not be committed unless explicitly exported as a human summary.
 

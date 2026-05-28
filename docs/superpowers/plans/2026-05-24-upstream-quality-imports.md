@@ -1,4 +1,4 @@
-# Upstream Quality Imports Implementation Plan
+# Lineage Quality Adaptations Implementation Plan
 
 | Field           | Value                                                                                                                            |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -7,11 +7,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Import three high-value upstream ideas into JCode with local tests and minimal, idiomatic adaptations.
+**Goal:** Adapt three high-value lineage-project ideas into JCode with local tests and minimal, idiomatic changes.
 
 ## File Structure
 
-- [`docs/superpowers/specs/2026-05-24-upstream-quality-imports-design.md`](../specs/2026-05-24-upstream-quality-imports-design.md): approved design for the import tranche.
+- [`docs/superpowers/specs/2026-05-24-upstream-quality-imports-design.md`](../specs/2026-05-24-upstream-quality-imports-design.md): approved design for the adaptation tranche.
 - `docs/superpowers/plans/2026-05-24-upstream-quality-imports.md`: this implementation plan.
 - `apps/web/src/hooks/useTheme.ts`: theme mode resolution and DOM synchronization seam.
 - `apps/web/src/hooks/useTheme.test.ts` or existing theme hook/runtime test file: focused tests for repeated theme sync no-op behavior.

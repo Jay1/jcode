@@ -48,7 +48,8 @@ When the user says “prepare a new release for me”, treat it as release-prep 
 
 ## Upstream Watch
 
-- DPCode and T3Code are source material, not automatic merge targets; import decisions remain manual and strategy-driven.
+- DPCode and T3Code are historical lineage and optional external reference points, not JCode's product philosophy or automatic merge targets.
+- Any adapted external idea must become a small, JCode-native change with focused verification.
 - Use `bun run upstream:watch -- --dry-run` to preview new upstream PR/release deltas without advancing local cursors.
 - Use `bun run upstream:watch` to record a local cursor after reviewing the report.
 - Upstream watch state lives under `.jcode/upstream-watch/` and must not be committed.

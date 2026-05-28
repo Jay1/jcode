@@ -8,16 +8,16 @@
 | Audience        | Maintainers and automation agents                                                                   |
 | Canonical path  | `docs/superpowers/specs/2026-05-24-upstream-delta-ledger-design.md`                                 |
 | Last reviewed   | 2026-05-24                                                                                          |
-| Review cadence  | Event-driven; review when upstream source strategy or the upstream watch script changes             |
+| Review cadence  | Event-driven; review when lineage reference strategy or the upstream watch script changes           |
 | Source of truth | `scripts/upstream-watch.ts`, `docs/runbooks/upstream-watch.md`, and `docs/jcode-operating-model.md` |
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:writing-plans before implementation. Keep the workflow ledger-only; do not add branch automation.
 
-**Goal:** Add a first-class local CLI for checking new DPCode and T3Code PR/release activity without re-reviewing all upstream activity each time.
+**Goal:** Add a first-class local CLI for checking new DPCode and T3Code PR/release activity without re-reviewing all lineage-project activity each time.
 
 ## Context
 
-JCode treats DPCode and T3Code as source material, not automatic merge targets. `docs/jcode-operating-model.md` says upstream work should be reviewed on short-lived feature branches and only useful pieces should be kept. This tool supports that review workflow by making upstream discovery incremental, not by automating imports.
+JCode treats DPCode and T3Code as historical lineage references, not product philosophy or automatic merge targets. `docs/jcode-operating-model.md` says external ideas should be reviewed on short-lived feature branches and adapted only when they fit JCode's direction. This tool supports that review workflow by making lineage-project discovery incremental, not by automating imports.
 
 Existing repo automation lives in `scripts/`, is deterministic/non-interactive by default, and is exposed through root `package.json` scripts when useful. Personal state must stay out of committed defaults.
 
@@ -105,11 +105,11 @@ The first version should fetch a bounded recent window and stop once results are
 - A second normal run immediately after the first reports no duplicate PR/release deltas when upstream data has not changed.
 - The tool never creates branches, commits, merges, or cherry-picks.
 - Focused script tests cover cursor advancement, dry-run behavior, and PR/release filtering semantics.
-- Documentation explains that import decisions remain manual and strategy-driven.
+- Documentation explains that adaptation decisions remain manual and JCode-directed.
 
 ## Self-Review
 
 - No placeholder sections remain.
-- The design matches the existing operating model: upstreams are source material, not bosses.
+- The design matches the existing operating model: lineage projects are optional references, not direction setters.
 - The local state choice respects publishable defaults and avoids committing personal review history.
 - The first version is intentionally ledger-only and leaves import planning as a separate human workflow.

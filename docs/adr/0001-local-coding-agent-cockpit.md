@@ -15,7 +15,7 @@
 
 ## Context
 
-JCode is built around Jay's local coding-agent workflow. It packages a web UI, local server, desktop shell, and provider integrations into a cockpit for managing coding-agent sessions.
+JCode is built around local coding-agent workflow. It packages a web UI, local server, desktop shell, and provider integrations into a cockpit for managing coding-agent sessions.
 
 ## Decision
 

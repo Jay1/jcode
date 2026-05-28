@@ -6,18 +6,22 @@
 | Type            | Operational runbook                                                                               |
 | Owner           | Engineering                                                                                       |
 | Audience        | Maintainers and automation agents                                                                 |
-| Scope           | Local DPCode/T3Code PR and release delta checks                                                   |
+| Scope           | Local historical-lineage PR and release delta checks                                               |
 | Canonical path  | `docs/runbooks/upstream-watch.md`                                                                 |
 | Last reviewed   | 2026-05-24                                                                                        |
-| Review cadence  | Event-driven; review when upstream source strategy or the upstream watch script changes           |
+| Review cadence  | Event-driven; review when lineage reference strategy or the upstream watch script changes         |
 | Source of truth | `scripts/upstream-watch.ts`, `docs/jcode-operating-model.md`, and `.jcode/upstream-watch/`        |
 | Verification    | Run `bun run --cwd scripts test upstream-watch.test.ts` and `bun run upstream:watch -- --dry-run` |
 
 ## Purpose
 
-JCode treats DPCode and T3Code as source material, not automatic merge targets. The upstream watch command keeps a local ledger of recently seen upstream PR and release activity so maintainers can review only deltas.
+JCode is independently directed. The upstream watch command keeps a local ledger
+of recently seen DPCode/T3Code PR and release activity only as optional external
+reference material, so maintainers can notice useful ideas without adopting
+external project philosophy or workflow.
 
-The command does not create branches, merge, cherry-pick, or commit. Import decisions remain manual and strategy-driven.
+The command does not create branches, merge, cherry-pick, or commit. Any adapted
+idea must become a small, JCode-native change.
 
 ## Commands
 
@@ -43,5 +47,5 @@ Do not commit these files unless you intentionally create a separate human-writt
 1. Run `bun run upstream:watch -- --dry-run` to preview current deltas.
 2. Run `bun run upstream:watch` when you want to advance the local cursor.
 3. Read the report for updated PRs and newly published releases.
-4. Decide manually which upstream work deserves deeper inspection.
-5. Use short-lived `feature/*` branches for any selected import work.
+4. Decide manually whether any lineage-project work deserves deeper inspection.
+5. Use short-lived `feature/*` branches for any selected JCode-native adaptation work.
