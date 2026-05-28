@@ -355,6 +355,32 @@ describe("buildThemeCssVariables", () => {
     expect(cssVariables.variables["--app-diff-card-bg"]).toBe("#181825");
   });
 
+  it("emits Catppuccin Mocha chat semantic role tokens from official palette roles", () => {
+    const cssVariables = buildThemeCssVariables(
+      {
+        codeThemeId: "catppuccin",
+        theme: getCodeThemeSeed("catppuccin", "dark"),
+      },
+      "dark",
+    );
+
+    expect(cssVariables.variables["--app-chat-heading"]).toBe("#cba6f7");
+    expect(cssVariables.variables["--app-chat-link"]).toBe("#89b4fa");
+    expect(cssVariables.variables["--app-chat-file"]).toBe("#89b4fa");
+    expect(cssVariables.variables["--app-chat-token"]).toBe("#94e2d5");
+    expect(cssVariables.variables["--app-chat-command"]).toBe("#cba6f7");
+    expect(cssVariables.variables["--app-chat-success"]).toBe("#a6e3a1");
+    expect(cssVariables.variables["--app-chat-success-bg"]).toBe("rgba(166, 227, 161, 0.12)");
+    expect(cssVariables.variables["--app-chat-warning"]).toBe("#fab387");
+    expect(cssVariables.variables["--app-chat-warning-bg"]).toBe("rgba(250, 179, 135, 0.12)");
+    expect(cssVariables.variables["--app-chat-error"]).toBe("#f38ba8");
+    expect(cssVariables.variables["--app-chat-error-bg"]).toBe("rgba(243, 139, 168, 0.12)");
+    expect(cssVariables.variables["--app-chat-chip-bg"]).toBe("rgba(49, 50, 68, 0.58)");
+    expect(cssVariables.variables["--app-chat-chip-border"]).toBe("rgba(69, 71, 90, 0.74)");
+    expect(cssVariables.variables["--app-chat-code-bg"]).toBe("#181825");
+    expect(cssVariables.variables["--app-chat-code-border"]).toBe("#313244");
+  });
+
   it("emits non-empty app-depth tokens for non-Catppuccin themes", () => {
     const cssVariables = buildThemeCssVariables(
       {
@@ -380,6 +406,23 @@ describe("buildThemeCssVariables", () => {
       "--app-status-error-border",
       "--app-status-warning-bg",
       "--app-status-warning-border",
+      "--app-chat-heading",
+      "--app-chat-link",
+      "--app-chat-file",
+      "--app-chat-token",
+      "--app-chat-command",
+      "--app-chat-success",
+      "--app-chat-success-bg",
+      "--app-chat-warning",
+      "--app-chat-warning-bg",
+      "--app-chat-error",
+      "--app-chat-error-bg",
+      "--app-chat-chip-bg",
+      "--app-chat-chip-border",
+      "--app-chat-code-bg",
+      "--app-chat-code-border",
+      "--app-chat-code-copy-bg",
+      "--app-chat-code-copy-fg",
       "--app-diff-card-bg",
       "--app-diff-card-header-bg",
       "--app-accent-soft",

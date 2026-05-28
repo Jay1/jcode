@@ -752,6 +752,10 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   if (!entry.detail && outputDetail) {
     entry.detail = outputDetail;
   }
+  const completionDetail = deriveCommandCompletionDetail(activity.kind, payload, itemType);
+  if (!entry.detail && completionDetail) {
+    entry.detail = completionDetail;
+  }
   if (commandPreview.command) {
     entry.command = commandPreview.command;
   }
@@ -805,6 +809,29 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
 function summarizeToolPayloadOutput(payload: Record<string, unknown> | null): string | null {
   const data = asRecord(payload?.data);
   return summarizeToolRawOutput(data?.rawOutput) ?? null;
+}
+
+function deriveCommandCompletionDetail(
+  activityKind: OrchestrationThreadActivity["kind"],
+  payload: Record<string, unknown> | null,
+  itemType: WorkLogEntry["itemType"] | undefined,
+): string | null {
+  if (activityKind !== "tool.completed" || itemType !== "command_execution") {
+    return null;
+  }
+
+  const data = asRecord(payload?.data);
+  const item = asRecord(data?.item);
+  const exitCodeValue = item?.exitCode ?? data?.exitCode;
+  const exitCode =
+    typeof exitCodeValue === "number" && Number.isInteger(exitCodeValue) ? exitCodeValue : null;
+  const durationValue = item?.durationMs ?? data?.durationMs;
+  const duration = typeof durationValue === "number" ? formatDuration(durationValue) : null;
+  const label = exitCode === null || exitCode === 0 ? "Completed" : "Failed";
+  const durationSuffix = duration ? ` in ${duration}` : "";
+  const exitSuffix = exitCode === null ? "" : ` (exit ${exitCode})`;
+
+  return `${label}${durationSuffix}${exitSuffix}`;
 }
 
 function collapseDerivedWorkLogEntries(

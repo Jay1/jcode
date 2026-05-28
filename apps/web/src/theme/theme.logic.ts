@@ -139,6 +139,7 @@ type CatppuccinPalette = {
   mauve: string;
   peach: string;
   red: string;
+  teal: string;
   surface0: string;
   surface1: string;
   yellow: string;
@@ -171,6 +172,7 @@ const CATPPUCCIN_PALETTE: Record<ThemeVariant, CatppuccinPalette> = {
     red: "#f38ba8",
     surface0: "#313244",
     surface1: "#45475a",
+    teal: "#94e2d5",
     yellow: "#f9e2af",
   },
   light: {
@@ -185,6 +187,7 @@ const CATPPUCCIN_PALETTE: Record<ThemeVariant, CatppuccinPalette> = {
     red: "#d20f39",
     surface0: "#ccd0da",
     surface1: "#bcc0cc",
+    teal: "#179299",
     yellow: "#df8e1d",
   },
 };
@@ -796,10 +799,38 @@ function buildAppDepthVariables(
     const palette = CATPPUCCIN_PALETTE[variant];
     const accent = parseHexColor(pack.theme.accent);
     const diffRemoved = parseHexColor(pack.theme.semanticColors.diffRemoved);
+    const chipBgAlpha = variant === "dark" ? 0.58 : 0.44;
+    const chipBorderAlpha = variant === "dark" ? 0.74 : 0.58;
     return {
       "--app-accent-muted": formatRgba(accent, variant === "dark" ? 0.28 : 0.2),
       "--app-accent-soft": formatRgba(accent, variant === "dark" ? 0.14 : 0.1),
       "--app-accent-strong": pack.theme.accent,
+      "--app-chat-chip-bg": formatRgba(parseHexColor(palette.surface0), chipBgAlpha),
+      "--app-chat-chip-border": formatRgba(parseHexColor(palette.surface1), chipBorderAlpha),
+      "--app-chat-code-bg": palette.mantle,
+      "--app-chat-code-border": palette.surface0,
+      "--app-chat-code-copy-bg": formatRgba(parseHexColor(palette.surface0), 0.88),
+      "--app-chat-code-copy-fg": palette.blue,
+      "--app-chat-command": palette.mauve,
+      "--app-chat-error": palette.red,
+      "--app-chat-error-bg": formatRgba(
+        parseHexColor(palette.red),
+        variant === "dark" ? 0.12 : 0.08,
+      ),
+      "--app-chat-file": palette.blue,
+      "--app-chat-heading": palette.mauve,
+      "--app-chat-link": palette.blue,
+      "--app-chat-success": palette.green,
+      "--app-chat-success-bg": formatRgba(
+        parseHexColor(palette.green),
+        variant === "dark" ? 0.12 : 0.08,
+      ),
+      "--app-chat-token": palette.teal,
+      "--app-chat-warning": palette.peach,
+      "--app-chat-warning-bg": formatRgba(
+        parseHexColor(palette.peach),
+        variant === "dark" ? 0.12 : 0.08,
+      ),
       "--app-diff-card-bg": palette.mantle,
       "--app-diff-card-header-bg": palette.surface0,
       "--app-state-focus": palette.blue,
@@ -829,6 +860,7 @@ function buildAppDepthVariables(
   const accent = parseHexColor(pack.theme.accent);
   const diffRemoved = parseHexColor(pack.theme.semanticColors.diffRemoved);
   const warning = variant === "dark" ? parseHexColor("#f5b44a") : parseHexColor("#d97706");
+  const diffAdded = parseHexColor(pack.theme.semanticColors.diffAdded);
   const cardHeader =
     variant === "dark"
       ? mixHex(resolvedTokens.computed.panel, pack.theme.ink, 0.08)
@@ -838,6 +870,23 @@ function buildAppDepthVariables(
     "--app-accent-muted": formatRgba(accent, variant === "dark" ? 0.28 : 0.18),
     "--app-accent-soft": formatRgba(accent, variant === "dark" ? 0.12 : 0.08),
     "--app-accent-strong": pack.theme.accent,
+    "--app-chat-chip-bg": resolvedTokens.derived.buttonSecondaryBackground,
+    "--app-chat-chip-border": resolvedTokens.derived.border,
+    "--app-chat-code-bg": resolvedTokens.computed.surfaceUnder,
+    "--app-chat-code-border": resolvedTokens.derived.border,
+    "--app-chat-code-copy-bg": resolvedTokens.derived.elevatedSecondaryOpaque,
+    "--app-chat-code-copy-fg": pack.theme.accent,
+    "--app-chat-command": pack.theme.accent,
+    "--app-chat-error": pack.theme.semanticColors.diffRemoved,
+    "--app-chat-error-bg": formatRgba(diffRemoved, variant === "dark" ? 0.12 : 0.08),
+    "--app-chat-file": pack.theme.accent,
+    "--app-chat-heading": pack.theme.accent,
+    "--app-chat-link": pack.theme.accent,
+    "--app-chat-success": pack.theme.semanticColors.diffAdded,
+    "--app-chat-success-bg": formatRgba(diffAdded, variant === "dark" ? 0.12 : 0.08),
+    "--app-chat-token": resolvedTokens.derived.textAccent,
+    "--app-chat-warning": variant === "dark" ? "#f5b44a" : "#d97706",
+    "--app-chat-warning-bg": formatRgba(warning, variant === "dark" ? 0.12 : 0.08),
     "--app-diff-card-bg": resolvedTokens.computed.surfaceUnder,
     "--app-diff-card-header-bg": cardHeader,
     "--app-state-focus": resolvedTokens.derived.borderFocus,

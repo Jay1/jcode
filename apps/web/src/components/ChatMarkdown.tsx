@@ -70,11 +70,21 @@ interface ChatMarkdownProps {
 const CODE_FENCE_LANGUAGE_REGEX = /(?:^|\s)language-([^\s]+)/;
 const MAX_HIGHLIGHT_CACHE_ENTRIES = 500;
 const MAX_HIGHLIGHT_CACHE_MEMORY_BYTES = 50 * 1024 * 1024;
+const INLINE_FILE_PATH_REGEX =
+  /^(?:~|\.?\.?|[A-Za-z]:)?(?:[\\/]|[\w.-]+[\\/])[\w./\\@$ -]+\.[A-Za-z0-9]{1,8}(?::\d+)?$/;
+const INLINE_TOKEN_REGEX = /^(?:--[a-z][\w-]*|\.[a-z][\w-]*|[a-z][\w-]*--[a-z][\w-]*)$/;
+const INLINE_COMMAND_REGEX =
+  /^(?:snip\s+)?(?:bun|npm|pnpm|yarn|git|gh|node|npx|deno|cargo|go|python|pytest|vitest|tsc)\b.+/;
+const INLINE_SUCCESS_REGEX = /^(?:\d+\s+passed|passed|completed|success|succeeded|fixed|done)$/i;
+const INLINE_WARNING_REGEX = /^(?:pending|skipped|warning|warned|blocked|in progress|queued)$/i;
+const INLINE_ERROR_REGEX =
+  /^(?:failed|failure|error|errored|task not found|not found|missing|rejected|timed out|timeout)$/i;
 const highlightedCodeCache = new LRUCache<string>(
   MAX_HIGHLIGHT_CACHE_ENTRIES,
   MAX_HIGHLIGHT_CACHE_MEMORY_BYTES,
 );
 const highlighterPromiseCache = new Map<string, Promise<DiffsHighlighter>>();
+type InlineCodeSemanticRole = "command" | "error" | "file" | "success" | "token" | "warning";
 type MarkdownRemarkPlugins = NonNullable<
   React.ComponentProps<typeof ReactMarkdown>["remarkPlugins"]
 >;
@@ -89,6 +99,19 @@ const LITERAL_DOLLAR_PLACEHOLDER = "CHATMARKDOWNLITERALDOLLARPLACEHOLDER";
 
 function restoreLiteralDollarPlaceholders(value: string): string {
   return value.replaceAll(LITERAL_DOLLAR_PLACEHOLDER, "$");
+}
+
+function classifyInlineCodeSemanticRole(value: string): InlineCodeSemanticRole | null {
+  const normalized = value.trim();
+  if (!normalized) return null;
+
+  if (INLINE_ERROR_REGEX.test(normalized)) return "error";
+  if (INLINE_WARNING_REGEX.test(normalized)) return "warning";
+  if (INLINE_SUCCESS_REGEX.test(normalized)) return "success";
+  if (INLINE_FILE_PATH_REGEX.test(normalized)) return "file";
+  if (INLINE_COMMAND_REGEX.test(normalized)) return "command";
+  if (INLINE_TOKEN_REGEX.test(normalized)) return "token";
+  return null;
 }
 
 function restoreLiteralDollarsInNode(node: unknown): void {
@@ -669,6 +692,18 @@ function ChatMarkdown({
               </Suspense>
             </CodeHighlightErrorBoundary>
           </MarkdownCodeBlock>
+        );
+      },
+      code({ node: _node, className, children, ...props }) {
+        const childText = Children.toArray(children).join("");
+        const role = classifyInlineCodeSemanticRole(childText);
+        const nextClassName = [className, role ? `chat-markdown-code--${role}` : undefined]
+          .filter(Boolean)
+          .join(" ");
+        return (
+          <code {...props} className={nextClassName || undefined}>
+            {children}
+          </code>
         );
       },
       img({ node: _node, src, alt = "", ...props }) {

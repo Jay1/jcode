@@ -14,6 +14,26 @@ A cockpit is the user-facing control surface for coding-agent work. In JCode thi
 
 The cockpit coordinates local tools and provider runtimes; it should not leak raw provider protocol details directly into ordinary user-facing concepts.
 
+### Chat-Output Scannability
+
+Chat-output scannability is the cockpit quality that lets a maintainer quickly distinguish headings, file paths, commands, CSS or theme tokens, success states, pending states, and errors inside assistant output.
+
+When improving Catppuccin chat rendering, optimize scannability first and Catppuccin palette faithfulness second. Catppuccin colors should carry semantic meaning rather than decorate the transcript uniformly.
+
+Semantic coloring in chat output should use subtle accents by default. Headings, links, inline-code roles, and statuses may receive color, while body text remains calm and readable.
+
+Inline code chips should use detected meaning when the role is clear. File paths may use blue, CSS or theme tokens teal, commands lavender, success states green, pending states yellow or peach, and error states red.
+
+New semantic chat-color grammar should be proven on Catppuccin first, with a reusable cookbook that lets maintainers port the same roles to other themes later without redesigning the system.
+
+The cookbook unit for semantic chat coloring is role-based tokens. Roles such as chat file, chat token, chat command, chat success, chat warning, and chat error are stable; each theme maps its palette into those roles.
+
+Role detection must be conservative. Color only obvious patterns and leave unknown inline code neutral to avoid turning chat output into a noisy rainbow.
+
+For the first semantic chat-color pass, keep existing code-block syntax highlighting and only align code-block containers, backgrounds, and copy controls with the Catppuccin surface system.
+
+The success test for semantic chat coloring is screenshot-level scannability: in a representative assistant response, headings, file paths, theme tokens, statuses, and errors are distinguishable at a glance without making ordinary body text colorful.
+
 ### Keybindings
 
 Keybindings are the user-facing command shortcuts that let the cockpit react to keyboard input. They map a command, shortcut, and optional context condition into the active behavior the web and desktop clients use.
