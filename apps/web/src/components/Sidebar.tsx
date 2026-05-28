@@ -1059,6 +1059,39 @@ function SidebarSegmentedPicker({
   );
 }
 
+function SidebarSectionHeader({
+  actions,
+  className,
+  icon,
+  label,
+}: {
+  actions?: ReactNode;
+  className?: string;
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "sidebar-section-header my-1 flex items-center justify-between px-2 py-1",
+        className,
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="sidebar-section-header-icon inline-flex size-5 shrink-0 items-center justify-center rounded-md border border-[color:var(--app-chat-chip-border,var(--border))] bg-[var(--app-chat-chip-bg,var(--muted))] text-[var(--app-chat-heading,var(--color-text-foreground-secondary))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          {icon}
+        </span>
+        <span className="truncate text-[length:var(--app-font-size-ui,12px)] font-semibold tracking-[0.01em] text-foreground/82">
+          {label}
+        </span>
+      </div>
+      {actions ? (
+        <div className="-mr-1 flex items-center gap-1.5 text-muted-foreground/62">{actions}</div>
+      ) : null}
+    </div>
+  );
+}
+
 function SortableWorkspaceItem({
   workspaceId,
   children,
@@ -5536,11 +5569,11 @@ export default function Sidebar() {
             {isOnWorkspace ? (
               <SidebarGroup className="px-1.5 pt-1 pb-1.5">
                 <div className="my-2 h-px w-full bg-border" />
-                <div className="mb-1.5 flex items-center px-2">
-                  <span className="text-[length:var(--app-font-size-ui,12px)] font-normal text-muted-foreground/58">
-                    Workspace
-                  </span>
-                </div>
+                <SidebarSectionHeader
+                  label="Workspace"
+                  icon={<TerminalIcon className="size-3.5" />}
+                  className="mb-1.5"
+                />
 
                 <DndContext
                   sensors={projectDnDSensors}
@@ -5651,11 +5684,10 @@ export default function Sidebar() {
               <SidebarGroup className="px-1.5 py-1.5">
                 {pinnedThreads.length > 0 ? (
                   <>
-                    <div className="my-1 flex items-center justify-between px-2 py-1">
-                      <span className="text-[length:var(--app-font-size-ui,12px)] font-normal text-muted-foreground/58">
-                        Pinned
-                      </span>
-                    </div>
+                    <SidebarSectionHeader
+                      label="Pinned"
+                      icon={<HiOutlineArchiveBox className="size-3.5" />}
+                    />
                     <div className="flex flex-col gap-0.5">
                       {pinnedThreads.map((thread) => renderPinnedThreadRow(thread))}
                     </div>
@@ -5664,82 +5696,83 @@ export default function Sidebar() {
                 ) : (
                   <div className="-mx-1.5 my-1 h-px bg-border" />
                 )}
-                <div className="my-1 flex items-center justify-between px-2 py-1">
-                  <span className="text-[length:var(--app-font-size-ui,12px)] font-normal text-muted-foreground/58">
-                    Threads
-                  </span>
-                  <div className="-mr-1 flex items-center gap-1.5">
-                    {standardProjects.length > 0 ? (
+                <SidebarSectionHeader
+                  label="Threads"
+                  icon={<FolderIcon className="size-3.5" />}
+                  actions={
+                    <>
+                      {standardProjects.length > 0 ? (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <button
+                                type="button"
+                                aria-label={
+                                  allProjectsExpanded
+                                    ? focusedProjectId
+                                      ? "Collapse all projects except the active project"
+                                      : "Collapse all projects"
+                                    : "Expand all projects"
+                                }
+                                className="sidebar-icon-button inline-flex size-5 disabled:cursor-default disabled:opacity-45"
+                                onClick={handleToggleProjects}
+                              >
+                                {allProjectsExpanded ? (
+                                  <TbArrowsDiagonalMinimize2 className="size-3.5" />
+                                ) : (
+                                  <TbArrowsDiagonal className="size-3.5" />
+                                )}
+                              </button>
+                            }
+                          >
+                            {allProjectsExpanded ? (
+                              <TbArrowsDiagonalMinimize2 className="size-3.5" />
+                            ) : (
+                              <TbArrowsDiagonal className="size-3.5" />
+                            )}
+                          </TooltipTrigger>
+                          <TooltipPopup side="bottom">
+                            {allProjectsExpanded
+                              ? focusedProjectId
+                                ? "Collapse all projects except the active chat's project"
+                                : "Collapse all projects"
+                              : "Expand all projects"}
+                          </TooltipPopup>
+                        </Tooltip>
+                      ) : null}
+                      <ProjectSortMenu
+                        projectSortOrder={appSettings.sidebarProjectSortOrder}
+                        threadSortOrder={appSettings.sidebarThreadSortOrder}
+                        onProjectSortOrderChange={(sortOrder) => {
+                          updateSettings({ sidebarProjectSortOrder: sortOrder });
+                        }}
+                        onThreadSortOrderChange={(sortOrder) => {
+                          updateSettings({ sidebarThreadSortOrder: sortOrder });
+                        }}
+                      />
                       <Tooltip>
                         <TooltipTrigger
                           render={
                             <button
                               type="button"
                               aria-label={
-                                allProjectsExpanded
-                                  ? focusedProjectId
-                                    ? "Collapse all projects except the active project"
-                                    : "Collapse all projects"
-                                  : "Expand all projects"
+                                shouldShowProjectPathEntry ? "Cancel add project" : "Add project"
                               }
-                              className="sidebar-icon-button inline-flex size-5 disabled:cursor-default disabled:opacity-45"
-                              onClick={handleToggleProjects}
-                            >
-                              {allProjectsExpanded ? (
-                                <TbArrowsDiagonalMinimize2 className="size-3.5" />
-                              ) : (
-                                <TbArrowsDiagonal className="size-3.5" />
-                              )}
-                            </button>
+                              aria-pressed={shouldShowProjectPathEntry}
+                              className="sidebar-icon-button inline-flex size-5 cursor-pointer"
+                              onClick={handleStartAddProject}
+                            />
                           }
                         >
-                          {allProjectsExpanded ? (
-                            <TbArrowsDiagonalMinimize2 className="size-3.5" />
-                          ) : (
-                            <TbArrowsDiagonal className="size-3.5" />
-                          )}
+                          <FiPlus className="size-3.5" />
                         </TooltipTrigger>
-                        <TooltipPopup side="bottom">
-                          {allProjectsExpanded
-                            ? focusedProjectId
-                              ? "Collapse all projects except the active chat's project"
-                              : "Collapse all projects"
-                            : "Expand all projects"}
+                        <TooltipPopup side="right">
+                          {shouldShowProjectPathEntry ? "Cancel add project" : "Add project"}
                         </TooltipPopup>
                       </Tooltip>
-                    ) : null}
-                    <ProjectSortMenu
-                      projectSortOrder={appSettings.sidebarProjectSortOrder}
-                      threadSortOrder={appSettings.sidebarThreadSortOrder}
-                      onProjectSortOrderChange={(sortOrder) => {
-                        updateSettings({ sidebarProjectSortOrder: sortOrder });
-                      }}
-                      onThreadSortOrderChange={(sortOrder) => {
-                        updateSettings({ sidebarThreadSortOrder: sortOrder });
-                      }}
-                    />
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <button
-                            type="button"
-                            aria-label={
-                              shouldShowProjectPathEntry ? "Cancel add project" : "Add project"
-                            }
-                            aria-pressed={shouldShowProjectPathEntry}
-                            className="sidebar-icon-button inline-flex size-5 cursor-pointer"
-                            onClick={handleStartAddProject}
-                          />
-                        }
-                      >
-                        <FiPlus className="size-3.5" />
-                      </TooltipTrigger>
-                      <TooltipPopup side="right">
-                        {shouldShowProjectPathEntry ? "Cancel add project" : "Add project"}
-                      </TooltipPopup>
-                    </Tooltip>
-                  </div>
-                </div>
+                    </>
+                  }
+                />
 
                 {shouldShowProjectPathEntry && (
                   <div className="mb-2.5 px-1">
@@ -5933,14 +5966,11 @@ export default function Sidebar() {
                   setChatSectionExpanded((current) => !current);
                 }}
               >
-                <span className="relative inline-flex size-4 shrink-0 items-center justify-center text-muted-foreground/79">
-                  <BsChat className="size-3.5" />
-                </span>
-                <div className="flex min-w-0 flex-1 items-baseline gap-2 overflow-hidden">
-                  <span className="truncate font-system-ui text-[length:var(--app-font-size-ui,12px)] font-normal text-muted-foreground/79">
-                    Chats
-                  </span>
-                </div>
+                <SidebarSectionHeader
+                  label="Chats"
+                  icon={<BsChat className="size-3.5" />}
+                  className="my-0 flex-1 px-0 py-0"
+                />
               </SidebarMenuButton>
               <div className="absolute top-1 right-1.5 flex items-center gap-1.5">
                 <ChatSortMenu
