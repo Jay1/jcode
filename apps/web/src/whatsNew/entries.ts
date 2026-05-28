@@ -8,6 +8,47 @@ import type { WhatsNewEntry } from "./logic";
 
 export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
   {
+    version: "0.0.50",
+    date: "May 28",
+    features: [
+      {
+        id: "chat-responses-are-easier-to-scan",
+        title: "Chat responses are easier to scan",
+        description:
+          "Catppuccin now has role-based semantic accents for headings, links, inline code roles, and code-block chrome without turning the transcript into a rainbow.",
+      },
+      {
+        id: "the-sidebar-has-clearer-structure",
+        title: "The sidebar has clearer structure",
+        description:
+          "Pinned, Threads, Workspace, and Chats sections now use bold labels with accent icons so the navigation feels less flat.",
+      },
+      {
+        id: "branding-is-more-distinctive",
+        title: "Branding is more distinctive",
+        description:
+          "The navbar wordmark is larger, with a blood-red `J`, and the splash logo now sits in a padded frame that avoids clipping the mark.",
+      },
+      {
+        id: "silent-commands-finish-visibly",
+        title: "Silent commands finish visibly",
+        description:
+          "Commands that complete without stdout now show completion details with duration and exit code instead of looking unfinished.",
+      },
+      {
+        id: "loading-mark-clipping-is-fixed",
+        title: "Loading mark clipping is fixed",
+        description: "The splash screen logo uses a contained image inside a square-safe frame.",
+      },
+      {
+        id: "completion-output-is-clearer",
+        title: "Completion output is clearer",
+        description:
+          "Successful empty-output commands now display a concrete `Completed ... (exit 0)` style summary.",
+      },
+    ],
+  },
+  {
     version: "0.0.49",
     date: "May 25",
     features: [
