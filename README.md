@@ -15,6 +15,45 @@ A local cockpit for coding agents, tuned for low-level and cybersecurity workflo
 
 ## Installation
 
+### AI-Driven Install
+
+Copy the prompt below into your preferred AI coding tool (Claude, Codex, OpenClaw, etc.) and it will handle the full setup:
+
+````markdown
+Install and set up JCode from https://github.com/Jay1/jcode on this machine.
+
+Steps:
+
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/Jay1/jcode.git
+   cd jcode
+   ```
+
+2. Install the required toolchain. The project pins Node 26.2.0 and Bun 1.3.9 (see `.mise.toml`).
+   If you have mise available, run `mise install`. Otherwise install Node and Bun at those
+   versions through whatever package manager is on this system.
+
+3. Install dependencies and build:
+   ```bash
+   bun install
+   bun run build
+   ```
+
+4. Start the dev server:
+   ```bash
+   bun run dev
+   ```
+
+5. Verify the typecheck passes:
+   ```bash
+   bun run typecheck
+   ```
+
+If any step fails, diagnose the error, fix it, and re-run until the full
+sequence completes cleanly.
+````
+
 ### Linux and macOS
 
 #### Homebrew
