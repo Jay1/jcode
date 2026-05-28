@@ -12,10 +12,9 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Jay1/jcode?utm_source=oss&utm_medium=github&utm_campaign=Jay1%2Fjcode&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
-JCode is an independent local cockpit for coding agents tuned for low-level and cybersecurity-related day-to-day workflow.
+JCode is a local cockpit for coding agents tuned for low-level and cybersecurity-related day-to-day workflow.
 
-It is a small Bun/TypeScript monorepo with a web UI, desktop packaging, and a
-local server that manages coding-agent sessions.
+It is a small Bun/TypeScript monorepo with a web UI, desktop packaging, and a local server that manages coding-agent sessions.
 
 ## Installation
 
@@ -60,8 +59,6 @@ bun run dev
 
 ## Credits
 
-JCode has its own direction, release process, and contribution posture. It also
-preserves clear attribution for the DPCode and T3Code lineage that helped start
-the project.
+JCode is built on top of DPCode & T3Code lineage that made this project possible.
 
 See [CREDITS.md](./CREDITS.md) for complete attribution notes.
