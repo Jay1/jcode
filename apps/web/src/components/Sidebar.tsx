@@ -119,6 +119,7 @@ import { DEFAULT_THREAD_TERMINAL_ID, type SidebarThreadSummary, type Thread } fr
 import { shouldRenderTerminalWorkspace } from "./ChatView.logic";
 import { ClaudeAI, CursorIcon, Gemini, KiloIcon, OpenAI, OpenCodeIcon, PiIcon } from "./Icons";
 import { AppNavigationButtons } from "./AppNavigationButtons";
+import { SidebarHeaderNavigationControls } from "./SidebarHeaderNavigationControls";
 import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
 import { ThreadPinToggleButton } from "./ThreadPinToggleButton";
 import { ThreadRunningSpinner } from "./ThreadRunningSpinner";
@@ -5382,13 +5383,7 @@ export default function Sidebar() {
   );
 
   const titlebarControls = (
-    <div className="hidden shrink-0 items-center gap-0.5 md:flex">
-      <AppNavigationButtons className="ms-0" />
-      <SidebarTrigger
-        className="size-7 shrink-0 text-muted-foreground/75 hover:text-foreground"
-        aria-label="Toggle thread sidebar"
-      />
-    </div>
+    <SidebarHeaderNavigationControls className="hidden md:flex" showWhenExpanded />
   );
 
   const headerControls = (
@@ -5408,8 +5403,6 @@ export default function Sidebar() {
       {headerControls}
     </div>
   );
-
-  const sidebarBrand = <div className="flex min-w-0 px-4 pt-3 pb-2">{brandWordmark}</div>;
 
   return (
     <>
@@ -5533,7 +5526,6 @@ export default function Sidebar() {
           </SidebarGroup>
         ) : (
           <>
-            {isElectron ? sidebarBrand : null}
             <SidebarSegmentedPicker
               activeView={isOnWorkspace ? "workspace" : "threads"}
               onSelectView={handleSidebarViewChange}

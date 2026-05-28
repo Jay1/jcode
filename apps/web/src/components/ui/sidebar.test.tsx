@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { SidebarHeaderNavigationControls } from "../SidebarHeaderNavigationControls";
 import {
   SidebarHeaderTrigger,
   SidebarInset,
@@ -96,5 +97,18 @@ describe("sidebar interactive cursors", () => {
     expect(html).toContain('data-slot="sidebar-wrapper"');
     expect(html).not.toContain('data-slot="sidebar-trigger"');
     expect(html).not.toContain("Toggle Sidebar");
+  });
+
+  it("keeps the app logo visible while controls reveal on hover or focus", () => {
+    const html = renderWithQueryClient(
+      <SidebarProvider open={false}>
+        <SidebarHeaderNavigationControls />
+      </SidebarProvider>,
+    );
+
+    expect(html).toContain("JCode");
+    expect(html).toContain("group-hover/navbar-controls:opacity-100");
+    expect(html).toContain("focus-within:opacity-100");
+    expect(html).toContain('data-navbar-controls="revealed-on-hover"');
   });
 });
