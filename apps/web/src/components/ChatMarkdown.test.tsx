@@ -116,4 +116,50 @@ describe("ChatMarkdown", () => {
     expect(diffPanelSource).toContain('import ChatMarkdown from "./ChatMarkdown"');
     expect(diffPanelSource).toContain("<ChatMarkdown");
   });
+
+  it("marks obvious inline file paths with the file semantic role", async () => {
+    const markup = await renderMarkdown("Open `apps/web/src/components/ChatMarkdown.tsx:42` next.");
+
+    expect(markup).toContain(
+      '<code class="chat-markdown-code--file">apps/web/src/components/ChatMarkdown.tsx:42</code>',
+    );
+  });
+
+  it("marks theme and CSS tokens with the token semantic role", async () => {
+    const markup = await renderMarkdown(
+      "Update `--app-chat-token` and `chat-markdown-code--file`.",
+    );
+
+    expect(markup).toContain('<code class="chat-markdown-code--token">--app-chat-token</code>');
+    expect(markup).toContain(
+      '<code class="chat-markdown-code--token">chat-markdown-code--file</code>',
+    );
+  });
+
+  it("marks obvious shell commands with the command semantic role", async () => {
+    const markup = await renderMarkdown(
+      "Run `snip bun run --cwd apps/web test src/theme/theme.logic.test.ts`.",
+    );
+
+    expect(markup).toContain("chat-markdown-code--command");
+  });
+
+  it("marks status-like inline code with semantic state roles", async () => {
+    const markup = await renderMarkdown(
+      "Results: `17 passed`, `pending`, `Task not found`, `completed`.",
+    );
+
+    expect(markup).toContain('<code class="chat-markdown-code--success">17 passed</code>');
+    expect(markup).toContain('<code class="chat-markdown-code--warning">pending</code>');
+    expect(markup).toContain('<code class="chat-markdown-code--error">Task not found</code>');
+    expect(markup).toContain('<code class="chat-markdown-code--success">completed</code>');
+  });
+
+  it("leaves ambiguous inline code neutral", async () => {
+    const markup = await renderMarkdown("Keep `button` and `render` neutral.");
+
+    expect(markup).toContain("<code>button</code>");
+    expect(markup).toContain("<code>render</code>");
+    expect(markup).not.toContain("chat-markdown-code--neutral");
+  });
 });

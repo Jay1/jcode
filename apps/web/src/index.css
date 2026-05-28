@@ -493,14 +493,37 @@ label:has(> select#reasoning-effort) select {
   margin-top: 0.25rem;
 }
 
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3,
+.chat-markdown h4 {
+  margin: 1rem 0 0.5rem;
+  color: var(--app-chat-heading, var(--foreground));
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.chat-markdown h1 {
+  font-size: 1.22em;
+}
+
+.chat-markdown h2 {
+  font-size: 1.14em;
+}
+
+.chat-markdown h3,
+.chat-markdown h4 {
+  font-size: 1.05em;
+}
+
 .chat-markdown a {
-  color: var(--color-token-text-link-foreground);
+  color: var(--app-chat-link, var(--color-token-text-link-foreground));
   text-decoration: none;
 }
 
 .chat-markdown a:hover,
 .chat-markdown a:focus-visible {
-  color: var(--color-token-text-link-active-foreground);
+  color: var(--app-chat-file, var(--color-token-text-link-active-foreground));
   text-decoration: underline;
   text-decoration-thickness: from-font;
   text-underline-offset: 0.18em;
@@ -514,11 +537,48 @@ label:has(> select#reasoning-effort) select {
 
 .chat-markdown :not(pre) > code {
   border-radius: 0.4rem;
-  background: var(--muted);
+  border: 1px solid var(--app-chat-chip-border, transparent);
+  background: var(--app-chat-chip-bg, var(--muted));
   padding: 0.1rem 0.35rem;
   color: var(--foreground);
   font-size: var(--app-font-size-chat-code);
   font-family: var(--font-chat-code-family);
+}
+
+.chat-markdown :not(pre) > code.chat-markdown-code--file {
+  border-color: color-mix(in srgb, var(--app-chat-file) 38%, var(--app-chat-chip-border));
+  background: color-mix(in srgb, var(--app-chat-file) 12%, var(--app-chat-chip-bg));
+  color: var(--app-chat-file);
+}
+
+.chat-markdown :not(pre) > code.chat-markdown-code--token {
+  border-color: color-mix(in srgb, var(--app-chat-token) 34%, var(--app-chat-chip-border));
+  background: color-mix(in srgb, var(--app-chat-token) 10%, var(--app-chat-chip-bg));
+  color: var(--app-chat-token);
+}
+
+.chat-markdown :not(pre) > code.chat-markdown-code--command {
+  border-color: color-mix(in srgb, var(--app-chat-command) 34%, var(--app-chat-chip-border));
+  background: color-mix(in srgb, var(--app-chat-command) 10%, var(--app-chat-chip-bg));
+  color: var(--app-chat-command);
+}
+
+.chat-markdown :not(pre) > code.chat-markdown-code--success {
+  border-color: color-mix(in srgb, var(--app-chat-success) 34%, var(--app-chat-chip-border));
+  background: var(--app-chat-success-bg, var(--app-chat-chip-bg));
+  color: var(--app-chat-success);
+}
+
+.chat-markdown :not(pre) > code.chat-markdown-code--warning {
+  border-color: color-mix(in srgb, var(--app-chat-warning) 34%, var(--app-chat-chip-border));
+  background: var(--app-chat-warning-bg, var(--app-chat-chip-bg));
+  color: var(--app-chat-warning);
+}
+
+.chat-markdown :not(pre) > code.chat-markdown-code--error {
+  border-color: color-mix(in srgb, var(--app-chat-error) 34%, var(--app-chat-chip-border));
+  background: var(--app-chat-error-bg, var(--app-chat-chip-bg));
+  color: var(--app-chat-error);
 }
 
 .chat-markdown .katex,
@@ -557,8 +617,9 @@ label:has(> select#reasoning-effort) select {
 .chat-markdown pre {
   max-width: 100%;
   overflow-x: auto;
+  border: 1px solid var(--app-chat-code-border, transparent);
   border-radius: 1rem;
-  background: var(--muted);
+  background: var(--app-chat-code-bg, var(--muted));
   padding: 0.5rem 0.6rem;
   font-family: var(--font-chat-code-family);
 }
@@ -594,9 +655,9 @@ label:has(> select#reasoning-effort) select {
   height: 1.5rem;
   width: 1.5rem;
   border-radius: 0.375rem;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--background) 82%, transparent);
-  color: var(--muted-foreground);
+  border: 1px solid var(--app-chat-code-border, var(--border));
+  background: var(--app-chat-code-copy-bg, color-mix(in srgb, var(--background) 82%, transparent));
+  color: var(--app-chat-code-copy-fg, var(--muted-foreground));
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
@@ -613,12 +674,19 @@ label:has(> select#reasoning-effort) select {
 }
 
 .chat-markdown .chat-markdown-copy-button:hover {
-  color: var(--foreground);
-  border-color: color-mix(in srgb, var(--border) 70%, var(--foreground));
+  color: var(--app-chat-link, var(--foreground));
+  border-color: color-mix(
+    in srgb,
+    var(--app-chat-link, var(--foreground)) 42%,
+    var(--app-chat-code-border, var(--border))
+  );
 }
 
 .chat-markdown .chat-markdown-shiki .shiki {
-  background: color-mix(in srgb, var(--muted) 78%, var(--background)) !important;
+  background: var(
+    --app-chat-code-bg,
+    color-mix(in srgb, var(--muted) 78%, var(--background))
+  ) !important;
   font-family: var(--font-chat-code-family) !important;
 }
 
