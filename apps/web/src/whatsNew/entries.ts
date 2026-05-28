@@ -8,6 +8,54 @@ import type { WhatsNewEntry } from "./logic";
 
 export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
   {
+    version: "0.0.51",
+    date: "May 28",
+    features: [
+      {
+        id: "scoop-packaging-is-ready-to-publish",
+        title: "Scoop packaging is ready to publish",
+        description:
+          "Maintainers can now generate a JCode Scoop manifest from a release version and Windows installer SHA256, with clearer Linux, macOS, and Windows install docs in the README.",
+      },
+      {
+        id: "opencode-agents-can-discover-skills",
+        title: "OpenCode agents can discover skills",
+        description:
+          "The server now exposes skill inventory metadata so agents built on OpenCode can list available skills and mention them in conversations.",
+      },
+      {
+        id: "all-themes-now-have-depth-profiles",
+        title: "All themes now have depth profiles",
+        description:
+          "Depth cues (shadows, elevation, layering) are applied consistently across every installed theme, not just the default.",
+      },
+      {
+        id: "navbar-and-sidebar-are-cleaner",
+        title: "Navbar and sidebar are cleaner",
+        description:
+          "The logo stays visible while controls reveal on hover; the project picker uses consistent bordered, elevated styling.",
+      },
+      {
+        id: "chat-transcripts-handle-wide-content-better",
+        title: "Chat transcripts handle wide content better",
+        description:
+          "Markdown tables scroll horizontally inside the pane, diff file paths are copyable, and the keybindings file button moved to the keybindings panel.",
+      },
+      {
+        id: "scoop-installs-stay-under-scoop-management",
+        title: "Scoop installs stay under Scoop management",
+        description:
+          "The generated manifest passes the NSIS installer `/D=$dir` so JCode installs into Scoop's managed app directory.",
+      },
+      {
+        id: "ime-composition-is-preserved",
+        title: "IME composition is preserved",
+        description:
+          "Pressing Enter during IME composition no longer submits the message prematurely; the composition completes first.",
+      },
+    ],
+  },
+  {
     version: "0.0.50",
     date: "May 28",
     features: [
