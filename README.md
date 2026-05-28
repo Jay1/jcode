@@ -16,6 +16,7 @@ A local cockpit for coding agents, tuned for low-level and cybersecurity workflo
 
 ## Installation
 
+
 ### Linux and macOS
 
 #### Homebrew
