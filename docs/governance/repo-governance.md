@@ -1,17 +1,17 @@
 # Repo Governance
 
-| Field           | Value                                                                                                         |
-| --------------- | ------------------------------------------------------------------------------------------------------------- |
-| Status          | Active                                                                                                        |
-| Type            | Governance reference                                                                                          |
-| Owner           | Engineering                                                                                                   |
-| Audience        | Maintainers, reviewers, and automation agents                                                                 |
+| Field           | Value                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------- |
+| Status          | Active                                                                                                         |
+| Type            | Governance reference                                                                                           |
+| Owner           | Engineering                                                                                                    |
+| Audience        | Maintainers, reviewers, and automation agents                                                                  |
 | Scope           | Branch strategy, external reference usage, attribution, contribution posture, and publishable defaults         |
-| Canonical path  | `docs/governance/repo-governance.md`                                                                          |
-| Last reviewed   | 2026-05-28                                                                                                    |
+| Canonical path  | `docs/governance/repo-governance.md`                                                                           |
+| Last reviewed   | 2026-05-28                                                                                                     |
 | Review cadence  | Event-driven; review when branch policy, external reference usage, contribution policy, or attribution changes |
-| Source of truth | `docs/jcode-operating-model.md`, `CONTRIBUTING.md`, `LICENSE`, `CREDITS.md`, `README.md`                      |
-| Verification    | Cross-check local/remote branch policy, attribution docs, and public repo defaults                            |
+| Source of truth | `docs/jcode-operating-model.md`, `CONTRIBUTING.md`, `LICENSE`, `CREDITS.md`, `README.md`                       |
+| Verification    | Cross-check local/remote branch policy, attribution docs, and public repo defaults                             |
 
 ## Current Policy
 

@@ -6,9 +6,9 @@
 | Type            | Operational runbook                                                                               |
 | Owner           | Engineering                                                                                       |
 | Audience        | Maintainers and automation agents                                                                 |
-| Scope           | Local historical-lineage PR and release delta checks                                               |
+| Scope           | Local historical-lineage PR and release delta checks                                              |
 | Canonical path  | `docs/runbooks/upstream-watch.md`                                                                 |
-| Last reviewed   | 2026-05-24                                                                                        |
+| Last reviewed   | 2026-05-28                                                                                        |
 | Review cadence  | Event-driven; review when lineage reference strategy or the upstream watch script changes         |
 | Source of truth | `scripts/upstream-watch.ts`, `docs/jcode-operating-model.md`, and `.jcode/upstream-watch/`        |
 | Verification    | Run `bun run --cwd scripts test upstream-watch.test.ts` and `bun run upstream:watch -- --dry-run` |
