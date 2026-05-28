@@ -69,6 +69,15 @@ import {
 
 const COMPOSER_EDITOR_HMR_KEY = `composer-editor-${Math.random().toString(36).slice(2)}`;
 
+type ComposerCommandKey = "ArrowDown" | "ArrowUp" | "Enter" | "Tab" | "Slash";
+
+export function shouldConsumeComposerEnterDuringComposition(
+  key: ComposerCommandKey,
+  event: Pick<KeyboardEvent, "isComposing" | "keyCode">,
+): boolean {
+  return key === "Enter" && (event.isComposing || event.keyCode === 229);
+}
+
 const ComposerTerminalContextActionsContext = createContext<{
   onRemoveTerminalContext: (contextId: string) => void;
 }>({
@@ -500,20 +509,18 @@ interface ComposerPromptEditorInnerProps extends ComposerPromptEditorProps {
 }
 
 function ComposerCommandKeyPlugin(props: {
-  onCommandKeyDown?: (
-    key: "ArrowDown" | "ArrowUp" | "Enter" | "Tab" | "Slash",
-    event: KeyboardEvent,
-  ) => boolean;
+  onCommandKeyDown?: (key: ComposerCommandKey, event: KeyboardEvent) => boolean;
 }) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
-    const handleCommand = (
-      key: "ArrowDown" | "ArrowUp" | "Enter" | "Tab" | "Slash",
-      event: KeyboardEvent | null,
-    ): boolean => {
+    const handleCommand = (key: ComposerCommandKey, event: KeyboardEvent | null): boolean => {
       if (!props.onCommandKeyDown || !event) {
         return false;
+      }
+      if (shouldConsumeComposerEnterDuringComposition(key, event)) {
+        event.stopPropagation();
+        return true;
       }
       const handled = props.onCommandKeyDown(key, event);
       if (handled) {
