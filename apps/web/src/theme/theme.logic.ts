@@ -145,6 +145,20 @@ type CatppuccinPalette = {
   yellow: string;
 };
 
+type ThemeDepthTone = "cool" | "neutral" | "vivid" | "warm";
+
+type ThemeDepthProfile = {
+  chatLink?: string;
+  chatToken?: string;
+  composerLift?: number;
+  headerLift?: number;
+  selectedAlpha?: number;
+  sidebarLift?: number;
+  tone: ThemeDepthTone;
+  topbarLift?: number;
+  warning?: string;
+};
+
 const BLACK: RgbColor = { blue: 0, green: 0, red: 0 };
 const WHITE: RgbColor = { blue: 255, green: 255, red: 255 };
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
@@ -189,6 +203,105 @@ const CATPPUCCIN_PALETTE: Record<ThemeVariant, CatppuccinPalette> = {
     surface1: "#bcc0cc",
     teal: "#179299",
     yellow: "#df8e1d",
+  },
+};
+const THEME_DEPTH_PROFILES: Partial<
+  Record<string, Partial<Record<ThemeVariant, ThemeDepthProfile>>>
+> = {
+  absolutely: {
+    dark: { tone: "warm" },
+    light: { tone: "warm" },
+  },
+  ayu: {
+    dark: { tone: "warm", warning: "#e6b450" },
+  },
+  codex: {
+    dark: { tone: "neutral" },
+    light: { tone: "neutral" },
+  },
+  "dp-code": {
+    dark: { tone: "neutral", selectedAlpha: 0.14 },
+    light: { tone: "neutral", selectedAlpha: 0.1 },
+  },
+  dracula: {
+    dark: { chatToken: "#bd93f9", tone: "vivid", warning: "#f1fa8c" },
+  },
+  everforest: {
+    dark: { tone: "warm", warning: "#dbbc7f" },
+    light: { tone: "warm", warning: "#dfa000" },
+  },
+  github: {
+    dark: { tone: "cool" },
+    light: { tone: "neutral" },
+  },
+  gruvbox: {
+    dark: { tone: "warm", warning: "#fabd2f" },
+    light: { tone: "warm", warning: "#b57614" },
+  },
+  linear: {
+    dark: { tone: "neutral" },
+    light: { tone: "neutral" },
+  },
+  lobster: {
+    dark: { selectedAlpha: 0.16, tone: "vivid" },
+  },
+  material: {
+    dark: { tone: "cool" },
+  },
+  matrix: {
+    dark: { chatLink: "#00ff66", selectedAlpha: 0.16, tone: "vivid", warning: "#b7ff5a" },
+  },
+  monokai: {
+    dark: { tone: "vivid", warning: "#e6db74" },
+  },
+  "night-owl": {
+    dark: { tone: "cool", warning: "#ecc48d" },
+  },
+  nord: {
+    dark: { tone: "cool", warning: "#ebcb8b" },
+  },
+  notion: {
+    dark: { tone: "neutral" },
+    light: { tone: "neutral" },
+  },
+  one: {
+    dark: { tone: "cool" },
+    light: { tone: "neutral" },
+  },
+  oscurange: {
+    dark: { selectedAlpha: 0.15, tone: "warm" },
+  },
+  proof: {
+    light: { tone: "neutral" },
+  },
+  raycast: {
+    dark: { tone: "vivid" },
+    light: { tone: "neutral" },
+  },
+  "rose-pine": {
+    dark: { tone: "warm", warning: "#f6c177" },
+    light: { tone: "warm", warning: "#ea9d34" },
+  },
+  sentry: {
+    dark: { tone: "vivid" },
+  },
+  solarized: {
+    dark: { tone: "warm", warning: "#b58900" },
+    light: { tone: "warm", warning: "#b58900" },
+  },
+  temple: {
+    dark: { tone: "warm" },
+  },
+  "tokyo-night": {
+    dark: { tone: "cool", warning: "#e0af68" },
+  },
+  vercel: {
+    dark: { tone: "neutral" },
+    light: { tone: "neutral" },
+  },
+  "vscode-plus": {
+    dark: { tone: "cool" },
+    light: { tone: "neutral" },
   },
 };
 const PANEL_BASE_ALPHA: Record<ThemeVariant, number> = {
@@ -857,14 +970,41 @@ function buildAppDepthVariables(
     };
   }
 
+  return buildProfileAppDepthVariables(
+    pack,
+    variant,
+    resolvedTokens,
+    getThemeDepthProfile(pack.codeThemeId, variant),
+  );
+}
+
+function getThemeDepthProfile(codeThemeId: string, variant: ThemeVariant): ThemeDepthProfile {
+  return THEME_DEPTH_PROFILES[codeThemeId]?.[variant] ?? { tone: "neutral" };
+}
+
+function buildProfileAppDepthVariables(
+  pack: ThemePack,
+  variant: ThemeVariant,
+  resolvedTokens: ResolvedThemeTokens,
+  profile: ThemeDepthProfile,
+): Record<string, string> {
   const accent = parseHexColor(pack.theme.accent);
   const diffRemoved = parseHexColor(pack.theme.semanticColors.diffRemoved);
-  const warning = variant === "dark" ? parseHexColor("#f5b44a") : parseHexColor("#d97706");
   const diffAdded = parseHexColor(pack.theme.semanticColors.diffAdded);
-  const cardHeader =
-    variant === "dark"
-      ? mixHex(resolvedTokens.computed.panel, pack.theme.ink, 0.08)
-      : mixHex(resolvedTokens.computed.panel, pack.theme.ink, 0.06);
+  const warningColor = profile.warning ?? (variant === "dark" ? "#f5b44a" : "#d97706");
+  const warning = parseHexColor(warningColor);
+  const toneLift = getThemeDepthToneLift(profile.tone, variant);
+  const sidebarLift = profile.sidebarLift ?? toneLift.sidebar;
+  const topbarLift = profile.topbarLift ?? toneLift.topbar;
+  const headerLift = profile.headerLift ?? toneLift.header;
+  const composerLift = profile.composerLift ?? toneLift.composer;
+  const selectedAlpha = profile.selectedAlpha ?? toneLift.selectedAlpha;
+  const canvas = resolvedTokens.computed.surfaceUnder;
+  const panel = resolvedTokens.computed.panel;
+  const sidebar = mixHex(canvas, pack.theme.ink, sidebarLift);
+  const topbar = mixHex(canvas, pack.theme.ink, topbarLift);
+  const cardHeader = mixHex(panel, pack.theme.ink, headerLift);
+  const composer = mixHex(resolvedTokens.computed.panel, pack.theme.ink, composerLift);
 
   return {
     "--app-accent-muted": formatRgba(accent, variant === "dark" ? 0.28 : 0.18),
@@ -872,39 +1012,70 @@ function buildAppDepthVariables(
     "--app-accent-strong": pack.theme.accent,
     "--app-chat-chip-bg": resolvedTokens.derived.buttonSecondaryBackground,
     "--app-chat-chip-border": resolvedTokens.derived.border,
-    "--app-chat-code-bg": resolvedTokens.computed.surfaceUnder,
-    "--app-chat-code-border": resolvedTokens.derived.border,
+    "--app-chat-code-bg": sidebar,
+    "--app-chat-code-border": cardHeader,
     "--app-chat-code-copy-bg": resolvedTokens.derived.elevatedSecondaryOpaque,
     "--app-chat-code-copy-fg": pack.theme.accent,
     "--app-chat-command": pack.theme.accent,
     "--app-chat-error": pack.theme.semanticColors.diffRemoved,
     "--app-chat-error-bg": formatRgba(diffRemoved, variant === "dark" ? 0.12 : 0.08),
-    "--app-chat-file": pack.theme.accent,
+    "--app-chat-file": profile.chatLink ?? pack.theme.accent,
     "--app-chat-heading": pack.theme.accent,
-    "--app-chat-link": pack.theme.accent,
+    "--app-chat-link": profile.chatLink ?? pack.theme.accent,
     "--app-chat-success": pack.theme.semanticColors.diffAdded,
     "--app-chat-success-bg": formatRgba(diffAdded, variant === "dark" ? 0.12 : 0.08),
-    "--app-chat-token": resolvedTokens.derived.textAccent,
-    "--app-chat-warning": variant === "dark" ? "#f5b44a" : "#d97706",
+    "--app-chat-token": profile.chatToken ?? resolvedTokens.derived.textAccent,
+    "--app-chat-warning": warningColor,
     "--app-chat-warning-bg": formatRgba(warning, variant === "dark" ? 0.12 : 0.08),
-    "--app-diff-card-bg": resolvedTokens.computed.surfaceUnder,
+    "--app-diff-card-bg": sidebar,
     "--app-diff-card-header-bg": cardHeader,
     "--app-state-focus": resolvedTokens.derived.borderFocus,
     "--app-state-hover": resolvedTokens.derived.buttonSecondaryBackgroundHover,
-    "--app-state-selected": formatRgba(accent, variant === "dark" ? 0.12 : 0.1),
+    "--app-state-selected": formatRgba(accent, selectedAlpha),
     "--app-state-selected-border": pack.theme.accent,
     "--app-status-error-bg": formatRgba(diffRemoved, variant === "dark" ? 0.12 : 0.08),
     "--app-status-error-border": formatRgba(diffRemoved, variant === "dark" ? 0.36 : 0.28),
     "--app-status-warning-bg": formatRgba(warning, variant === "dark" ? 0.12 : 0.08),
     "--app-status-warning-border": formatRgba(warning, variant === "dark" ? 0.34 : 0.24),
-    "--app-surface-canvas": resolvedTokens.computed.surfaceUnder,
-    "--app-surface-card": resolvedTokens.computed.panel,
+    "--app-surface-canvas": canvas,
+    "--app-surface-card": panel,
     "--app-surface-card-header": cardHeader,
-    "--app-surface-composer": resolvedTokens.derived.elevatedPrimaryOpaque,
-    "--app-surface-panel": resolvedTokens.computed.panel,
-    "--app-surface-sidebar": resolvedTokens.computed.surfaceUnder,
-    "--app-surface-topbar": resolvedTokens.computed.surfaceUnder,
+    "--app-surface-composer": composer,
+    "--app-surface-panel": panel,
+    "--app-surface-sidebar": sidebar,
+    "--app-surface-topbar": topbar,
   };
+}
+
+function getThemeDepthToneLift(
+  tone: ThemeDepthTone,
+  variant: ThemeVariant,
+): {
+  composer: number;
+  header: number;
+  selectedAlpha: number;
+  sidebar: number;
+  topbar: number;
+} {
+  const dark = variant === "dark";
+  switch (tone) {
+    case "cool":
+      return dark
+        ? { composer: 0.035, header: 0.11, selectedAlpha: 0.13, sidebar: 0.045, topbar: 0.035 }
+        : { composer: 0.025, header: 0.065, selectedAlpha: 0.09, sidebar: 0.035, topbar: 0.028 };
+    case "vivid":
+      return dark
+        ? { composer: 0.045, header: 0.13, selectedAlpha: 0.15, sidebar: 0.055, topbar: 0.04 }
+        : { composer: 0.03, header: 0.075, selectedAlpha: 0.11, sidebar: 0.045, topbar: 0.034 };
+    case "warm":
+      return dark
+        ? { composer: 0.04, header: 0.12, selectedAlpha: 0.14, sidebar: 0.05, topbar: 0.038 }
+        : { composer: 0.028, header: 0.07, selectedAlpha: 0.1, sidebar: 0.04, topbar: 0.03 };
+    case "neutral":
+      return dark
+        ? { composer: 0.03, header: 0.09, selectedAlpha: 0.12, sidebar: 0.04, topbar: 0.03 }
+        : { composer: 0.022, header: 0.06, selectedAlpha: 0.09, sidebar: 0.032, topbar: 0.024 };
+  }
 }
 
 export function buildResolvedThemeTokens(
