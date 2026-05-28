@@ -5782,22 +5782,26 @@ export default function Sidebar() {
                     {!showManualPathInput ? (
                       <div className="space-y-1.5">
                         {projectFolderPath ? (
-                          <div className="space-y-1">
+                          <div className="overflow-hidden rounded-xl border border-[color:var(--app-chat-chip-border,var(--color-border))] bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.018)),var(--color-background-elevated-secondary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.075),0_12px_28px_rgba(0,0,0,0.18)]">
                             {projectFolderSuggestions.map((suggestion) => (
                               <button
                                 key={suggestion.path}
                                 type="button"
-                                className="flex w-full min-w-0 items-center gap-2 rounded-lg bg-[var(--color-background-elevated-secondary)] px-2 py-1.5 text-left text-[length:var(--app-font-size-ui,12px)] text-[var(--color-text-foreground-secondary)] transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)] disabled:opacity-50"
+                                className="group flex w-full min-w-0 items-center gap-2.5 border-b border-[color:var(--color-border-light)]/55 px-2.5 py-2 text-left text-[length:var(--app-font-size-ui,12px)] text-[var(--color-text-foreground-secondary)] transition-colors last:border-b-0 hover:bg-[var(--color-background-button-secondary-hover)]/85 hover:text-[var(--color-text-foreground)] focus-visible:bg-[var(--color-background-button-secondary-hover)] focus-visible:text-[var(--color-text-foreground)] focus-visible:outline-none disabled:opacity-50"
                                 title={suggestion.path}
                                 onClick={() => void addProjectFromPath(suggestion.path)}
                                 disabled={isAddingProject}
                               >
-                                <FolderIcon className="size-3.5 shrink-0" />
-                                <span className="min-w-0 flex-1 truncate">{suggestion.name}</span>
+                                <span className="flex size-5 shrink-0 items-center justify-center rounded-md border border-[color:var(--app-chat-chip-border,var(--color-border))] bg-[var(--composer-surface)]/60 text-[var(--color-text-foreground-tertiary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.055)] transition-colors group-hover:border-[color:var(--color-border)] group-hover:text-[var(--color-text-foreground-secondary)]">
+                                  <FolderIcon className="size-3.5" />
+                                </span>
+                                <span className="min-w-0 flex-1 truncate tracking-[0.01em]">
+                                  {suggestion.name}
+                                </span>
                               </button>
                             ))}
                             {projectFolderSuggestions.length === 0 ? (
-                              <div className="rounded-lg border border-dashed border-[color:var(--color-border)] px-2 py-2 text-[length:var(--app-font-size-ui,12px)] leading-tight text-muted-foreground/70">
+                              <div className="px-2.5 py-2 text-[length:var(--app-font-size-ui,12px)] leading-tight text-muted-foreground/70">
                                 {projectFolderDirectoriesQuery.isFetching
                                   ? "Loading Project Folder suggestions..."
                                   : projectFolderSuggestionsError
@@ -5822,7 +5826,7 @@ export default function Sidebar() {
                           {isElectron && (
                             <button
                               type="button"
-                              className="flex h-8 flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-background-elevated-secondary)] px-2 text-[length:var(--app-font-size-ui,12px)] font-normal text-[var(--color-text-foreground-secondary)] transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)] disabled:opacity-50"
+                              className="flex h-8 flex-1 items-center justify-center gap-2 rounded-lg border border-[color:var(--app-chat-chip-border,var(--color-border))] bg-[var(--color-background-elevated-secondary)]/35 px-2 text-[length:var(--app-font-size-ui,12px)] font-medium text-[var(--color-text-foreground-secondary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)] disabled:opacity-50"
                               onClick={() => void handlePickFolder()}
                               disabled={isPickingFolder || isAddingProject}
                             >
@@ -5836,7 +5840,7 @@ export default function Sidebar() {
                           )}
                           <button
                             type="button"
-                            className="flex h-8 flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-background-elevated-secondary)] px-2 text-[length:var(--app-font-size-ui,12px)] font-normal text-[var(--color-text-foreground-secondary)] transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)]"
+                            className="flex h-8 flex-1 items-center justify-center gap-2 rounded-lg border border-[color:var(--app-chat-chip-border,var(--color-border))] bg-[var(--color-background-elevated-secondary)]/35 px-2 text-[length:var(--app-font-size-ui,12px)] font-medium text-[var(--color-text-foreground-secondary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)]"
                             onClick={() => setShowManualPathInput(true)}
                           >
                             <TbCursorText className="size-3.5" />
