@@ -19,4 +19,14 @@ describe("Sidebar structure", () => {
     expect(sidebarSource).toContain("text-[18px] font-semibold text-[#8a0303]");
     expect(sidebarSource).toContain("text-[18px] font-normal text-foreground/89");
   });
+
+  it("distinguishes the top Threads header from project headers", () => {
+    expect(sidebarSource).toContain("sidebar-section-header-elevated");
+    expect(sidebarSource).toContain('className="sidebar-section-header-elevated"');
+  });
+
+  it("renders project headers with accent icon chips and semibold labels", () => {
+    expect(sidebarSource).toContain("sidebar-project-header-icon");
+    expect(sidebarSource).toContain("sidebar-project-header-label");
+  });
 });

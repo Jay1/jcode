@@ -1074,6 +1074,8 @@ function SidebarSectionHeader({
     <div
       className={cn(
         "sidebar-section-header my-1 flex items-center justify-between px-2 py-1",
+        className === "sidebar-section-header-elevated" &&
+          "rounded-xl border border-[color:var(--app-chat-chip-border,var(--border))] bg-[var(--color-background-elevated-secondary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
         className,
       )}
     >
@@ -4626,7 +4628,7 @@ export default function Sidebar() {
               });
             }}
           >
-            <span className="relative inline-flex size-4 shrink-0 items-center justify-center text-muted-foreground/79">
+            <span className="sidebar-project-header-icon relative inline-flex size-5 shrink-0 items-center justify-center rounded-md border border-[color:var(--app-chat-chip-border,var(--border))] bg-[var(--app-chat-chip-bg,var(--muted))] text-[var(--app-chat-heading,var(--color-text-foreground-secondary))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <ProjectSidebarIcon cwd={project.cwd} expanded={project.expanded} />
               {projectStatus ? (
                 <span
@@ -4678,7 +4680,7 @@ export default function Sidebar() {
                 />
               ) : (
                 <>
-                  <span className="truncate font-system-ui text-[length:var(--app-font-size-ui,12px)] font-normal text-muted-foreground/79">
+                  <span className="sidebar-project-header-label truncate font-system-ui text-[length:var(--app-font-size-ui,12px)] font-semibold tracking-[0.01em] text-foreground/82">
                     {project.name}
                   </span>
                   {project.localName ? (
@@ -5697,6 +5699,7 @@ export default function Sidebar() {
                   <div className="-mx-1.5 my-1 h-px bg-border" />
                 )}
                 <SidebarSectionHeader
+                  className="sidebar-section-header-elevated"
                   label="Threads"
                   icon={<FolderIcon className="size-3.5" />}
                   actions={
