@@ -10,17 +10,50 @@
 ![Bun](https://img.shields.io/badge/Bun-1.3.9-000000?logo=bun&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-24.13-5FA04E?logo=nodedotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)
-![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Jay1/jcode?utm_source=oss&utm_medium=github&utm_campaign=Jay1%2Fjcode&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Jay1%2Fjcode?utm_source=oss&utm_medium=github&utm_campaign=Jay1%2Fjcode&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
-JCode is a local cockpit for coding agents tuned for low-level & cybersecurity related day-to-day workflow.
-
-It is a small Bun/TypeScript monorepo with a web UI, desktop packaging, and a
-local server that manages coding-agent sessions.
+A local cockpit for coding agents, tuned for low-level and cybersecurity workflows.
 
 ## Installation
 
-Desktop builds are published from GitHub Releases. Package-manager installs become
-available after the corresponding Homebrew tap and Winget manifests are published.
+### AI-Driven Install
+
+Copy the prompt below into your preferred AI coding tool (Claude, Codex, OpenClaw, etc.) and it will handle the full setup:
+
+````markdown
+Install and set up JCode from https://github.com/Jay1/jcode on this machine.
+
+Steps:
+
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/Jay1/jcode.git
+   cd jcode
+   ```
+
+2. Install the required toolchain. The project pins Node 24.13.1 and Bun 1.3.9 (see `.mise.toml`).
+   If you have mise available, run `mise install`. Otherwise install Node and Bun at those
+   versions through whatever package manager is on this system.
+
+3. Install dependencies and build:
+   ```bash
+   bun install
+   bun run build
+   ```
+
+4. Start the dev server:
+   ```bash
+   bun run dev
+   ```
+
+5. Verify the typecheck passes:
+   ```bash
+   bun run typecheck
+   ```
+
+If any step fails, diagnose the error, fix it, and re-run until the full
+sequence completes cleanly.
+````
 
 ### macOS
 
@@ -49,18 +82,16 @@ Until then, download the latest `JCode-<version>-x64.exe` installer from
 
 ## Development
 
-Common commands:
-
 ```bash
-bun install
-bun run build
-bun run typecheck
-bun run dev
+bun install          # install dependencies
+bun run dev          # start the dev server
+bun run build        # build all workspaces
+bun run typecheck    # type-check the monorepo
 ```
 
 ## Credits
 
 Built from [DPCode](https://github.com/Emanuele-web04/dpcode) and
-[T3Code](https://github.com/pingdotgg/t3code), with love ❤️ you made my life a little bit easier.
+[T3Code](https://github.com/pingdotgg/t3code), with love <3
 
-See [CREDITS.md](./CREDITS.md) for complete attribution notes.
+See [CREDITS.md](./CREDITS.md) for full attribution.
