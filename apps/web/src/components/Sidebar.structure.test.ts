@@ -21,6 +21,7 @@ describe("Sidebar structure", () => {
     expect(sidebarSource).toContain("text-(--app-wordmark-prefix)");
     expect(sidebarSource).toContain("text-[18px] font-normal text-foreground/89");
     expect(sidebarSource).toContain("<AppWordmarkMark />");
+    expect(sidebarSource).toContain("aria-label={APP_BASE_NAME}");
     expect(sidebarSource).not.toContain("$$$");
   });
 

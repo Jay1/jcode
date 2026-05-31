@@ -73,7 +73,7 @@ import {
   useAppSettings,
 } from "../appSettings";
 import { isElectron } from "../env";
-import { APP_VERSION, APP_WORDMARK_SUFFIX } from "../branding";
+import { APP_BASE_NAME, APP_VERSION, APP_WORDMARK_SUFFIX } from "../branding";
 import { showConfirmDialogFallback } from "../confirmDialogFallback";
 import { isMacPlatform, newCommandId, newProjectId, newThreadId, randomUUID } from "../lib/utils";
 import { persistAppStateNow, useStore } from "../store";
@@ -5391,7 +5391,10 @@ export default function Sidebar() {
     <Tooltip>
       <TooltipTrigger
         render={
-          <div className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 font-system-ui">
+          <div
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 font-system-ui"
+            aria-label={APP_BASE_NAME}
+          >
             <div className="flex min-w-0 items-center gap-1">
               <AppWordmarkMark />
               <span className="truncate text-[18px] font-normal text-foreground/89">
