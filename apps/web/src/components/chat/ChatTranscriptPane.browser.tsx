@@ -7,6 +7,10 @@ import { Profiler, useCallback, useRef, useState, type ProfilerOnRenderCallback 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
+import {
+  applyChatCodeFontOverride,
+  applyUIFontOverride,
+} from "../../hooks/appearanceFontOverrides";
 import { ChatTranscriptPane } from "./ChatTranscriptPane";
 import { useTranscriptAssistantSelectionAction } from "./useTranscriptAssistantSelectionAction";
 import { COLLAPSED_USER_MESSAGE_MAX_CHARS } from "./userMessagePreview";
@@ -168,8 +172,8 @@ describe("ChatTranscriptPane", () => {
 
   it("keeps prose on the UI font while chat code font changes inline code", async () => {
     const rootStyle = document.documentElement.style;
-    rootStyle.setProperty("--app-font-ui-override", "serif");
-    rootStyle.removeProperty("--app-font-chat-code-override");
+    applyUIFontOverride(rootStyle, "serif");
+    applyChatCodeFontOverride(rootStyle, "");
 
     const screen = await render(<TranscriptPerfHarness onTranscriptRender={NOOP} />);
     try {
@@ -184,15 +188,15 @@ describe("ChatTranscriptPane", () => {
       expect(getComputedStyle(prose!).fontFamily).toContain("serif");
       expect(getComputedStyle(inlineCode!).fontFamily).toContain("JetBrains");
 
-      rootStyle.setProperty("--app-font-chat-code-override", "monospace");
+      applyChatCodeFontOverride(rootStyle, "monospace");
 
       await vi.waitFor(() => {
         expect(getComputedStyle(prose!).fontFamily).toContain("serif");
       });
       expect(getComputedStyle(inlineCode!).fontFamily).toContain("monospace");
     } finally {
-      rootStyle.removeProperty("--app-font-ui-override");
-      rootStyle.removeProperty("--app-font-chat-code-override");
+      applyUIFontOverride(rootStyle, "");
+      applyChatCodeFontOverride(rootStyle, "");
       await screen.unmount();
     }
   });
