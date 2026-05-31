@@ -19,9 +19,27 @@ import { RELEASES_URL } from "../lib/releases";
 
   <a href="/download" class="other-platforms">Other platforms</a>
 
-  <div class="screenshot-wrap">
-    <img src="/screenshot.jpeg" alt="JCode" class="screenshot" />
-  </div>
+  <section class="feature-stage" aria-label="JCode feature highlights">
+    <ul class="feature-rail feature-rail--left" aria-label="Control features">
+      <li class="feature-card">Keyboard-first control</li>
+      <li class="feature-card">CTRL+K command bar</li>
+      <li class="feature-card">27 built-in themes</li>
+    </ul>
+
+    <div class="screenshot-wrap">
+      <img src="/screenshot.png" alt="JCode" class="screenshot" />
+    </div>
+
+    <ul class="feature-rail feature-rail--right" aria-label="Workflow features">
+      <li class="feature-card">One-button ship flow</li>
+      <li class="feature-card">Binlex-ready workflows</li>
+      <li class="feature-card">Low-level debugging depth</li>
+      <li class="feature-card feature-card--planned">
+        <span>Coming next</span>
+        <span class="feature-card-note">Planned</span>
+      </li>
+    </ul>
+  </section>
 </Layout>
 
 <script>
@@ -176,11 +194,80 @@ import { RELEASES_URL } from "../lib/releases";
     text-decoration-color: var(--fg-muted);
   }
 
+  /* ── Feature stage ── */
+
+  .feature-stage {
+    --feature-stage-gap: clamp(1rem, 2vw, 2rem);
+    --feature-rail-width: clamp(9rem, 12vw, 12rem);
+    --feature-card-gap: 0.55rem;
+    --feature-card-pad-y: 0.72rem;
+    --feature-card-pad-x: 0.85rem;
+    --feature-card-radius: 12px;
+    --feature-card-bg: color-mix(in srgb, var(--fg) 2%, transparent);
+    --feature-card-bg-hover: color-mix(in srgb, var(--fg) 5%, transparent);
+    --feature-card-border-hover: color-mix(in srgb, var(--fg) 14%, transparent);
+
+    width: min(95vw, 1880px);
+    display: grid;
+    grid-template-columns: var(--feature-rail-width) minmax(0, 1400px) var(--feature-rail-width);
+    align-items: start;
+    justify-content: center;
+    gap: var(--feature-stage-gap);
+    margin: 0 auto;
+  }
+
+  .feature-rail {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--feature-card-gap);
+    padding-top: clamp(1rem, 5vw, 4.5rem);
+    opacity: 0;
+    animation: fade-in 1s ease-out 0.3s forwards;
+  }
+
+  .feature-rail--right {
+    animation-delay: 0.38s;
+  }
+
+  .feature-card {
+    min-height: 3.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--feature-card-gap);
+    padding: var(--feature-card-pad-y) var(--feature-card-pad-x);
+    border: 1px solid var(--border);
+    border-radius: var(--feature-card-radius);
+    background: var(--feature-card-bg);
+    color: var(--fg-muted);
+    font-size: 0.82rem;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease, transform 0.25s ease;
+  }
+
+  .feature-card:hover {
+    background: var(--feature-card-bg-hover);
+    border-color: var(--feature-card-border-hover);
+    color: var(--fg);
+    transform: translateY(-1px);
+  }
+
+  .feature-card-note {
+    color: var(--fg-dim);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
   /* ── Screenshot ── */
 
   .screenshot-wrap {
     margin: 0 auto;
-    width: min(95vw, 1400px);
+    width: 100%;
+    max-width: 1400px;
     opacity: 0;
     transform: scale(0.98);
     animation: screenshot-in 1s ease-out 0.15s forwards;
@@ -222,6 +309,40 @@ import { RELEASES_URL } from "../lib/releases";
 
   /* ── Mobile ── */
 
+  @media (max-width: 900px) {
+    .feature-stage {
+      width: min(95vw, 1400px);
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .feature-rail {
+      width: min(100%, 720px);
+      justify-self: center;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.5rem;
+      padding-top: 0;
+    }
+
+    .feature-rail--left {
+      order: 1;
+    }
+
+    .feature-rail--right {
+      order: 2;
+    }
+
+    .screenshot-wrap {
+      order: 3;
+      margin-top: 1.25rem;
+    }
+
+    .feature-card {
+      min-height: 2.85rem;
+    }
+  }
+
   @media (max-width: 640px) {
     .main {
       padding-top: 7vh;
@@ -231,8 +352,19 @@ import { RELEASES_URL } from "../lib/releases";
       margin-bottom: 4vh;
     }
 
-    .screenshot-wrap {
+    .feature-stage {
       width: 95vw;
+      gap: 0.65rem;
+    }
+
+    .feature-rail {
+      grid-template-columns: 1fr;
+      gap: 0.45rem;
+    }
+
+    .screenshot-wrap {
+      width: 100%;
+      margin-top: 1rem;
     }
   }
 </style>
