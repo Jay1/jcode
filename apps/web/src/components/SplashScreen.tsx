@@ -14,12 +14,12 @@ export function SplashScreen({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-5 select-none">
-        <div className="splash-logo-frame flex size-26 items-center justify-center rounded-[22px] border border-border/45 bg-card/65 p-2 shadow-[0_18px_48px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.05)]">
+        <div className="splash-logo-frame flex size-26 items-center justify-center">
           <img
             alt="JCode"
-            className="splash-logo-image size-full rounded-[14px] object-contain"
+            className="splash-logo-image size-full object-contain"
             draggable={false}
-            src="/jcode.png"
+            src="/jcode-hero.png"
           />
         </div>
 

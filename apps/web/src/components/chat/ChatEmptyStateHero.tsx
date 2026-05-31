@@ -14,7 +14,7 @@ export const ChatEmptyStateHero = memo(function ChatEmptyStateHero({
     <div className="flex flex-col items-center gap-5 select-none">
       <img
         alt="JCode logo"
-        className="size-14 rounded-lg object-contain"
+        className="size-14 object-contain"
         draggable={false}
         height={112}
         src="/jcode-hero.png"
