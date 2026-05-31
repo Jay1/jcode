@@ -1,6 +1,8 @@
 import * as path from "node:path";
 import { defineConfig } from "vitest/config";
 
+const localTestProfile = process.env.JCODE_LOCAL_TEST_PROFILE === "1";
+
 export default defineConfig({
   resolve: {
     alias: [
@@ -11,6 +13,13 @@ export default defineConfig({
     ],
   },
   test: {
+    ...(localTestProfile
+      ? {
+          fileParallelism: false,
+          maxConcurrency: 2,
+          maxWorkers: 2,
+        }
+      : {}),
     coverage: {
       provider: "v8",
       reporter: ["text-summary", "html", "json"],

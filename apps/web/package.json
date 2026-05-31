@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
+    "test:local": "JCODE_LOCAL_TEST_PROFILE=1 vitest run --passWithNoTests",
     "test:browser": "vitest run --config vitest.browser.config.ts",
+    "test:browser:local": "JCODE_LOCAL_TEST_PROFILE=1 vitest run --config vitest.browser.config.ts",
     "test:browser:install": "playwright install chromium",
     "test:browser:install:deps": "playwright install --with-deps chromium"
   },
