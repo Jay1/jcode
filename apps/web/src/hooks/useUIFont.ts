@@ -5,20 +5,13 @@
 
 import { useEffect } from "react";
 import { useAppSettings } from "../appSettings";
-import { normalizeFontFamilyCssValue } from "../lib/fontFamily";
-
-const UI_FONT_OVERRIDE_VARIABLE = "--app-font-ui-override";
+import { applyUIFontOverride } from "./appearanceFontOverrides";
 
 export function useUIFont() {
   const { settings } = useAppSettings();
   const uiFontFamily = settings.uiFontFamily;
 
   useEffect(() => {
-    const cssFontFamily = normalizeFontFamilyCssValue(uiFontFamily);
-    if (cssFontFamily) {
-      document.documentElement.style.setProperty(UI_FONT_OVERRIDE_VARIABLE, cssFontFamily);
-    } else {
-      document.documentElement.style.removeProperty(UI_FONT_OVERRIDE_VARIABLE);
-    }
+    applyUIFontOverride(document.documentElement.style, uiFontFamily);
   }, [uiFontFamily]);
 }
