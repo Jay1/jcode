@@ -34,6 +34,17 @@
 - Do not commit local agent/editor state such as `.sisyphus/`, `.brainstorm/`, `.vscode/`, or `.playwright-mcp/`.
 - If using git commands in OpenCode with the git-master skill active, prefix every git invocation with `GIT_MASTER=1`.
 
+## Local Stable JCode Updates
+
+When Jay asks to update local stable JCode from the latest GitHub work, the live
+service runs from `/home/jay/code/jcode-stable`, not this dev repo.
+
+- Use `jcup` for the normal frequent-testing path: dry run, promote, then `jcs`.
+- Use `jcup --fast` only for rapid partial-release testing when build-level checks are enough.
+- Use lower-level `jcu` for diagnosis, full-test promotions, or rollback (`jcu --rollback`).
+- Do not manually pull, reset, or force the stable checkout unless Jay explicitly asks for that recovery.
+- See `docs/runbooks/update-local-stable-jcode.md` for verification and failure rules.
+
 ## Release Preparation Trigger
 
 When the user says “prepare a new release for me”, treat it as release-prep work, not as permission to publish immediately.
