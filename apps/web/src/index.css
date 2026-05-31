@@ -285,7 +285,7 @@
   --app-terminal-search-match-bg: var(--muted);
   --app-terminal-search-match-border: var(--info-foreground);
   --app-terminal-search-match-overview: var(--info-foreground);
-  --app-wordmark-prefix: var(--info-foreground);
+  --app-wordmark-prefix: var(--destructive-foreground);
   --app-agent-chip-amber-bg: var(--warning);
   --app-agent-chip-amber-fg: var(--warning-foreground);
   --app-agent-chip-cyan-bg: var(--info);

@@ -468,7 +468,7 @@ describe("buildThemeCssVariables", () => {
     expect(cssVariables.variables["--app-status-muted-fg"]).toBe("#45475a");
     expect(cssVariables.variables["--app-diff-card-bg"]).toBe("#181825");
     expect(cssVariables.variables["--app-diff-title"]).toBe("#89b4fa");
-    expect(cssVariables.variables["--app-wordmark-prefix"]).toBe("#cba6f7");
+    expect(cssVariables.variables["--app-wordmark-prefix"]).toBe("#f38ba8");
     expect(cssVariables.variables["--app-agent-chip-violet-fg"]).toBe("#cba6f7");
     expect(cssVariables.variables["--app-agent-chip-cyan-fg"]).toBe("#89b4fa");
     expect(cssVariables.variables["--app-agent-chip-default-fg"]).toBe("#f9e2af");

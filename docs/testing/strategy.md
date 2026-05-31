@@ -24,6 +24,22 @@
 | Desktop pipeline         | `bun run build:desktop`                           | Desktop shell, preload, updater, or packaged output changes      |
 | Root CI gates            | Root scripts from `package.json`                  | Release readiness or explicit user request                       |
 
+## Local-Safe Commands
+
+The full CI commands remain canonical before merging, release preparation, or any claim that the whole repository is green. Use `bun run fmt:check`, `bun run test`, `bun run test:browser`, `bun run test:all`, and coverage commands when you need CI-equivalent evidence.
+
+Use the local-safe variants when you need workstation-friendly verification that avoids saturating CPU, browser, or formatter parallelism:
+
+| Command                                     | Use when                                            | Throttles                                                                                 |
+| ------------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `bun run test:local`                        | Running root tests during local development         | Turbo package concurrency, Vitest workers, concurrent tests, and Vitest file parallelism  |
+| `bun run test:browser:local`                | Running web browser tests on a workstation          | Turbo package concurrency, Vitest workers, concurrent tests, and browser file parallelism |
+| `bun run test:all:local`                    | Running both local-safe unit and browser test gates | The same local-safe unit and browser limits                                               |
+| `bun run fmt:check:local`                   | Checking formatting without using all CPU threads   | `oxfmt` worker threads                                                                    |
+| `bun run --cwd apps/web test:browser:local` | Checking only the web browser test workspace        | Vitest workers, concurrent tests, and browser file parallelism                            |
+
+These commands are meant to reduce workstation lag, screen flicker, and other application pressure. They do not replace the full CI commands when the change needs merge or release-level confidence.
+
 ## Rules
 
 - Add a focused regression before fixing non-trivial bugs.
