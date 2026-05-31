@@ -16,7 +16,7 @@ describe("Sidebar structure", () => {
   });
 
   it("renders the navbar wordmark larger with a blood-red J", () => {
-    expect(sidebarSource).toContain("text-[18px] font-semibold text-[#8a0303]");
+    expect(sidebarSource).toContain("text-[18px] font-semibold text-[var(--app-wordmark-prefix)]");
     expect(sidebarSource).toContain("text-[18px] font-normal text-foreground/89");
   });
 

@@ -151,22 +151,12 @@ function resolvePluginBrand(plugin: ProviderPluginDescriptor): PluginBrandArtwor
   return undefined;
 }
 
-/** Stable hue 0–359 from a string, for consistent per-item icon colors. */
-function nameToHue(name: string): number {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) {
-    h = name.charCodeAt(i) + ((h << 5) - h);
-  }
-  return Math.abs(h) % 360;
-}
-
 // ── Icon glyphs ────────────────────────────────────────────────────────────
 
 function PluginGlyph({ plugin }: { plugin: ProviderPluginDescriptor }) {
   const accent = resolvePluginAccent(plugin);
   const logo = resolvePluginLogo(plugin);
   const brand = resolvePluginBrand(plugin);
-  const hue = nameToHue(plugin.interface?.displayName ?? plugin.name);
   const [logoFailed, setLogoFailed] = useState(false);
   const style = accent
     ? {
@@ -174,8 +164,9 @@ function PluginGlyph({ plugin }: { plugin: ProviderPluginDescriptor }) {
         boxShadow: `0 0 0 0.5px ${accent}35`,
       }
     : {
-        background: `linear-gradient(145deg, hsl(${hue} 55% 30%), hsl(${hue} 45% 18%))`,
-        boxShadow: `0 0 0 0.5px hsl(${hue} 40% 30% / 0.35)`,
+        background:
+          "linear-gradient(145deg, var(--app-plugin-glyph-gradient-from), var(--app-plugin-glyph-gradient-to))",
+        boxShadow: "0 0 0 0.5px var(--app-plugin-glyph-border)",
       };
 
   // Prefer metadata-provided artwork so marketplace plugins keep their own branding.
@@ -219,13 +210,13 @@ function PluginGlyph({ plugin }: { plugin: ProviderPluginDescriptor }) {
 }
 
 function SkillGlyph({ skill }: { skill: ProviderSkillDescriptor }) {
-  const hue = nameToHue(skill.interface?.displayName ?? skill.name);
   return (
     <span
       className="inline-flex size-11 shrink-0 items-center justify-center rounded-[14px]"
       style={{
-        background: `linear-gradient(145deg, hsl(${hue} 55% 30%), hsl(${hue} 45% 18%))`,
-        boxShadow: `0 0 0 0.5px hsl(${hue} 40% 30% / 0.35)`,
+        background:
+          "linear-gradient(145deg, var(--app-plugin-glyph-gradient-from), var(--app-plugin-glyph-gradient-to))",
+        boxShadow: "0 0 0 0.5px var(--app-plugin-glyph-border)",
       }}
     >
       <ListChecksIcon className="size-5 text-white/80" />

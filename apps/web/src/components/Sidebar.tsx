@@ -427,7 +427,7 @@ function resolveThreadRowMetaChips(input: {
     chips.push({
       id: "fork",
       tooltip: "Forked thread",
-      icon: <GoRepoForked className="size-3 text-emerald-600 dark:text-emerald-300/90" />,
+      icon: <GoRepoForked className="size-3 text-[var(--app-status-success-fg)]" />,
     });
   }
 
@@ -435,7 +435,7 @@ function resolveThreadRowMetaChips(input: {
     chips.push({
       id: "sidechat",
       tooltip: "Sidechat",
-      icon: <LuMessageSquareDashed className="size-3 text-sky-600 dark:text-sky-300/90" />,
+      icon: <LuMessageSquareDashed className="size-3 text-[var(--app-status-working-fg)]" />,
     });
   }
 
@@ -760,21 +760,21 @@ function terminalStatusFromThreadState(input: {
   if (terminalAttentionStates.includes("attention")) {
     return {
       label: "Terminal input needed",
-      colorClass: "text-amber-600 dark:text-amber-300/90",
+      colorClass: "text-[var(--app-status-warning-fg)]",
       pulse: false,
     };
   }
   if ((input.runningTerminalIds?.length ?? 0) > 0) {
     return {
       label: "Terminal process running",
-      colorClass: "text-teal-600 dark:text-teal-300/90",
+      colorClass: "text-[var(--app-status-input-fg)]",
       pulse: true,
     };
   }
   if (terminalAttentionStates.includes("review")) {
     return {
       label: "Terminal task completed",
-      colorClass: "text-emerald-600 dark:text-emerald-300/90",
+      colorClass: "text-[var(--app-status-success-fg)]",
       pulse: false,
     };
   }
@@ -787,7 +787,7 @@ function prStatusIndicator(pr: ThreadPr): PrStatusIndicator | null {
   if (pr.state === "open") {
     return {
       label: "PR open",
-      colorClass: "text-emerald-600 dark:text-emerald-300/90",
+      colorClass: "text-[var(--app-status-success-fg)]",
       tooltip: `#${pr.number} PR open: ${pr.title}`,
       url: pr.url,
     };
@@ -803,7 +803,7 @@ function prStatusIndicator(pr: ThreadPr): PrStatusIndicator | null {
   if (pr.state === "merged") {
     return {
       label: "PR merged",
-      colorClass: "text-violet-600 dark:text-violet-300/90",
+      colorClass: "text-[var(--app-status-plan-fg)]",
       tooltip: `#${pr.number} PR merged: ${pr.title}`,
       url: pr.url,
     };
@@ -815,9 +815,9 @@ function AppWordmarkPrefix() {
   return (
     <span
       aria-label={APP_WORDMARK_PREFIX}
-      className="shrink-0 text-[18px] font-semibold text-[#8a0303]"
+      className="shrink-0 text-[18px] font-semibold text-[var(--app-wordmark-prefix)]"
     >
-      {APP_WORDMARK_PREFIX}
+      $$$
     </span>
   );
 }
@@ -5144,13 +5144,13 @@ export default function Sidebar() {
     ? "cursor-not-allowed opacity-60"
     : "hover:brightness-110";
   const desktopUpdateButtonClasses = installingDesktopUpdate
-    ? "bg-sky-500 hover:bg-sky-600"
+    ? "bg-[var(--app-status-working-dot)] hover:brightness-110"
     : desktopUpdateState?.status === "downloaded"
-      ? "bg-emerald-500 hover:bg-emerald-600"
+      ? "bg-[var(--app-status-success-dot)] hover:brightness-110"
       : desktopUpdateState?.status === "downloading"
-        ? "bg-sky-500 hover:bg-sky-600"
+        ? "bg-[var(--app-status-working-dot)] hover:brightness-110"
         : shouldHighlightDesktopUpdateError(desktopUpdateState)
-          ? "bg-rose-500 hover:bg-rose-600"
+          ? "bg-[var(--app-status-error-dot)] hover:brightness-110"
           : "bg-[var(--info)] hover:brightness-110";
   const desktopUpdateButtonHasSecondaryLabel =
     desktopUpdateButtonPresentation.secondaryLabel !== null;
@@ -5663,7 +5663,7 @@ export default function Sidebar() {
                                             : workspace.terminalStatus.label ===
                                                 "Terminal process running"
                                               ? "bg-teal-500 dark:bg-teal-300/90"
-                                              : "bg-emerald-500 dark:bg-emerald-300/90",
+                                              : "bg-[var(--app-status-success-dot)]",
                                         )}
                                       />
                                     )}

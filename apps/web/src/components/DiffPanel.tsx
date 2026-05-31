@@ -76,7 +76,7 @@ type DiffSurfaceMode = "review" | "summary" | "total";
 type DiffThemeType = "light" | "dark";
 
 function buildDiffPanelUnsafeCSS(theme: "light" | "dark"): string {
-  const titleColor = theme === "dark" ? "#6073CC" : "#526FFF";
+  const titleColor = "var(--app-diff-title)";
   return `
 :host {
   /* Route the entire diff viewer through the chat code font so custom code fonts reach line numbers too. */

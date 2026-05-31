@@ -159,6 +159,18 @@ type ThemeDepthProfile = {
   warning?: string;
 };
 
+const APP_STATUS_TOKEN_KINDS = [
+  "working",
+  "success",
+  "warning",
+  "input",
+  "plan",
+  "error",
+  "muted",
+] as const;
+
+type AppStatusTokenKind = (typeof APP_STATUS_TOKEN_KINDS)[number];
+
 const BLACK: RgbColor = { blue: 0, green: 0, red: 0 };
 const WHITE: RgbColor = { blue: 255, green: 255, red: 255 };
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
@@ -914,10 +926,21 @@ function buildAppDepthVariables(
     const diffRemoved = parseHexColor(pack.theme.semanticColors.diffRemoved);
     const chipBgAlpha = variant === "dark" ? 0.58 : 0.44;
     const chipBorderAlpha = variant === "dark" ? 0.74 : 0.58;
+    const surface0 = parseHexColor(palette.surface0);
+    const surface1 = parseHexColor(palette.surface1);
     return {
       "--app-accent-muted": formatRgba(accent, variant === "dark" ? 0.28 : 0.2),
       "--app-accent-soft": formatRgba(accent, variant === "dark" ? 0.14 : 0.1),
       "--app-accent-strong": pack.theme.accent,
+      ...buildAgentChipVariables({
+        amber: palette.yellow,
+        cyan: palette.blue,
+        default: palette.yellow,
+        fuchsia: palette.mauve,
+        orange: palette.peach,
+        teal: palette.teal,
+        violet: palette.mauve,
+      }),
       "--app-chat-chip-bg": formatRgba(parseHexColor(palette.surface0), chipBgAlpha),
       "--app-chat-chip-border": formatRgba(parseHexColor(palette.surface1), chipBorderAlpha),
       "--app-chat-code-bg": palette.mantle,
@@ -946,12 +969,37 @@ function buildAppDepthVariables(
       ),
       "--app-diff-card-bg": palette.mantle,
       "--app-diff-card-header-bg": palette.surface0,
+      "--app-diff-title": palette.blue,
+      "--app-plugin-glyph-border": formatRgba(surface1, variant === "dark" ? 0.55 : 0.46),
+      "--app-plugin-glyph-gradient-from": palette.mauve,
+      "--app-plugin-glyph-gradient-to": palette.blue,
+      "--app-plugin-glyph-text": pack.theme.ink,
+      "--app-scroll-button-bg": palette.surface0,
+      "--app-scroll-button-border": palette.surface1,
+      "--app-scroll-button-fg": palette.blue,
+      "--app-scroll-button-hover-bg": palette.surface1,
+      "--app-scroll-button-hover-fg": palette.mauve,
+      "--app-scrollbar-thumb": formatRgba(surface1, variant === "dark" ? 0.72 : 0.64),
+      "--app-scrollbar-thumb-hover": formatRgba(surface1, variant === "dark" ? 0.92 : 0.82),
       "--app-state-focus": palette.blue,
       "--app-state-hover": palette.surface0,
       "--app-state-selected": formatRgba(accent, variant === "dark" ? 0.14 : 0.12),
       "--app-state-selected-border": pack.theme.accent,
       "--app-status-error-bg": formatRgba(diffRemoved, variant === "dark" ? 0.14 : 0.1),
       "--app-status-error-border": formatRgba(diffRemoved, variant === "dark" ? 0.42 : 0.32),
+      ...buildStatusVariables(
+        {
+          error: palette.red,
+          input: palette.teal,
+          muted: palette.surface1,
+          plan: palette.mauve,
+          success: palette.green,
+          warning: palette.peach,
+          working: palette.blue,
+        },
+        variant,
+        { mutedBackground: palette.surface0 },
+      ),
       "--app-status-warning-bg": formatRgba(
         parseHexColor(palette.peach),
         variant === "dark" ? 0.13 : 0.1,
@@ -967,6 +1015,23 @@ function buildAppDepthVariables(
       "--app-surface-panel": variant === "dark" ? palette.mantle : "#ffffff",
       "--app-surface-sidebar": variant === "dark" ? palette.mantle : palette.mantle,
       "--app-surface-topbar": variant === "dark" ? palette.mantle : palette.mantle,
+      ...buildSubagentAccentVariables([
+        palette.red,
+        palette.green,
+        palette.blue,
+        palette.peach,
+        palette.mauve,
+        palette.teal,
+        palette.surface1,
+        palette.yellow,
+      ]),
+      "--app-terminal-search-active-match-bg": palette.surface1,
+      "--app-terminal-search-active-match-border": palette.yellow,
+      "--app-terminal-search-active-match-overview": palette.yellow,
+      "--app-terminal-search-match-bg": palette.surface1,
+      "--app-terminal-search-match-border": palette.blue,
+      "--app-terminal-search-match-overview": palette.peach,
+      "--app-wordmark-prefix": palette.mauve,
     };
   }
 
@@ -980,6 +1045,64 @@ function buildAppDepthVariables(
 
 function getThemeDepthProfile(codeThemeId: string, variant: ThemeVariant): ThemeDepthProfile {
   return THEME_DEPTH_PROFILES[codeThemeId]?.[variant] ?? { tone: "neutral" };
+}
+
+function buildStatusVariables(
+  colors: Record<AppStatusTokenKind, string>,
+  variant: ThemeVariant,
+  options?: { mutedBackground?: string },
+): Record<string, string> {
+  const variables: Record<string, string> = {};
+  for (const kind of APP_STATUS_TOKEN_KINDS) {
+    const foreground = colors[kind];
+    const source = kind === "muted" ? (options?.mutedBackground ?? foreground) : foreground;
+    const backgroundAlpha = statusBackgroundAlpha(kind, variant);
+    const borderAlpha = statusBorderAlpha(kind, variant);
+    variables[`--app-status-${kind}-fg`] = foreground;
+    variables[`--app-status-${kind}-dot`] = foreground;
+    variables[`--app-status-${kind}-bg`] = formatRgba(parseHexColor(source), backgroundAlpha);
+    variables[`--app-status-${kind}-border`] = formatRgba(parseHexColor(foreground), borderAlpha);
+  }
+  return variables;
+}
+
+function statusBackgroundAlpha(kind: AppStatusTokenKind, variant: ThemeVariant): number {
+  if (kind === "error") return variant === "dark" ? 0.14 : 0.1;
+  if (kind === "warning") return variant === "dark" ? 0.13 : 0.1;
+  if (kind === "muted") return variant === "dark" ? 0.28 : 0.22;
+  return variant === "dark" ? 0.12 : 0.08;
+}
+
+function statusBorderAlpha(kind: AppStatusTokenKind, variant: ThemeVariant): number {
+  if (kind === "error") return variant === "dark" ? 0.42 : 0.32;
+  if (kind === "warning") return variant === "dark" ? 0.38 : 0.28;
+  if (kind === "muted") return variant === "dark" ? 0.34 : 0.26;
+  return variant === "dark" ? 0.34 : 0.24;
+}
+
+function buildAgentChipVariables(colors: {
+  amber: string;
+  cyan: string;
+  default: string;
+  fuchsia: string;
+  orange: string;
+  teal: string;
+  violet: string;
+}): Record<string, string> {
+  const variables: Record<string, string> = {};
+  for (const [name, color] of Object.entries(colors)) {
+    variables[`--app-agent-chip-${name}-bg`] = formatRgba(parseHexColor(color), 0.15);
+    variables[`--app-agent-chip-${name}-fg`] = color;
+  }
+  return variables;
+}
+
+function buildSubagentAccentVariables(colors: readonly string[]): Record<string, string> {
+  const variables: Record<string, string> = {};
+  for (const [index, color] of colors.entries()) {
+    variables[`--app-subagent-accent-${index}`] = color;
+  }
+  return variables;
 }
 
 function buildProfileAppDepthVariables(
@@ -1005,11 +1128,26 @@ function buildProfileAppDepthVariables(
   const topbar = mixHex(canvas, pack.theme.ink, topbarLift);
   const cardHeader = mixHex(panel, pack.theme.ink, headerLift);
   const composer = mixHex(resolvedTokens.computed.panel, pack.theme.ink, composerLift);
+  const activeSearchBackground = mixHex(
+    cardHeader,
+    pack.theme.ink,
+    variant === "dark" ? 0.12 : 0.08,
+  );
+  const mutedAccent = mixHex(pack.theme.accent, pack.theme.ink, variant === "dark" ? 0.22 : 0.14);
 
   return {
     "--app-accent-muted": formatRgba(accent, variant === "dark" ? 0.28 : 0.18),
     "--app-accent-soft": formatRgba(accent, variant === "dark" ? 0.12 : 0.08),
     "--app-accent-strong": pack.theme.accent,
+    ...buildAgentChipVariables({
+      amber: warningColor,
+      cyan: pack.theme.accent,
+      default: warningColor,
+      fuchsia: pack.theme.accent,
+      orange: pack.theme.semanticColors.diffRemoved,
+      teal: pack.theme.semanticColors.diffAdded,
+      violet: pack.theme.accent,
+    }),
     "--app-chat-chip-bg": resolvedTokens.derived.buttonSecondaryBackground,
     "--app-chat-chip-border": resolvedTokens.derived.border,
     "--app-chat-code-bg": sidebar,
@@ -1029,14 +1167,53 @@ function buildProfileAppDepthVariables(
     "--app-chat-warning-bg": formatRgba(warning, variant === "dark" ? 0.12 : 0.08),
     "--app-diff-card-bg": sidebar,
     "--app-diff-card-header-bg": cardHeader,
+    "--app-diff-title": pack.theme.accent,
+    "--app-plugin-glyph-border": resolvedTokens.derived.borderHeavy,
+    "--app-plugin-glyph-gradient-from": pack.theme.accent,
+    "--app-plugin-glyph-gradient-to": pack.theme.semanticColors.diffAdded,
+    "--app-plugin-glyph-text": pack.theme.ink,
+    "--app-scroll-button-bg": cardHeader,
+    "--app-scroll-button-border": resolvedTokens.derived.border,
+    "--app-scroll-button-fg": pack.theme.accent,
+    "--app-scroll-button-hover-bg": resolvedTokens.derived.buttonSecondaryBackgroundHover,
+    "--app-scroll-button-hover-fg": pack.theme.accent,
+    "--app-scrollbar-thumb": resolvedTokens.derived.iconTertiary,
+    "--app-scrollbar-thumb-hover": resolvedTokens.derived.iconSecondary,
     "--app-state-focus": resolvedTokens.derived.borderFocus,
     "--app-state-hover": resolvedTokens.derived.buttonSecondaryBackgroundHover,
     "--app-state-selected": formatRgba(accent, selectedAlpha),
     "--app-state-selected-border": pack.theme.accent,
     "--app-status-error-bg": formatRgba(diffRemoved, variant === "dark" ? 0.12 : 0.08),
     "--app-status-error-border": formatRgba(diffRemoved, variant === "dark" ? 0.36 : 0.28),
+    ...buildStatusVariables(
+      {
+        error: pack.theme.semanticColors.diffRemoved,
+        input: pack.theme.accent,
+        muted: mutedAccent,
+        plan: pack.theme.accent,
+        success: pack.theme.semanticColors.diffAdded,
+        warning: warningColor,
+        working: pack.theme.accent,
+      },
+      variant,
+      { mutedBackground: cardHeader },
+    ),
     "--app-status-warning-bg": formatRgba(warning, variant === "dark" ? 0.12 : 0.08),
     "--app-status-warning-border": formatRgba(warning, variant === "dark" ? 0.34 : 0.24),
+    ...buildSubagentAccentVariables([
+      pack.theme.semanticColors.diffRemoved,
+      pack.theme.semanticColors.diffAdded,
+      pack.theme.accent,
+      warningColor,
+      mutedAccent,
+      mixHex(pack.theme.semanticColors.diffAdded, pack.theme.ink, variant === "dark" ? 0.18 : 0.1),
+      mixHex(
+        pack.theme.semanticColors.diffRemoved,
+        pack.theme.ink,
+        variant === "dark" ? 0.18 : 0.1,
+      ),
+      mixHex(warningColor, pack.theme.ink, variant === "dark" ? 0.18 : 0.1),
+    ]),
     "--app-surface-canvas": canvas,
     "--app-surface-card": panel,
     "--app-surface-card-header": cardHeader,
@@ -1044,6 +1221,13 @@ function buildProfileAppDepthVariables(
     "--app-surface-panel": panel,
     "--app-surface-sidebar": sidebar,
     "--app-surface-topbar": topbar,
+    "--app-terminal-search-active-match-bg": activeSearchBackground,
+    "--app-terminal-search-active-match-border": warningColor,
+    "--app-terminal-search-active-match-overview": warningColor,
+    "--app-terminal-search-match-bg": cardHeader,
+    "--app-terminal-search-match-border": pack.theme.accent,
+    "--app-terminal-search-match-overview": pack.theme.semanticColors.diffAdded,
+    "--app-wordmark-prefix": pack.theme.accent,
   };
 }
 

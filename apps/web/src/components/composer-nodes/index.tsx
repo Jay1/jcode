@@ -127,14 +127,17 @@ const AGENT_ROBOT_ICON_SVG = renderToStaticMarkup(
 );
 
 // Color mapping for agent aliases (Tailwind color classes)
-const DEFAULT_AGENT_COLOR = { bg: "rgb(245 158 11 / 0.15)", text: "rgb(245 158 11)" };
+const DEFAULT_AGENT_COLOR = {
+  bg: "var(--app-agent-chip-default-bg)",
+  text: "var(--app-agent-chip-default-fg)",
+};
 const AGENT_COLOR_STYLES: Record<string, { bg: string; text: string }> = {
-  violet: { bg: "rgb(139 92 246 / 0.15)", text: "rgb(139 92 246)" },
-  fuchsia: { bg: "rgb(217 70 239 / 0.15)", text: "rgb(217 70 239)" },
-  teal: { bg: "rgb(20 184 166 / 0.15)", text: "rgb(20 184 166)" },
-  cyan: { bg: "rgb(6 182 212 / 0.15)", text: "rgb(6 182 212)" },
+  violet: { bg: "var(--app-agent-chip-violet-bg)", text: "var(--app-agent-chip-violet-fg)" },
+  fuchsia: { bg: "var(--app-agent-chip-fuchsia-bg)", text: "var(--app-agent-chip-fuchsia-fg)" },
+  teal: { bg: "var(--app-agent-chip-teal-bg)", text: "var(--app-agent-chip-teal-fg)" },
+  cyan: { bg: "var(--app-agent-chip-cyan-bg)", text: "var(--app-agent-chip-cyan-fg)" },
   amber: DEFAULT_AGENT_COLOR,
-  orange: { bg: "rgb(249 115 22 / 0.15)", text: "rgb(249 115 22)" },
+  orange: { bg: "var(--app-agent-chip-orange-bg)", text: "var(--app-agent-chip-orange-fg)" },
 };
 
 function renderAgentMentionChipDom(container: HTMLElement, alias: string, color: string): void {

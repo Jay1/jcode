@@ -57,7 +57,7 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
       <button
         type="button"
         onClick={handleClick}
-        className="flex size-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+        className="flex size-7 items-center justify-center rounded-full border border-[color:var(--app-scroll-button-border)] bg-[var(--app-scroll-button-bg)] text-[var(--app-scroll-button-fg)] shadow-sm transition-colors hover:bg-[var(--app-scroll-button-hover-bg)] hover:text-[var(--app-scroll-button-hover-fg)]"
         aria-label="Scroll to bottom"
       >
         <svg

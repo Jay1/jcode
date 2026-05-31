@@ -239,10 +239,75 @@
   --app-state-focus: var(--ring);
   --app-status-error-bg: var(--destructive);
   --app-status-error-border: var(--destructive);
+  --app-status-error-dot: var(--destructive-foreground);
+  --app-status-error-fg: var(--destructive-foreground);
+  --app-status-input-bg: var(--info);
+  --app-status-input-border: var(--info-foreground);
+  --app-status-input-dot: var(--info-foreground);
+  --app-status-input-fg: var(--info-foreground);
+  --app-status-muted-bg: var(--muted);
+  --app-status-muted-border: var(--border);
+  --app-status-muted-dot: var(--muted-foreground);
+  --app-status-muted-fg: var(--muted-foreground);
+  --app-status-plan-bg: var(--info);
+  --app-status-plan-border: var(--info-foreground);
+  --app-status-plan-dot: var(--info-foreground);
+  --app-status-plan-fg: var(--info-foreground);
+  --app-status-success-bg: var(--success);
+  --app-status-success-border: var(--success-foreground);
+  --app-status-success-dot: var(--success-foreground);
+  --app-status-success-fg: var(--success-foreground);
+  --app-status-working-bg: var(--info);
+  --app-status-working-border: var(--info-foreground);
+  --app-status-working-dot: var(--info-foreground);
+  --app-status-working-fg: var(--info-foreground);
   --app-status-warning-bg: var(--warning);
   --app-status-warning-border: var(--warning);
+  --app-status-warning-dot: var(--warning-foreground);
+  --app-status-warning-fg: var(--warning-foreground);
+  --app-diff-title: var(--info-foreground);
   --app-diff-card-bg: var(--card);
   --app-diff-card-header-bg: var(--muted);
+  --app-plugin-glyph-border: var(--border);
+  --app-plugin-glyph-gradient-from: var(--primary);
+  --app-plugin-glyph-gradient-to: var(--info-foreground);
+  --app-plugin-glyph-text: var(--primary-foreground);
+  --app-scroll-button-bg: var(--muted);
+  --app-scroll-button-border: var(--border);
+  --app-scroll-button-fg: var(--muted-foreground);
+  --app-scroll-button-hover-bg: var(--accent);
+  --app-scroll-button-hover-fg: var(--foreground);
+  --app-scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --app-scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+  --app-terminal-search-active-match-bg: var(--warning);
+  --app-terminal-search-active-match-border: var(--warning-foreground);
+  --app-terminal-search-active-match-overview: var(--warning-foreground);
+  --app-terminal-search-match-bg: var(--muted);
+  --app-terminal-search-match-border: var(--info-foreground);
+  --app-terminal-search-match-overview: var(--info-foreground);
+  --app-wordmark-prefix: var(--info-foreground);
+  --app-agent-chip-amber-bg: var(--warning);
+  --app-agent-chip-amber-fg: var(--warning-foreground);
+  --app-agent-chip-cyan-bg: var(--info);
+  --app-agent-chip-cyan-fg: var(--info-foreground);
+  --app-agent-chip-default-bg: var(--muted);
+  --app-agent-chip-default-fg: var(--muted-foreground);
+  --app-agent-chip-fuchsia-bg: var(--info);
+  --app-agent-chip-fuchsia-fg: var(--info-foreground);
+  --app-agent-chip-orange-bg: var(--destructive);
+  --app-agent-chip-orange-fg: var(--destructive-foreground);
+  --app-agent-chip-teal-bg: var(--success);
+  --app-agent-chip-teal-fg: var(--success-foreground);
+  --app-agent-chip-violet-bg: var(--info);
+  --app-agent-chip-violet-fg: var(--info-foreground);
+  --app-subagent-accent-0: var(--destructive-foreground);
+  --app-subagent-accent-1: var(--success-foreground);
+  --app-subagent-accent-2: var(--info-foreground);
+  --app-subagent-accent-3: var(--warning-foreground);
+  --app-subagent-accent-4: var(--muted-foreground);
+  --app-subagent-accent-5: var(--success);
+  --app-subagent-accent-6: var(--destructive);
+  --app-subagent-accent-7: var(--warning);
   --app-accent-soft: var(--accent);
   --app-accent-muted: var(--accent);
   --app-accent-strong: var(--primary);
@@ -315,6 +380,8 @@
     --sidebar-border: var(--border);
     --warning: var(--color-amber-500);
     --warning-foreground: var(--color-amber-400);
+    --app-scrollbar-thumb: rgba(255, 255, 255, 0.1);
+    --app-scrollbar-thumb-hover: rgba(255, 255, 255, 0.18);
   }
 }
 
@@ -386,20 +453,12 @@ input {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--app-scrollbar-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--app-scrollbar-thumb-hover);
 }
 
 .turn-chip-strip {

@@ -3,6 +3,7 @@
 // Layer: Terminal runtime infrastructure
 
 import { Terminal, type ITheme } from "@xterm/xterm";
+import { resolveRootColorVariable } from "./terminalColorResolution";
 
 const FALLBACK_MONO_FONT_FAMILY =
   '"JetBrainsMono NFM", "JetBrainsMono NF", "JetBrains Mono", monospace';
@@ -42,6 +43,11 @@ function resolveTerminalSurfaceColors(): { background: string; foreground: strin
 export function terminalThemeFromApp(): ITheme {
   const isDark = document.documentElement.classList.contains("dark");
   const { background, foreground } = resolveTerminalSurfaceColors();
+  const scrollbarSliderBackground = resolveRootColorVariable(
+    "--app-scrollbar-thumb",
+    isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.15)",
+    { property: "backgroundColor" },
+  );
 
   if (isDark) {
     return {
@@ -49,7 +55,7 @@ export function terminalThemeFromApp(): ITheme {
       foreground,
       cursor: "rgb(180, 203, 255)",
       selectionBackground: "rgba(180, 203, 255, 0.25)",
-      scrollbarSliderBackground: "rgba(255, 255, 255, 0.1)",
+      scrollbarSliderBackground,
       scrollbarSliderHoverBackground: "rgba(255, 255, 255, 0.18)",
       scrollbarSliderActiveBackground: "rgba(255, 255, 255, 0.22)",
       black: "rgb(24, 30, 38)",
@@ -76,7 +82,7 @@ export function terminalThemeFromApp(): ITheme {
     foreground,
     cursor: "rgb(38, 56, 78)",
     selectionBackground: "rgba(37, 63, 99, 0.2)",
-    scrollbarSliderBackground: "rgba(0, 0, 0, 0.15)",
+    scrollbarSliderBackground,
     scrollbarSliderHoverBackground: "rgba(0, 0, 0, 0.25)",
     scrollbarSliderActiveBackground: "rgba(0, 0, 0, 0.3)",
     black: "rgb(44, 53, 66)",

@@ -38,8 +38,32 @@ const REQUIRED_APP_DEPTH_TOKENS = [
   "--app-state-focus",
   "--app-status-error-bg",
   "--app-status-error-border",
+  "--app-status-error-dot",
+  "--app-status-error-fg",
+  "--app-status-input-bg",
+  "--app-status-input-border",
+  "--app-status-input-dot",
+  "--app-status-input-fg",
+  "--app-status-muted-bg",
+  "--app-status-muted-border",
+  "--app-status-muted-dot",
+  "--app-status-muted-fg",
+  "--app-status-plan-bg",
+  "--app-status-plan-border",
+  "--app-status-plan-dot",
+  "--app-status-plan-fg",
+  "--app-status-success-bg",
+  "--app-status-success-border",
+  "--app-status-success-dot",
+  "--app-status-success-fg",
+  "--app-status-working-bg",
+  "--app-status-working-border",
+  "--app-status-working-dot",
+  "--app-status-working-fg",
   "--app-status-warning-bg",
   "--app-status-warning-border",
+  "--app-status-warning-dot",
+  "--app-status-warning-fg",
   "--app-chat-heading",
   "--app-chat-link",
   "--app-chat-file",
@@ -59,6 +83,47 @@ const REQUIRED_APP_DEPTH_TOKENS = [
   "--app-chat-code-copy-fg",
   "--app-diff-card-bg",
   "--app-diff-card-header-bg",
+  "--app-diff-title",
+  "--app-plugin-glyph-border",
+  "--app-plugin-glyph-gradient-from",
+  "--app-plugin-glyph-gradient-to",
+  "--app-plugin-glyph-text",
+  "--app-scroll-button-bg",
+  "--app-scroll-button-border",
+  "--app-scroll-button-fg",
+  "--app-scroll-button-hover-bg",
+  "--app-scroll-button-hover-fg",
+  "--app-scrollbar-thumb",
+  "--app-scrollbar-thumb-hover",
+  "--app-terminal-search-active-match-bg",
+  "--app-terminal-search-active-match-border",
+  "--app-terminal-search-active-match-overview",
+  "--app-terminal-search-match-bg",
+  "--app-terminal-search-match-border",
+  "--app-terminal-search-match-overview",
+  "--app-wordmark-prefix",
+  "--app-agent-chip-amber-bg",
+  "--app-agent-chip-amber-fg",
+  "--app-agent-chip-cyan-bg",
+  "--app-agent-chip-cyan-fg",
+  "--app-agent-chip-default-bg",
+  "--app-agent-chip-default-fg",
+  "--app-agent-chip-fuchsia-bg",
+  "--app-agent-chip-fuchsia-fg",
+  "--app-agent-chip-orange-bg",
+  "--app-agent-chip-orange-fg",
+  "--app-agent-chip-teal-bg",
+  "--app-agent-chip-teal-fg",
+  "--app-agent-chip-violet-bg",
+  "--app-agent-chip-violet-fg",
+  "--app-subagent-accent-0",
+  "--app-subagent-accent-1",
+  "--app-subagent-accent-2",
+  "--app-subagent-accent-3",
+  "--app-subagent-accent-4",
+  "--app-subagent-accent-5",
+  "--app-subagent-accent-6",
+  "--app-subagent-accent-7",
   "--app-accent-soft",
   "--app-accent-muted",
   "--app-accent-strong",
@@ -393,7 +458,32 @@ describe("buildThemeCssVariables", () => {
     expect(cssVariables.variables["--app-state-selected"]).toBe("rgba(203, 166, 247, 0.14)");
     expect(cssVariables.variables["--app-state-selected-border"]).toBe("#cba6f7");
     expect(cssVariables.variables["--app-status-error-bg"]).toBe("rgba(243, 139, 168, 0.14)");
+    expect(cssVariables.variables["--app-status-working-fg"]).toBe("#89b4fa");
+    expect(cssVariables.variables["--app-status-working-dot"]).toBe("#89b4fa");
+    expect(cssVariables.variables["--app-status-success-fg"]).toBe("#a6e3a1");
+    expect(cssVariables.variables["--app-status-warning-fg"]).toBe("#fab387");
+    expect(cssVariables.variables["--app-status-input-fg"]).toBe("#94e2d5");
+    expect(cssVariables.variables["--app-status-plan-fg"]).toBe("#cba6f7");
+    expect(cssVariables.variables["--app-status-error-fg"]).toBe("#f38ba8");
+    expect(cssVariables.variables["--app-status-muted-fg"]).toBe("#45475a");
     expect(cssVariables.variables["--app-diff-card-bg"]).toBe("#181825");
+    expect(cssVariables.variables["--app-diff-title"]).toBe("#89b4fa");
+    expect(cssVariables.variables["--app-wordmark-prefix"]).toBe("#cba6f7");
+    expect(cssVariables.variables["--app-agent-chip-violet-fg"]).toBe("#cba6f7");
+    expect(cssVariables.variables["--app-agent-chip-cyan-fg"]).toBe("#89b4fa");
+    expect(cssVariables.variables["--app-agent-chip-default-fg"]).toBe("#f9e2af");
+    expect(cssVariables.variables["--app-subagent-accent-0"]).toBe("#f38ba8");
+    expect(cssVariables.variables["--app-subagent-accent-7"]).toBe("#f9e2af");
+    expect(cssVariables.variables["--app-terminal-search-match-bg"]).toBe("#45475a");
+    expect(cssVariables.variables["--app-terminal-search-active-match-border"]).toBe("#f9e2af");
+    expect(cssVariables.variables["--app-plugin-glyph-gradient-from"]).toBe("#cba6f7");
+    expect(cssVariables.variables["--app-plugin-glyph-gradient-to"]).toBe("#89b4fa");
+    expect(cssVariables.variables["--app-scroll-button-bg"]).toBe("#313244");
+    expect(cssVariables.variables["--app-scroll-button-hover-fg"]).toBe("#cba6f7");
+    expect(cssVariables.variables["--app-scrollbar-thumb"]).toBe("rgba(69, 71, 90, 0.72)");
+    expect(cssVariables.variables["--app-scrollbar-thumb-hover"]).toBe("rgba(69, 71, 90, 0.92)");
+    expect(cssVariables.variables["--app-plugin-glyph-text"]).toBe("#cdd6f4");
+    expect(cssVariables.variables["--app-terminal-search-active-match-bg"]).toBe("#45475a");
   });
 
   it("emits Catppuccin Mocha chat semantic role tokens from official palette roles", () => {

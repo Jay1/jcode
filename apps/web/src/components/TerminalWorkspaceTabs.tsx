@@ -71,7 +71,7 @@ export default function TerminalWorkspaceTabs({
         >
           <span className="font-mono tracking-wide">Chat</span>
           {isWorking ? (
-            <span className="ml-1.5 inline-flex size-1.5 rounded-full bg-emerald-500/80" />
+            <span className="ml-1.5 inline-flex size-1.5 rounded-full bg-[var(--app-status-working-dot)]" />
           ) : null}
         </button>
       </div>
