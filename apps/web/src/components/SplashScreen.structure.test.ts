@@ -11,7 +11,9 @@ describe("SplashScreen structure", () => {
     expect(splashSource).toContain('src="/jcode-hero.png"');
     expect(splashSource).not.toContain("object-cover");
     expect(splashSource).not.toContain("rounded-full");
-    expect(splashSource).not.toContain("splash-logo-frame flex size-26 items-center justify-center rounded");
+    expect(splashSource).not.toContain(
+      "splash-logo-frame flex size-26 items-center justify-center rounded",
+    );
     expect(splashSource).not.toContain("splash-logo-image size-full rounded");
   });
 });
