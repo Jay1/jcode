@@ -10,14 +10,14 @@ import {
 import { formatModelDisplayName } from "@jcode/shared/model";
 
 const SUBAGENT_ACCENT_PALETTE = [
-  "#b84e44",
-  "#2f7a5d",
-  "#345fa8",
-  "#a86834",
-  "#7352a8",
-  "#2f7480",
-  "#a84d71",
-  "#6a8531",
+  "var(--app-subagent-accent-0)",
+  "var(--app-subagent-accent-1)",
+  "var(--app-subagent-accent-2)",
+  "var(--app-subagent-accent-3)",
+  "var(--app-subagent-accent-4)",
+  "var(--app-subagent-accent-5)",
+  "var(--app-subagent-accent-6)",
+  "var(--app-subagent-accent-7)",
 ] as const;
 
 const GENERIC_SUBAGENT_TITLES = new Set([

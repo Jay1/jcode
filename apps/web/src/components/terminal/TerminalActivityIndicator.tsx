@@ -24,8 +24,8 @@ export default function TerminalActivityIndicator({
         className={cn(
           "inline-flex size-1.5 shrink-0 rounded-full",
           state === "attention"
-            ? "bg-amber-500 dark:bg-amber-300/90"
-            : "bg-emerald-500 dark:bg-emerald-300/90",
+            ? "bg-[var(--app-status-warning-dot)]"
+            : "bg-[var(--app-status-success-dot)]",
           className,
         )}
       />

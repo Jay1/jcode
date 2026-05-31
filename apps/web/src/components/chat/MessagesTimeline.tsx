@@ -131,14 +131,17 @@ const AgentTaskIcon: LucideIcon = (props) => (
   <RiRobot3Line className={props.className} style={props.style} />
 );
 
-const DEFAULT_AGENT_COLOR = { bg: "rgb(245 158 11 / 0.15)", text: "rgb(245 158 11)" };
+const DEFAULT_AGENT_COLOR = {
+  bg: "var(--app-agent-chip-default-bg)",
+  text: "var(--app-agent-chip-default-fg)",
+};
 const AGENT_COLOR_STYLES: Record<string, { bg: string; text: string }> = {
-  violet: { bg: "rgb(139 92 246 / 0.15)", text: "rgb(139 92 246)" },
-  fuchsia: { bg: "rgb(217 70 239 / 0.15)", text: "rgb(217 70 239)" },
-  teal: { bg: "rgb(20 184 166 / 0.15)", text: "rgb(20 184 166)" },
-  cyan: { bg: "rgb(6 182 212 / 0.15)", text: "rgb(6 182 212)" },
+  violet: { bg: "var(--app-agent-chip-violet-bg)", text: "var(--app-agent-chip-violet-fg)" },
+  fuchsia: { bg: "var(--app-agent-chip-fuchsia-bg)", text: "var(--app-agent-chip-fuchsia-fg)" },
+  teal: { bg: "var(--app-agent-chip-teal-bg)", text: "var(--app-agent-chip-teal-fg)" },
+  cyan: { bg: "var(--app-agent-chip-cyan-bg)", text: "var(--app-agent-chip-cyan-fg)" },
   amber: DEFAULT_AGENT_COLOR,
-  orange: { bg: "rgb(249 115 22 / 0.15)", text: "rgb(249 115 22)" },
+  orange: { bg: "var(--app-agent-chip-orange-bg)", text: "var(--app-agent-chip-orange-fg)" },
 };
 
 // Keeps the steer marker visually attached to the whole sent-message stack.
@@ -1755,18 +1758,18 @@ function subagentStatusClasses(
 ): string {
   switch (normalizeSubagentStatusKind(statusLabel ?? rawStatus, isActive)) {
     case "running":
-      return "border-sky-500/18 bg-sky-500/8 text-sky-200/90";
+      return "border-[color:var(--app-status-working-border)] bg-[var(--app-status-working-bg)] text-[var(--app-status-working-fg)]";
     case "completed":
-      return "border-emerald-500/18 bg-emerald-500/8 text-emerald-200/90";
+      return "border-[color:var(--app-status-success-border)] bg-[var(--app-status-success-bg)] text-[var(--app-status-success-fg)]";
     case "failed":
-      return "border-rose-500/18 bg-rose-500/8 text-rose-200/90";
+      return "border-[color:var(--app-status-error-border)] bg-[var(--app-status-error-bg)] text-[var(--app-status-error-fg)]";
     case "stopped":
-      return "border-amber-500/18 bg-amber-500/8 text-amber-200/90";
+      return "border-[color:var(--app-status-warning-border)] bg-[var(--app-status-warning-bg)] text-[var(--app-status-warning-fg)]";
     case "queued":
-      return "border-violet-500/18 bg-violet-500/8 text-violet-200/90";
+      return "border-[color:var(--app-status-plan-border)] bg-[var(--app-status-plan-bg)] text-[var(--app-status-plan-fg)]";
     case "idle":
     default:
-      return "border-border/45 bg-background/85 text-muted-foreground/68";
+      return "border-[color:var(--app-status-muted-border)] bg-[var(--app-status-muted-bg)] text-[var(--app-status-muted-fg)]";
   }
 }
 
@@ -1978,7 +1981,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                     <span
                       className={cn(
                         "mt-1.5 size-1.5 shrink-0 rounded-full",
-                        subagent.isActive ? "bg-sky-300/95" : "bg-muted-foreground/22",
+                        subagent.isActive ? "bg-[var(--app-status-working-dot)]" : "bg-[var(--app-status-muted-dot)]",
                       )}
                     />
                     <div className="min-w-0 flex-1">

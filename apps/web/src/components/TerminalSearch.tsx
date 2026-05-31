@@ -10,12 +10,12 @@ interface TerminalSearchProps {
 }
 
 const SEARCH_DECORATIONS = {
-  matchBackground: "#515c6a",
-  matchBorder: "#74879f",
-  matchOverviewRuler: "#d186167e",
-  activeMatchBackground: "#515c6a",
-  activeMatchBorder: "#ffd33d",
-  activeMatchColorOverviewRuler: "#ffd33d",
+  matchBackground: "var(--app-terminal-search-match-bg)",
+  matchBorder: "var(--app-terminal-search-match-border)",
+  matchOverviewRuler: "var(--app-terminal-search-match-overview)",
+  activeMatchBackground: "var(--app-terminal-search-active-match-bg)",
+  activeMatchBorder: "var(--app-terminal-search-active-match-border)",
+  activeMatchColorOverviewRuler: "var(--app-terminal-search-active-match-overview)",
 } satisfies NonNullable<ISearchOptions["decorations"]>;
 
 export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchProps) {

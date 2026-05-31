@@ -170,7 +170,7 @@ export const ChatTranscriptPane = memo(function ChatTranscriptPane({
               onClick={onScrollToBottom}
               data-scroll-anchor-ignore
               aria-label="Scroll to bottom"
-              className="pointer-events-auto flex size-9 items-center justify-center rounded-full border border-[color:var(--color-border)] bg-[var(--color-background-elevated-primary-opaque)] text-[var(--color-text-foreground-secondary)] shadow-sm backdrop-blur-sm transition-colors hover:cursor-pointer hover:bg-[var(--color-background-elevated-secondary)] hover:text-[var(--color-text-foreground)]"
+              className="pointer-events-auto flex size-9 items-center justify-center rounded-full border border-[color:var(--app-scroll-button-border)] bg-[var(--app-scroll-button-bg)] text-[var(--app-scroll-button-fg)] shadow-sm backdrop-blur-sm transition-colors hover:cursor-pointer hover:bg-[var(--app-scroll-button-hover-bg)] hover:text-[var(--app-scroll-button-hover-fg)]"
             >
               <ArrowDownIcon className="size-4" />
             </button>
