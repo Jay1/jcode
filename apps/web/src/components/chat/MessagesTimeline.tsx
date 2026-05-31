@@ -1981,7 +1981,9 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                     <span
                       className={cn(
                         "mt-1.5 size-1.5 shrink-0 rounded-full",
-                        subagent.isActive ? "bg-[var(--app-status-working-dot)]" : "bg-[var(--app-status-muted-dot)]",
+                        subagent.isActive
+                          ? "bg-[var(--app-status-working-dot)]"
+                          : "bg-[var(--app-status-muted-dot)]",
                       )}
                     />
                     <div className="min-w-0 flex-1">

@@ -1133,11 +1133,7 @@ function buildProfileAppDepthVariables(
     pack.theme.ink,
     variant === "dark" ? 0.12 : 0.08,
   );
-  const mutedAccent = mixHex(
-    pack.theme.accent,
-    pack.theme.ink,
-    variant === "dark" ? 0.22 : 0.14,
-  );
+  const mutedAccent = mixHex(pack.theme.accent, pack.theme.ink, variant === "dark" ? 0.22 : 0.14);
 
   return {
     "--app-accent-muted": formatRgba(accent, variant === "dark" ? 0.28 : 0.18),
@@ -1210,11 +1206,7 @@ function buildProfileAppDepthVariables(
       pack.theme.accent,
       warningColor,
       mutedAccent,
-      mixHex(
-        pack.theme.semanticColors.diffAdded,
-        pack.theme.ink,
-        variant === "dark" ? 0.18 : 0.1,
-      ),
+      mixHex(pack.theme.semanticColors.diffAdded, pack.theme.ink, variant === "dark" ? 0.18 : 0.1),
       mixHex(
         pack.theme.semanticColors.diffRemoved,
         pack.theme.ink,

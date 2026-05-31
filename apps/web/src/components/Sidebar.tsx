@@ -812,7 +812,12 @@ function prStatusIndicator(pr: ThreadPr): PrStatusIndicator | null {
 
 function AppWordmarkPrefix() {
   return (
-    <span aria-label={APP_WORDMARK_PREFIX} className="shrink-0 text-[18px] font-semibold text-[var(--app-wordmark-prefix)]">$$$</span>
+    <span
+      aria-label={APP_WORDMARK_PREFIX}
+      className="shrink-0 text-[18px] font-semibold text-[var(--app-wordmark-prefix)]"
+    >
+      $$$
+    </span>
   );
 }
 

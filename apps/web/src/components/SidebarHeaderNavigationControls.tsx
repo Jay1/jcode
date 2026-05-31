@@ -35,7 +35,9 @@ export function SidebarHeaderNavigationControls({
         className="flex shrink-0 select-none items-baseline gap-0 text-[18px] leading-none font-system-ui"
         aria-label="JCode"
       >
-        <span className="font-semibold text-[var(--app-wordmark-prefix)]">{APP_WORDMARK_PREFIX}</span>
+        <span className="font-semibold text-[var(--app-wordmark-prefix)]">
+          {APP_WORDMARK_PREFIX}
+        </span>
         <span className="font-normal text-foreground/89">{APP_WORDMARK_SUFFIX}</span>
       </div>
       <div
