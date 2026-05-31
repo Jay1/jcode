@@ -1,6 +1,7 @@
 import type { SearchAddon, ISearchOptions } from "@xterm/addon-search";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDownIcon, ChevronUpIcon, XIcon } from "~/lib/icons";
+import { resolveRootColorVariable } from "./terminal/terminalColorResolution";
 import { cn } from "~/lib/utils";
 
 interface TerminalSearchProps {
@@ -9,14 +10,36 @@ interface TerminalSearchProps {
   onClose: () => void;
 }
 
-const SEARCH_DECORATIONS = {
-  matchBackground: "var(--app-terminal-search-match-bg)",
-  matchBorder: "var(--app-terminal-search-match-border)",
-  matchOverviewRuler: "var(--app-terminal-search-match-overview)",
-  activeMatchBackground: "var(--app-terminal-search-active-match-bg)",
-  activeMatchBorder: "var(--app-terminal-search-active-match-border)",
-  activeMatchColorOverviewRuler: "var(--app-terminal-search-active-match-overview)",
-} satisfies NonNullable<ISearchOptions["decorations"]>;
+const SEARCH_DECORATION_VARIABLES = {
+  matchBackground: ["--app-terminal-search-match-bg", "#45475a"],
+  matchBorder: ["--app-terminal-search-match-border", "#89b4fa"],
+  matchOverviewRuler: ["--app-terminal-search-match-overview", "#fab387"],
+  activeMatchBackground: ["--app-terminal-search-active-match-bg", "#45475a"],
+  activeMatchBorder: ["--app-terminal-search-active-match-border", "#f9e2af"],
+  activeMatchColorOverviewRuler: ["--app-terminal-search-active-match-overview", "#f9e2af"],
+} as const satisfies Record<
+  keyof NonNullable<ISearchOptions["decorations"]>,
+  readonly [string, string]
+>;
+
+function resolveSearchDecorationColor(name: keyof typeof SEARCH_DECORATION_VARIABLES): string {
+  const [variableName, fallback] = SEARCH_DECORATION_VARIABLES[name];
+  return resolveRootColorVariable(variableName, fallback, {
+    format: "hex",
+    property: "backgroundColor",
+  });
+}
+
+function resolveSearchDecorations(): NonNullable<ISearchOptions["decorations"]> {
+  return {
+    matchBackground: resolveSearchDecorationColor("matchBackground"),
+    matchBorder: resolveSearchDecorationColor("matchBorder"),
+    matchOverviewRuler: resolveSearchDecorationColor("matchOverviewRuler"),
+    activeMatchBackground: resolveSearchDecorationColor("activeMatchBackground"),
+    activeMatchBorder: resolveSearchDecorationColor("activeMatchBorder"),
+    activeMatchColorOverviewRuler: resolveSearchDecorationColor("activeMatchColorOverviewRuler"),
+  };
+}
 
 export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -24,11 +47,11 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
   const [hasResults, setHasResults] = useState<boolean | null>(null);
   const [caseSensitive, setCaseSensitive] = useState(false);
 
-  const searchOptions = useMemo(
+  const createSearchOptions = useCallback(
     (): ISearchOptions => ({
       caseSensitive,
       regex: false,
-      decorations: SEARCH_DECORATIONS as NonNullable<ISearchOptions["decorations"]>,
+      decorations: resolveSearchDecorations(),
     }),
     [caseSensitive],
   );
@@ -51,18 +74,18 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
       if (!searchAddon || !query) return;
       const found =
         direction === "next"
-          ? searchAddon.findNext(query, searchOptions)
-          : searchAddon.findPrevious(query, searchOptions);
+          ? searchAddon.findNext(query, createSearchOptions())
+          : searchAddon.findPrevious(query, createSearchOptions());
       setHasResults(found);
     },
-    [searchAddon, query, searchOptions],
+    [searchAddon, query, createSearchOptions],
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newQuery = e.target.value;
     setQuery(newQuery);
     if (searchAddon && newQuery) {
-      const found = searchAddon.findNext(newQuery, searchOptions);
+      const found = searchAddon.findNext(newQuery, createSearchOptions());
       setHasResults(found);
     } else {
       setHasResults(null);
@@ -82,10 +105,10 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
     prevCaseSensitiveRef.current = caseSensitive;
     prevSearchAddonRef.current = searchAddon;
     if (searchAddon && query) {
-      const found = searchAddon.findNext(query, searchOptions);
+      const found = searchAddon.findNext(query, createSearchOptions());
       setHasResults(found);
     }
-  }, [searchAddon, query, searchOptions, caseSensitive]);
+  }, [searchAddon, query, createSearchOptions, caseSensitive]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
