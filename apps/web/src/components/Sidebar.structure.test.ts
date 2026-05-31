@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { APP_WORDMARK_PREFIX } from "../branding";
 
 const sidebarSource = readFileSync(new URL("./Sidebar.tsx", import.meta.url), "utf8");
 
@@ -18,6 +19,10 @@ describe("Sidebar structure", () => {
   it("renders the navbar wordmark larger with a blood-red J", () => {
     expect(sidebarSource).toContain("text-[18px] font-semibold text-[var(--app-wordmark-prefix)]");
     expect(sidebarSource).toContain("text-[18px] font-normal text-foreground/89");
+    expect(sidebarSource).toContain("aria-label={APP_WORDMARK_PREFIX}");
+    expect(sidebarSource).toMatch(/>\s*\{APP_WORDMARK_PREFIX\}\s*<\/span>/);
+    expect(sidebarSource).not.toContain("$$$");
+    expect(APP_WORDMARK_PREFIX).toBe("J");
   });
 
   it("distinguishes the top Threads header from project headers", () => {

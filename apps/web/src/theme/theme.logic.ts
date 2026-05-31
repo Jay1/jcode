@@ -1031,7 +1031,7 @@ function buildAppDepthVariables(
       "--app-terminal-search-match-bg": palette.surface1,
       "--app-terminal-search-match-border": palette.blue,
       "--app-terminal-search-match-overview": palette.peach,
-      "--app-wordmark-prefix": palette.mauve,
+      "--app-wordmark-prefix": palette.red,
     };
   }
 
@@ -1227,7 +1227,7 @@ function buildProfileAppDepthVariables(
     "--app-terminal-search-match-bg": cardHeader,
     "--app-terminal-search-match-border": pack.theme.accent,
     "--app-terminal-search-match-overview": pack.theme.semanticColors.diffAdded,
-    "--app-wordmark-prefix": pack.theme.accent,
+    "--app-wordmark-prefix": pack.theme.semanticColors.diffRemoved,
   };
 }
 

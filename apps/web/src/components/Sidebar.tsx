@@ -817,7 +817,7 @@ function AppWordmarkPrefix() {
       aria-label={APP_WORDMARK_PREFIX}
       className="shrink-0 text-[18px] font-semibold text-[var(--app-wordmark-prefix)]"
     >
-      $$$
+      {APP_WORDMARK_PREFIX}
     </span>
   );
 }
