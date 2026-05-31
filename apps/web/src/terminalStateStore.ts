@@ -9,6 +9,7 @@ import { type TerminalActivityState, type TerminalCliKind } from "@jcode/shared/
 import type { ThreadId } from "@jcode/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { getLocalStorage } from "./lib/storage";
 import {
   DEFAULT_THREAD_TERMINAL_HEIGHT,
   DEFAULT_THREAD_TERMINAL_ID,
@@ -1361,7 +1362,7 @@ export const useTerminalStateStore = create<TerminalStateStoreState>()(
     {
       name: TERMINAL_STATE_STORAGE_KEY,
       version: 1,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => getLocalStorage()),
       partialize: (state) => ({
         terminalStateByThreadId: state.terminalStateByThreadId,
       }),

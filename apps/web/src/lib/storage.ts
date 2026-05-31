@@ -23,6 +23,13 @@ export function createMemoryStorage(): StateStorage {
   };
 }
 
+export function getLocalStorage(): Storage {
+  if (typeof localStorage === "undefined") {
+    throw new Error("localStorage is not available");
+  }
+  return localStorage;
+}
+
 export function createDebouncedStorage(
   baseStorage: StateStorage,
   debounceMs: number = 300,

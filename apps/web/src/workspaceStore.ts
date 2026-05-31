@@ -5,6 +5,7 @@
 import { type ThreadId } from "@jcode/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { getLocalStorage } from "./lib/storage";
 import {
   DEFAULT_WORKSPACE_LAYOUT_PRESET_ID,
   getWorkspaceLayoutPreset,
@@ -238,7 +239,7 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
     {
       name: WORKSPACE_STORE_STORAGE_KEY,
       version: 2,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => getLocalStorage()),
       partialize: (state) => ({
         homeDir: state.homeDir,
         workspacePages: state.workspacePages,

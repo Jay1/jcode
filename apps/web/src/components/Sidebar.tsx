@@ -270,6 +270,7 @@ const SIDEBAR_LIST_ANIMATION_OPTIONS = {
   easing: "ease-out",
 } as const;
 const EMPTY_THREAD_JUMP_LABELS = new Map<ThreadId, string>();
+const EMPTY_PROJECT_EXPANDED_MAP = new Map<string, boolean>();
 const EMPTY_SHORTCUT_PARTS: readonly string[] = [];
 const ADD_PROJECT_SNAPSHOT_CATCH_UP_MAX_ATTEMPTS = 6;
 const ADD_PROJECT_SNAPSHOT_CATCH_UP_DELAY_MS = 50;
@@ -3572,7 +3573,26 @@ export default function Sidebar() {
   );
 
   // Reset per-project preview expansion when a folder closes so reopening starts at five rows again.
+  const previousProjectExpandedRef = useRef<ReadonlyMap<string, boolean>>(
+    EMPTY_PROJECT_EXPANDED_MAP,
+  );
   useEffect(() => {
+    const nextExpanded = new Map(
+      standardProjects.map((project) => [project.cwd, project.expanded] as const),
+    );
+    const prev = previousProjectExpandedRef.current;
+    let expandedChanged = nextExpanded.size !== prev.size;
+    if (!expandedChanged) {
+      for (const [cwd, expanded] of nextExpanded) {
+        if (prev.get(cwd) !== expanded) {
+          expandedChanged = true;
+          break;
+        }
+      }
+    }
+    previousProjectExpandedRef.current = nextExpanded;
+    if (!expandedChanged) return;
+
     setExpandedThreadListsByProject((current) =>
       pruneExpandedProjectThreadListsForCollapsedProjects({
         expandedProjectThreadListCwds: current,

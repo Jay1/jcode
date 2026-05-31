@@ -207,7 +207,10 @@ export class BrowserUsePipeServer {
   private handleSocketConnection(socket: Net.Socket): void {
     this.sockets.add(socket);
     this.pendingBySocket.set(socket, Buffer.alloc(0));
-    socket.on("data", (chunk) => this.handleSocketData(socket, chunk));
+    socket.on("data", (chunk) => {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      this.handleSocketData(socket, buffer);
+    });
     socket.on("close", () => {
       this.sockets.delete(socket);
       this.pendingBySocket.delete(socket);
