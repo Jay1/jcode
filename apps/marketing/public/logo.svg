@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="110 110 280 280">
+<style>.st0{fill:#d00000;}</style>
+<g>
+  <circle class="st0" cx="336.7" cy="249.5" r="25.3"/>
+  <circle class="st0" cx="336.7" cy="336.5" r="25.3"/>
+  <circle class="st0" cx="249" cy="336.2" r="25.3"/>
+  <ellipse transform="matrix(0.3827 -0.9239 0.9239 0.3827 -211.055 356.6175)" class="st0" cx="161.3" cy="336.2" rx="25.3" ry="25.3"/>
+  <ellipse transform="matrix(0.7071 -0.7071 0.7071 0.7071 -45.6615 224.6646)" class="st0" cx="248.4" cy="167.5" rx="25.3" ry="25.3"/>
+</g>
+</svg>
