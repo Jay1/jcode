@@ -3,7 +3,7 @@
 // Layer: Shared web shell chrome
 // Depends on: Sidebar state plus AppNavigationButtons
 
-import { APP_WORDMARK_PREFIX, APP_WORDMARK_SUFFIX } from "~/branding";
+import { APP_WORDMARK_SUFFIX } from "~/branding";
 import { cn } from "~/lib/utils";
 import { AppNavigationButtons } from "./AppNavigationButtons";
 import { SidebarHeaderTrigger, SidebarTrigger, useSidebar } from "./ui/sidebar";
@@ -12,6 +12,22 @@ type SidebarHeaderNavigationControlsProps = {
   className?: string;
   showWhenExpanded?: boolean;
 };
+
+function AppWordmarkMark() {
+  return (
+    <svg
+      className="size-4.5 shrink-0 text-(--app-wordmark-prefix)"
+      viewBox="110 110 280 280"
+      aria-hidden="true"
+    >
+      <circle fill="currentColor" cx="336.7" cy="249.5" r="25.3" />
+      <circle fill="currentColor" cx="336.7" cy="336.5" r="25.3" />
+      <circle fill="currentColor" cx="249" cy="336.2" r="25.3" />
+      <ellipse fill="currentColor" cx="161.3" cy="336.2" rx="25.3" ry="25.3" />
+      <ellipse fill="currentColor" cx="248.4" cy="167.5" rx="25.3" ry="25.3" />
+    </svg>
+  );
+}
 
 export function SidebarHeaderNavigationControls({
   className,
@@ -32,12 +48,10 @@ export function SidebarHeaderNavigationControls({
       )}
     >
       <div
-        className="flex shrink-0 select-none items-baseline gap-0 text-[18px] leading-none font-system-ui"
+        className="flex shrink-0 select-none items-center gap-1 text-[18px] leading-none font-system-ui"
         aria-label="JCode"
       >
-        <span className="font-semibold text-[var(--app-wordmark-prefix)]">
-          {APP_WORDMARK_PREFIX}
-        </span>
+        <AppWordmarkMark />
         <span className="font-normal text-foreground/89">{APP_WORDMARK_SUFFIX}</span>
       </div>
       <div
