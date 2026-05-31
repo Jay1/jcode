@@ -73,7 +73,7 @@ import {
   useAppSettings,
 } from "../appSettings";
 import { isElectron } from "../env";
-import { APP_VERSION, APP_WORDMARK_PREFIX, APP_WORDMARK_SUFFIX } from "../branding";
+import { APP_BASE_NAME, APP_VERSION, APP_WORDMARK_SUFFIX } from "../branding";
 import { showConfirmDialogFallback } from "../confirmDialogFallback";
 import { isMacPlatform, newCommandId, newProjectId, newThreadId, randomUUID } from "../lib/utils";
 import { persistAppStateNow, useStore } from "../store";
@@ -811,14 +811,19 @@ function prStatusIndicator(pr: ThreadPr): PrStatusIndicator | null {
   return null;
 }
 
-function AppWordmarkPrefix() {
+function AppWordmarkMark() {
   return (
-    <span
-      aria-label={APP_WORDMARK_PREFIX}
-      className="shrink-0 text-[18px] font-semibold text-[var(--app-wordmark-prefix)]"
+    <svg
+      className="size-4.5 shrink-0 text-(--app-wordmark-prefix)"
+      viewBox="110 110 280 280"
+      aria-hidden="true"
     >
-      {APP_WORDMARK_PREFIX}
-    </span>
+      <circle fill="currentColor" cx="336.7" cy="249.5" r="25.3" />
+      <circle fill="currentColor" cx="336.7" cy="336.5" r="25.3" />
+      <circle fill="currentColor" cx="249" cy="336.2" r="25.3" />
+      <ellipse fill="currentColor" cx="161.3" cy="336.2" rx="25.3" ry="25.3" />
+      <ellipse fill="currentColor" cx="248.4" cy="167.5" rx="25.3" ry="25.3" />
+    </svg>
   );
 }
 
@@ -5386,9 +5391,12 @@ export default function Sidebar() {
     <Tooltip>
       <TooltipTrigger
         render={
-          <div className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 font-system-ui">
-            <div className="flex min-w-0 items-center gap-0">
-              <AppWordmarkPrefix />
+          <div
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 font-system-ui"
+            aria-label={APP_BASE_NAME}
+          >
+            <div className="flex min-w-0 items-center gap-1">
+              <AppWordmarkMark />
               <span className="truncate text-[18px] font-normal text-foreground/89">
                 {APP_WORDMARK_SUFFIX}
               </span>

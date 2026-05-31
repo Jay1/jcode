@@ -37,8 +37,9 @@ const {
   <body>
     <div class="page">
       <nav class="nav">
-        <a href="/" class="nav-brand">
-          <img src="/icon.png" alt="JCode" class="nav-icon" />
+        <a href="/" class="nav-brand" aria-label="JCode">
+          <img src="/logo.svg" alt="" class="nav-mark" aria-hidden="true" />
+          <span class="nav-wordmark">Code</span>
         </a>
         <a
           href={REPO_URL}
@@ -59,7 +60,6 @@ const {
         <span class="footer-copy">&copy; {new Date().getFullYear()} JCode</span>
         <div class="footer-links">
           <a href={REPO_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a href="https://discord.gg/jn4EGJjrvv" target="_blank" rel="noopener noreferrer">Discord</a>
         </div>
       </footer>
     </div>
@@ -157,12 +157,20 @@ const {
   .nav-brand {
     display: flex;
     align-items: center;
+    gap: 0.32rem;
   }
 
-  .nav-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
+  .nav-mark {
+    width: 1.18rem;
+    height: 1.18rem;
+  }
+
+  .nav-wordmark {
+    color: var(--fg);
+    font-size: 1.05rem;
+    font-weight: 500;
+    letter-spacing: -0.035em;
+    line-height: 1;
   }
 
   .nav-github {
