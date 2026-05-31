@@ -1212,7 +1212,34 @@ function normalizeOpenCodeSkillDescriptors(
   inventory: OpenCodeInventory,
 ): OpenCodeSkillDescriptor[] {
   const consoleState = asPlainRecord(inventory.consoleState);
-  const skills = consoleState?.skills;
+  const visited = new Set<unknown>();
+  const descriptors: OpenCodeSkillDescriptor[] = [];
+
+  const collectSkills = (value: unknown) => {
+    if (!value || visited.has(value)) return;
+    if (typeof value === "object") visited.add(value);
+
+    if (Array.isArray(value)) {
+      for (const item of value) collectSkills(item);
+      return;
+    }
+
+    const record = asPlainRecord(value);
+    if (!record) return;
+
+    for (const [key, child] of Object.entries(record)) {
+      if (key === "skills") {
+        descriptors.push(...normalizeOpenCodeSkillCollection(child));
+      }
+      collectSkills(child);
+    }
+  };
+
+  collectSkills(consoleState);
+  return descriptors;
+}
+
+function normalizeOpenCodeSkillCollection(skills: unknown): OpenCodeSkillDescriptor[] {
   if (Array.isArray(skills)) {
     return skills.flatMap((skill) => {
       const descriptor = normalizeOpenCodeSkillDescriptor(skill);

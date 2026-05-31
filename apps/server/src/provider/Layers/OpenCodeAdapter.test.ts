@@ -1075,6 +1075,64 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
     });
   });
 
+  it("finds OpenCode skills nested inside runtime console metadata", async () => {
+    const runtime = createMockOpenCodeRuntime({
+      inventory: {
+        providerList: { connected: [], all: [], default: {} },
+        agents: [],
+        consoleState: {
+          app: {
+            metadata: {
+              skills: {
+                analyze: {
+                  description: "Answer data questions.",
+                  path: "/home/test/.opencode/skills/analyze/SKILL.md",
+                  title: "Analyze",
+                },
+              },
+            },
+          },
+        } as never,
+      },
+    });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const listSkills = adapter.listSkills;
+        if (!listSkills) {
+          throw new Error("Expected OpenCode adapter to support skill listing.");
+        }
+        return yield* listSkills({
+          provider: "opencode",
+          cwd: process.cwd(),
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(result.skills).toEqual([
+      {
+        name: "analyze",
+        path: "/home/test/.opencode/skills/analyze/SKILL.md",
+        enabled: true,
+        description: "Answer data questions.",
+        interface: {
+          displayName: "Analyze",
+          shortDescription: "Answer data questions.",
+        },
+      },
+    ]);
+  });
+
   it("normalizes keyed and string OpenCode skill metadata", async () => {
     const runtime = createMockOpenCodeRuntime({
       inventory: {
