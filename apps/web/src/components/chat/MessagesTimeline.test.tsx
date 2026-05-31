@@ -1,4 +1,5 @@
 import { MessageId, TurnId } from "@jcode/contracts";
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { formatShortTimestamp } from "../../timestampFormat";
@@ -111,8 +112,18 @@ describe("MessagesTimeline", () => {
     expect(markup).not.toContain('data-index="0"');
     expect(markup).not.toContain('class="relative" style="height:');
     expect(markup).toContain('data-timeline-row-kind="message"');
-    expect(markup).toContain("font-family:var(--font-chat-code-family)");
+    expect(markup).toContain("font-family:var(--font-chat-body-family)");
+    expect(markup).not.toContain("font-family:var(--font-chat-code-family)");
     expect(markup).not.toContain("font-family:var(--font-ui-family)");
+  });
+
+  it("routes transcript prose through the chat body font variable", () => {
+    const indexCss = readFileSync(new URL("../../index.css", import.meta.url), "utf8");
+
+    expect(indexCss).toMatch(/--font-chat-body-family:\s*var\(\s*--font-ui-family\s*\);/);
+    expect(indexCss).toContain(".chat-markdown :not(pre) > code");
+    expect(indexCss).toContain("font-family: var(--font-chat-code-family);");
+    expect(indexCss).toContain("font-family: var(--font-chat-code-family) !important;");
   });
 
   it("renders assistant math through the shared markdown renderer", async () => {
