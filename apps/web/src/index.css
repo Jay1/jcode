@@ -224,6 +224,7 @@
     --app-font-chat-code-override,
     var(--theme-font-code-family, var(--font-mono-family))
   );
+  --font-chat-body-family: var(--font-ui-family);
   --terminal-font-family: "JetBrainsMono NFM", "JetBrainsMono NF", "JetBrains Mono", monospace;
   --app-shell-background: transparent;
   --app-surface-canvas: var(--background);

@@ -23,7 +23,7 @@ const TIMELINE_ENTRIES = [
     message: {
       id: MessageId.makeUnsafe("assistant-message-1"),
       role: "assistant" as const,
-      text: "This is a stable assistant message for the transcript perf harness.",
+      text: "This is a stable assistant message for the transcript perf harness with `inline code`.",
       createdAt: "2026-03-17T19:12:28.000Z",
       streaming: false,
     },
@@ -162,6 +162,37 @@ describe("ChatTranscriptPane", () => {
 
       expect(transcriptCommitCount).toBe(baselineCommitCount);
     } finally {
+      await screen.unmount();
+    }
+  });
+
+  it("keeps prose on the UI font while chat code font changes inline code", async () => {
+    const rootStyle = document.documentElement.style;
+    rootStyle.setProperty("--app-font-ui-override", "serif");
+    rootStyle.removeProperty("--app-font-chat-code-override");
+
+    const screen = await render(<TranscriptPerfHarness onTranscriptRender={NOOP} />);
+    try {
+      await vi.waitFor(() => {
+        expect(page.getByText("stable assistant message", { exact: false })).toBeVisible();
+      });
+
+      const prose = screen.container.querySelector<HTMLElement>(".chat-markdown");
+      const inlineCode = screen.container.querySelector<HTMLElement>(".chat-markdown code");
+      expect(prose).not.toBeNull();
+      expect(inlineCode).not.toBeNull();
+      expect(getComputedStyle(prose!).fontFamily).toContain("serif");
+      expect(getComputedStyle(inlineCode!).fontFamily).toContain("JetBrains");
+
+      rootStyle.setProperty("--app-font-chat-code-override", "monospace");
+
+      await vi.waitFor(() => {
+        expect(getComputedStyle(prose!).fontFamily).toContain("serif");
+      });
+      expect(getComputedStyle(inlineCode!).fontFamily).toContain("monospace");
+    } finally {
+      rootStyle.removeProperty("--app-font-ui-override");
+      rootStyle.removeProperty("--app-font-chat-code-override");
       await screen.unmount();
     }
   });
