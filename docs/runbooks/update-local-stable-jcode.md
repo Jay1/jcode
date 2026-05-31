@@ -1,16 +1,16 @@
 # Update Local Stable JCode
 
-| Field           | Value                                                                 |
-| --------------- | --------------------------------------------------------------------- |
-| Status          | Active                                                                |
-| Type            | Runbook                                                               |
-| Owner           | Operations and Engineering                                            |
-| Audience        | JCode maintainers and local coding agents                             |
-| Scope           | Promote the latest GitHub `main` into Jay's local stable JCode service |
-| Canonical path  | `docs/runbooks/update-local-stable-jcode.md`                          |
-| Last reviewed   | 2026-05-31                                                            |
-| Review cadence  | Event-driven; review when `jcup`, `jcu`, or JCode service wiring changes |
-| Source of truth | `/home/jay/.local/bin/jcode-stable-update`, `jcup`, `jcu`, `jcs`, `jcr` |
+| Field           | Value                                                                                   |
+| --------------- | --------------------------------------------------------------------------------------- |
+| Status          | Active                                                                                  |
+| Type            | Runbook                                                                                 |
+| Owner           | Operations and Engineering                                                              |
+| Audience        | JCode maintainers and local coding agents                                               |
+| Scope           | Promote the latest GitHub `main` into Jay's local stable JCode service                  |
+| Canonical path  | `docs/runbooks/update-local-stable-jcode.md`                                            |
+| Last reviewed   | 2026-05-31                                                                              |
+| Review cadence  | Event-driven; review when `jcup`, `jcu`, or JCode service wiring changes                |
+| Source of truth | `/home/jay/.local/bin/jcode-stable-update`, `jcup`, `jcu`, `jcs`, `jcr`                 |
 | Verification    | `jcup`, `jcup --fast`, `jcu main --dry-run`, `jcu main`, `jcs`, local HTTP smoke checks |
 
 ## Purpose
@@ -109,7 +109,6 @@ preflight and smoke checks without writing a new promotion record.
    ```
 
    The dry run should:
-
    - fetch `origin/main`;
    - show the current stable SHA and target SHA;
    - refuse if `origin/main` does not contain the current live SHA;
@@ -125,7 +124,6 @@ preflight and smoke checks without writing a new promotion record.
    Use `jcu main` directly only when debugging the lower-level helper.
 
    By default this runs the standard gate:
-
    - `bun install --frozen-lockfile`;
    - `bun run build`;
    - `bun run typecheck`;
@@ -143,7 +141,6 @@ preflight and smoke checks without writing a new promotion record.
 6. Report the result to Jay.
 
    Include:
-
    - previous SHA;
    - new SHA;
    - promotion record path under
