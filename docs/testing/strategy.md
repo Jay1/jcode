@@ -8,7 +8,7 @@
 | Audience        | Engineers, reviewers, and automation agents                                                          |
 | Scope           | How to choose focused tests, root gates, browser checks, and manual verification for JCode changes   |
 | Canonical path  | `docs/testing/strategy.md`                                                                           |
-| Last reviewed   | 2026-05-22                                                                                           |
+| Last reviewed   | 2026-05-31                                                                                           |
 | Review cadence  | Event-driven; review when package scripts, CI gates, test framework, or browser verification changes |
 | Source of truth | Root and workspace `package.json`, CI workflow, colocated tests                                      |
 | Verification    | Use the narrowest command that proves the claim; broaden only when the changed surface requires it   |
@@ -46,3 +46,7 @@ These commands are meant to reduce workstation lag, screen flicker, and other ap
 - Verify the failing state first when using TDD.
 - Do not claim completion from type checks alone; run the behavior-specific test or manual verification.
 - Document blocked LSP diagnostics when `.mise.toml` trust prevents language server startup.
+
+## Focused References
+
+- [Appearance Regression Testing](appearance-regressions.md) covers the settings-to-token-to-rendered-surface contracts for UI fonts, Code fonts, chat prose, inline code, and the JCode wordmark.
