@@ -30,7 +30,7 @@ export function getChatTranscriptTextStyle(
 ): CSSProperties {
   const normalizedChatFontSizePx = normalizeChatFontSizePx(chatFontSizePx);
   return {
-    fontFamily: "var(--font-ui-family)",
+    fontFamily: "var(--font-chat-code-family)",
     fontSize: `${normalizedChatFontSizePx}px`,
     lineHeight: `${getChatTranscriptLineHeightPx(normalizedChatFontSizePx)}px`,
   };

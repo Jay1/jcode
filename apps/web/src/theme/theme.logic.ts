@@ -177,6 +177,7 @@ const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const THEME_SHARE_PREFIX = "codex-theme-v1:";
 const CONTRAST_CURVE_BELOW_BASELINE = 0.7;
 const CONTRAST_CURVE_ABOVE_BASELINE = 2;
+const APP_WORDMARK_PREFIX_BLOOD_RED = "#d00000";
 const SURFACE_UNDER_BASE_ALPHA: Record<ThemeVariant, number> = {
   dark: 0.16,
   light: 0.04,
@@ -1031,7 +1032,7 @@ function buildAppDepthVariables(
       "--app-terminal-search-match-bg": palette.surface1,
       "--app-terminal-search-match-border": palette.blue,
       "--app-terminal-search-match-overview": palette.peach,
-      "--app-wordmark-prefix": palette.red,
+      "--app-wordmark-prefix": APP_WORDMARK_PREFIX_BLOOD_RED,
     };
   }
 
@@ -1227,7 +1228,7 @@ function buildProfileAppDepthVariables(
     "--app-terminal-search-match-bg": cardHeader,
     "--app-terminal-search-match-border": pack.theme.accent,
     "--app-terminal-search-match-overview": pack.theme.semanticColors.diffAdded,
-    "--app-wordmark-prefix": pack.theme.semanticColors.diffRemoved,
+    "--app-wordmark-prefix": APP_WORDMARK_PREFIX_BLOOD_RED,
   };
 }
 
