@@ -3,8 +3,6 @@
  
 </p>
 
-
-
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/Jay1/jcode/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/badge/Release-Desktop-6f42c1?logo=github&logoColor=white)](https://github.com/Jay1/jcode/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/github/license/Jay1/jcode)](./LICENSE)
