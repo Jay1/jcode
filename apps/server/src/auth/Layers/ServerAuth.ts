@@ -214,6 +214,40 @@ export const makeServerAuth = Effect.gen(function* () {
         ),
       );
 
+  const issueDevAutomationSession: ServerAuthShape["issueDevAutomationSession"] = () =>
+    sessions
+      .issue({
+        method: "browser-session-cookie",
+        subject: "dev-automation",
+        role: "owner",
+        client: {
+          label: "Dev automation",
+          deviceType: "desktop",
+        },
+      })
+      .pipe(
+        Effect.mapError(
+          (cause) =>
+            new AuthError({
+              message: "Failed to issue dev automation session.",
+              status: 500,
+              cause,
+            }),
+        ),
+        Effect.map(
+          (session) =>
+            ({
+              response: {
+                authenticated: true,
+                role: session.role,
+                sessionMethod: session.method,
+                expiresAt: DateTime.toUtc(session.expiresAt),
+              } satisfies AuthBootstrapResult,
+              sessionToken: session.token,
+            }) satisfies BootstrapExchangeResult,
+        ),
+      );
+
   const issuePairingCredential: ServerAuthShape["issuePairingCredential"] = (input) =>
     authControlPlane
       .createPairingLink({
@@ -383,6 +417,7 @@ export const makeServerAuth = Effect.gen(function* () {
     getSessionState,
     exchangeBootstrapCredential,
     exchangeBootstrapCredentialForBearerSession,
+    issueDevAutomationSession,
     issuePairingCredential,
     listPairingLinks,
     revokePairingLink,

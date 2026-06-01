@@ -104,7 +104,7 @@ it.layer(testLayer)("server CLI command", (it) => {
         "--port",
         "4010",
         "--host",
-        "0.0.0.0",
+        "127.0.0.1",
         "--home-dir",
         "/tmp/t3-cli-home",
         "--dev-url",
@@ -112,21 +112,58 @@ it.layer(testLayer)("server CLI command", (it) => {
         "--no-browser",
         "--auth-token",
         "auth-secret",
+        "--dev-automation-access",
       ]);
 
       assert.equal(start.mock.calls.length, 1);
       assert.equal(resolvedConfig?.mode, "desktop");
       assert.equal(resolvedConfig?.port, 4010);
-      assert.equal(resolvedConfig?.host, "0.0.0.0");
+      assert.equal(resolvedConfig?.host, "127.0.0.1");
       assert.equal(resolvedConfig?.baseDir, "/tmp/t3-cli-home");
       assert.equal(resolvedConfig?.stateDir, "/tmp/t3-cli-home/dev");
       assert.equal(resolvedConfig?.devUrl?.toString(), "http://127.0.0.1:5173/");
       assert.equal(resolvedConfig?.noBrowser, true);
       assert.equal(resolvedConfig?.authToken, "auth-secret");
+      assert.equal(resolvedConfig?.devAutomationAccess, true);
       assert.equal(resolvedConfig?.autoBootstrapProjectFromCwd, false);
       assert.equal(resolvedConfig?.logProviderEvents, false);
       assert.equal(resolvedConfig?.logWebSocketEvents, false);
       assert.equal(stop.mock.calls.length, 1);
+    }),
+  );
+
+  it.effect(
+    "reads dev automation access from env when an explicit loopback host is configured",
+    () =>
+      Effect.gen(function* () {
+        yield* runCli([], {
+          JCODE_HOST: "localhost",
+          JCODE_DEV_AUTOMATION_ACCESS: "true",
+        });
+
+        assert.equal(start.mock.calls.length, 1);
+        assert.equal(resolvedConfig?.host, "localhost");
+        assert.equal(resolvedConfig?.devAutomationAccess, true);
+      }),
+  );
+
+  it.effect("rejects dev automation access without an explicit loopback host", () =>
+    Effect.gen(function* () {
+      yield* runCli(["--dev-automation-access"]).pipe(Effect.catch(() => Effect.void));
+
+      assert.equal(start.mock.calls.length, 0);
+      assert.equal(stop.mock.calls.length, 0);
+    }),
+  );
+
+  it.effect("rejects dev automation access on wildcard hosts", () =>
+    Effect.gen(function* () {
+      yield* runCli(["--dev-automation-access", "--host", "0.0.0.0"]).pipe(
+        Effect.catch(() => Effect.void),
+      );
+
+      assert.equal(start.mock.calls.length, 0);
+      assert.equal(stop.mock.calls.length, 0);
     }),
   );
 
@@ -160,6 +197,7 @@ it.layer(testLayer)("server CLI command", (it) => {
       assert.equal(resolvedConfig?.devUrl?.toString(), "http://localhost:5173/");
       assert.equal(resolvedConfig?.noBrowser, true);
       assert.equal(resolvedConfig?.authToken, "env-token");
+      assert.equal(resolvedConfig?.devAutomationAccess, false);
       assert.equal(resolvedConfig?.autoBootstrapProjectFromCwd, false);
       assert.equal(resolvedConfig?.logProviderEvents, false);
       assert.equal(resolvedConfig?.logWebSocketEvents, false);

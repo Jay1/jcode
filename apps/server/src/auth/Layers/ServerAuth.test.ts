@@ -132,6 +132,31 @@ describe("ServerAuthLive", () => {
     );
   });
 
+  it("issues owner browser sessions for dev automation", async () => {
+    await runServerAuthTest(
+      Effect.gen(function* () {
+        const serverAuth = yield* ServerAuth;
+
+        const issued = yield* serverAuth.issueDevAutomationSession();
+        const verified = yield* serverAuth.authenticateHttpRequest(
+          makeCookieRequest(issued.sessionToken),
+        );
+        const clientSessions = yield* serverAuth.listClientSessions(verified.sessionId);
+
+        expect(issued.response).toMatchObject({
+          authenticated: true,
+          role: "owner",
+          sessionMethod: "browser-session-cookie",
+        });
+        expect(verified.role).toBe("owner");
+        expect(verified.subject).toBe("dev-automation");
+        expect(clientSessions.some((session) => session.client.label === "Dev automation")).toBe(
+          true,
+        );
+      }),
+    );
+  });
+
   it("lists client sessions with the current owner marked", async () => {
     await runServerAuthTest(
       Effect.gen(function* () {

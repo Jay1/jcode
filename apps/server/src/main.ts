@@ -28,7 +28,7 @@ import { ProviderHealthLive } from "./provider/Layers/ProviderHealth";
 import { ProviderSessionReaperLive } from "./provider/Layers/ProviderSessionReaper";
 import { Server } from "./effectServer";
 import { ServerLoggerLive } from "./serverLogger";
-import { formatHostForUrl, isWildcardHost } from "./startupAccess";
+import { formatHostForUrl, isExplicitLoopbackHost, isWildcardHost } from "./startupAccess";
 import { AnalyticsServiceLayerLive } from "./telemetry/Layers/AnalyticsService";
 import { AnalyticsService } from "./telemetry/Services/AnalyticsService";
 import { OrchestrationEngineService } from "./orchestration/Services/OrchestrationEngine";
@@ -47,6 +47,7 @@ interface CliInput {
   readonly devUrl: Option.Option<URL>;
   readonly noBrowser: Option.Option<boolean>;
   readonly authToken: Option.Option<string>;
+  readonly devAutomationAccess: Option.Option<boolean>;
   readonly autoBootstrapProjectFromCwd: Option.Option<boolean>;
   readonly logProviderEvents: Option.Option<boolean>;
   readonly logWebSocketEvents: Option.Option<boolean>;
@@ -125,6 +126,11 @@ const CliEnvConfig = Config.all({
   devUrl: Config.url("VITE_DEV_SERVER_URL").pipe(Config.option, Config.map(Option.getOrUndefined)),
   noBrowser: optionalBooleanEnvConfig("JCODE_NO_BROWSER", "DPCODE_NO_BROWSER", "T3CODE_NO_BROWSER"),
   authToken: optionalStringEnvConfig("JCODE_AUTH_TOKEN", "DPCODE_AUTH_TOKEN", "T3CODE_AUTH_TOKEN"),
+  devAutomationAccess: optionalBooleanEnvConfig(
+    "JCODE_DEV_AUTOMATION_ACCESS",
+    "DPCODE_DEV_AUTOMATION_ACCESS",
+    "T3CODE_DEV_AUTOMATION_ACCESS",
+  ),
   autoBootstrapProjectFromCwd: optionalBooleanEnvConfig(
     "JCODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD",
     "DPCODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD",
@@ -194,6 +200,10 @@ const ServerConfigLive = (input: CliInput) =>
       const derivedPaths = yield* deriveServerPaths(baseDir, devUrl);
       const noBrowser = resolveBooleanFlag(input.noBrowser, env.noBrowser ?? mode === "desktop");
       const authToken = Option.getOrUndefined(input.authToken) ?? env.authToken;
+      const devAutomationAccess = resolveBooleanFlag(
+        input.devAutomationAccess,
+        env.devAutomationAccess ?? false,
+      );
       const autoBootstrapProjectFromCwd = resolveBooleanFlag(
         input.autoBootstrapProjectFromCwd,
         env.autoBootstrapProjectFromCwd ?? mode === "web",
@@ -215,6 +225,14 @@ const ServerConfigLive = (input: CliInput) =>
         Option.getOrUndefined(input.host) ??
         env.host ??
         (mode === "desktop" ? "127.0.0.1" : undefined);
+      const hostWasExplicit = Option.isSome(input.host) || env.host !== undefined;
+
+      if (devAutomationAccess && (!hostWasExplicit || !isExplicitLoopbackHost(host))) {
+        return yield* new StartupError({
+          message:
+            "Dev automation access requires an explicit loopback host such as 127.0.0.1, localhost, or ::1.",
+        });
+      }
 
       const config: ServerConfigShape = {
         mode,
@@ -228,6 +246,7 @@ const ServerConfigLive = (input: CliInput) =>
         devUrl,
         noBrowser,
         authToken,
+        devAutomationAccess,
         autoBootstrapProjectFromCwd,
         logProviderEvents,
         logWebSocketEvents,
@@ -371,6 +390,12 @@ const authTokenFlag = Flag.string("auth-token").pipe(
   Flag.withAlias("token"),
   Flag.optional,
 );
+const devAutomationAccessFlag = Flag.boolean("dev-automation-access").pipe(
+  Flag.withDescription(
+    "Allow loopback-only dev automation to mint a browser owner session (equivalent to JCODE_DEV_AUTOMATION_ACCESS).",
+  ),
+  Flag.optional,
+);
 const autoBootstrapProjectFromCwdFlag = Flag.boolean("auto-bootstrap-project-from-cwd").pipe(
   Flag.withDescription(
     "Create a project for the current working directory on startup when missing.",
@@ -399,6 +424,7 @@ export const jcodeCli = Command.make("jcode", {
   devUrl: devUrlFlag,
   noBrowser: noBrowserFlag,
   authToken: authTokenFlag,
+  devAutomationAccess: devAutomationAccessFlag,
   autoBootstrapProjectFromCwd: autoBootstrapProjectFromCwdFlag,
   logProviderEvents: logProviderEventsFlag,
   logWebSocketEvents: logWebSocketEventsFlag,
