@@ -104,6 +104,9 @@ const REQUIRED_APP_DEPTH_TOKENS = [
   "--app-chat-code-border",
   "--app-chat-code-copy-bg",
   "--app-chat-code-copy-fg",
+  "--app-assistant-message-bg",
+  "--app-assistant-message-border",
+  "--app-assistant-message-accent",
   "--app-diff-card-bg",
   "--app-diff-card-header-bg",
   "--app-diff-title",
@@ -118,6 +121,14 @@ const REQUIRED_APP_DEPTH_TOKENS = [
   "--app-scroll-button-hover-fg",
   "--app-scrollbar-thumb",
   "--app-scrollbar-thumb-hover",
+  "--app-runtime-chip-bg",
+  "--app-runtime-chip-border",
+  "--app-sidebar-row-active-bg",
+  "--app-sidebar-row-bg",
+  "--app-sidebar-row-hover-bg",
+  "--app-transcript-edge-fade",
+  "--app-transcript-stage-bg",
+  "--app-transcript-stage-border",
   "--app-terminal-search-active-match-bg",
   "--app-terminal-search-active-match-border",
   "--app-terminal-search-active-match-overview",
@@ -509,6 +520,19 @@ describe("buildThemeCssVariables", () => {
     expect(cssVariables.variables["--app-surface-toolbar-hover"]).toBe("#313244");
     expect(cssVariables.variables["--app-surface-toolbar-active"]).toBe("#45475a");
     expect(cssVariables.variables["--app-surface-toolbar-border"]).toBe("#45475a");
+    expect(cssVariables.variables["--app-transcript-stage-bg"]).toBe("rgba(24, 24, 37, 0.52)");
+    expect(cssVariables.variables["--app-transcript-stage-border"]).toBe("rgba(69, 71, 90, 0.34)");
+    expect(cssVariables.variables["--app-transcript-edge-fade"]).toBe("#11111b");
+    expect(cssVariables.variables["--app-assistant-message-bg"]).toBe("rgba(30, 30, 46, 0.42)");
+    expect(cssVariables.variables["--app-assistant-message-border"]).toBe("rgba(69, 71, 90, 0.36)");
+    expect(cssVariables.variables["--app-assistant-message-accent"]).toBe(
+      "rgba(203, 166, 247, 0.42)",
+    );
+    expect(cssVariables.variables["--app-sidebar-row-bg"]).toBe("rgba(30, 30, 46, 0.42)");
+    expect(cssVariables.variables["--app-sidebar-row-hover-bg"]).toBe("rgba(49, 50, 68, 0.68)");
+    expect(cssVariables.variables["--app-sidebar-row-active-bg"]).toBe("rgba(203, 166, 247, 0.16)");
+    expect(cssVariables.variables["--app-runtime-chip-bg"]).toBe("rgba(49, 50, 68, 0.72)");
+    expect(cssVariables.variables["--app-runtime-chip-border"]).toBe("rgba(69, 71, 90, 0.68)");
     expect(cssVariables.variables["--app-chrome-control-bg"]).toBe("#313244");
     expect(cssVariables.variables["--app-chrome-control-border"]).toBe("#45475a");
     expect(cssVariables.variables["--app-chrome-control-fg"]).toBe("#cdd6f4");
@@ -587,6 +611,19 @@ describe("buildThemeCssVariables", () => {
     expect(cssVariables.variables["--app-chat-chip-border"]).toBe("rgba(69, 71, 90, 0.74)");
     expect(cssVariables.variables["--app-chat-code-bg"]).toBe("#181825");
     expect(cssVariables.variables["--app-chat-code-border"]).toBe("#313244");
+    expect(cssVariables.variables["--app-transcript-stage-bg"]).toBe("rgba(24, 24, 37, 0.52)");
+    expect(cssVariables.variables["--app-transcript-stage-border"]).toBe("rgba(69, 71, 90, 0.34)");
+    expect(cssVariables.variables["--app-transcript-edge-fade"]).toBe("#11111b");
+    expect(cssVariables.variables["--app-assistant-message-bg"]).toBe("rgba(30, 30, 46, 0.42)");
+    expect(cssVariables.variables["--app-assistant-message-border"]).toBe("rgba(69, 71, 90, 0.36)");
+    expect(cssVariables.variables["--app-assistant-message-accent"]).toBe(
+      "rgba(203, 166, 247, 0.42)",
+    );
+    expect(cssVariables.variables["--app-sidebar-row-bg"]).toBe("rgba(30, 30, 46, 0.42)");
+    expect(cssVariables.variables["--app-sidebar-row-hover-bg"]).toBe("rgba(49, 50, 68, 0.68)");
+    expect(cssVariables.variables["--app-sidebar-row-active-bg"]).toBe("rgba(203, 166, 247, 0.16)");
+    expect(cssVariables.variables["--app-runtime-chip-bg"]).toBe("rgba(49, 50, 68, 0.72)");
+    expect(cssVariables.variables["--app-runtime-chip-border"]).toBe("rgba(69, 71, 90, 0.68)");
   });
 
   it("emits Tokyo Night app-depth tokens from official night palette roles", () => {

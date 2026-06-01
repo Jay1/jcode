@@ -78,6 +78,8 @@ const DEFAULT_UPSTREAMS: readonly UpstreamRepositoryConfig[] = [
 const STATE_SCHEMA_VERSION = 1;
 const GITHUB_REQUEST_TIMEOUT_MS = 30_000;
 const DEFAULT_STATE_DIR = resolve(process.cwd(), ".jcode/upstream-watch");
+const INITIAL_LOOKBACK_DAYS = 30;
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 function normalizeIsoTimestamp(timestamp: string): string {
   const date = new Date(timestamp);
@@ -101,6 +103,10 @@ function maxIsoTimestamp(timestamps: ReadonlyArray<string>): string | null {
     }
   }
   return maxTime === Number.NEGATIVE_INFINITY ? null : new Date(maxTime).toISOString();
+}
+
+function initialLookbackCursor(runAt: string): string {
+  return new Date(Date.parse(runAt) - INITIAL_LOOKBACK_DAYS * DAY_IN_MS).toISOString();
 }
 
 export function filterUpdatedPullRequests(
@@ -186,6 +192,7 @@ function formatLabels(labels: ReadonlyArray<string>): string {
 export function formatUpstreamWatchReport(input: {
   readonly deltas: ReadonlyArray<UpstreamDelta>;
   readonly dryRun: boolean;
+  readonly initialLookbackDays?: number;
   readonly runAt: string;
   readonly since?: string;
 }): string {
@@ -196,6 +203,9 @@ export function formatUpstreamWatchReport(input: {
   ];
   if (input.since) {
     lines.push(`Since override: ${normalizeIsoTimestamp(input.since)}`);
+  }
+  if (input.initialLookbackDays !== undefined) {
+    lines.push(`Initial lookback: ${input.initialLookbackDays} days`);
   }
   lines.push("");
 
@@ -241,6 +251,8 @@ export async function runUpstreamWatch(
     { pullRequests: GitHubPullRequestSummary[]; releases: GitHubReleaseSummary[] }
   >();
   const deltas: UpstreamDelta[] = [];
+  const fallbackCursor = initialLookbackCursor(runAt);
+  let usedInitialLookback = false;
 
   for (const upstream of upstreams) {
     const [pullRequests, releases] = await Promise.all([
@@ -249,10 +261,13 @@ export async function runUpstreamWatch(
     ]);
     fetched.set(upstream.name, { pullRequests, releases });
     const cursor = state.upstreams[upstream.name];
-    const prCursor = options.since ? normalizeIsoTimestamp(options.since) : cursor?.prCursor;
+    const prCursor = options.since
+      ? normalizeIsoTimestamp(options.since)
+      : (cursor?.prCursor ?? fallbackCursor);
     const releaseCursor = options.since
       ? normalizeIsoTimestamp(options.since)
-      : cursor?.releaseCursor;
+      : (cursor?.releaseCursor ?? fallbackCursor);
+    usedInitialLookback ||= !options.since && (!cursor?.prCursor || !cursor?.releaseCursor);
     deltas.push({
       upstream,
       pullRequests: filterUpdatedPullRequests(pullRequests, prCursor),
@@ -263,6 +278,7 @@ export async function runUpstreamWatch(
   const report = formatUpstreamWatchReport({
     deltas,
     dryRun,
+    ...(usedInitialLookback ? { initialLookbackDays: INITIAL_LOOKBACK_DAYS } : {}),
     runAt,
     ...(options.since ? { since: options.since } : {}),
   });
