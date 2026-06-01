@@ -261,10 +261,12 @@ export async function runUpstreamWatch(
     ]);
     fetched.set(upstream.name, { pullRequests, releases });
     const cursor = state.upstreams[upstream.name];
-    const prCursor = options.since ? normalizeIsoTimestamp(options.since) : cursor?.prCursor ?? fallbackCursor;
+    const prCursor = options.since
+      ? normalizeIsoTimestamp(options.since)
+      : (cursor?.prCursor ?? fallbackCursor);
     const releaseCursor = options.since
       ? normalizeIsoTimestamp(options.since)
-      : cursor?.releaseCursor ?? fallbackCursor;
+      : (cursor?.releaseCursor ?? fallbackCursor);
     usedInitialLookback ||= !options.since && (!cursor?.prCursor || !cursor?.releaseCursor);
     deltas.push({
       upstream,

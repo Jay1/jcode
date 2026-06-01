@@ -166,10 +166,7 @@ describe("upstream-watch", () => {
       upstreams: [upstream],
     });
 
-    expect(result.deltas[0]?.pullRequests.map((pullRequest) => pullRequest.number)).toEqual([
-      2,
-      1,
-    ]);
+    expect(result.deltas[0]?.pullRequests.map((pullRequest) => pullRequest.number)).toEqual([2, 1]);
     expect(result.deltas[0]?.releases.map((release) => release.tagName)).toEqual([
       "v2.0.0",
       "v1.0.0",
@@ -194,9 +191,7 @@ describe("upstream-watch", () => {
     });
 
     expect(result.deltas[0]?.pullRequests.map((pullRequest) => pullRequest.number)).toEqual([
-      2,
-      1,
-      0,
+      2, 1, 0,
     ]);
     expect(result.deltas[0]?.releases.map((release) => release.tagName)).toEqual([
       "v2.0.0",
@@ -229,8 +224,7 @@ describe("upstream-watch", () => {
     });
 
     expect(firstRun.deltas[0]?.pullRequests.map((pullRequest) => pullRequest.number)).toEqual([
-      2,
-      1,
+      2, 1,
     ]);
     expect(firstRun.deltas[0]?.releases.map((release) => release.tagName)).toEqual([
       "v2.0.0",
