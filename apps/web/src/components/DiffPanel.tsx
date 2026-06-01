@@ -333,6 +333,7 @@ export default function DiffPanel({
       threadId: activeThreadId,
       fromTurnCount: activeCheckpointRange?.fromTurnCount ?? null,
       toTurnCount: activeCheckpointRange?.toTurnCount ?? null,
+      diffKind: selectedTurn ? "turn" : "full-thread",
       cacheScope: selectedTurn ? `turn:${selectedTurn.turnId}` : conversationCacheScope,
       enabled: isGitRepo && !diffEnvironmentPending,
     }),

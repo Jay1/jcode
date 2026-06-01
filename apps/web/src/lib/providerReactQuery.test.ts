@@ -31,6 +31,7 @@ describe("providerQueryKeys.checkpointDiff", () => {
   it("includes cacheScope so reused turn counts do not collide", () => {
     const baseInput = {
       threadId,
+      diffKind: "turn",
       fromTurnCount: 1,
       toTurnCount: 2,
     } as const;
@@ -47,6 +48,27 @@ describe("providerQueryKeys.checkpointDiff", () => {
       }),
     );
   });
+
+  it("includes diffKind so matching ranges with different baselines do not collide", () => {
+    const baseInput = {
+      threadId,
+      fromTurnCount: 0,
+      toTurnCount: 1,
+      cacheScope: "thread:abc",
+    } as const;
+
+    expect(
+      providerQueryKeys.checkpointDiff({
+        ...baseInput,
+        diffKind: "turn",
+      }),
+    ).not.toEqual(
+      providerQueryKeys.checkpointDiff({
+        ...baseInput,
+        diffKind: "full-thread",
+      }),
+    );
+  });
 });
 
 describe("checkpointDiffQueryOptions", () => {
@@ -59,6 +81,7 @@ describe("checkpointDiffQueryOptions", () => {
       threadId,
       fromTurnCount: 3,
       toTurnCount: 4,
+      diffKind: "turn",
       cacheScope: "turn:abc",
     });
 
@@ -83,6 +106,7 @@ describe("checkpointDiffQueryOptions", () => {
       fromTurnCount: 0,
       toTurnCount: 2,
       cacheScope: "thread:all",
+      diffKind: "full-thread",
     });
 
     const queryClient = new QueryClient();
@@ -95,6 +119,30 @@ describe("checkpointDiffQueryOptions", () => {
     expect(getTurnDiff).not.toHaveBeenCalled();
   });
 
+  it("uses turn diff API for selected first-turn ranges", async () => {
+    const getTurnDiff = vi.fn().mockResolvedValue({ diff: "patch" });
+    const getFullThreadDiff = vi.fn().mockResolvedValue({ diff: "patch" });
+    mockNativeApi({ getTurnDiff, getFullThreadDiff });
+
+    const options = checkpointDiffQueryOptions({
+      threadId,
+      fromTurnCount: 0,
+      toTurnCount: 1,
+      cacheScope: "turn:first-turn",
+      diffKind: "turn",
+    });
+
+    const queryClient = new QueryClient();
+    await queryClient.fetchQuery(options);
+
+    expect(getTurnDiff).toHaveBeenCalledWith({
+      threadId,
+      fromTurnCount: 0,
+      toTurnCount: 1,
+    });
+    expect(getFullThreadDiff).not.toHaveBeenCalled();
+  });
+
   it("fails fast on invalid range and does not call provider RPC", async () => {
     const getTurnDiff = vi.fn().mockResolvedValue({ diff: "patch" });
     const getFullThreadDiff = vi.fn().mockResolvedValue({ diff: "patch" });
@@ -104,6 +152,7 @@ describe("checkpointDiffQueryOptions", () => {
       threadId,
       fromTurnCount: 4,
       toTurnCount: 3,
+      diffKind: "turn",
       cacheScope: "turn:invalid",
     });
 
@@ -121,6 +170,7 @@ describe("checkpointDiffQueryOptions", () => {
       threadId,
       fromTurnCount: 1,
       toTurnCount: 2,
+      diffKind: "turn",
       cacheScope: "turn:abc",
     });
     const retry = options.retry;
@@ -144,6 +194,7 @@ describe("checkpointDiffQueryOptions", () => {
       threadId,
       fromTurnCount: 1,
       toTurnCount: 2,
+      diffKind: "turn",
       cacheScope: "turn:abc",
     });
     const retryDelay = options.retryDelay;
