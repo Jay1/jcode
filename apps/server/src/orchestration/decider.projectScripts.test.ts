@@ -270,6 +270,56 @@ describe("decider project scripts", () => {
     expect((event.payload as { scripts?: unknown[] }).scripts).toEqual(scripts);
   });
 
+  it("propagates icon metadata in project.meta.update payload", async () => {
+    const now = new Date().toISOString();
+    const initial = createEmptyReadModel(now);
+    const readModel = await Effect.runPromise(
+      projectEvent(initial, {
+        sequence: 1,
+        eventId: asEventId("evt-project-create-icon-metadata"),
+        aggregateKind: "project",
+        aggregateId: asProjectId("project-icon-metadata"),
+        type: "project.created",
+        occurredAt: now,
+        commandId: CommandId.makeUnsafe("cmd-project-create-icon-metadata"),
+        causationEventId: null,
+        correlationId: CommandId.makeUnsafe("cmd-project-create-icon-metadata"),
+        metadata: {},
+        payload: {
+          projectId: asProjectId("project-icon-metadata"),
+          title: "Icon Metadata",
+          workspaceRoot: "/tmp/icon-metadata",
+          defaultModelSelection: null,
+          scripts: [],
+          createdAt: now,
+          updatedAt: now,
+        },
+      }),
+    );
+
+    const result = await Effect.runPromise(
+      decideOrchestrationCommand({
+        command: {
+          type: "project.meta.update",
+          commandId: CommandId.makeUnsafe("cmd-project-update-icon-metadata"),
+          projectId: asProjectId("project-icon-metadata"),
+          iconMetadata: {
+            iconId: "typescript",
+            label: "TypeScript",
+          },
+        },
+        readModel,
+      }),
+    );
+
+    const event = Array.isArray(result) ? result[0] : result;
+    expect(event.type).toBe("project.meta-updated");
+    expect((event.payload as { iconMetadata?: unknown }).iconMetadata).toEqual({
+      iconId: "typescript",
+      label: "TypeScript",
+    });
+  });
+
   it("emits user message and turn-start-requested events for thread.turn.start", async () => {
     const now = new Date().toISOString();
     const initial = createEmptyReadModel(now);

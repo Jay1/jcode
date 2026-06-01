@@ -29,6 +29,11 @@ import {
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import { OrchestrationProjectionPipeline } from "../Services/ProjectionPipeline.ts";
 import { ServerConfig } from "../../config.ts";
+import { ProjectLanguageIconResolver } from "../../project/Services/ProjectLanguageIconResolver.ts";
+
+const NoopProjectLanguageIconResolverLayer = Layer.succeed(ProjectLanguageIconResolver, {
+  resolveMetadata: () => Effect.succeed(null),
+} satisfies typeof ProjectLanguageIconResolver.Service);
 
 const makeProjectionPipelinePrefixedTestLayer = (prefix: string) =>
   OrchestrationProjectionPipelineLive.pipe(
@@ -2377,6 +2382,7 @@ const engineLayer = it.layer(
     Layer.provide(OrchestrationProjectionPipelineLive),
     Layer.provide(OrchestrationEventStoreLive),
     Layer.provide(OrchestrationCommandReceiptRepositoryLive),
+    Layer.provide(NoopProjectLanguageIconResolverLayer),
     Layer.provideMerge(SqlitePersistenceMemory),
     Layer.provideMerge(
       ServerConfig.layerTest(process.cwd(), {
@@ -2491,15 +2497,21 @@ engineLayer("OrchestrationProjectionPipeline via engine dispatch", (it) => {
           provider: "codex",
           model: "gpt-5",
         },
+        iconMetadata: {
+          iconId: "typescript",
+          label: "TypeScript",
+        },
       });
 
       const projectRows = yield* sql<{
         readonly scriptsJson: string;
         readonly defaultModelSelection: string;
+        readonly iconMetadata: string;
       }>`
         SELECT
           scripts_json AS "scriptsJson",
-          default_model_selection_json AS "defaultModelSelection"
+          default_model_selection_json AS "defaultModelSelection",
+          icon_metadata_json AS "iconMetadata"
         FROM projection_projects
         WHERE project_id = 'project-scripts'
       `;
@@ -2508,6 +2520,7 @@ engineLayer("OrchestrationProjectionPipeline via engine dispatch", (it) => {
           scriptsJson:
             '[{"id":"script-1","name":"Build","command":"bun run build","icon":"build","runOnWorktreeCreate":false}]',
           defaultModelSelection: '{"provider":"codex","model":"gpt-5"}',
+          iconMetadata: '{"iconId":"typescript","label":"TypeScript"}',
         },
       ]);
     }),
