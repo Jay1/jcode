@@ -659,6 +659,119 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
     }),
   );
 
+  it.effect("caps hydrated thread messages to the latest message window", () =>
+    Effect.gen(function* () {
+      const snapshotQuery = yield* ProjectionSnapshotQuery;
+      const sql = yield* SqlClient.SqlClient;
+
+      yield* sql`DELETE FROM projection_projects`;
+      yield* sql`DELETE FROM projection_threads`;
+      yield* sql`DELETE FROM projection_thread_messages`;
+      yield* sql`DELETE FROM projection_thread_proposed_plans`;
+      yield* sql`DELETE FROM projection_thread_activities`;
+      yield* sql`DELETE FROM projection_thread_sessions`;
+      yield* sql`DELETE FROM projection_turns`;
+      yield* sql`DELETE FROM projection_state`;
+
+      yield* sql`
+        INSERT INTO projection_projects (
+          project_id,
+          title,
+          workspace_root,
+          default_model_selection_json,
+          scripts_json,
+          created_at,
+          updated_at,
+          deleted_at
+        )
+        VALUES (
+          'project-message-cap',
+          'Message Cap Project',
+          '/tmp/project-message-cap',
+          '{"provider":"codex","model":"gpt-5-codex"}',
+          '[]',
+          '2026-04-01T00:00:00.000Z',
+          '2026-04-01T00:00:01.000Z',
+          NULL
+        )
+      `;
+
+      yield* sql`
+        INSERT INTO projection_threads (
+          thread_id,
+          project_id,
+          title,
+          model_selection_json,
+          runtime_mode,
+          interaction_mode,
+          env_mode,
+          branch,
+          worktree_path,
+          latest_turn_id,
+          created_at,
+          updated_at,
+          archived_at,
+          deleted_at
+        )
+        VALUES (
+          'thread-message-cap',
+          'project-message-cap',
+          'Message Cap Thread',
+          '{"provider":"codex","model":"gpt-5-codex"}',
+          'full-access',
+          'default',
+          'local',
+          NULL,
+          NULL,
+          NULL,
+          '2026-04-01T00:00:02.000Z',
+          '2026-04-01T00:00:03.000Z',
+          NULL,
+          NULL
+        )
+      `;
+
+      for (let index = 0; index < 2_005; index += 1) {
+        const createdAt = new Date(Date.UTC(2026, 3, 1, 0, 0, index)).toISOString();
+        yield* sql`
+          INSERT INTO projection_thread_messages (
+            message_id,
+            thread_id,
+            turn_id,
+            role,
+            text,
+            is_streaming,
+            created_at,
+            updated_at
+          )
+          VALUES (
+            ${`message-${index}`},
+            'thread-message-cap',
+            NULL,
+            'assistant',
+            ${`Message ${index}`},
+            0,
+            ${createdAt},
+            ${createdAt}
+          )
+        `;
+      }
+
+      const snapshot = yield* snapshotQuery.getSnapshot();
+      const snapshotMessages = snapshot.threads[0]?.messages ?? [];
+      assert.equal(snapshotMessages.length, 2_000);
+      assert.equal(snapshotMessages[0]?.id, asMessageId("message-5"));
+      assert.equal(snapshotMessages.at(-1)?.id, asMessageId("message-2004"));
+
+      const detail = yield* snapshotQuery.getThreadDetailById(asThreadId("thread-message-cap"));
+      assert.isTrue(Option.isSome(detail));
+      const detailMessages = Option.isSome(detail) ? detail.value.messages : [];
+      assert.equal(detailMessages.length, 2_000);
+      assert.equal(detailMessages[0]?.id, asMessageId("message-5"));
+      assert.equal(detailMessages.at(-1)?.id, asMessageId("message-2004"));
+    }),
+  );
+
   it.effect("normalizes imported T3 Code model-selection shapes from projection reads", () =>
     Effect.gen(function* () {
       const snapshotQuery = yield* ProjectionSnapshotQuery;
@@ -1474,6 +1587,31 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
               completedAt: "2026-03-02T00:00:05.000Z",
             },
           ],
+        });
+      }
+
+      const fullDiffContext = yield* snapshotQuery.getFullThreadDiffContext(
+        ThreadId.makeUnsafe("thread-context"),
+        2,
+      );
+      assert.equal(fullDiffContext._tag, "Some");
+      if (fullDiffContext._tag === "Some") {
+        assert.deepEqual(fullDiffContext.value, {
+          threadId: ThreadId.makeUnsafe("thread-context"),
+          projectId: asProjectId("project-context"),
+          workspaceRoot: "/tmp/context-workspace",
+          envMode: "local",
+          worktreePath: "/tmp/context-worktree",
+          latestCheckpointTurnCount: 2,
+          targetCheckpoint: {
+            turnId: asTurnId("turn-2"),
+            checkpointTurnCount: 2,
+            checkpointRef: asCheckpointRef("checkpoint-b"),
+            status: "ready",
+            files: [],
+            assistantMessageId: null,
+            completedAt: "2026-03-02T00:00:05.000Z",
+          },
         });
       }
     }),
