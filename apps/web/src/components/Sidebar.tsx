@@ -4125,13 +4125,13 @@ export default function Sidebar() {
           tabIndex={0}
           data-thread-item
           className={cn(
-            "grid h-8 w-full items-center gap-x-1.5 rounded-md px-2 text-left text-[length:var(--app-font-size-ui,12px)] transition-colors cursor-pointer",
+            "sidebar-thread-row grid h-8 w-full items-center gap-x-1.5 rounded-md bg-[var(--app-sidebar-row-bg)] px-2 text-left text-[length:var(--app-font-size-ui,12px)] transition-colors cursor-pointer",
             showThreadIdentityGlyph
               ? "grid-cols-[auto_auto_minmax(0,1fr)_auto_3.5rem]"
               : "grid-cols-[auto_minmax(0,1fr)_auto_3.5rem]",
             isActive
-              ? "bg-[var(--sidebar-accent-active)] text-[var(--sidebar-accent-foreground)]"
-              : "text-foreground/89 hover:bg-[var(--sidebar-accent)]",
+              ? "sidebar-thread-row-active bg-[var(--app-sidebar-row-active-bg)] text-[var(--sidebar-accent-foreground)]"
+              : "text-foreground/89 hover:bg-[var(--app-sidebar-row-hover-bg)]",
           )}
           onPointerDown={(event) => primeThreadActivation(event, thread.id)}
           onClick={() => activateThreadFromSidebarIntent(thread.id)}

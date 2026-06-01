@@ -543,31 +543,31 @@ describe("resolveThreadStatusPill", () => {
 describe("resolveThreadRowClassName", () => {
   it("keeps selected active rows on the selected sidebar background", () => {
     const className = resolveThreadRowClassName({ isActive: true, isSelected: true });
-    expect(className).toContain("bg-[var(--app-state-selected)]");
+    expect(className).toContain("bg-[var(--app-sidebar-row-active-bg)]");
     expect(className).toContain("border-l-[3px]");
     expect(className).toContain("border-l-[color:var(--app-state-selected-border)]");
-    expect(className).toContain("hover:bg-[var(--app-state-selected)]");
+    expect(className).toContain("hover:bg-[var(--app-sidebar-row-active-bg)]");
     expect(className).toContain("text-[var(--color-text-foreground)]");
     expect(className).not.toContain("hover:bg-[var(--color-background-button-secondary-hover)]");
   });
 
   it("keeps selected rows visually stable on hover", () => {
     const className = resolveThreadRowClassName({ isActive: false, isSelected: true });
-    expect(className).toContain("bg-[var(--app-state-selected)]");
-    expect(className).toContain("hover:bg-[var(--app-state-selected)]");
+    expect(className).toContain("bg-[var(--app-sidebar-row-active-bg)]");
+    expect(className).toContain("hover:bg-[var(--app-sidebar-row-active-bg)]");
     expect(className).toContain("text-[var(--color-text-foreground)]");
     expect(className).not.toContain("hover:bg-[var(--color-background-button-secondary-hover)]");
   });
 
   it("uses the selected sidebar background for active-only threads", () => {
     const className = resolveThreadRowClassName({ isActive: true, isSelected: false });
-    expect(className).toContain("bg-[var(--app-state-selected)]");
-    expect(className).toContain("hover:bg-[var(--app-state-selected)]");
+    expect(className).toContain("bg-[var(--app-sidebar-row-active-bg)]");
+    expect(className).toContain("hover:bg-[var(--app-sidebar-row-active-bg)]");
   });
 
   it("matches hover-only rows to the selected active background", () => {
     const className = resolveThreadRowClassName({ isActive: false, isSelected: false });
-    expect(className).toContain("hover:bg-[var(--app-state-hover)]");
+    expect(className).toContain("hover:bg-[var(--app-sidebar-row-hover-bg)]");
     expect(className).not.toContain("hover:bg-[var(--color-background-button-secondary-hover)]");
   });
 });
