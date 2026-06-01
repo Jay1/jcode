@@ -64,8 +64,11 @@ describe("ProjectSidebarIcon", () => {
     await expect.element(page.getByLabelText("TypeScript project icon")).toBeInTheDocument();
     const icon = screen.container.querySelector('[data-project-icon-id="typescript"]');
     expect(icon).not.toBeNull();
-    expect(icon?.querySelector("svg")).not.toBeNull();
+    const svg = icon?.querySelector("svg");
+    expect(svg).not.toBeNull();
+    expect(svg?.classList.contains("size-[94%]")).toBe(true);
     expect(getComputedStyle(icon as HTMLElement).color).toBe("rgb(49, 120, 198)");
+    expect(getComputedStyle(icon as HTMLElement).backgroundColor).toBe("rgba(0, 0, 0, 0)");
     expect(screen.container.textContent).not.toContain("TS");
     expect(imageRequests).toEqual([]);
     await screen.unmount();
