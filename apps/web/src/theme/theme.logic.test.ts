@@ -20,6 +20,7 @@ import {
   setThemeCodeThemeId,
   updateThemePackFromShareString,
 } from "./theme.logic";
+import { APP_AFFORDANCE_TOKEN_PAIRS } from "./themeTokenTestFixtures";
 
 const PROVIDED_THEME_STRING =
   'codex-theme-v1:{"codeThemeId":"linear","theme":{"accent":"#606acc","contrast":30,"fonts":{"code":"\\"Jetbrains Mono\\"","ui":"Inter"},"ink":"#e3e4e6","opaqueWindows":true,"semanticColors":{"diffAdded":"#69c967","diffRemoved":"#ff7e78","skill":"#c2a1ff"},"surface":"#0f0f11"},"variant":"dark"}';
@@ -799,21 +800,6 @@ describe("buildThemeCssVariables", () => {
   });
 
   it("keeps bundled app-depth affordance tokens independent from legacy Codex aliases", () => {
-    const appSpecificTokens = [
-      ["--app-chat-chip-bg", "--color-background-button-secondary"],
-      ["--app-chat-chip-border", "--color-border"],
-      ["--app-chat-code-copy-bg", "--color-background-elevated-secondary-opaque"],
-      ["--app-assistant-message-border", "--color-border-light"],
-      ["--app-runtime-chip-bg", "--color-background-button-secondary"],
-      ["--app-runtime-chip-border", "--color-border-light"],
-      ["--app-surface-toolbar-active", "--color-background-button-secondary-active"],
-      ["--app-surface-toolbar-hover", "--color-background-button-secondary-hover"],
-      ["--app-sidebar-row-hover-bg", "--color-background-button-secondary-hover"],
-      ["--app-transcript-stage-border", "--color-border-light"],
-      ["--app-work-row-border", "--color-border-light"],
-      ["--app-work-row-hover-bg", "--color-background-elevated-secondary"],
-    ] as const;
-
     for (const option of CODE_THEME_OPTIONS) {
       for (const variant of option.variants) {
         const variables = buildThemeCssVariables(
@@ -824,7 +810,7 @@ describe("buildThemeCssVariables", () => {
           variant,
         ).variables;
 
-        for (const [appToken, codexToken] of appSpecificTokens) {
+        for (const [appToken, codexToken] of APP_AFFORDANCE_TOKEN_PAIRS) {
           expect(
             variables[appToken],
             `${option.id}/${variant}/${appToken} should not collapse to ${codexToken}`,
