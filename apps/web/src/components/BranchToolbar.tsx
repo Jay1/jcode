@@ -77,11 +77,16 @@ export function RuntimeUsageControls({
   className,
 }: RuntimeUsageControlsProps) {
   return (
-    <div className={cn("flex items-center gap-1.5 text-(--app-metadata-muted-fg)", className)}>
+    <div
+      className={cn(
+        "runtime-usage-controls flex items-center gap-1.5 text-(--app-metadata-muted-fg)",
+        className,
+      )}
+    >
       {runtimeMode && onRuntimeModeChange ? (
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[length:var(--app-font-size-ui-xs,10px)] font-normal transition-colors hover:text-(--app-metadata-fg)"
+          className="runtime-access-chip inline-flex items-center gap-1 rounded-full border border-[color:var(--app-runtime-chip-border)] bg-[var(--app-runtime-chip-bg)] px-2 py-0.5 text-[length:var(--app-font-size-ui-xs,10px)] font-medium text-[var(--app-metadata-fg)] transition-colors hover:bg-[var(--app-chrome-control-hover-bg)] hover:text-[var(--app-chrome-control-hover-fg)] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-[var(--app-state-focus)]"
           onClick={() =>
             onRuntimeModeChange(runtimeMode === "full-access" ? "approval-required" : "full-access")
           }
