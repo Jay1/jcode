@@ -8,13 +8,17 @@ import path from "node:path";
 
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { DateTime, Effect, Exit, Layer, Scope } from "effect";
+import { DateTime, Effect, Exit, Layer, Scope, Stream } from "effect";
 import { HttpRouter } from "effect/unstable/http";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { ServerAuth, type ServerAuthShape } from "./auth/Services/ServerAuth";
+import {
+  SessionCredentialService,
+  type SessionCredentialServiceShape,
+} from "./auth/Services/SessionCredentialService";
 import { ServerConfig, type ServerConfigShape } from "./config";
-import { attachmentsEffectRouteLayer, localImageEffectRouteLayer } from "./http";
+import { attachmentsEffectRouteLayer, authEffectRouteLayer, localImageEffectRouteLayer } from "./http";
 
 const tempDirs: string[] = [];
 
@@ -32,6 +36,9 @@ function makeTempDir(prefix: string): string {
 
 function makeServerConfig(overrides: Partial<ServerConfigShape> = {}): ServerConfigShape {
   const baseDir = makeTempDir("jcode-effect-route-");
+  const stateDir = path.join(baseDir, "userdata");
+  const logsDir = path.join(stateDir, "logs");
+  const providerLogsDir = path.join(logsDir, "provider");
   return {
     mode: "web",
     port: 0,
@@ -39,20 +46,31 @@ function makeServerConfig(overrides: Partial<ServerConfigShape> = {}): ServerCon
     cwd: baseDir,
     homeDir: os.homedir(),
     baseDir,
+    stateDir,
+    secretsDir: path.join(stateDir, "secrets"),
+    dbPath: path.join(stateDir, "state.sqlite"),
+    settingsPath: path.join(stateDir, "settings.json"),
     keybindingsConfigPath: path.join(baseDir, "keybindings.json"),
+    worktreesDir: path.join(baseDir, "worktrees"),
+    attachmentsDir: path.join(stateDir, "attachments"),
+    logsDir,
+    serverLogPath: path.join(logsDir, "server.log"),
     serverRuntimeStatePath: path.join(baseDir, "runtime.json"),
-    serverSettingsPath: path.join(baseDir, "settings.json"),
-    attachmentsDir: path.join(baseDir, "attachments"),
-    sqlitePath: path.join(baseDir, "state.sqlite"),
+    providerLogsDir,
+    providerEventLogPath: path.join(providerLogsDir, "events.log"),
+    terminalLogsDir: path.join(logsDir, "terminals"),
+    anonymousIdPath: path.join(stateDir, "anonymous-id"),
+    environmentIdPath: path.join(stateDir, "environment-id"),
     staticDir: undefined,
     devUrl: undefined,
     noBrowser: true,
     authToken: undefined,
+    devAutomationAccess: false,
     autoBootstrapProjectFromCwd: false,
     logProviderEvents: false,
     logWebSocketEvents: false,
     ...overrides,
-  } as ServerConfigShape;
+  };
 }
 
 function makeFakeServerAuth(): ServerAuthShape {
@@ -91,6 +109,16 @@ function makeFakeServerAuth(): ServerAuthShape {
         expiresAt,
         sessionToken: "bearer-session-token",
       }),
+    issueDevAutomationSession: () =>
+      Effect.succeed({
+        response: {
+          authenticated: true,
+          role: "owner" as const,
+          sessionMethod: "browser-session-cookie" as const,
+          expiresAt,
+        },
+        sessionToken: "automation-session-token",
+      }),
     issuePairingCredential: () =>
       Effect.succeed({ id: "pairing-id", credential: "PAIRINGTOKEN", expiresAt }),
     listPairingLinks: () => Effect.succeed([]),
@@ -103,6 +131,33 @@ function makeFakeServerAuth(): ServerAuthShape {
     issueWebSocketToken: () => Effect.succeed({ token: "ws-token", expiresAt }),
     issueStartupPairingUrl: () => Effect.succeed("http://127.0.0.1:3773/pair#token=PAIRINGTOKEN"),
   } satisfies ServerAuthShape;
+}
+
+function makeFakeSessionCredentials(): SessionCredentialServiceShape {
+  const expiresAt = Effect.runSync(DateTime.now);
+  const verifiedSession = {
+    sessionId: "session-id" as never,
+    token: "automation-session-token",
+    method: "browser-session-cookie" as const,
+    client: { label: "Dev automation", deviceType: "desktop" as const },
+    expiresAt,
+    subject: "dev-automation",
+    role: "owner" as const,
+  };
+
+  return {
+    cookieName: "t3_session",
+    issue: () => Effect.succeed({ ...verifiedSession, token: "automation-session-token" }),
+    verify: () => Effect.succeed(verifiedSession),
+    issueWebSocketToken: () => Effect.succeed({ token: "ws-token", expiresAt }),
+    verifyWebSocketToken: () => Effect.succeed(verifiedSession),
+    listActive: () => Effect.succeed([]),
+    streamChanges: Stream.empty,
+    revoke: () => Effect.succeed(true),
+    revokeAllExcept: () => Effect.succeed(0),
+    markConnected: () => Effect.void,
+    markDisconnected: () => Effect.void,
+  };
 }
 
 async function withEffectServer(
@@ -130,6 +185,50 @@ async function withEffectServer(
             Layer.mergeAll(
               Layer.succeed(ServerConfig, config),
               Layer.succeed(ServerAuth, makeFakeServerAuth()),
+              Layer.succeed(SessionCredentialService, makeFakeSessionCredentials()),
+              NodeServices.layer,
+            ),
+          ),
+        ),
+        scope,
+      ),
+    );
+    const address = (nodeServer as http.Server | null)?.address();
+    if (!address || typeof address !== "object") {
+      throw new Error("Expected effect server to expose an address");
+    }
+    const origin = `http://127.0.0.1:${address.port}`;
+    await run(origin);
+  } finally {
+    await Effect.runPromise(Scope.close(scope, Exit.void));
+  }
+}
+
+async function withAuthEffectServer(
+  config: ServerConfigShape,
+  run: (origin: string) => Promise<void>,
+): Promise<void> {
+  const scope = await Effect.runPromise(Scope.make("sequential"));
+  let nodeServer: http.Server | null = null;
+  try {
+    await Effect.runPromise(
+      Scope.provide(
+        Effect.gen(function* () {
+          const httpServer = yield* NodeHttpServer.make(
+            () => {
+              nodeServer = http.createServer();
+              return nodeServer;
+            },
+            { port: 0, host: "127.0.0.1" },
+          );
+          const httpApp = yield* HttpRouter.toHttpEffect(authEffectRouteLayer);
+          yield* httpServer.serve(httpApp);
+        }).pipe(
+          Effect.provide(
+            Layer.mergeAll(
+              Layer.succeed(ServerConfig, config),
+              Layer.succeed(ServerAuth, makeFakeServerAuth()),
+              Layer.succeed(SessionCredentialService, makeFakeSessionCredentials()),
               NodeServices.layer,
             ),
           ),
@@ -149,6 +248,34 @@ async function withEffectServer(
 }
 
 describe("localImageEffectRouteLayer", () => {
+  it("grants dev automation sessions through the production Effect auth route", async () => {
+    const config = makeServerConfig({ host: "127.0.0.1", devAutomationAccess: true });
+
+    await withAuthEffectServer(config, async (origin) => {
+      const response = await fetch(`${origin}/api/auth/automation-access-grant`, {
+        method: "POST",
+        headers: { Origin: origin },
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("set-cookie")).toContain(
+        "t3_session=automation-session-token",
+      );
+      await expect(response.json()).resolves.toMatchObject({
+        authenticated: true,
+        role: "owner",
+        sessionMethod: "browser-session-cookie",
+      });
+
+      const badOriginResponse = await fetch(`${origin}/api/auth/automation-access-grant`, {
+        method: "POST",
+        headers: { Origin: "http://evil.test" },
+      });
+      expect(badOriginResponse.status).toBe(403);
+      expect(badOriginResponse.headers.get("set-cookie")).toBeNull();
+    });
+  });
+
   it("serves an allowlisted workspace image and signals downloads via Content-Disposition", async () => {
     const workspace = makeTempDir("jcode-effect-image-workspace-");
     writeFileSync(path.join(workspace, ".git"), "gitdir: .git");

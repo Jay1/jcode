@@ -210,6 +210,8 @@ The server auth boundary describes how the local server decides whether a browse
 
 Authentication defaults must preserve local-first safety and publishable configuration. Pairing credentials, bearer tokens, session cookies, and websocket tokens are runtime secrets and must not become committed defaults.
 
+A dev automation access grant is an explicit local-only owner session grant for trusted browser automation. It may mint a normal owner browser session only when opt-in config is enabled, the server is intentionally loopback-bound, and the request is same-origin loopback/local; remote-reachable binds and non-loopback clients must continue through normal pairing.
+
 ### Project Direction
 
 JCode is independently directed. OpenCode is the engine boundary; JCode's local-first coding-agent cockpit workflow is the product boundary. DPCode and T3Code are historical lineage and optional external references, not active product philosophy.
