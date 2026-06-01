@@ -8,6 +8,54 @@ import type { WhatsNewEntry } from "./logic";
 
 export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
   {
+    version: "0.0.52",
+    date: "June 1",
+    features: [
+      {
+        id: "skill-library-is-visible-in-settings",
+        title: "Skill Library is visible in settings",
+        description:
+          "The app now has a dedicated settings route for discovered OpenCode skills, with scoped provider queries and helpers that keep skill inventory easier to browse.",
+      },
+      {
+        id: "projects-show-language-icons",
+        title: "Projects show language icons",
+        description:
+          "Server-side language detection now projects project icon metadata, and the web UI preserves those icons across live project updates.",
+      },
+      {
+        id: "local-automation-is-easier-to-test",
+        title: "Local automation is easier to test",
+        description:
+          "Dev-only automation access sessions and request handling make local browser automation flows easier to run without changing production pairing behavior.",
+      },
+      {
+        id: "checkpoint-and-worktree-diffs-are-more-precise",
+        title: "Checkpoint and worktree diffs are more precise",
+        description:
+          "Diff hydration now routes by intent, avoids unnecessary full-thread work, and qualifies worktree branch refs more reliably.",
+      },
+      {
+        id: "jcode-branding-is-sharper",
+        title: "JCode branding is sharper",
+        description:
+          "App, desktop, and marketing assets now use the refreshed red JCode mark, with updated public icons and a stronger marketing screenshot.",
+      },
+      {
+        id: "provider-output-handles-more-claude-events",
+        title: "Provider output handles more Claude events",
+        description:
+          "Claude system subtypes are handled more safely, and Opus 4.8 is mapped for display and selection.",
+      },
+      {
+        id: "runtime-requests-fail-more-predictably",
+        title: "Runtime requests fail more predictably",
+        description:
+          "WebSocket request timeouts are honored, stored PR references are trimmed, and the desktop packaging path pins the diffs dependency.",
+      },
+    ],
+  },
+  {
     version: "0.0.51",
     date: "May 28",
     features: [
