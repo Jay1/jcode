@@ -1,4 +1,4 @@
-# ADR 0003: Project Language Icons Are Detected As Project Metadata
+# ADR 0004: Project Language Icons Are Detected As Project Metadata
 
 | Field           | Value                                                                                                                                                                                |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -7,7 +7,7 @@
 | Owner           | Engineering                                                                                                                                                                          |
 | Audience        | Maintainers, reviewers, and automation agents                                                                                                                                        |
 | Scope           | Project identity metadata, sidebar project icons, project creation, and legacy project icon backfill                                                                                 |
-| Canonical path  | `docs/adr/0003-project-language-icons.md`                                                                                                                                            |
+| Canonical path  | `docs/adr/0004-project-language-icons.md`                                                                                                                                            |
 | Last reviewed   | 2026-06-01                                                                                                                                                                           |
 | Review cadence  | Event-driven; review if project metadata storage, project creation, or sidebar project identity rendering changes                                                                    |
 | Source of truth | `packages/contracts/src/orchestration.ts`, `apps/server/src/orchestration`, `apps/server/src/persistence`, `apps/web/src/store.ts`, `apps/web/src/components/ProjectSidebarIcon.tsx` |

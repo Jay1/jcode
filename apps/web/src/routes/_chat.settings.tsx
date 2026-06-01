@@ -46,6 +46,7 @@ import { SidebarHeaderNavigationControls } from "../components/SidebarHeaderNavi
 import { ConnectionsSettingsPanel } from "../components/ConnectionsSettingsPanel";
 import { KeybindingsSettingsPanel } from "../components/KeybindingsSettingsPanel";
 import { OpenCodeRuntimeSettingsPanel } from "../components/OpenCodeRuntimeSettingsPanel";
+import { SkillLibrarySettingsPanel } from "../components/SkillLibrarySettingsPanel";
 import {
   ClaudeAI,
   CursorIcon,
@@ -3130,6 +3131,8 @@ function SettingsRouteView() {
         return renderArchivedPanel();
       case "models":
         return renderModelsPanel();
+      case "skills":
+        return <SkillLibrarySettingsPanel />;
       case "providers":
         return renderProvidersPanel();
       case "advanced":

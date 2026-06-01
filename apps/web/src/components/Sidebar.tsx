@@ -197,6 +197,7 @@ import {
   getVisibleSidebarEntriesForPreview,
   groupSidebarThreadsByProjectId,
   installDebugFeatureFlagConsoleCommands,
+  pruneDismissedThreadStatusKeys,
   pruneExpandedProjectThreadListsForCollapsedProjects,
   recoverExistingAddProjectTarget,
   DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY,
@@ -3635,16 +3636,17 @@ export default function Sidebar() {
 
   useEffect(() => {
     const retainedThreadIds = new Set(sidebarThreads.map((thread) => thread.id));
-    setDismissedThreadStatusKeyByThreadId((current) => {
-      const nextEntries = Object.entries(current).filter(([threadId]) =>
-        retainedThreadIds.has(ThreadId.makeUnsafe(threadId)),
-      );
-      if (nextEntries.length === Object.keys(current).length) {
-        return current;
-      }
-      return Object.fromEntries(nextEntries);
+    const nextDismissedThreadStatusKeyByThreadId = pruneDismissedThreadStatusKeys({
+      dismissedThreadStatusKeyByThreadId,
+      retainedThreadIds,
     });
-  }, [sidebarThreads]);
+
+    if (nextDismissedThreadStatusKeyByThreadId === dismissedThreadStatusKeyByThreadId) {
+      return;
+    }
+
+    setDismissedThreadStatusKeyByThreadId(nextDismissedThreadStatusKeyByThreadId);
+  }, [dismissedThreadStatusKeyByThreadId, sidebarThreads]);
 
   useEffect(() => {
     persistSidebarUiState({
