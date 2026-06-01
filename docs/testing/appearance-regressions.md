@@ -43,18 +43,18 @@ Appearance setting -> app setting field -> CSS override variable -> semantic CSS
 | Browser canary      | Computed styles change on real DOM elements in Chromium                                     | One focused `*.browser.tsx` per user-visible surface      |
 | Full CI gate        | The same behavior survives repo formatting, typecheck, unit tests, browser tests, and build | GitHub Actions / root CI scripts                          |
 
-Keep browser coverage deliberately small. One stable computed-style canary is better than many screenshot-like checks that make local runs heavy and flaky.
+Keep browser coverage deliberately small. One stable computed-style canary is better than many screenshot-like checks that make local runs heavy and flaky. For theme token derivation, use `apps/web/src/components/ThemeTokens.browser.tsx` as the focused computed-style canary.
 
 ## Regression Matrix
 
-| When changing this                                           | Add or update this proof                                                                            |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| `uiFontFamily` setting or `useUIFont()`                      | Contract test for `--app-font-ui-override`; browser proof that chat prose follows UI font           |
-| `chatCodeFontFamily` or `useChatCodeFont()`                  | Contract test for `--app-font-chat-code-override`; browser proof that inline code follows Code font |
-| Chat markdown or transcript wrappers                         | Renderer test that prose uses `--font-chat-body-family`; browser proof for computed prose font      |
-| Inline code, fenced code, diffs, terminal-like code surfaces | Renderer/static test that the surface uses `--font-chat-code-family`                                |
-| Theme token generation                                       | Theme logic test that required `--app-*`, `--theme-font-*`, and wordmark tokens are present         |
-| Wordmark rendering                                           | Structure test for `APP_WORDMARK_PREFIX`; theme test for blood-red `--app-wordmark-prefix`          |
+| When changing this                                           | Add or update this proof                                                                                                                                   |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uiFontFamily` setting or `useUIFont()`                      | Contract test for `--app-font-ui-override`; browser proof that chat prose follows UI font                                                                  |
+| `chatCodeFontFamily` or `useChatCodeFont()`                  | Contract test for `--app-font-chat-code-override`; browser proof that inline code follows Code font                                                        |
+| Chat markdown or transcript wrappers                         | Renderer test that prose uses `--font-chat-body-family`; browser proof for computed prose font                                                             |
+| Inline code, fenced code, diffs, terminal-like code surfaces | Renderer/static test that the surface uses `--font-chat-code-family`                                                                                       |
+| Theme token generation                                       | Theme logic test that required `--app-*`, `--theme-font-*`, and wordmark tokens are present; `ThemeTokens.browser.tsx` proof for computed `--app-*` styles |
+| Wordmark rendering                                           | Structure test for `APP_WORDMARK_PREFIX`; theme test for blood-red `--app-wordmark-prefix`                                                                 |
 
 ## Commands
 
@@ -64,6 +64,7 @@ Use focused commands while developing:
 bun run --cwd apps/web test:local src/hooks/appearanceFontOverrides.test.ts
 bun run --cwd apps/web test:local src/components/chat/MessagesTimeline.test.tsx
 bun run --cwd apps/web test:browser:local src/components/chat/ChatTranscriptPane.browser.tsx
+bun run --cwd apps/web test:browser:local src/components/ThemeTokens.browser.tsx
 ```
 
 Use broader gates before merging Appearance changes:
