@@ -346,6 +346,7 @@ import {
   type LocalDispatchSnapshot,
   PullRequestDialogState,
   readFileAsDataUrl,
+  resolveSettledTurnVisitedAt,
   revokeBlobPreviewUrl,
   revokeUserMessagePreviewUrls,
 } from "./ChatView.logic";
@@ -1358,15 +1359,15 @@ export default function ChatView({
   );
 
   useEffect(() => {
-    if (!activeThread?.id) return;
-    if (!latestTurnSettled) return;
-    if (!activeLatestTurn?.completedAt) return;
-    const turnCompletedAt = Date.parse(activeLatestTurn.completedAt);
-    if (Number.isNaN(turnCompletedAt)) return;
-    const lastVisitedAt = activeThread.lastVisitedAt ? Date.parse(activeThread.lastVisitedAt) : NaN;
-    if (!Number.isNaN(lastVisitedAt) && lastVisitedAt >= turnCompletedAt) return;
+    const visitedAt = resolveSettledTurnVisitedAt({
+      latestTurnSettled,
+      threadId: activeThread?.id,
+      latestTurnCompletedAt: activeLatestTurn?.completedAt,
+      lastVisitedAt: activeThread?.lastVisitedAt,
+    });
+    if (!visitedAt || !activeThread?.id) return;
 
-    markThreadVisited(activeThread.id);
+    markThreadVisited(activeThread.id, visitedAt);
   }, [
     activeThread?.id,
     activeThread?.lastVisitedAt,

@@ -11,6 +11,7 @@ import {
   hasServerAcknowledgedLocalDispatch,
   isVoiceAuthExpiredMessage,
   resolveActiveThreadTitle,
+  resolveSettledTurnVisitedAt,
   sanitizeVoiceErrorMessage,
   buildExpiredTerminalContextToastCopy,
   shouldAutoDeleteTerminalThreadOnLastClose,
@@ -369,6 +370,41 @@ describe("shouldRenderTerminalWorkspace", () => {
         terminalOpen: true,
       }),
     ).toBe(false);
+  });
+});
+
+describe("resolveSettledTurnVisitedAt", () => {
+  it("uses the completed turn timestamp when the thread has not been visited since completion", () => {
+    expect(
+      resolveSettledTurnVisitedAt({
+        latestTurnSettled: true,
+        threadId: ThreadId.makeUnsafe("thread-1"),
+        latestTurnCompletedAt: "2026-06-01T10:00:00.000Z",
+        lastVisitedAt: "2026-06-01T09:59:59.000Z",
+      }),
+    ).toBe("2026-06-01T10:00:00.000Z");
+  });
+
+  it("does not request a visit mark when the thread is already visited past completion", () => {
+    expect(
+      resolveSettledTurnVisitedAt({
+        latestTurnSettled: true,
+        threadId: ThreadId.makeUnsafe("thread-1"),
+        latestTurnCompletedAt: "2026-06-01T10:00:00.000Z",
+        lastVisitedAt: "2026-06-01T10:00:00.000Z",
+      }),
+    ).toBeNull();
+  });
+
+  it("does not request a visit mark until the active turn is settled", () => {
+    expect(
+      resolveSettledTurnVisitedAt({
+        latestTurnSettled: false,
+        threadId: ThreadId.makeUnsafe("thread-1"),
+        latestTurnCompletedAt: "2026-06-01T10:00:00.000Z",
+        lastVisitedAt: null,
+      }),
+    ).toBeNull();
   });
 });
 
