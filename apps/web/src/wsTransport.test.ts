@@ -73,6 +73,7 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.WebSocket = originalWebSocket;
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -134,6 +135,42 @@ describe("WsTransport", () => {
     });
     expect(resolver).toHaveBeenCalledTimes(1);
 
+    transport.dispose();
+  });
+
+  it("rejects pending test-driver requests after a numeric timeout", async () => {
+    vi.useFakeTimers();
+    window.__T3_WS_TRANSPORT_TEST_DRIVER__ = {
+      request: () => new Promise(() => {}),
+    };
+    const transport = new WsTransport();
+
+    const request = transport.request("server.getConfig", {}, { timeoutMs: 5 });
+    const expectation = expect(request).rejects.toThrow(
+      "WebSocket request server.getConfig timed out after 5ms",
+    );
+    await vi.advanceTimersByTimeAsync(5);
+
+    await expectation;
+    transport.dispose();
+  });
+
+  it("does not reject test-driver requests when timeoutMs is null", async () => {
+    vi.useFakeTimers();
+    let resolveRequest: (value: string) => void = () => {};
+    window.__T3_WS_TRANSPORT_TEST_DRIVER__ = {
+      request: () =>
+        new Promise<string>((resolve) => {
+          resolveRequest = resolve;
+        }),
+    };
+    const transport = new WsTransport();
+
+    const request = transport.request("orchestration.getSnapshot", {}, { timeoutMs: null });
+    await vi.advanceTimersByTimeAsync(30_001);
+    resolveRequest("snapshot");
+
+    await expect(request).resolves.toBe("snapshot");
     transport.dispose();
   });
 });

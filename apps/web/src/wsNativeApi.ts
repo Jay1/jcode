@@ -669,8 +669,14 @@ export function createWsNativeApi(): NativeApi {
       listAgents: (input) => transport.request(WS_METHODS.providerListAgents, input),
     },
     orchestration: {
-      getSnapshot: () => transport.request(ORCHESTRATION_WS_METHODS.getSnapshot),
-      getShellSnapshot: () => transport.request(ORCHESTRATION_WS_METHODS.getShellSnapshot),
+      getSnapshot: () =>
+        transport.request(ORCHESTRATION_WS_METHODS.getSnapshot, undefined, {
+          timeoutMs: null,
+        }),
+      getShellSnapshot: () =>
+        transport.request(ORCHESTRATION_WS_METHODS.getShellSnapshot, undefined, {
+          timeoutMs: null,
+        }),
       dispatchCommand: (command) => {
         return transport.request(ORCHESTRATION_WS_METHODS.dispatchCommand, {
           command: omitNullUserInputAnswers(command),
@@ -680,7 +686,9 @@ export function createWsNativeApi(): NativeApi {
       repairState: () => transport.request(ORCHESTRATION_WS_METHODS.repairState),
       getTurnDiff: (input) => transport.request(ORCHESTRATION_WS_METHODS.getTurnDiff, input),
       getFullThreadDiff: (input) =>
-        transport.request(ORCHESTRATION_WS_METHODS.getFullThreadDiff, input),
+        transport.request(ORCHESTRATION_WS_METHODS.getFullThreadDiff, input, {
+          timeoutMs: null,
+        }),
       replayEvents: (fromSequenceExclusive) =>
         transport.request(ORCHESTRATION_WS_METHODS.replayEvents, {
           fromSequenceExclusive,
