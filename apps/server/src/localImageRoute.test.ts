@@ -18,7 +18,11 @@ import {
   type SessionCredentialServiceShape,
 } from "./auth/Services/SessionCredentialService";
 import { ServerConfig, type ServerConfigShape } from "./config";
-import { attachmentsEffectRouteLayer, authEffectRouteLayer, localImageEffectRouteLayer } from "./http";
+import {
+  attachmentsEffectRouteLayer,
+  authEffectRouteLayer,
+  localImageEffectRouteLayer,
+} from "./http";
 
 const tempDirs: string[] = [];
 
@@ -258,9 +262,7 @@ describe("localImageEffectRouteLayer", () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.headers.get("set-cookie")).toContain(
-        "t3_session=automation-session-token",
-      );
+      expect(response.headers.get("set-cookie")).toContain("t3_session=automation-session-token");
       await expect(response.json()).resolves.toMatchObject({
         authenticated: true,
         role: "owner",

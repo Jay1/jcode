@@ -132,17 +132,19 @@ it.layer(testLayer)("server CLI command", (it) => {
     }),
   );
 
-  it.effect("reads dev automation access from env when an explicit loopback host is configured", () =>
-    Effect.gen(function* () {
-      yield* runCli([], {
-        JCODE_HOST: "localhost",
-        JCODE_DEV_AUTOMATION_ACCESS: "true",
-      });
+  it.effect(
+    "reads dev automation access from env when an explicit loopback host is configured",
+    () =>
+      Effect.gen(function* () {
+        yield* runCli([], {
+          JCODE_HOST: "localhost",
+          JCODE_DEV_AUTOMATION_ACCESS: "true",
+        });
 
-      assert.equal(start.mock.calls.length, 1);
-      assert.equal(resolvedConfig?.host, "localhost");
-      assert.equal(resolvedConfig?.devAutomationAccess, true);
-    }),
+        assert.equal(start.mock.calls.length, 1);
+        assert.equal(resolvedConfig?.host, "localhost");
+        assert.equal(resolvedConfig?.devAutomationAccess, true);
+      }),
   );
 
   it.effect("rejects dev automation access without an explicit loopback host", () =>

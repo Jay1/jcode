@@ -193,7 +193,9 @@ export const authEffectRouteLayer = HttpRouter.add(
         !canIssueDevAutomationAccess({
           config,
           remoteAddress: request.remoteAddress ?? null,
-          host: Array.isArray(request.headers.host) ? request.headers.host[0] : request.headers.host,
+          host: Array.isArray(request.headers.host)
+            ? request.headers.host[0]
+            : request.headers.host,
           origin: Array.isArray(request.headers.origin)
             ? request.headers.origin[0]
             : request.headers.origin,

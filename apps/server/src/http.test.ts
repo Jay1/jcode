@@ -369,9 +369,7 @@ describe("createHttpRequestHandler", () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.headers.get("set-cookie")).toContain(
-        "t3_session=automation-session-token",
-      );
+      expect(response.headers.get("set-cookie")).toContain("t3_session=automation-session-token");
       await expect(response.json()).resolves.toMatchObject({
         authenticated: true,
         role: "owner",
