@@ -348,6 +348,25 @@ export function hasServerAcknowledgedLocalDispatch(input: {
 
 export const ACTIVE_TURN_LAYOUT_SETTLE_DELAY_MS = 180;
 
+export function resolveSettledTurnVisitedAt(input: {
+  latestTurnSettled: boolean;
+  threadId: ThreadIdType | null | undefined;
+  latestTurnCompletedAt: string | null | undefined;
+  lastVisitedAt: string | null | undefined;
+}): string | null {
+  if (!input.threadId) return null;
+  if (!input.latestTurnSettled) return null;
+  if (!input.latestTurnCompletedAt) return null;
+
+  const turnCompletedAt = Date.parse(input.latestTurnCompletedAt);
+  if (Number.isNaN(turnCompletedAt)) return null;
+
+  const lastVisitedAt = input.lastVisitedAt ? Date.parse(input.lastVisitedAt) : NaN;
+  if (!Number.isNaN(lastVisitedAt) && lastVisitedAt >= turnCompletedAt) return null;
+
+  return input.latestTurnCompletedAt;
+}
+
 export function shouldStartActiveTurnLayoutGrace(options: {
   previousTurnLayoutLive: boolean;
   currentTurnLayoutLive: boolean;
