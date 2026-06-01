@@ -28,6 +28,7 @@ export const SETTINGS_SECTION_IDS = [
   "connections",
   "archived",
   "models",
+  "skills",
   "providers",
   "advanced",
 ] as const;
@@ -124,6 +125,14 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     description: "Git writing defaults and custom model slugs.",
     icon: BrainIcon,
     eyebrow: "AI configuration",
+  },
+  {
+    id: "skills",
+    group: "jcode",
+    label: "Skill Library",
+    description: "Browse installed skills across providers.",
+    icon: ListChecksIcon,
+    eyebrow: "Installed capabilities",
   },
   {
     id: "providers",
