@@ -50,8 +50,13 @@ export const providerDiscoveryQueryKeys = {
     ["provider-discovery", "composer-capabilities", provider] as const,
   commands: (provider: ProviderKind, cwd: string | null, query: string, agentDir: string | null) =>
     ["provider-discovery", "commands", provider, cwd, query, agentDir] as const,
-  skills: (provider: ProviderKind, cwd: string | null, query: string, agentDir: string | null) =>
-    ["provider-discovery", "skills", provider, cwd, query, agentDir] as const,
+  skills: (
+    provider: ProviderKind,
+    cwd: string | null,
+    query: string,
+    agentDir: string | null,
+    threadId: string | null,
+  ) => ["provider-discovery", "skills", provider, cwd, query, agentDir, threadId] as const,
   plugins: (provider: ProviderKind, cwd: string | null) =>
     ["provider-discovery", "plugins", provider, cwd] as const,
   plugin: (provider: ProviderKind, marketplacePath: string, pluginName: string) =>
@@ -101,6 +106,7 @@ export function providerSkillsQueryOptions(input: {
       input.cwd,
       input.query,
       input.agentDir ?? null,
+      input.threadId ?? null,
     ),
     queryFn: async () => {
       const api = ensureNativeApi();

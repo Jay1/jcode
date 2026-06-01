@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { isInitialModelDiscoveryPending } from "./providerDiscoveryReactQuery";
+import {
+  isInitialModelDiscoveryPending,
+  providerSkillsQueryOptions,
+} from "./providerDiscoveryReactQuery";
 
 describe("isInitialModelDiscoveryPending", () => {
   it("treats placeholder refetches as initial discovery", () => {
@@ -21,5 +24,24 @@ describe("isInitialModelDiscoveryPending", () => {
         isPlaceholderData: false,
       }),
     ).toBe(false);
+  });
+});
+
+describe("providerSkillsQueryOptions", () => {
+  it("keys skill discovery by thread when thread context is supplied", () => {
+    const firstThread = providerSkillsQueryOptions({
+      provider: "opencode",
+      cwd: "/repo",
+      threadId: "thread-a",
+      query: "",
+    });
+    const secondThread = providerSkillsQueryOptions({
+      provider: "opencode",
+      cwd: "/repo",
+      threadId: "thread-b",
+      query: "",
+    });
+
+    expect(firstThread.queryKey).not.toEqual(secondThread.queryKey);
   });
 });
