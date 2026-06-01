@@ -36,6 +36,12 @@ import {
   ProviderService,
   type ProviderServiceShape,
 } from "../../provider/Services/ProviderService.ts";
+import { ProjectLanguageIconResolver } from "../../project/Services/ProjectLanguageIconResolver.ts";
+
+const NoopProjectLanguageIconResolverLayer = Layer.succeed(ProjectLanguageIconResolver, {
+  resolveMetadata: () => Effect.succeed(null),
+} satisfies typeof ProjectLanguageIconResolver.Service);
+
 import {
   checkpointRefForThreadMessageStart,
   checkpointRefForThreadTurn,
@@ -268,6 +274,7 @@ describe("CheckpointReactor", () => {
       Layer.provide(OrchestrationProjectionPipelineLive),
       Layer.provide(OrchestrationEventStoreLive),
       Layer.provide(OrchestrationCommandReceiptRepositoryLive),
+      Layer.provide(NoopProjectLanguageIconResolverLayer),
       Layer.provide(SqlitePersistenceMemory),
     );
 

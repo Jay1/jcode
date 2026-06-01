@@ -223,6 +223,7 @@ export function projectEvent(
             workspaceRoot: payload.workspaceRoot,
             defaultModelSelection: payload.defaultModelSelection,
             scripts: payload.scripts,
+            iconMetadata: payload.iconMetadata,
             createdAt: payload.createdAt,
             updatedAt: payload.updatedAt,
             deletedAt: null,
@@ -256,6 +257,9 @@ export function projectEvent(
                     ? { defaultModelSelection: payload.defaultModelSelection }
                     : {}),
                   ...(payload.scripts !== undefined ? { scripts: payload.scripts } : {}),
+                  ...(payload.iconMetadata !== undefined
+                    ? { iconMetadata: payload.iconMetadata }
+                    : {}),
                   updatedAt: payload.updatedAt,
                 }
               : project,

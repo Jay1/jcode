@@ -2,46 +2,74 @@ import {
   CheckpointRef,
   CommandId,
   DEFAULT_PROVIDER_INTERACTION_MODE,
+  EventId,
   MessageId,
   ProjectId,
   ThreadId,
   TurnId,
+  type ProjectIconMetadata,
   type OrchestrationEvent,
 } from "@jcode/contracts";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { Effect, Layer, ManagedRuntime, Queue, Stream } from "effect";
 import { describe, expect, it } from "vitest";
 
 import { PersistenceSqlError } from "../../persistence/Errors.ts";
 import { OrchestrationCommandReceiptRepositoryLive } from "../../persistence/Layers/OrchestrationCommandReceipts.ts";
 import { OrchestrationEventStoreLive } from "../../persistence/Layers/OrchestrationEventStore.ts";
-import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite.ts";
+import {
+  makeSqlitePersistenceLive,
+  SqlitePersistenceMemory,
+} from "../../persistence/Layers/Sqlite.ts";
 import {
   OrchestrationEventStore,
   type OrchestrationEventStoreShape,
 } from "../../persistence/Services/OrchestrationEventStore.ts";
 import { OrchestrationEngineLive } from "./OrchestrationEngine.ts";
 import { OrchestrationProjectionPipelineLive } from "./ProjectionPipeline.ts";
-import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
+import {
+  OrchestrationEngineService,
+  type OrchestrationEngineShape,
+} from "../Services/OrchestrationEngine.ts";
 import {
   OrchestrationProjectionPipeline,
   type OrchestrationProjectionPipelineShape,
 } from "../Services/ProjectionPipeline.ts";
 import { ServerConfig } from "../../config.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import { ProjectLanguageIconResolver } from "../../project/Services/ProjectLanguageIconResolver.ts";
 
 const asProjectId = (value: string): ProjectId => ProjectId.makeUnsafe(value);
 const asMessageId = (value: string): MessageId => MessageId.makeUnsafe(value);
 const asTurnId = (value: string): TurnId => TurnId.makeUnsafe(value);
 const asCheckpointRef = (value: string): CheckpointRef => CheckpointRef.makeUnsafe(value);
 
-async function createOrchestrationSystem() {
+const NoopProjectLanguageIconResolverLayer = Layer.succeed(ProjectLanguageIconResolver, {
+  resolveMetadata: () => Effect.succeed(null),
+} satisfies typeof ProjectLanguageIconResolver.Service);
+
+async function createOrchestrationSystem(
+  input: {
+    readonly resolveProjectIconMetadata?: (
+      cwd: string,
+    ) => Effect.Effect<ProjectIconMetadata | null>;
+  } = {},
+) {
   const ServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
     prefix: "t3-orchestration-engine-test-",
   });
+  const projectLanguageIconResolverLayer = input.resolveProjectIconMetadata
+    ? Layer.succeed(ProjectLanguageIconResolver, {
+        resolveMetadata: input.resolveProjectIconMetadata,
+      } satisfies typeof ProjectLanguageIconResolver.Service)
+    : NoopProjectLanguageIconResolverLayer;
   const orchestrationLayer = OrchestrationEngineLive.pipe(
     Layer.provide(OrchestrationProjectionPipelineLive),
     Layer.provide(OrchestrationEventStoreLive),
     Layer.provide(OrchestrationCommandReceiptRepositoryLive),
+    Layer.provide(projectLanguageIconResolverLayer),
     Layer.provide(SqlitePersistenceMemory),
     Layer.provideMerge(ServerConfigLayer),
     Layer.provideMerge(NodeServices.layer),
@@ -57,6 +85,20 @@ async function createOrchestrationSystem() {
 
 function now() {
   return new Date().toISOString();
+}
+
+function waitForProjectIconMetadata(engine: OrchestrationEngineShape, projectId: ProjectId) {
+  return Effect.gen(function* () {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const current = yield* engine.getReadModel();
+      const project = current.projects.find((entry) => entry.id === projectId);
+      if (project?.iconMetadata !== null && project?.iconMetadata !== undefined) {
+        return current;
+      }
+      yield* Effect.sleep("100 millis");
+    }
+    return yield* engine.getReadModel();
+  });
 }
 
 describe("OrchestrationEngine", () => {
@@ -118,6 +160,232 @@ describe("OrchestrationEngine", () => {
     const readModelB = await system.run(engine.getReadModel());
     expect(readModelB).toEqual(readModelA);
     await system.dispose();
+  });
+
+  it("updates project icon metadata after project creation without blocking dispatch", async () => {
+    const createdAt = now();
+    const system = await createOrchestrationSystem({
+      resolveProjectIconMetadata: () =>
+        Effect.succeed({
+          iconId: "typescript",
+          label: "TypeScript",
+        }),
+    });
+    const { engine } = system;
+
+    const result = await system.run(
+      engine.dispatch({
+        type: "project.create",
+        commandId: CommandId.makeUnsafe("cmd-project-icon-create"),
+        projectId: asProjectId("project-icon-create"),
+        title: "Icon Project",
+        workspaceRoot: "/tmp/project-icon-create",
+        defaultModelSelection: null,
+        createdAt,
+      }),
+    );
+    expect(result.sequence).toBe(1);
+
+    const readModel = await system.run(
+      waitForProjectIconMetadata(engine, asProjectId("project-icon-create")),
+    );
+
+    expect(readModel.projects).toContainEqual(
+      expect.objectContaining({
+        id: asProjectId("project-icon-create"),
+        iconMetadata: {
+          iconId: "typescript",
+          label: "TypeScript",
+        },
+      }),
+    );
+    const events = await system.run(
+      Stream.runCollect(engine.readEvents(0)).pipe(
+        Effect.map((chunk): OrchestrationEvent[] => Array.from(chunk)),
+      ),
+    );
+    expect(events.map((event) => event.type)).toEqual(["project.created", "project.meta-updated"]);
+    await system.dispose();
+  });
+
+  it("does not let stale automatic icon detection overwrite newer metadata", async () => {
+    const createdAt = now();
+    let resolveDetectedMetadata: (metadata: ProjectIconMetadata) => void = () => {};
+    const detectedMetadata = new Promise<ProjectIconMetadata>((resolve) => {
+      resolveDetectedMetadata = resolve;
+    });
+    const system = await createOrchestrationSystem({
+      resolveProjectIconMetadata: () => Effect.promise(() => detectedMetadata),
+    });
+    const { engine } = system;
+
+    await system.run(
+      engine.dispatch({
+        type: "project.create",
+        commandId: CommandId.makeUnsafe("cmd-project-icon-stale-create"),
+        projectId: asProjectId("project-icon-stale"),
+        title: "Icon Project",
+        workspaceRoot: "/tmp/project-icon-stale",
+        defaultModelSelection: null,
+        createdAt,
+      }),
+    );
+    await system.run(
+      engine.dispatch({
+        type: "project.meta.update",
+        commandId: CommandId.makeUnsafe("cmd-project-icon-stale-manual-update"),
+        projectId: asProjectId("project-icon-stale"),
+        iconMetadata: {
+          iconId: "vue",
+          label: "Vue",
+        },
+      }),
+    );
+    resolveDetectedMetadata({
+      iconId: "typescript",
+      label: "TypeScript",
+    });
+    await system.run(Effect.sleep("150 millis"));
+
+    const readModel = await system.run(engine.getReadModel());
+    expect(readModel.projects).toContainEqual(
+      expect.objectContaining({
+        id: asProjectId("project-icon-stale"),
+        iconMetadata: {
+          iconId: "vue",
+          label: "Vue",
+        },
+      }),
+    );
+    const events = await system.run(
+      Stream.runCollect(engine.readEvents(0)).pipe(
+        Effect.map((chunk): OrchestrationEvent[] => Array.from(chunk)),
+      ),
+    );
+    expect(events.map((event) => event.type)).toEqual(["project.created", "project.meta-updated"]);
+    await system.dispose();
+  });
+
+  it("backfills missing project icon metadata once when the engine starts", async () => {
+    const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "jcode-engine-icon-backfill-"));
+    const dbPath = path.join(rootDir, "state.sqlite");
+    let resolveCount = 0;
+    let activeResolveCount = 0;
+    let maxActiveResolveCount = 0;
+
+    try {
+      const seedLayer = OrchestrationEventStoreLive.pipe(
+        Layer.provideMerge(makeSqlitePersistenceLive(dbPath)),
+        Layer.provideMerge(NodeServices.layer),
+      );
+      const seedRuntime = ManagedRuntime.make(seedLayer);
+      await seedRuntime.runPromise(
+        Effect.gen(function* () {
+          const eventStore = yield* OrchestrationEventStore;
+          const createdAt = now();
+          yield* eventStore.append({
+            type: "project.created",
+            eventId: EventId.makeUnsafe("evt-project-icon-backfill-create"),
+            aggregateKind: "project",
+            aggregateId: asProjectId("project-icon-backfill"),
+            occurredAt: createdAt,
+            commandId: CommandId.makeUnsafe("cmd-project-icon-backfill-create"),
+            causationEventId: null,
+            correlationId: CommandId.makeUnsafe("cmd-project-icon-backfill-create"),
+            metadata: {},
+            payload: {
+              projectId: asProjectId("project-icon-backfill"),
+              title: "Backfill Project",
+              workspaceRoot: "/tmp/project-icon-backfill",
+              defaultModelSelection: null,
+              scripts: [],
+              createdAt,
+              updatedAt: createdAt,
+            },
+          });
+          yield* eventStore.append({
+            type: "project.created",
+            eventId: EventId.makeUnsafe("evt-project-icon-backfill-create-2"),
+            aggregateKind: "project",
+            aggregateId: asProjectId("project-icon-backfill-2"),
+            occurredAt: createdAt,
+            commandId: CommandId.makeUnsafe("cmd-project-icon-backfill-create-2"),
+            causationEventId: null,
+            correlationId: CommandId.makeUnsafe("cmd-project-icon-backfill-create-2"),
+            metadata: {},
+            payload: {
+              projectId: asProjectId("project-icon-backfill-2"),
+              title: "Backfill Project 2",
+              workspaceRoot: "/tmp/project-icon-backfill-2",
+              defaultModelSelection: null,
+              scripts: [],
+              createdAt,
+              updatedAt: createdAt,
+            },
+          });
+        }),
+      );
+      await seedRuntime.dispose();
+
+      const ServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
+        prefix: "t3-orchestration-engine-icon-backfill-",
+      });
+      const projectLanguageIconResolverLayer = Layer.succeed(ProjectLanguageIconResolver, {
+        resolveMetadata: () =>
+          Effect.gen(function* () {
+            resolveCount += 1;
+            activeResolveCount += 1;
+            maxActiveResolveCount = Math.max(maxActiveResolveCount, activeResolveCount);
+            yield* Effect.sleep("25 millis");
+            activeResolveCount -= 1;
+            return {
+              iconId: "typescript",
+              label: "TypeScript",
+            } satisfies ProjectIconMetadata;
+          }),
+      } satisfies typeof ProjectLanguageIconResolver.Service);
+      const orchestrationLayer = OrchestrationEngineLive.pipe(
+        Layer.provide(OrchestrationProjectionPipelineLive),
+        Layer.provide(OrchestrationEventStoreLive),
+        Layer.provide(OrchestrationCommandReceiptRepositoryLive),
+        Layer.provide(projectLanguageIconResolverLayer),
+        Layer.provideMerge(makeSqlitePersistenceLive(dbPath)),
+        Layer.provideMerge(ServerConfigLayer),
+        Layer.provideMerge(NodeServices.layer),
+      );
+      const runtime = ManagedRuntime.make(orchestrationLayer);
+      const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
+
+      const readModel = await runtime.runPromise(
+        waitForProjectIconMetadata(engine, asProjectId("project-icon-backfill-2")),
+      );
+
+      expect(readModel.projects).toContainEqual(
+        expect.objectContaining({
+          id: asProjectId("project-icon-backfill"),
+          iconMetadata: {
+            iconId: "typescript",
+            label: "TypeScript",
+          },
+        }),
+      );
+      expect(readModel.projects).toContainEqual(
+        expect.objectContaining({
+          id: asProjectId("project-icon-backfill-2"),
+          iconMetadata: {
+            iconId: "typescript",
+            label: "TypeScript",
+          },
+        }),
+      );
+      expect(resolveCount).toBe(2);
+      expect(maxActiveResolveCount).toBe(1);
+      await runtime.runPromise(Effect.sleep("25 millis"));
+      expect(resolveCount).toBe(2);
+      await runtime.dispose();
+    } finally {
+      fs.rmSync(rootDir, { recursive: true, force: true });
+    }
   });
 
   it("replays append-only events from sequence", async () => {
@@ -353,6 +621,7 @@ describe("OrchestrationEngine", () => {
         Layer.provide(OrchestrationProjectionPipelineLive),
         Layer.provide(Layer.succeed(OrchestrationEventStore, flakyStore)),
         Layer.provide(OrchestrationCommandReceiptRepositoryLive),
+        Layer.provide(NoopProjectLanguageIconResolverLayer),
         Layer.provide(SqlitePersistenceMemory),
         Layer.provideMerge(ServerConfigLayer),
         Layer.provideMerge(NodeServices.layer),
@@ -451,6 +720,7 @@ describe("OrchestrationEngine", () => {
         Layer.provide(Layer.succeed(OrchestrationProjectionPipeline, flakyProjectionPipeline)),
         Layer.provide(OrchestrationEventStoreLive),
         Layer.provide(OrchestrationCommandReceiptRepositoryLive),
+        Layer.provide(NoopProjectLanguageIconResolverLayer),
         Layer.provide(SqlitePersistenceMemory),
       ),
     );
@@ -590,6 +860,7 @@ describe("OrchestrationEngine", () => {
         Layer.provide(Layer.succeed(OrchestrationProjectionPipeline, defectiveProjectionPipeline)),
         Layer.provide(Layer.succeed(OrchestrationEventStore, nonTransactionalStore)),
         Layer.provide(OrchestrationCommandReceiptRepositoryLive),
+        Layer.provide(NoopProjectLanguageIconResolverLayer),
         Layer.provide(SqlitePersistenceMemory),
       ),
     );
@@ -702,6 +973,7 @@ describe("OrchestrationEngine", () => {
         Layer.provide(Layer.succeed(OrchestrationProjectionPipeline, flakyProjectionPipeline)),
         Layer.provide(Layer.succeed(OrchestrationEventStore, nonTransactionalStore)),
         Layer.provide(OrchestrationCommandReceiptRepositoryLive),
+        Layer.provide(NoopProjectLanguageIconResolverLayer),
         Layer.provide(SqlitePersistenceMemory),
       ),
     );
@@ -825,6 +1097,7 @@ describe("OrchestrationEngine", () => {
         Layer.provide(Layer.succeed(OrchestrationProjectionPipeline, flakyProjectionPipeline)),
         Layer.provide(OrchestrationEventStoreLive),
         Layer.provide(OrchestrationCommandReceiptRepositoryLive),
+        Layer.provide(NoopProjectLanguageIconResolverLayer),
         Layer.provide(SqlitePersistenceMemory),
       ),
     );

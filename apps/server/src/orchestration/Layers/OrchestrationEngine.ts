@@ -4,7 +4,7 @@ import type {
   ProjectId,
   ThreadId,
 } from "@jcode/contracts";
-import { OrchestrationCommand, ORCHESTRATION_WS_METHODS } from "@jcode/contracts";
+import { CommandId, OrchestrationCommand, ORCHESTRATION_WS_METHODS } from "@jcode/contracts";
 import {
   Cause,
   Deferred,
@@ -41,6 +41,7 @@ import {
   OrchestrationEngineService,
   type OrchestrationEngineShape,
 } from "../Services/OrchestrationEngine.ts";
+import { ProjectLanguageIconResolver } from "../../project/Services/ProjectLanguageIconResolver.ts";
 
 const ORCHESTRATION_DISPATCH_TIMEOUT_MS = 45_000;
 
@@ -95,6 +96,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
   const eventStore = yield* OrchestrationEventStore;
   const commandReceiptRepository = yield* OrchestrationCommandReceiptRepository;
   const projectionPipeline = yield* OrchestrationProjectionPipeline;
+  const projectLanguageIconResolver = yield* ProjectLanguageIconResolver;
 
   let readModel = createEmptyReadModel(new Date().toISOString());
 
@@ -104,6 +106,8 @@ const makeOrchestrationEngine = Effect.gen(function* () {
   const deferredProjectionDirty = yield* Ref.make(false);
   const deferredProjectionCatchUpInFlight = yield* Ref.make(false);
   const deferredProjectionScope = yield* Scope.make("sequential");
+  const projectIconDetectionScope = yield* Scope.make("sequential");
+  const missingProjectIconBackfillScheduled = yield* Ref.make(false);
 
   const makeCommandTimeoutError = (command: OrchestrationCommand) =>
     new OrchestrationCommandTimeoutError({
@@ -145,6 +149,76 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         detail: existingReceipt.value.error ?? "Previously rejected.",
       });
     });
+
+  const enqueueInternalCommand = Effect.fn(function* (command: OrchestrationCommand) {
+    const result = yield* Deferred.make<{ sequence: number }, OrchestrationDispatchError>();
+    const executionState = yield* Ref.make<CommandExecutionState>("queued");
+    yield* Queue.offer(commandQueue, {
+      command,
+      result,
+      executionState,
+      deadlineAtMs: Date.now() + ORCHESTRATION_DISPATCH_TIMEOUT_MS,
+    });
+    return yield* Deferred.await(result);
+  });
+
+  const scheduleProjectIconMetadataDetection = Effect.fn(function* (input: {
+    readonly projectId: ProjectId;
+    readonly workspaceRoot: string;
+    readonly commandIdPrefix: string;
+  }) {
+    yield* projectLanguageIconResolver.resolveMetadata(input.workspaceRoot).pipe(
+      Effect.flatMap((iconMetadata) => {
+        if (iconMetadata === null) {
+          return Effect.void;
+        }
+        const project = readModel.projects.find((entry) => entry.id === input.projectId);
+        if (!project || project.deletedAt !== null || project.iconMetadata !== null) {
+          return Effect.void;
+        }
+        return enqueueInternalCommand({
+          type: "project.meta.update",
+          commandId: CommandId.makeUnsafe(`${input.commandIdPrefix}:${input.projectId}`),
+          projectId: input.projectId,
+          iconMetadata,
+        }).pipe(Effect.asVoid);
+      }),
+      Effect.catchCause((cause) =>
+        Effect.logWarning("project icon metadata detection failed").pipe(
+          Effect.annotateLogs({
+            projectId: input.projectId,
+            workspaceRoot: input.workspaceRoot,
+            cause: Cause.pretty(cause),
+          }),
+        ),
+      ),
+      Effect.asVoid,
+    );
+  });
+
+  const scheduleMissingProjectIconMetadataBackfill = Effect.fn(function* () {
+    const shouldStart = yield* Ref.modify(
+      missingProjectIconBackfillScheduled,
+      (scheduled): readonly [boolean, boolean] => [!scheduled, true],
+    );
+    if (!shouldStart) {
+      return;
+    }
+
+    const projectsNeedingIconMetadata = readModel.projects.filter(
+      (project) => project.deletedAt === null && project.iconMetadata === null,
+    );
+    yield* Effect.forEach(
+      projectsNeedingIconMetadata,
+      (project) =>
+        scheduleProjectIconMetadataDetection({
+          projectId: project.id,
+          workspaceRoot: project.workspaceRoot,
+          commandIdPrefix: "project-icon-backfill",
+        }),
+      { concurrency: 1 },
+    ).pipe(Effect.forkIn(projectIconDetectionScope), Effect.asVoid);
+  });
 
   // When deferred projection slips, recover with one background bootstrap replay instead of
   // continuing to advance the inline cursor and potentially skipping the failed sequence.
@@ -201,6 +275,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       readonly workspaceRoot: string;
       readonly defaultModelSelectionJson: string | null;
       readonly scriptsJson: string;
+      readonly iconMetadataJson: string | null;
       readonly createdAt: string;
       readonly updatedAt: string;
       readonly deletedAt: string | null;
@@ -212,6 +287,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           workspace_root AS "workspaceRoot",
           default_model_selection_json AS "defaultModelSelectionJson",
           scripts_json AS "scriptsJson",
+          icon_metadata_json AS "iconMetadataJson",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
           deleted_at AS "deletedAt"
@@ -266,6 +342,12 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         scripts: JSON.parse(
           row.scriptsJson,
         ) as OrchestrationReadModel["projects"][number]["scripts"],
+        iconMetadata:
+          row.iconMetadataJson === null
+            ? null
+            : (JSON.parse(
+                row.iconMetadataJson,
+              ) as OrchestrationReadModel["projects"][number]["iconMetadata"]),
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
         deletedAt: row.deletedAt,
@@ -518,6 +600,20 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         yield* PubSub.publish(eventPubSub, event);
       }
       yield* Deferred.succeed(envelope.result, { sequence: committedCommand.lastSequence });
+      yield* Effect.forEach(
+        committedCommand.committedEvents,
+        (event) => {
+          if (event.type !== "project.created" || event.payload.iconMetadata !== null) {
+            return Effect.void;
+          }
+          return scheduleProjectIconMetadataDetection({
+            projectId: event.payload.projectId,
+            workspaceRoot: event.payload.workspaceRoot,
+            commandIdPrefix: "project-icon-detect",
+          }).pipe(Effect.forkIn(projectIconDetectionScope), Effect.asVoid);
+        },
+        { concurrency: 1 },
+      );
     }).pipe(
       Effect.timeoutOption(remainingBudgetMs),
       Effect.flatMap((outcome) =>
@@ -634,6 +730,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       readModel = yield* projectEvent(readModel, event);
     }),
   );
+  yield* scheduleMissingProjectIconMetadataBackfill();
 
   const worker = Effect.forever(Queue.take(commandQueue).pipe(Effect.flatMap(processEnvelope)));
   yield* Effect.forkScoped(worker);

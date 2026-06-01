@@ -34,6 +34,7 @@ const projects: SidebarSearchProject[] = [
     folderName: "alpha-repo",
     localName: null,
     cwd: "/work/alpha-repo",
+    iconMetadata: { iconId: "typescript", label: "TypeScript" },
     updatedAt: "2026-04-09T10:00:00.000Z",
   },
   {
@@ -43,6 +44,7 @@ const projects: SidebarSearchProject[] = [
     folderName: "beta-repo",
     localName: "Docs",
     cwd: "/work/beta-repo",
+    iconMetadata: null,
     updatedAt: "2026-04-09T11:00:00.000Z",
   },
 ];

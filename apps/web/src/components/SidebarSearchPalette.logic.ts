@@ -1,7 +1,7 @@
 // Purpose: Scores sidebar palette results for actions, themes, projects, and chat threads.
 // Keeps search local and deterministic so the palette can rank title hits above
 // message-content hits while still surfacing a useful snippet for chat matches.
-import type { ProviderKind } from "@jcode/contracts";
+import type { ProjectIconMetadata, ProviderKind } from "@jcode/contracts";
 import { basenameOfPath } from "../file-icons";
 import type { ThemeMode, ThemeVariant } from "../theme/theme.logic";
 
@@ -32,6 +32,7 @@ export interface SidebarSearchProject {
   folderName: string;
   localName: string | null;
   cwd: string;
+  iconMetadata: ProjectIconMetadata | null;
   createdAt?: string | undefined;
   updatedAt?: string | undefined;
 }

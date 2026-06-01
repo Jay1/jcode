@@ -4,13 +4,14 @@
 // Layer: Chat / empty-state entrypoint
 
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
-import { type ProjectDirectoryEntry } from "@jcode/contracts";
+import { type ProjectDirectoryEntry, type ProjectIconMetadata } from "@jcode/contracts";
 import { readNativeApi } from "../../nativeApi";
 import { useStore } from "../../store";
 import { createSidebarDisplayThreadsSelector } from "../../storeSelectors";
 import { PlusIcon, XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { FolderClosed } from "../FolderClosed";
+import { ProjectSidebarIcon } from "../ProjectSidebarIcon";
 import { PickerTriggerButton } from "./PickerTriggerButton";
 import { PickerPanelShell } from "./PickerPanelShell";
 import {
@@ -37,6 +38,7 @@ interface ProjectPickerProps {
 
 interface ActiveFolderOption {
   cwd: string;
+  iconMetadata: ProjectIconMetadata | null;
   primaryLabel: string;
   secondaryLabel: string | null;
 }
@@ -93,7 +95,12 @@ export const ProjectPicker = memo(function ProjectPicker({
       const primaryLabel = project.localName?.trim() || folderName;
       const secondaryLabel =
         project.localName?.trim() && project.localName.trim() !== folderName ? folderName : null;
-      nextOptions.push({ cwd: project.cwd, primaryLabel, secondaryLabel });
+      nextOptions.push({
+        cwd: project.cwd,
+        iconMetadata: project.iconMetadata,
+        primaryLabel,
+        secondaryLabel,
+      });
     }
 
     for (const thread of sidebarThreads) {
@@ -105,6 +112,7 @@ export const ProjectPicker = memo(function ProjectPicker({
       seen.add(workspaceRoot);
       nextOptions.push({
         cwd: workspaceRoot,
+        iconMetadata: null,
         primaryLabel: folderName,
         secondaryLabel: null,
       });
@@ -119,6 +127,7 @@ export const ProjectPicker = memo(function ProjectPicker({
     ) {
       nextOptions.unshift({
         cwd: selectedWorkspaceRoot,
+        iconMetadata: null,
         primaryLabel: selectedFolderName,
         secondaryLabel: null,
       });
@@ -182,6 +191,7 @@ export const ProjectPicker = memo(function ProjectPicker({
         .filter(({ absolutePath }) => absolutePath === selectedWorkspaceRoot)
         .map(({ entry, absolutePath }) => ({
           cwd: absolutePath,
+          iconMetadata: null,
           primaryLabel: entry.name,
           secondaryLabel: null,
         }))[0] ??
@@ -281,7 +291,21 @@ export const ProjectPicker = memo(function ProjectPicker({
     >
       <ComboboxTrigger
         render={
-          <PickerTriggerButton icon={<FolderClosed className="size-3.5" />} label={triggerLabel} />
+          <PickerTriggerButton
+            icon={
+              selectedFolderOption ? (
+                <ProjectSidebarIcon
+                  cwd={selectedFolderOption.cwd}
+                  expanded={false}
+                  iconMetadata={selectedFolderOption.iconMetadata}
+                  className="size-3.5"
+                />
+              ) : (
+                <FolderClosed className="size-3.5" />
+              )
+            }
+            label={triggerLabel}
+          />
         }
       />
       <ComboboxPopup align={align} side={side} className="p-0">
@@ -348,7 +372,14 @@ export const ProjectPicker = memo(function ProjectPicker({
                     )}
                   >
                     <div className="flex min-w-0 items-center gap-2">
-                      <FolderClosed className="size-3.5 shrink-0 text-muted-foreground/70" />
+                      <span className="relative flex size-3.5 shrink-0 items-center justify-center text-muted-foreground/70">
+                        <ProjectSidebarIcon
+                          cwd={folder.cwd}
+                          expanded={false}
+                          iconMetadata={folder.iconMetadata}
+                          className="size-3.5"
+                        />
+                      </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 items-baseline gap-1.5">
                           <span className="min-w-0 truncate">{folder.primaryLabel}</span>

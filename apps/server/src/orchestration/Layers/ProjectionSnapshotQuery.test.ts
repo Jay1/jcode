@@ -37,6 +37,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           workspace_root,
           default_model_selection_json,
           scripts_json,
+          icon_metadata_json,
           created_at,
           updated_at,
           deleted_at
@@ -47,6 +48,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           '/tmp/project-1',
           '{"provider":"codex","model":"gpt-5-codex"}',
           '[{"id":"script-1","name":"Build","command":"bun run build","icon":"build","runOnWorktreeCreate":false}]',
+          '{"iconId":"typescript","label":"TypeScript"}',
           '2026-02-24T00:00:00.000Z',
           '2026-02-24T00:00:01.000Z',
           NULL
@@ -298,6 +300,10 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
               runOnWorktreeCreate: false,
             },
           ],
+          iconMetadata: {
+            iconId: "typescript",
+            label: "TypeScript",
+          },
           createdAt: "2026-02-24T00:00:00.000Z",
           updatedAt: "2026-02-24T00:00:01.000Z",
           deletedAt: null,
@@ -680,6 +686,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           workspace_root,
           default_model_selection_json,
           scripts_json,
+          icon_metadata_json,
           created_at,
           updated_at,
           deleted_at
@@ -690,6 +697,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           '/tmp/imported-shape',
           '{"instanceId":"codex","model":"imported-project-model","options":[{"id":"reasoningEffort","value":"medium"}]}',
           '[]',
+          '{"iconId":"typescript","label":"TypeScript"}',
           '2026-05-05T14:39:18.000Z',
           '2026-05-05T14:39:19.000Z',
           NULL
@@ -737,6 +745,10 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
         model: "gpt-5.5",
         options: { reasoningEffort: "medium" },
       } as const;
+      const expectedProjectIconMetadata = {
+        iconId: "typescript",
+        label: "TypeScript",
+      } as const;
 
       const snapshot = yield* snapshotQuery.getSnapshot();
       const shellSnapshot = yield* snapshotQuery.getShellSnapshot();
@@ -761,6 +773,10 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
         expectedProjectSelection,
       );
       assert.deepStrictEqual(
+        snapshot.projects.find((project) => project.id === "project-imported-shape")?.iconMetadata,
+        expectedProjectIconMetadata,
+      );
+      assert.deepStrictEqual(
         snapshot.threads.find((thread) => thread.id === "thread-imported-shape")?.modelSelection,
         expectedThreadSelection,
       );
@@ -768,6 +784,11 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
         shellSnapshot.projects.find((project) => project.id === "project-imported-shape")
           ?.defaultModelSelection,
         expectedProjectSelection,
+      );
+      assert.deepStrictEqual(
+        shellSnapshot.projects.find((project) => project.id === "project-imported-shape")
+          ?.iconMetadata,
+        expectedProjectIconMetadata,
       );
       assert.deepStrictEqual(
         shellSnapshot.threads.find((thread) => thread.id === "thread-imported-shape")
@@ -779,8 +800,16 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
         expectedProjectSelection,
       );
       assert.deepStrictEqual(
+        Option.getOrNull(activeProject)?.iconMetadata,
+        expectedProjectIconMetadata,
+      );
+      assert.deepStrictEqual(
         Option.getOrNull(projectShell)?.defaultModelSelection,
         expectedProjectSelection,
+      );
+      assert.deepStrictEqual(
+        Option.getOrNull(projectShell)?.iconMetadata,
+        expectedProjectIconMetadata,
       );
       assert.deepStrictEqual(
         Option.getOrNull(threadShell)?.modelSelection,

@@ -4657,7 +4657,11 @@ export default function Sidebar() {
             }}
           >
             <span className="sidebar-project-header-icon relative inline-flex size-5 shrink-0 items-center justify-center rounded-md border border-[color:var(--app-chat-chip-border,var(--border))] bg-[var(--app-chat-chip-bg,var(--muted))] text-[var(--app-chat-heading,var(--color-text-foreground-secondary))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-              <ProjectSidebarIcon cwd={project.cwd} expanded={project.expanded} />
+              <ProjectSidebarIcon
+                cwd={project.cwd}
+                expanded={project.expanded}
+                iconMetadata={project.iconMetadata}
+              />
               {projectStatus ? (
                 <span
                   aria-hidden="true"
@@ -5192,6 +5196,7 @@ export default function Sidebar() {
         folderName: project.folderName,
         localName: project.localName,
         cwd: project.cwd,
+        iconMetadata: project.iconMetadata,
         createdAt: project.createdAt,
         updatedAt: project.updatedAt,
       })),
