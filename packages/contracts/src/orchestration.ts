@@ -310,6 +310,28 @@ export const ProjectScript = Schema.Struct({
 });
 export type ProjectScript = typeof ProjectScript.Type;
 
+export const ProjectIconId = Schema.Literals([
+  "typescript",
+  "javascript",
+  "vue",
+  "react",
+  "svelte",
+  "python",
+  "go",
+  "rust",
+]);
+export type ProjectIconId = typeof ProjectIconId.Type;
+
+export const ProjectIconMetadata = Schema.Struct({
+  iconId: ProjectIconId,
+  label: TrimmedNonEmptyString,
+});
+export type ProjectIconMetadata = typeof ProjectIconMetadata.Type;
+
+const ProjectIconMetadataOrNull = Schema.optional(Schema.NullOr(ProjectIconMetadata)).pipe(
+  Schema.withDecodingDefault(() => null),
+);
+
 export const OrchestrationProject = Schema.Struct({
   id: ProjectId,
   kind: Schema.optional(ProjectKind).pipe(Schema.withDecodingDefault(() => "project")),
@@ -317,6 +339,7 @@ export const OrchestrationProject = Schema.Struct({
   workspaceRoot: TrimmedNonEmptyString,
   defaultModelSelection: Schema.NullOr(ModelSelection),
   scripts: Schema.Array(ProjectScript),
+  iconMetadata: ProjectIconMetadataOrNull,
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
   deletedAt: Schema.NullOr(IsoDateTime),
@@ -330,6 +353,7 @@ export const OrchestrationProjectShell = Schema.Struct({
   workspaceRoot: TrimmedNonEmptyString,
   defaultModelSelection: Schema.NullOr(ModelSelection),
   scripts: Schema.Array(ProjectScript),
+  iconMetadata: ProjectIconMetadataOrNull,
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });
@@ -657,6 +681,7 @@ export const ProjectCreateCommand = Schema.Struct({
     Schema.withDecodingDefault(() => false),
   ),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
+  iconMetadata: ProjectIconMetadataOrNull,
   createdAt: IsoDateTime,
 });
 
@@ -669,6 +694,7 @@ const ProjectMetaUpdateCommand = Schema.Struct({
   workspaceRoot: Schema.optional(TrimmedNonEmptyString),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
   scripts: Schema.optional(Schema.Array(ProjectScript)),
+  iconMetadata: Schema.optional(Schema.NullOr(ProjectIconMetadata)),
 });
 
 const ProjectDeleteCommand = Schema.Struct({
@@ -1165,6 +1191,7 @@ export const ProjectCreatedPayload = Schema.Struct({
   workspaceRoot: TrimmedNonEmptyString,
   defaultModelSelection: Schema.NullOr(ModelSelection),
   scripts: Schema.Array(ProjectScript),
+  iconMetadata: ProjectIconMetadataOrNull,
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });
@@ -1176,6 +1203,7 @@ export const ProjectMetaUpdatedPayload = Schema.Struct({
   workspaceRoot: Schema.optional(TrimmedNonEmptyString),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
   scripts: Schema.optional(Schema.Array(ProjectScript)),
+  iconMetadata: Schema.optional(Schema.NullOr(ProjectIconMetadata)),
   updatedAt: IsoDateTime,
 });
 

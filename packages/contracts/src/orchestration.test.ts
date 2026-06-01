@@ -12,6 +12,7 @@ import {
   OrchestrationGetTurnDiffInput,
   OrchestrationLatestTurn,
   OrchestrationReadModel,
+  ProjectIconMetadata,
   ProjectCreatedPayload,
   ProjectMetaUpdatedPayload,
   OrchestrationProposedPlan,
@@ -27,6 +28,7 @@ import {
 const decodeTurnDiffInput = Schema.decodeUnknownEffect(OrchestrationGetTurnDiffInput);
 const decodeThreadTurnDiff = Schema.decodeUnknownEffect(ThreadTurnDiff);
 const decodeProjectCreateCommand = Schema.decodeUnknownEffect(ProjectCreateCommand);
+const decodeProjectIconMetadata = Schema.decodeUnknownEffect(ProjectIconMetadata);
 const decodeProjectCreatedPayload = Schema.decodeUnknownEffect(ProjectCreatedPayload);
 const decodeProjectMetaUpdatedPayload = Schema.decodeUnknownEffect(ProjectMetaUpdatedPayload);
 const decodeThreadTurnStartCommand = Schema.decodeUnknownEffect(ThreadTurnStartCommand);
@@ -238,6 +240,20 @@ it.effect("trims branded ids and command string fields at decode boundaries", ()
   }),
 );
 
+it.effect("decodes project icon metadata", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decodeProjectIconMetadata({
+      iconId: "typescript",
+      label: "TypeScript",
+    });
+
+    assert.deepStrictEqual(parsed, {
+      iconId: "typescript",
+      label: "TypeScript",
+    });
+  }),
+);
+
 it.effect("decodes historical project.created payloads with a default provider", () =>
   Effect.gen(function* () {
     const parsed = yield* decodeProjectCreatedPayload({
@@ -253,6 +269,31 @@ it.effect("decodes historical project.created payloads with a default provider",
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
     assert.strictEqual(parsed.defaultModelSelection?.provider, "codex");
+    assert.strictEqual(parsed.iconMetadata, null);
+  }),
+);
+
+it.effect("decodes project.created payloads with icon metadata", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decodeProjectCreatedPayload({
+      projectId: "project-1",
+      kind: "project",
+      title: "Project Title",
+      workspaceRoot: "/tmp/workspace",
+      defaultModelSelection: null,
+      scripts: [],
+      iconMetadata: {
+        iconId: "vue",
+        label: "Vue",
+      },
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    assert.deepStrictEqual(parsed.iconMetadata, {
+      iconId: "vue",
+      label: "Vue",
+    });
   }),
 );
 
@@ -267,6 +308,24 @@ it.effect("decodes project.meta-updated payloads with explicit default provider"
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
     assert.strictEqual(parsed.defaultModelSelection?.provider, "claudeAgent");
+  }),
+);
+
+it.effect("decodes project.meta-updated payloads with icon metadata", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decodeProjectMetaUpdatedPayload({
+      projectId: "project-1",
+      iconMetadata: {
+        iconId: "typescript",
+        label: "TypeScript",
+      },
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    assert.deepStrictEqual(parsed.iconMetadata, {
+      iconId: "typescript",
+      label: "TypeScript",
+    });
   }),
 );
 
