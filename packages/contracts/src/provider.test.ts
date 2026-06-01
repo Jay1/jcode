@@ -132,12 +132,12 @@ describe("ProviderSendTurnInput", () => {
     expect(parsed.modelSelection.options?.fastMode).toBe(true);
   });
 
-  it("accepts claude modelSelection including xhigh for Opus 4.7", () => {
+  it("accepts claude modelSelection including xhigh for Opus 4.8", () => {
     const parsed = decodeProviderSendTurnInput({
       threadId: "thread-1",
       modelSelection: {
         provider: "claudeAgent",
-        model: "claude-opus-4-7",
+        model: "claude-opus-4-8",
         options: {
           effort: "xhigh",
         },
