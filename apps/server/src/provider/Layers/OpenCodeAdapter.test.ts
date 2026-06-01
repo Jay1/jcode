@@ -109,6 +109,7 @@ function createMockOpenCodeRuntime(options?: {
   readonly events?: AsyncIterable<unknown>;
   readonly prompt?: (input: Record<string, unknown>) => Promise<unknown>;
   readonly promptAsync?: (input: Record<string, unknown>) => Promise<unknown>;
+  readonly appSkills?: ReadonlyArray<Record<string, unknown>>;
   readonly messages?: () => Promise<{
     data: Array<{ info: Record<string, unknown>; parts: Part[] }>;
   }>;
@@ -160,6 +161,9 @@ function createMockOpenCodeRuntime(options?: {
     },
     question: {
       reply: async () => ({ data: null }),
+    },
+    app: {
+      skills: async () => ({ data: options?.appSkills ?? [] }),
     },
   };
 
@@ -1127,6 +1131,59 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
         description: "Answer data questions.",
         interface: {
           displayName: "Analyze",
+          shortDescription: "Answer data questions.",
+        },
+      },
+    ]);
+  });
+
+  it("lists OpenCode skills from the runtime skill endpoint", async () => {
+    const runtime = createMockOpenCodeRuntime({
+      appSkills: [
+        {
+          name: "analyze",
+          description: "Answer data questions.",
+          location: "/home/test/.opencode/skills/analyze/SKILL.md",
+          content: "# Analyze",
+        },
+      ],
+      inventory: {
+        providerList: { connected: [], all: [], default: {} },
+        agents: [],
+        consoleState: null,
+      },
+    });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const listSkills = adapter.listSkills;
+        if (!listSkills) {
+          throw new Error("Expected OpenCode adapter to support skill listing.");
+        }
+        return yield* listSkills({
+          provider: "opencode",
+          cwd: process.cwd(),
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(result.skills).toEqual([
+      {
+        name: "analyze",
+        path: "/home/test/.opencode/skills/analyze/SKILL.md",
+        enabled: true,
+        description: "Answer data questions.",
+        interface: {
           shortDescription: "Answer data questions.",
         },
       },

@@ -1142,9 +1142,14 @@ function readFirstNonEmptyString(
 }
 
 function readOpenCodeSkillPath(record: Record<string, unknown> | undefined): string | undefined {
-  const directPath = readFirstNonEmptyString(record, ["path", "file", "filename"]);
+  const directPath = readFirstNonEmptyString(record, ["path", "file", "filename", "location"]);
   if (directPath) return directPath;
-  return readFirstNonEmptyString(asPlainRecord(record?.source), ["path", "file", "filename"]);
+  return readFirstNonEmptyString(asPlainRecord(record?.source), [
+    "path",
+    "file",
+    "filename",
+    "location",
+  ]);
 }
 
 function readOpenCodeSkillEnabled(record: Record<string, unknown> | undefined): boolean {
@@ -4167,13 +4172,29 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
           );
         });
 
-      const listSkills: NonNullable<OpenCodeAdapterShape["listSkills"]> = () =>
-        withDiscoveryInventory({}, ({ inventory }) =>
-          Effect.succeed({
-            skills: normalizeOpenCodeSkillDescriptors(inventory),
-            source: "opencode-runtime",
-            cached: false,
-          } satisfies ProviderListSkillsResult),
+      const listSkills: NonNullable<OpenCodeAdapterShape["listSkills"]> = (input) =>
+        withDiscoveryInventory({}, ({ client, inventory }) =>
+          Effect.gen(function* () {
+            const endpointSkills = yield* runOpenCodeSdk("app.skills", () =>
+              client.app.skills({ directory: input.cwd }),
+            ).pipe(
+              Effect.map((result) => result.data ?? []),
+              Effect.catch(() => Effect.succeed([])),
+            );
+            const skills =
+              endpointSkills.length > 0
+                ? endpointSkills.flatMap((skill) => {
+                    const descriptor = normalizeOpenCodeSkillDescriptor(skill);
+                    return descriptor ? [descriptor] : [];
+                  })
+                : normalizeOpenCodeSkillDescriptors(inventory);
+
+            return {
+              skills,
+              source: "opencode-runtime",
+              cached: false,
+            } satisfies ProviderListSkillsResult;
+          }),
         );
 
       const listModels: NonNullable<OpenCodeAdapterShape["listModels"]> = (input) => {
