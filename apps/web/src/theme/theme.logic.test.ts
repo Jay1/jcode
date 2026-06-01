@@ -694,6 +694,50 @@ describe("buildThemeCssVariables", () => {
     expect(getCodeThemeSeed("night-owl", "dark").accent).toBe("#82aaff");
   });
 
+  it("locks requested hand-authored official-palette depth roles", () => {
+    const expectations = [
+      ["dracula", "dark", "#21222c", "#282a36", "#44475a", "#44475a", "#8be9fd", "#f1fa8c"],
+      ["nord", "dark", "#2e3440", "#3b4252", "#434c5e", "#434c5e", "#8fbcbb", "#ebcb8b"],
+      ["raycast", "dark", "#07080a", "#101111", "#1b1c1e", "#252829", "#55b3ff", "#ffbc33"],
+      ["raycast", "light", "#ffffff", "#f7f7f7", "#e6e6e6", "#ffe7e7", "#55b3ff", "#ffbc33"],
+      ["sentry", "dark", "#1d1127", "#2b1d38", "#362d59", "#362d59", "#33bf9e", "#ffc227"],
+      ["gruvbox", "dark", "#1d2021", "#282828", "#3c3836", "#504945", "#689d6a", "#fabd2f"],
+      ["gruvbox", "light", "#fbf1c7", "#f9f5d7", "#ebdbb2", "#d5c4a1", "#689d6a", "#b57614"],
+      ["tokyo-night", "dark", "#0C0E14", "#16161e", "#292e42", "#292e42", "#1abc9c", "#e0af68"],
+    ] as const;
+
+    for (const [
+      codeThemeId,
+      variant,
+      canvas,
+      sidebar,
+      cardHeader,
+      toolbarHover,
+      token,
+      warning,
+    ] of expectations) {
+      const variables = buildThemeCssVariables(
+        {
+          codeThemeId,
+          theme: getCodeThemeSeed(codeThemeId, variant),
+        },
+        variant,
+      ).variables;
+
+      expect(variables["--app-surface-canvas"], `${codeThemeId}/${variant}/canvas`).toBe(canvas);
+      expect(variables["--app-surface-sidebar"], `${codeThemeId}/${variant}/sidebar`).toBe(sidebar);
+      expect(variables["--app-surface-card-header"], `${codeThemeId}/${variant}/header`).toBe(
+        cardHeader,
+      );
+      expect(
+        variables["--app-surface-toolbar-hover"],
+        `${codeThemeId}/${variant}/toolbar hover`,
+      ).toBe(toolbarHover);
+      expect(variables["--app-chat-token"], `${codeThemeId}/${variant}/token`).toBe(token);
+      expect(variables["--app-chat-warning"], `${codeThemeId}/${variant}/warning`).toBe(warning);
+    }
+  });
+
   it("emits non-empty app-depth tokens for non-Catppuccin themes", () => {
     const cssVariables = buildThemeCssVariables(
       {
@@ -754,6 +798,42 @@ describe("buildThemeCssVariables", () => {
     }
   });
 
+  it("keeps bundled app-depth affordance tokens independent from legacy Codex aliases", () => {
+    const appSpecificTokens = [
+      ["--app-chat-chip-bg", "--color-background-button-secondary"],
+      ["--app-chat-chip-border", "--color-border"],
+      ["--app-chat-code-copy-bg", "--color-background-elevated-secondary-opaque"],
+      ["--app-assistant-message-border", "--color-border-light"],
+      ["--app-runtime-chip-bg", "--color-background-button-secondary"],
+      ["--app-runtime-chip-border", "--color-border-light"],
+      ["--app-surface-toolbar-active", "--color-background-button-secondary-active"],
+      ["--app-surface-toolbar-hover", "--color-background-button-secondary-hover"],
+      ["--app-sidebar-row-hover-bg", "--color-background-button-secondary-hover"],
+      ["--app-transcript-stage-border", "--color-border-light"],
+      ["--app-work-row-border", "--color-border-light"],
+      ["--app-work-row-hover-bg", "--color-background-elevated-secondary"],
+    ] as const;
+
+    for (const option of CODE_THEME_OPTIONS) {
+      for (const variant of option.variants) {
+        const variables = buildThemeCssVariables(
+          {
+            codeThemeId: option.id,
+            theme: getCodeThemeSeed(option.id, variant),
+          },
+          variant,
+        ).variables;
+
+        for (const [appToken, codexToken] of appSpecificTokens) {
+          expect(
+            variables[appToken],
+            `${option.id}/${variant}/${appToken} should not collapse to ${codexToken}`,
+          ).not.toBe(variables[codexToken]);
+        }
+      }
+    }
+  });
+
   it("locks representative bundled theme-depth profile values", () => {
     const expectations = [
       ["dp-code", "dark", "#0b0b0b", "#141414", "#313131", "rgba(96, 115, 204, 0.14)", "#f5b44a"],
@@ -763,7 +843,7 @@ describe("buildThemeCssVariables", () => {
       ["linear", "dark", "#0d0d0e", "#161617", "#2b2b2d", "rgba(96, 106, 204, 0.12)", "#f5b44a"],
       ["github", "light", "#f6f6f6", "#efefef", "#f2f2f2", "rgba(9, 105, 218, 0.09)", "#d97706"],
       ["github", "dark", "#0b0e13", "#15181d", "#2e3339", "rgba(31, 111, 235, 0.13)", "#f5b44a"],
-      ["gruvbox", "dark", "#222222", "#2c2b29", "#47453f", "rgba(69, 133, 136, 0.14)", "#fabd2f"],
+      ["gruvbox", "dark", "#1d2021", "#282828", "#3c3836", "rgba(69, 133, 136, 0.14)", "#fabd2f"],
       [
         "rose-pine",
         "dark",
