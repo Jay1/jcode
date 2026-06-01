@@ -302,6 +302,39 @@ describe("store pure functions", () => {
     });
   });
 
+  it("preserves newer live project icon metadata from stale read-model syncs", () => {
+    const initialState: AppState = {
+      projects: [
+        makeProject({
+          iconMetadata: {
+            iconId: "typescript",
+            label: "TypeScript",
+          },
+          updatedAt: "2026-02-27T00:05:00.000Z",
+        }),
+      ],
+      threads: [],
+      sidebarThreadSummaryById: {},
+      threadsHydrated: true,
+    };
+
+    const next = syncServerReadModel(initialState, {
+      ...makeReadModel(makeReadModelThread({})),
+      projects: [
+        makeReadModelProject({
+          iconMetadata: null,
+          updatedAt: "2026-02-27T00:00:00.000Z",
+        }),
+      ],
+    });
+
+    expect(next.projects[0]?.iconMetadata).toEqual({
+      iconId: "typescript",
+      label: "TypeScript",
+    });
+    expect(next.projects[0]?.updatedAt).toBe("2026-02-27T00:00:00.000Z");
+  });
+
   it("does not regress a semantic branch when local workspace patches only report a temp branch", () => {
     const state = makeState(
       makeThread({
@@ -659,6 +692,44 @@ describe("store pure functions", () => {
       localName: "Local Name",
       cwd: "/tmp/shared-root",
     });
+  });
+
+  it("preserves newer live project icon metadata from stale shell upserts", () => {
+    const initialState: AppState = {
+      projects: [
+        makeProject({
+          iconMetadata: {
+            iconId: "typescript",
+            label: "TypeScript",
+          },
+          updatedAt: "2026-02-27T00:05:00.000Z",
+        }),
+      ],
+      threads: [],
+      sidebarThreadSummaryById: {},
+      threadsHydrated: true,
+    };
+
+    const next = applyShellEvent(initialState, {
+      kind: "project-upserted",
+      sequence: 2,
+      project: {
+        id: ProjectId.makeUnsafe("project-1"),
+        title: "Project",
+        workspaceRoot: "/tmp/project",
+        defaultModelSelection: null,
+        scripts: [],
+        iconMetadata: null,
+        createdAt: "2026-02-27T00:00:00.000Z",
+        updatedAt: "2026-02-27T00:00:00.000Z",
+      },
+    } satisfies OrchestrationShellStreamEvent);
+
+    expect(next.projects[0]?.iconMetadata).toEqual({
+      iconId: "typescript",
+      label: "TypeScript",
+    });
+    expect(next.projects[0]?.updatedAt).toBe("2026-02-27T00:00:00.000Z");
   });
 
   it("drops descendant thread state when a shell project removal arrives", () => {

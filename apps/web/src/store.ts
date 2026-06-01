@@ -583,6 +583,37 @@ function normalizeProjectScripts(
   return arraysShallowEqual(previous, nextScripts) ? previous : nextScripts;
 }
 
+function shouldPreservePreviousProjectIconMetadata(
+  previous: Project | undefined,
+  incomingIconMetadata: Project["iconMetadata"],
+  incomingUpdatedAt: string | undefined,
+): previous is Project & { iconMetadata: NonNullable<Project["iconMetadata"]> } {
+  return (
+    incomingIconMetadata === null &&
+    previous?.iconMetadata !== null &&
+    previous?.iconMetadata !== undefined &&
+    previous.updatedAt !== undefined &&
+    incomingUpdatedAt !== undefined &&
+    incomingUpdatedAt < previous.updatedAt
+  );
+}
+
+function normalizeProjectIconMetadata(
+  incomingIconMetadata: Project["iconMetadata"],
+  incomingUpdatedAt: string | undefined,
+  previous: Project | undefined,
+): Project["iconMetadata"] {
+  if (
+    shouldPreservePreviousProjectIconMetadata(previous, incomingIconMetadata, incomingUpdatedAt)
+  ) {
+    return previous.iconMetadata;
+  }
+  return previous?.iconMetadata !== undefined &&
+    deepEqualJson(previous.iconMetadata, incomingIconMetadata)
+    ? previous.iconMetadata
+    : incomingIconMetadata;
+}
+
 function normalizeProjectFromReadModel(
   incoming: ReadModelProject,
   previous: Project | undefined,
@@ -596,11 +627,11 @@ function normalizeProjectFromReadModel(
       : normalizeModelSelection(incoming.defaultModelSelection, previous?.defaultModelSelection);
   const scripts = normalizeProjectScripts(incoming.scripts, previous?.scripts);
   const incomingIconMetadata = incoming.iconMetadata ?? null;
-  const iconMetadata =
-    previous?.iconMetadata !== undefined &&
-    deepEqualJson(previous.iconMetadata, incomingIconMetadata)
-      ? previous.iconMetadata
-      : incomingIconMetadata;
+  const iconMetadata = normalizeProjectIconMetadata(
+    incomingIconMetadata,
+    incoming.updatedAt,
+    previous,
+  );
   const expanded =
     previous?.expanded ??
     (persistedExpandedProjectCwds.size > 0
@@ -656,11 +687,11 @@ function normalizeProjectFromShell(
       : normalizeModelSelection(incoming.defaultModelSelection, previous?.defaultModelSelection);
   const scripts = normalizeProjectScripts(incoming.scripts, previous?.scripts);
   const incomingIconMetadata = incoming.iconMetadata ?? null;
-  const iconMetadata =
-    previous?.iconMetadata !== undefined &&
-    deepEqualJson(previous.iconMetadata, incomingIconMetadata)
-      ? previous.iconMetadata
-      : incomingIconMetadata;
+  const iconMetadata = normalizeProjectIconMetadata(
+    incomingIconMetadata,
+    incoming.updatedAt,
+    previous,
+  );
   const expanded =
     previous?.expanded ??
     (persistedExpandedProjectCwds.size > 0
