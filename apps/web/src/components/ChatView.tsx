@@ -383,6 +383,7 @@ const EMPTY_KEYBINDINGS: ResolvedKeybindingsConfig = [];
 const EMPTY_PROJECT_ENTRIES: ProjectEntry[] = [];
 const EMPTY_PROVIDER_NATIVE_COMMANDS: ProviderNativeCommandDescriptor[] = [];
 const EMPTY_PROVIDER_SKILLS: ProviderSkillDescriptor[] = [];
+const EMPTY_TERMINAL_CONTEXTS: TerminalContextDraft[] = [];
 
 function revokeBlobPreviewUrlsAfterPaint(previewUrls: readonly string[]): void {
   if (previewUrls.length === 0 || typeof window === "undefined") {
@@ -4922,7 +4923,8 @@ export default function ChatView({
     removeComposerImageFromDraft(imageId);
   };
 
-  const onComposerPaste = (event: React.ClipboardEvent<HTMLElement>) => {
+  const onComposerPasteRef = useRef<(event: React.ClipboardEvent<HTMLElement>) => void>(() => {});
+  onComposerPasteRef.current = (event: React.ClipboardEvent<HTMLElement>) => {
     const files = Array.from(event.clipboardData.files);
     if (files.length === 0) {
       return;
@@ -4934,6 +4936,9 @@ export default function ChatView({
     event.preventDefault();
     addComposerImages(imageFiles);
   };
+  const onComposerPaste = useCallback((event: React.ClipboardEvent<HTMLElement>) => {
+    onComposerPasteRef.current(event);
+  }, []);
 
   const onComposerDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
     if (!event.dataTransfer.types.includes("Files")) {
@@ -7154,7 +7159,10 @@ export default function ChatView({
     ],
   );
 
-  const onComposerCommandKey = (
+  const onComposerCommandKeyRef = useRef<
+    (key: "ArrowDown" | "ArrowUp" | "Enter" | "Tab" | "Slash", event: KeyboardEvent) => boolean
+  >(() => false);
+  onComposerCommandKeyRef.current = (
     key: "ArrowDown" | "ArrowUp" | "Enter" | "Tab" | "Slash",
     event: KeyboardEvent,
   ) => {
@@ -7220,6 +7228,11 @@ export default function ChatView({
     }
     return false;
   };
+  const onComposerCommandKey = useCallback(
+    (key: "ArrowDown" | "ArrowUp" | "Enter" | "Tab" | "Slash", event: KeyboardEvent) =>
+      onComposerCommandKeyRef.current(key, event),
+    [],
+  );
   const onExpandTimelineImage = useCallback((preview: ExpandedImagePreview) => {
     setExpandedImage(preview);
   }, []);
@@ -7604,7 +7617,7 @@ export default function ChatView({
                 terminalContexts={
                   !isComposerApprovalState && pendingUserInputs.length === 0
                     ? composerTerminalContexts
-                    : []
+                    : EMPTY_TERMINAL_CONTEXTS
                 }
                 mentionReferences={selectedComposerMentions}
                 onRemoveTerminalContext={removeComposerTerminalContextFromDraft}
@@ -8342,7 +8355,7 @@ export default function ChatView({
                             terminalContexts={
                               !isComposerApprovalState && pendingUserInputs.length === 0
                                 ? composerTerminalContexts
-                                : []
+                                : EMPTY_TERMINAL_CONTEXTS
                             }
                             mentionReferences={selectedComposerMentions}
                             onRemoveTerminalContext={removeComposerTerminalContextFromDraft}
