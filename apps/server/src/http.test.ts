@@ -61,6 +61,7 @@ async function makeConfig(overrides: Partial<ServerConfigShape> = {}): Promise<S
     devUrl: undefined,
     noBrowser: true,
     authToken: undefined,
+    devAutomationAccess: false,
     autoBootstrapProjectFromCwd: false,
     logProviderEvents: false,
     logWebSocketEvents: false,
@@ -136,6 +137,16 @@ function makeFakeServerAuth(overrides: Partial<ServerAuthShape> = {}): ServerAut
         sessionMethod: "bearer-session-token",
         expiresAt,
         sessionToken: "bearer-session-token",
+      }),
+    issueDevAutomationSession: () =>
+      Effect.succeed({
+        response: {
+          authenticated: true,
+          role: "owner",
+          sessionMethod: "browser-session-cookie",
+          expiresAt,
+        },
+        sessionToken: "automation-session-token",
       }),
     issuePairingCredential: () =>
       Effect.succeed({ id: "pairing-id", credential: "PAIRINGTOKEN", expiresAt }),
@@ -341,6 +352,85 @@ describe("createHttpRequestHandler", () => {
         authenticated: true,
         sessionMethod: "browser-session-cookie",
       });
+    });
+  });
+
+  it("grants a dev automation owner session only on enabled same-origin loopback requests", async () => {
+    const config = await makeConfig({ host: "127.0.0.1", devAutomationAccess: true });
+    const handler = await makeHandler(config, {
+      serverAuth: makeFakeServerAuth(),
+      cookieName: "t3_session",
+    });
+
+    await withServer(handler, async (origin) => {
+      const response = await fetch(`${origin}/api/auth/automation-access-grant`, {
+        method: "POST",
+        headers: { Origin: origin },
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("set-cookie")).toContain(
+        "t3_session=automation-session-token",
+      );
+      await expect(response.json()).resolves.toMatchObject({
+        authenticated: true,
+        role: "owner",
+        sessionMethod: "browser-session-cookie",
+      });
+    });
+  });
+
+  it("rejects the dev automation grant when the opt-in flag is disabled", async () => {
+    const config = await makeConfig({ host: "127.0.0.1", devAutomationAccess: false });
+    const handler = await makeHandler(config, {
+      serverAuth: makeFakeServerAuth(),
+      cookieName: "t3_session",
+    });
+
+    await withServer(handler, async (origin) => {
+      const response = await fetch(`${origin}/api/auth/automation-access-grant`, {
+        method: "POST",
+        headers: { Origin: origin },
+      });
+
+      expect(response.status).toBe(403);
+      expect(response.headers.get("set-cookie")).toBeNull();
+    });
+  });
+
+  it("rejects the dev automation grant when the configured host is omitted", async () => {
+    const config = await makeConfig({ devAutomationAccess: true });
+    const handler = await makeHandler(config, {
+      serverAuth: makeFakeServerAuth(),
+      cookieName: "t3_session",
+    });
+
+    await withServer(handler, async (origin) => {
+      const response = await fetch(`${origin}/api/auth/automation-access-grant`, {
+        method: "POST",
+        headers: { Origin: origin },
+      });
+
+      expect(response.status).toBe(403);
+      expect(response.headers.get("set-cookie")).toBeNull();
+    });
+  });
+
+  it("rejects the dev automation grant on remote-reachable hosts", async () => {
+    const config = await makeConfig({ host: "0.0.0.0", devAutomationAccess: true });
+    const handler = await makeHandler(config, {
+      serverAuth: makeFakeServerAuth(),
+      cookieName: "t3_session",
+    });
+
+    await withServer(handler, async (origin) => {
+      const response = await fetch(`${origin}/api/auth/automation-access-grant`, {
+        method: "POST",
+        headers: { Origin: origin },
+      });
+
+      expect(response.status).toBe(403);
+      expect(response.headers.get("set-cookie")).toBeNull();
     });
   });
 });
