@@ -12,6 +12,9 @@
 - Install with `bun install`.
 - Use focused commands while developing: `bun run --cwd <workspace> test <path>`, `bun run --cwd <workspace> build`, or `bun run --cwd <workspace> typecheck`.
 - Root CI runs `bun run fmt:check`, `bun run lint`, `bun run typecheck`, `bun run test`, browser tests, and `bun run build:desktop`.
+- Before pushing, include formatting in focused verification for touched source files. Use `bunx oxfmt@0.52.0 --check <files>` for a narrow check, or `bun run fmt:check` when many files changed or CI already failed formatting.
+- When fixing red CI, reproduce the first failed GitHub Actions step locally before investigating later gates. Formatting failures are usually fixed by running `bunx oxfmt@0.52.0 <files>` only on files you touched.
+- See `docs/runbooks/ci-operations.md` for the current CI gate order and red-CI triage workflow.
 - Do not run repo-wide `bun run fmt`, `bun run lint`, or `bun run typecheck` unless explicitly requested; prefer focused verification for touched areas.
 
 ## Environment
