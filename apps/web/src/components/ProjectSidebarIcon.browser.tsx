@@ -49,7 +49,7 @@ afterEach(() => {
 });
 
 describe("ProjectSidebarIcon", () => {
-  it("renders TypeScript project icon metadata without probing for a favicon", async () => {
+  it("renders a branded TypeScript project icon without probing for a favicon", async () => {
     const imageRequests: string[] = [];
     installImageProbeRecorder(imageRequests);
 
@@ -62,13 +62,16 @@ describe("ProjectSidebarIcon", () => {
     );
 
     await expect.element(page.getByLabelText("TypeScript project icon")).toBeInTheDocument();
-    await expect.element(page.getByText("TS")).toBeInTheDocument();
-    expect(screen.container.textContent).not.toContain("V");
+    const icon = screen.container.querySelector('[data-project-icon-id="typescript"]');
+    expect(icon).not.toBeNull();
+    expect(icon?.querySelector("svg")).not.toBeNull();
+    expect(getComputedStyle(icon as HTMLElement).color).toBe("rgb(49, 120, 198)");
+    expect(screen.container.textContent).not.toContain("TS");
     expect(imageRequests).toEqual([]);
     await screen.unmount();
   });
 
-  it("renders Vue project icon metadata distinctly", async () => {
+  it("renders Vue project icon metadata distinctly with brand color", async () => {
     const imageRequests: string[] = [];
     installImageProbeRecorder(imageRequests);
 
@@ -81,7 +84,10 @@ describe("ProjectSidebarIcon", () => {
     );
 
     await expect.element(page.getByLabelText("Vue project icon")).toBeInTheDocument();
-    await expect.element(page.getByText("V")).toBeInTheDocument();
+    const icon = screen.container.querySelector('[data-project-icon-id="vue"]');
+    expect(icon).not.toBeNull();
+    expect(icon?.querySelector("svg")).not.toBeNull();
+    expect(getComputedStyle(icon as HTMLElement).color).toBe("rgb(66, 184, 131)");
     expect(screen.container.textContent).not.toContain("TS");
     expect(imageRequests).toEqual([]);
     await screen.unmount();

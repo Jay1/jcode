@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
 
 describe("ProjectSidebarIcon", () => {
-  it("renders accessible TypeScript project metadata glyphs", () => {
+  it("renders accessible branded TypeScript project icons", () => {
     const markup = renderToStaticMarkup(
       <ProjectSidebarIcon
         cwd="/work/typescript-app"
@@ -15,10 +15,13 @@ describe("ProjectSidebarIcon", () => {
 
     expect(markup).toContain('role="img"');
     expect(markup).toContain('aria-label="TypeScript project icon"');
+    expect(markup).toContain('data-project-icon-id="typescript"');
+    expect(markup).toContain("<svg");
+    expect(markup).toContain("#3178C6");
     expect(markup).not.toContain("project-favicon");
   });
 
-  it("renders accessible Vue project metadata glyphs", () => {
+  it("renders accessible branded Vue project icons", () => {
     const markup = renderToStaticMarkup(
       <ProjectSidebarIcon
         cwd="/work/vue-app"
@@ -29,6 +32,9 @@ describe("ProjectSidebarIcon", () => {
 
     expect(markup).toContain('role="img"');
     expect(markup).toContain('aria-label="Vue project icon"');
+    expect(markup).toContain('data-project-icon-id="vue"');
+    expect(markup).toContain("<svg");
+    expect(markup).toContain("#42B883");
   });
 
   it("keeps the decorative folder fallback when metadata is absent", () => {
