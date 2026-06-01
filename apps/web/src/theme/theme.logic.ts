@@ -218,6 +218,29 @@ const CATPPUCCIN_PALETTE: Record<ThemeVariant, CatppuccinPalette> = {
     yellow: "#df8e1d",
   },
 };
+// Source: folke/tokyonight.nvim extras/lua/tokyonight_night.lua.
+const TOKYO_NIGHT_PALETTE = {
+  bg: "#1a1b26",
+  bgDark: "#16161e",
+  bgDark1: "#0C0E14",
+  bgHighlight: "#292e42",
+  bgVisual: "#283457",
+  blue: "#7aa2f7",
+  blue1: "#2ac3de",
+  blue7: "#394b70",
+  borderHighlight: "#27a1b9",
+  cyan: "#7dcfff",
+  fg: "#c0caf5",
+  fgDark: "#a9b1d6",
+  green: "#9ece6a",
+  magenta: "#bb9af7",
+  orange: "#ff9e64",
+  purple: "#9d7cd8",
+  red: "#f7768e",
+  terminalBlack: "#414868",
+  teal: "#1abc9c",
+  yellow: "#e0af68",
+} as const;
 const THEME_DEPTH_PROFILES: Partial<
   Record<string, Partial<Record<ThemeVariant, ThemeDepthProfile>>>
 > = {
@@ -1059,12 +1082,142 @@ function buildAppDepthVariables(
     };
   }
 
+  if (pack.codeThemeId === "tokyo-night" && variant === "dark") {
+    return buildTokyoNightAppDepthVariables(pack);
+  }
+
   return buildProfileAppDepthVariables(
     pack,
     variant,
     resolvedTokens,
     getThemeDepthProfile(pack.codeThemeId, variant),
   );
+}
+
+function buildTokyoNightAppDepthVariables(pack: ThemePack): Record<string, string> {
+  const palette = TOKYO_NIGHT_PALETTE;
+  const accent = parseHexColor(pack.theme.accent);
+  const fg = parseHexColor(pack.theme.ink);
+  const terminalBlack = parseHexColor(palette.terminalBlack);
+  const blue7 = parseHexColor(palette.blue7);
+  const red = parseHexColor(pack.theme.semanticColors.diffRemoved);
+  const green = parseHexColor(pack.theme.semanticColors.diffAdded);
+  const yellow = parseHexColor(palette.yellow);
+  const bg = parseHexColor(palette.bg);
+
+  return {
+    "--app-accent-muted": formatRgba(accent, 0.3),
+    "--app-accent-soft": formatRgba(accent, 0.14),
+    "--app-accent-strong": pack.theme.accent,
+    ...buildAgentChipVariables({
+      amber: palette.yellow,
+      cyan: palette.cyan,
+      default: palette.yellow,
+      fuchsia: palette.magenta,
+      orange: palette.orange,
+      teal: palette.teal,
+      violet: palette.purple,
+    }),
+    "--app-chat-chip-bg": formatRgba(parseHexColor(palette.bgHighlight), 0.58),
+    "--app-chat-chip-border": formatRgba(terminalBlack, 0.74),
+    "--app-chat-code-bg": palette.bgDark,
+    "--app-chat-code-border": palette.bgHighlight,
+    "--app-chat-code-copy-bg": formatRgba(parseHexColor(palette.bgHighlight), 0.88),
+    "--app-chat-code-copy-fg": pack.theme.accent,
+    "--app-chat-command": pack.theme.semanticColors.skill,
+    "--app-chat-error": pack.theme.semanticColors.diffRemoved,
+    "--app-chat-error-bg": formatRgba(red, 0.12),
+    "--app-chat-file": pack.theme.accent,
+    "--app-chat-heading": pack.theme.semanticColors.skill,
+    "--app-chat-link": pack.theme.accent,
+    "--app-chat-success": pack.theme.semanticColors.diffAdded,
+    "--app-chat-success-bg": formatRgba(green, 0.12),
+    "--app-chat-token": palette.teal,
+    "--app-chat-warning": palette.yellow,
+    "--app-chat-warning-bg": formatRgba(yellow, 0.12),
+    "--app-diff-card-bg": palette.bgDark,
+    "--app-diff-card-header-bg": palette.bgHighlight,
+    "--app-diff-title": pack.theme.accent,
+    "--app-plugin-glyph-border": formatRgba(terminalBlack, 0.55),
+    "--app-plugin-glyph-gradient-from": pack.theme.semanticColors.skill,
+    "--app-plugin-glyph-gradient-to": pack.theme.accent,
+    "--app-plugin-glyph-text": pack.theme.ink,
+    "--app-scroll-button-bg": palette.bgHighlight,
+    "--app-scroll-button-border": palette.terminalBlack,
+    "--app-scroll-button-fg": pack.theme.accent,
+    "--app-scroll-button-hover-bg": palette.terminalBlack,
+    "--app-scroll-button-hover-fg": palette.magenta,
+    "--app-scrollbar-thumb": formatRgba(terminalBlack, 0.72),
+    "--app-scrollbar-thumb-hover": formatRgba(terminalBlack, 0.92),
+    "--app-chrome-control-bg": palette.bgHighlight,
+    "--app-chrome-control-border": palette.terminalBlack,
+    "--app-chrome-control-fg": pack.theme.ink,
+    "--app-chrome-control-hover-bg": palette.terminalBlack,
+    "--app-chrome-control-hover-fg": pack.theme.ink,
+    "--app-chrome-control-active-bg": formatRgba(accent, 0.18),
+    "--app-control-icon-bg": "transparent",
+    "--app-control-icon-border": formatRgba(terminalBlack, 0.55),
+    "--app-control-icon-fg": formatRgba(fg, 0.62),
+    "--app-control-icon-hover-bg": palette.bgHighlight,
+    "--app-control-icon-hover-fg": formatRgba(fg, 0.88),
+    "--app-state-focus": palette.borderHighlight,
+    "--app-state-hover": palette.bgHighlight,
+    "--app-state-selected": formatRgba(accent, 0.18),
+    "--app-state-selected-border": pack.theme.accent,
+    "--app-metadata-fg": formatRgba(fg, 0.86),
+    "--app-metadata-muted-fg": formatRgba(fg, 0.62),
+    "--app-text-metadata": formatRgba(fg, 0.62),
+    "--app-text-metadata-strong": formatRgba(fg, 0.86),
+    "--app-status-error-bg": formatRgba(red, 0.14),
+    "--app-status-error-border": formatRgba(red, 0.38),
+    ...buildStatusVariables(
+      {
+        error: pack.theme.semanticColors.diffRemoved,
+        input: palette.teal,
+        muted: palette.terminalBlack,
+        plan: pack.theme.semanticColors.skill,
+        success: pack.theme.semanticColors.diffAdded,
+        warning: palette.yellow,
+        working: pack.theme.accent,
+      },
+      "dark",
+      { mutedBackground: palette.bgHighlight },
+    ),
+    "--app-status-warning-bg": formatRgba(yellow, 0.13),
+    "--app-status-warning-border": formatRgba(yellow, 0.38),
+    ...buildSubagentAccentVariables([
+      palette.red,
+      pack.theme.semanticColors.diffAdded,
+      pack.theme.accent,
+      palette.orange,
+      pack.theme.semanticColors.skill,
+      palette.teal,
+      palette.purple,
+      palette.yellow,
+    ]),
+    "--app-surface-canvas": palette.bgDark1,
+    "--app-surface-card": palette.bg,
+    "--app-surface-card-header": palette.bgHighlight,
+    "--app-surface-composer": palette.bg,
+    "--app-surface-panel": palette.bgDark,
+    "--app-surface-sidebar": palette.bgDark,
+    "--app-surface-topbar": palette.bgDark,
+    "--app-surface-toolbar": palette.bgDark,
+    "--app-surface-toolbar-active": palette.terminalBlack,
+    "--app-surface-toolbar-border": palette.terminalBlack,
+    "--app-surface-toolbar-hover": palette.bgHighlight,
+    "--app-terminal-search-active-match-bg": palette.bgVisual,
+    "--app-terminal-search-active-match-border": palette.yellow,
+    "--app-terminal-search-active-match-overview": palette.yellow,
+    "--app-terminal-search-match-bg": palette.bgHighlight,
+    "--app-terminal-search-match-border": pack.theme.accent,
+    "--app-terminal-search-match-overview": palette.orange,
+    "--app-work-row-bg": formatRgba(bg, 0.82),
+    "--app-work-row-border": formatRgba(blue7, 0.52),
+    "--app-work-row-hover-bg": palette.bgHighlight,
+    "--app-work-row-icon": formatRgba(fg, 0.48),
+    "--app-wordmark-prefix": APP_WORDMARK_PREFIX_BLOOD_RED,
+  };
 }
 
 function getThemeDepthProfile(codeThemeId: string, variant: ThemeVariant): ThemeDepthProfile {

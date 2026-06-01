@@ -246,6 +246,7 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
       surface: "#ffffff",
     },
   },
+  // Source-backed correction: morhetz/gruvbox-contrib color.table green roles.
   gruvbox: {
     dark: {
       accent: "#458588",
@@ -257,7 +258,7 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
       ink: "#ebdbb2",
       opaqueWindows: false,
       semanticColors: {
-        diffAdded: "#ebdbb2",
+        diffAdded: "#98971a",
         diffRemoved: "#cc241d",
         skill: "#b16286",
       },
@@ -273,7 +274,7 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
       ink: "#3c3836",
       opaqueWindows: false,
       semanticColors: {
-        diffAdded: "#3c3836",
+        diffAdded: "#79740e",
         diffRemoved: "#cc241d",
         skill: "#b16286",
       },
@@ -386,9 +387,10 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
       surface: "#272822",
     },
   },
+  // Source-backed correction: sdras/night-owl-vscode-theme blue accent role.
   "night-owl": {
     dark: {
-      accent: "#44596b",
+      accent: "#82aaff",
       contrast: 60,
       fonts: {
         code: null,
@@ -560,6 +562,7 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
       surface: "#ffffff",
     },
   },
+  // Source-backed correction: rosepinetheme.com palette love roles.
   "rose-pine": {
     dark: {
       accent: "#ea9a97",
@@ -572,7 +575,7 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
       opaqueWindows: false,
       semanticColors: {
         diffAdded: "#9ccfd8",
-        diffRemoved: "#908caa",
+        diffRemoved: "#eb6f92",
         skill: "#c4a7e7",
       },
       surface: "#232136",
@@ -588,7 +591,7 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
       opaqueWindows: false,
       semanticColors: {
         diffAdded: "#56949f",
-        diffRemoved: "#797593",
+        diffRemoved: "#b4637a",
         skill: "#907aa9",
       },
       surface: "#faf4ed",
@@ -612,9 +615,10 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
       surface: "#2d2935",
     },
   },
+  // Source-backed correction: ethanschoonover.com/solarized blue role.
   solarized: {
     dark: {
-      accent: "#d30102",
+      accent: "#268bd2",
       contrast: 60,
       fonts: {
         code: null,
@@ -630,7 +634,7 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
       surface: "#002b36",
     },
     light: {
-      accent: "#b58900",
+      accent: "#268bd2",
       contrast: 45,
       fonts: {
         code: null,
@@ -664,20 +668,21 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
       surface: "#02120c",
     },
   },
+  // Source-backed correction: folke/tokyonight.nvim extras/lua/tokyonight_night.lua.
   "tokyo-night": {
     dark: {
-      accent: "#3d59a1",
+      accent: "#7aa2f7",
       contrast: 60,
       fonts: {
         code: null,
         ui: null,
       },
-      ink: "#a9b1d6",
+      ink: "#c0caf5",
       opaqueWindows: false,
       semanticColors: {
-        diffAdded: "#449dab",
-        diffRemoved: "#914c54",
-        skill: "#9d7cd8",
+        diffAdded: "#9ece6a",
+        diffRemoved: "#f7768e",
+        skill: "#bb9af7",
       },
       surface: "#1a1b26",
     },

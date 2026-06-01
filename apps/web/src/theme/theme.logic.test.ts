@@ -589,6 +589,74 @@ describe("buildThemeCssVariables", () => {
     expect(cssVariables.variables["--app-chat-code-border"]).toBe("#313244");
   });
 
+  it("emits Tokyo Night app-depth tokens from official night palette roles", () => {
+    const cssVariables = buildThemeCssVariables(
+      {
+        codeThemeId: "tokyo-night",
+        theme: getCodeThemeSeed("tokyo-night", "dark"),
+      },
+      "dark",
+    );
+
+    expect(cssVariables.variables["--app-surface-canvas"]).toBe("#0C0E14");
+    expect(cssVariables.variables["--app-surface-sidebar"]).toBe("#16161e");
+    expect(cssVariables.variables["--app-surface-topbar"]).toBe("#16161e");
+    expect(cssVariables.variables["--app-surface-card"]).toBe("#1a1b26");
+    expect(cssVariables.variables["--app-surface-card-header"]).toBe("#292e42");
+    expect(cssVariables.variables["--app-chat-heading"]).toBe("#bb9af7");
+    expect(cssVariables.variables["--app-chat-link"]).toBe("#7aa2f7");
+    expect(cssVariables.variables["--app-chat-token"]).toBe("#1abc9c");
+    expect(cssVariables.variables["--app-chat-warning"]).toBe("#e0af68");
+    expect(cssVariables.variables["--app-chat-error"]).toBe("#f7768e");
+    expect(cssVariables.variables["--app-state-focus"]).toBe("#27a1b9");
+    expect(cssVariables.variables["--app-terminal-search-match-bg"]).toBe("#292e42");
+    expect(cssVariables.variables["--app-terminal-search-active-match-bg"]).toBe("#283457");
+  });
+
+  it("lets Tokyo Night theme edits drive accent and semantic depth tokens", () => {
+    const pack = {
+      codeThemeId: "tokyo-night",
+      theme: getCodeThemeSeed("tokyo-night", "dark"),
+    };
+    const cssVariables = buildThemeCssVariables(
+      {
+        ...pack,
+        theme: {
+          ...pack.theme,
+          accent: "#ff00aa",
+          ink: "#f8f8f2",
+          semanticColors: {
+            ...pack.theme.semanticColors,
+            diffAdded: "#00ff66",
+            diffRemoved: "#ff3355",
+            skill: "#d787ff",
+          },
+        },
+      },
+      "dark",
+    );
+
+    expect(cssVariables.variables["--app-accent-strong"]).toBe("#ff00aa");
+    expect(cssVariables.variables["--app-state-selected-border"]).toBe("#ff00aa");
+    expect(cssVariables.variables["--app-state-selected"]).toBe("rgba(255, 0, 170, 0.18)");
+    expect(cssVariables.variables["--app-metadata-fg"]).toBe("rgba(248, 248, 242, 0.86)");
+    expect(cssVariables.variables["--app-chat-heading"]).toBe("#d787ff");
+    expect(cssVariables.variables["--app-chat-success"]).toBe("#00ff66");
+    expect(cssVariables.variables["--app-chat-error"]).toBe("#ff3355");
+    expect(cssVariables.variables["--app-status-success-fg"]).toBe("#00ff66");
+    expect(cssVariables.variables["--app-status-error-fg"]).toBe("#ff3355");
+  });
+
+  it("keeps source-backed bundled theme seed roles on their palette colors", () => {
+    expect(getCodeThemeSeed("gruvbox", "dark").semanticColors.diffAdded).toBe("#98971a");
+    expect(getCodeThemeSeed("gruvbox", "light").semanticColors.diffAdded).toBe("#79740e");
+    expect(getCodeThemeSeed("rose-pine", "dark").semanticColors.diffRemoved).toBe("#eb6f92");
+    expect(getCodeThemeSeed("rose-pine", "light").semanticColors.diffRemoved).toBe("#b4637a");
+    expect(getCodeThemeSeed("solarized", "dark").accent).toBe("#268bd2");
+    expect(getCodeThemeSeed("solarized", "light").accent).toBe("#268bd2");
+    expect(getCodeThemeSeed("night-owl", "dark").accent).toBe("#82aaff");
+  });
+
   it("emits non-empty app-depth tokens for non-Catppuccin themes", () => {
     const cssVariables = buildThemeCssVariables(
       {
@@ -671,10 +739,10 @@ describe("buildThemeCssVariables", () => {
       [
         "tokyo-night",
         "dark",
-        "#161720",
-        "#1d1e28",
-        "#303240",
-        "rgba(61, 89, 161, 0.13)",
+        "#0C0E14",
+        "#16161e",
+        "#292e42",
+        "rgba(122, 162, 247, 0.18)",
         "#e0af68",
       ],
       ["vercel", "light", "#f7f7f7", "#f0f0f0", "#f1f1f1", "rgba(0, 106, 255, 0.09)", "#d97706"],
