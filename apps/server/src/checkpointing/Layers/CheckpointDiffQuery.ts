@@ -206,11 +206,133 @@ const make = Effect.gen(function* () {
   const getFullThreadDiff: CheckpointDiffQueryShape["getFullThreadDiff"] = (
     input: OrchestrationGetFullThreadDiffInput,
   ) =>
-    getTurnDiff({
-      threadId: input.threadId,
-      fromTurnCount: 0,
-      toTurnCount: input.toTurnCount,
-    }).pipe(Effect.map((result): OrchestrationGetFullThreadDiffResult => result));
+    Effect.gen(function* () {
+      const operation = "CheckpointDiffQuery.getFullThreadDiff";
+      const context = yield* projectionSnapshotQuery.getFullThreadDiffContext(
+        input.threadId,
+        input.toTurnCount,
+      );
+      if (Option.isNone(context)) {
+        return yield* new CheckpointInvariantError({
+          operation,
+          detail: `Thread '${input.threadId}' not found.`,
+        });
+      }
+
+      if (input.toTurnCount === 0) {
+        const emptyDiff: OrchestrationGetFullThreadDiffResult = {
+          threadId: input.threadId,
+          fromTurnCount: 0,
+          toTurnCount: 0,
+          diff: "",
+        };
+        if (!isTurnDiffResult(emptyDiff)) {
+          return yield* new CheckpointInvariantError({
+            operation,
+            detail: "Computed full-thread diff result does not satisfy contract schema.",
+          });
+        }
+        return emptyDiff;
+      }
+
+      if (input.toTurnCount > context.value.latestCheckpointTurnCount) {
+        return yield* new CheckpointUnavailableError({
+          threadId: input.threadId,
+          turnCount: input.toTurnCount,
+          detail: `Full-thread diff range exceeds current turn count: requested ${input.toTurnCount}, current ${context.value.latestCheckpointTurnCount}.`,
+        });
+      }
+
+      const workspaceCwd = resolveThreadWorkspaceCwd({
+        thread: {
+          projectId: context.value.projectId,
+          envMode: context.value.envMode,
+          worktreePath: context.value.worktreePath,
+        },
+        projects: [
+          {
+            id: context.value.projectId,
+            workspaceRoot: context.value.workspaceRoot,
+          },
+        ],
+      });
+      if (!workspaceCwd) {
+        return yield* new CheckpointInvariantError({
+          operation,
+          detail: `Workspace path missing for thread '${input.threadId}' when computing full-thread diff.`,
+        });
+      }
+
+      const toCheckpoint = context.value.targetCheckpoint;
+      if (!toCheckpoint) {
+        return yield* new CheckpointUnavailableError({
+          threadId: input.threadId,
+          turnCount: input.toTurnCount,
+          detail: `Checkpoint ref is unavailable for turn ${input.toTurnCount}.`,
+        });
+      }
+      if (toCheckpoint.status === "missing") {
+        return yield* new CheckpointUnavailableError({
+          threadId: input.threadId,
+          turnCount: input.toTurnCount,
+          detail: `Checkpoint diff is not available yet for turn ${input.toTurnCount}.`,
+        });
+      }
+
+      const fromCheckpointRef = checkpointRefForThreadTurn(input.threadId, 0);
+      const toCheckpointRef = toCheckpoint.checkpointRef;
+      const [fromExists, toExists] = yield* Effect.all(
+        [
+          checkpointStore.hasCheckpointRef({
+            cwd: workspaceCwd,
+            checkpointRef: fromCheckpointRef,
+          }),
+          checkpointStore.hasCheckpointRef({
+            cwd: workspaceCwd,
+            checkpointRef: toCheckpointRef,
+          }),
+        ],
+        { concurrency: "unbounded" },
+      );
+
+      if (!fromExists) {
+        return yield* new CheckpointUnavailableError({
+          threadId: input.threadId,
+          turnCount: 0,
+          detail: "Filesystem checkpoint is unavailable for turn 0.",
+        });
+      }
+
+      if (!toExists) {
+        return yield* new CheckpointUnavailableError({
+          threadId: input.threadId,
+          turnCount: input.toTurnCount,
+          detail: `Filesystem checkpoint is unavailable for turn ${input.toTurnCount}.`,
+        });
+      }
+
+      const diff = yield* checkpointStore.diffCheckpoints({
+        cwd: workspaceCwd,
+        fromCheckpointRef,
+        toCheckpointRef,
+        fallbackFromToHead: false,
+      });
+
+      const fullThreadDiff: OrchestrationGetFullThreadDiffResult = {
+        threadId: input.threadId,
+        fromTurnCount: 0,
+        toTurnCount: input.toTurnCount,
+        diff,
+      };
+      if (!isTurnDiffResult(fullThreadDiff)) {
+        return yield* new CheckpointInvariantError({
+          operation,
+          detail: "Computed full-thread diff result does not satisfy contract schema.",
+        });
+      }
+
+      return fullThreadDiff;
+    });
 
   return {
     getTurnDiff,

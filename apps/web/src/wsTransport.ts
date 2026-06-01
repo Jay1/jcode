@@ -31,6 +31,9 @@ type RpcClientInstance =
 
 type TransportState = "connecting" | "open" | "closed" | "disposed";
 type WsUrlResolver = () => Promise<string | null> | string | null;
+type WsRequestOptions = { readonly timeoutMs?: number | null };
+
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
 export interface WsTransportTestDriver {
   readonly request?: (method: string, params: unknown) => Promise<unknown> | unknown;
@@ -114,6 +117,36 @@ function omitNullUserInputAnswers(input: unknown): unknown {
   };
 }
 
+function resolveRequestTimeoutMs(options?: WsRequestOptions): number | null {
+  return options?.timeoutMs === null ? null : (options?.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS);
+}
+
+async function withRequestTimeout<T>(
+  method: string,
+  options: WsRequestOptions | undefined,
+  request: () => Promise<T>,
+): Promise<T> {
+  const timeoutMs = resolveRequestTimeoutMs(options);
+  if (timeoutMs === null) {
+    return await request();
+  }
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`WebSocket request ${method} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([request(), timeout]);
+  } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 export function isServerLifecyclePushChannel(channel: string): boolean {
   return channel === WS_CHANNELS.serverWelcome || channel === WS_CHANNELS.serverMaintenanceUpdated;
 }
@@ -165,7 +198,7 @@ export class WsTransport {
   async request<T = unknown>(
     method: string,
     params?: unknown,
-    _options?: { readonly timeoutMs?: number | null },
+    options?: WsRequestOptions,
   ): Promise<T> {
     if (this.disposed) throw new Error("Transport disposed");
 
@@ -192,16 +225,22 @@ export class WsTransport {
         this.stopStream(`orchestration.thread:${threadId}`);
         return undefined as T;
       }
-      return (await this.testDriver.request?.(method, params ?? {})) as T;
+      return await withRequestTimeout(
+        method,
+        options,
+        async () => (await this.testDriver?.request?.(method, params ?? {})) as T,
+      );
     }
 
-    const client = await this.getClient();
-
     if (method === WS_METHODS.gitRunStackedAction) {
-      return (await this.runGitActionStream(client, params)) as T;
+      return await withRequestTimeout(method, options, async () => {
+        const client = await this.getClient();
+        return (await this.runGitActionStream(client, params)) as T;
+      });
     }
 
     if (method === ORCHESTRATION_WS_METHODS.subscribeShell) {
+      const client = await this.getClient();
       this.shellSubscribed = true;
       this.startShellStream(client);
       return undefined as T;
@@ -212,6 +251,7 @@ export class WsTransport {
       return undefined as T;
     }
     if (method === ORCHESTRATION_WS_METHODS.subscribeThread) {
+      const client = await this.getClient();
       const threadId = (params as { threadId: string }).threadId;
       this.threadSubscriptions.set(threadId, params);
       this.startThreadStream(client, threadId, params as never);
@@ -224,22 +264,25 @@ export class WsTransport {
       return undefined as T;
     }
 
-    const runtime = this.runtime;
-    if (!runtime) throw new WsTransportRpcError({ message: "WebSocket RPC runtime unavailable" });
+    return await withRequestTimeout(method, options, async () => {
+      const client = await this.getClient();
+      const runtime = this.runtime;
+      if (!runtime) throw new WsTransportRpcError({ message: "WebSocket RPC runtime unavailable" });
 
-    const rpcInput =
-      method === ORCHESTRATION_WS_METHODS.dispatchCommand
-        ? (params as { command: unknown }).command
-        : (params ?? {});
-    const normalizedRpcInput = omitNullUserInputAnswers(rpcInput);
-    const call = (
-      client as unknown as Record<
-        string,
-        (input: unknown) => Effect.Effect<unknown, WsTransportRpcError, never>
-      >
-    )[method];
-    if (!call) throw new WsTransportRpcError({ message: `Unknown RPC method: ${method}` });
-    return (await runtime.runPromise(call(normalizedRpcInput))) as T;
+      const rpcInput =
+        method === ORCHESTRATION_WS_METHODS.dispatchCommand
+          ? (params as { command: unknown }).command
+          : (params ?? {});
+      const normalizedRpcInput = omitNullUserInputAnswers(rpcInput);
+      const call = (
+        client as unknown as Record<
+          string,
+          (input: unknown) => Effect.Effect<unknown, WsTransportRpcError, never>
+        >
+      )[method];
+      if (!call) throw new WsTransportRpcError({ message: `Unknown RPC method: ${method}` });
+      return (await runtime.runPromise(call(normalizedRpcInput))) as T;
+    });
   }
 
   subscribe<C extends WsPushChannel>(

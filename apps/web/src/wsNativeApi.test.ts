@@ -575,7 +575,31 @@ describe("wsNativeApi", () => {
     );
   });
 
-  it("forwards full-thread diff requests to the orchestration websocket method", async () => {
+  it("uses no client timeout for orchestration snapshot getSnapshot", async () => {
+    requestMock.mockResolvedValue({});
+    const { createWsNativeApi } = await import("./wsNativeApi");
+
+    const api = createWsNativeApi();
+    await api.orchestration.getSnapshot();
+
+    expect(requestMock).toHaveBeenCalledWith(ORCHESTRATION_WS_METHODS.getSnapshot, undefined, {
+      timeoutMs: null,
+    });
+  });
+
+  it("uses no client timeout for orchestration snapshot getShellSnapshot", async () => {
+    requestMock.mockResolvedValue({});
+    const { createWsNativeApi } = await import("./wsNativeApi");
+
+    const api = createWsNativeApi();
+    await api.orchestration.getShellSnapshot();
+
+    expect(requestMock).toHaveBeenCalledWith(ORCHESTRATION_WS_METHODS.getShellSnapshot, undefined, {
+      timeoutMs: null,
+    });
+  });
+
+  it("uses no client timeout for full-thread diff requests", async () => {
     requestMock.mockResolvedValue({ diff: "patch" });
     const { createWsNativeApi } = await import("./wsNativeApi");
 
@@ -585,10 +609,14 @@ describe("wsNativeApi", () => {
       toTurnCount: 1,
     });
 
-    expect(requestMock).toHaveBeenCalledWith(ORCHESTRATION_WS_METHODS.getFullThreadDiff, {
-      threadId: "thread-1",
-      toTurnCount: 1,
-    });
+    expect(requestMock).toHaveBeenCalledWith(
+      ORCHESTRATION_WS_METHODS.getFullThreadDiff,
+      {
+        threadId: "thread-1",
+        toTurnCount: 1,
+      },
+      { timeoutMs: null },
+    );
   });
 
   it("forwards context menu metadata to desktop bridge", async () => {

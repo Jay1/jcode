@@ -38,6 +38,16 @@ export interface ProjectionThreadCheckpointContext {
   readonly checkpoints: ReadonlyArray<OrchestrationCheckpointSummary>;
 }
 
+export interface ProjectionFullThreadDiffContext {
+  readonly threadId: ThreadId;
+  readonly projectId: ProjectId;
+  readonly workspaceRoot: string;
+  readonly envMode: ThreadEnvironmentMode;
+  readonly worktreePath: string | null;
+  readonly latestCheckpointTurnCount: number;
+  readonly targetCheckpoint: OrchestrationCheckpointSummary | null;
+}
+
 /**
  * ProjectionSnapshotQueryShape - Service API for read-model snapshots.
  */
@@ -93,6 +103,14 @@ export interface ProjectionSnapshotQueryShape {
   readonly getThreadCheckpointContext: (
     threadId: ThreadId,
   ) => Effect.Effect<Option.Option<ProjectionThreadCheckpointContext>, ProjectionRepositoryError>;
+
+  /**
+   * Read the narrow projection context needed for a full-thread diff.
+   */
+  readonly getFullThreadDiffContext: (
+    threadId: ThreadId,
+    toTurnCount: number,
+  ) => Effect.Effect<Option.Option<ProjectionFullThreadDiffContext>, ProjectionRepositoryError>;
 
   /**
    * Read a single active thread shell row by id.

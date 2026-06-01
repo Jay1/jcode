@@ -55,6 +55,7 @@ import { ORCHESTRATION_PROJECTOR_NAMES } from "./ProjectionPipeline.ts";
 import {
   ProjectionSnapshotQuery,
   type ProjectionSnapshotCounts,
+  type ProjectionFullThreadDiffContext,
   type ProjectionThreadCheckpointContext,
   type ProjectionSnapshotQueryShape,
 } from "../Services/ProjectionSnapshotQuery.ts";
@@ -130,6 +131,10 @@ const ProjectIdLookupInput = Schema.Struct({
 const ThreadIdLookupInput = Schema.Struct({
   threadId: ThreadId,
 });
+const FullThreadDiffContextLookupInput = Schema.Struct({
+  threadId: ThreadId,
+  toTurnCount: NonNegativeInt,
+});
 const ProjectionProjectLookupRowSchema = ProjectionProjectDbRowSchema;
 const ProjectionThreadIdLookupRowSchema = Schema.Struct({
   threadId: ThreadId,
@@ -140,6 +145,9 @@ const ProjectionThreadCheckpointContextThreadRowSchema = Schema.Struct({
   workspaceRoot: Schema.String,
   envMode: ThreadEnvironmentMode,
   worktreePath: Schema.NullOr(Schema.String),
+});
+const ProjectionFullThreadDiffMaxCheckpointRowSchema = Schema.Struct({
+  latestCheckpointTurnCount: Schema.NullOr(NonNegativeInt),
 });
 
 type ProjectionThreadDbRowRaw = Schema.Schema.Type<typeof ProjectionThreadDbRowSchema>;
@@ -1181,6 +1189,41 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       `,
   });
 
+  const getLatestCheckpointTurnCountByThread = SqlSchema.findOne({
+    Request: ThreadIdLookupInput,
+    Result: ProjectionFullThreadDiffMaxCheckpointRowSchema,
+    execute: ({ threadId }) =>
+      sql`
+        SELECT MAX(checkpoint_turn_count) AS "latestCheckpointTurnCount"
+        FROM projection_turns
+        WHERE thread_id = ${threadId}
+          AND checkpoint_turn_count IS NOT NULL
+          AND completed_at IS NOT NULL
+      `,
+  });
+
+  const getCheckpointRowByThreadTurn = SqlSchema.findOneOption({
+    Request: FullThreadDiffContextLookupInput,
+    Result: ProjectionCheckpointDbRowSchema,
+    execute: ({ threadId, toTurnCount }) =>
+      sql`
+        SELECT
+          thread_id AS "threadId",
+          turn_id AS "turnId",
+          checkpoint_turn_count AS "checkpointTurnCount",
+          checkpoint_ref AS "checkpointRef",
+          checkpoint_status AS "status",
+          checkpoint_files_json AS "files",
+          assistant_message_id AS "assistantMessageId",
+          COALESCE(completed_at, started_at, requested_at) AS "completedAt"
+        FROM projection_turns
+        WHERE thread_id = ${threadId}
+          AND checkpoint_turn_count = ${toTurnCount}
+          AND completed_at IS NOT NULL
+        LIMIT 1
+      `,
+  });
+
   const getSnapshot: ProjectionSnapshotQueryShape["getSnapshot"] = () =>
     sql
       .withTransaction(
@@ -1647,6 +1690,58 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       });
     });
 
+  const getFullThreadDiffContext: ProjectionSnapshotQueryShape["getFullThreadDiffContext"] = (
+    threadId,
+    toTurnCount,
+  ) =>
+    Effect.gen(function* () {
+      const threadRow = yield* getThreadCheckpointContextThreadRow({ threadId }).pipe(
+        Effect.mapError(
+          toPersistenceSqlOrDecodeError(
+            "ProjectionSnapshotQuery.getFullThreadDiffContext:getThread:query",
+            "ProjectionSnapshotQuery.getFullThreadDiffContext:getThread:decodeRow",
+          ),
+        ),
+      );
+      if (Option.isNone(threadRow)) {
+        return Option.none<ProjectionFullThreadDiffContext>();
+      }
+
+      const [latestCheckpoint, targetCheckpoint] = yield* Effect.all(
+        [
+          getLatestCheckpointTurnCountByThread({ threadId }).pipe(
+            Effect.mapError(
+              toPersistenceSqlOrDecodeError(
+                "ProjectionSnapshotQuery.getFullThreadDiffContext:getLatestCheckpoint:query",
+                "ProjectionSnapshotQuery.getFullThreadDiffContext:getLatestCheckpoint:decodeRow",
+              ),
+            ),
+          ),
+          getCheckpointRowByThreadTurn({ threadId, toTurnCount }).pipe(
+            Effect.mapError(
+              toPersistenceSqlOrDecodeError(
+                "ProjectionSnapshotQuery.getFullThreadDiffContext:getTargetCheckpoint:query",
+                "ProjectionSnapshotQuery.getFullThreadDiffContext:getTargetCheckpoint:decodeRow",
+              ),
+            ),
+          ),
+        ],
+        { concurrency: "unbounded" },
+      );
+
+      return Option.some({
+        threadId: threadRow.value.threadId,
+        projectId: threadRow.value.projectId,
+        workspaceRoot: threadRow.value.workspaceRoot,
+        envMode: threadRow.value.envMode,
+        worktreePath: threadRow.value.worktreePath,
+        latestCheckpointTurnCount: latestCheckpoint.latestCheckpointTurnCount ?? 0,
+        targetCheckpoint: Option.isSome(targetCheckpoint)
+          ? toProjectedCheckpoint(targetCheckpoint.value)
+          : null,
+      });
+    });
+
   const getThreadShellById: ProjectionSnapshotQueryShape["getThreadShellById"] = (threadId) =>
     sql
       .withTransaction(
@@ -1880,6 +1975,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
     getProjectShellById,
     getFirstActiveThreadIdByProjectId,
     getThreadCheckpointContext,
+    getFullThreadDiffContext,
     getThreadShellById,
     getThreadDetailById,
     getThreadDetailSnapshotById,

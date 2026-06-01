@@ -32,6 +32,7 @@ import {
   EnvMode,
   resolveBranchSelectionTarget,
   resolveBranchToolbarValue,
+  resolvePostCheckoutStatusCwd,
   shouldSyncLocalThreadBranch,
 } from "./BranchToolbar.logic";
 import { Button } from "./ui/button";
@@ -563,8 +564,13 @@ export function BranchToolbarBranchSelector({
       }
 
       let nextBranchName = selectedBranchName;
-      if (branch.isRemote) {
-        const status = await api.git.status({ cwd: branchCwd }).catch(() => null);
+      const statusCwd = resolvePostCheckoutStatusCwd({
+        branchIsRemote: branch.isRemote,
+        branchCwd,
+        checkoutCwd: selectionTarget.checkoutCwd,
+      });
+      if (statusCwd) {
+        const status = await api.git.status({ cwd: statusCwd }).catch(() => null);
         if (status?.branch) {
           nextBranchName = status.branch;
         }
