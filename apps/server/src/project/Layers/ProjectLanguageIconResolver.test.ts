@@ -40,6 +40,18 @@ it.layer(TestLayer)("ProjectLanguageIconResolverLive", (it) => {
       }),
     );
 
+    it.effect("detects TypeScript monorepos from a root tsconfig.base.json", () =>
+      Effect.gen(function* () {
+        const resolver = yield* ProjectLanguageIconResolver;
+        const cwd = yield* makeTempDir;
+        yield* writeTextFile(cwd, "tsconfig.base.json", "{}");
+
+        const resolved = yield* resolver.resolveMetadata(cwd);
+
+        expect(resolved).toEqual({ iconId: "typescript", label: "TypeScript" });
+      }),
+    );
+
     it.effect("prefers Vue over generic TypeScript when root package metadata includes Vue", () =>
       Effect.gen(function* () {
         const resolver = yield* ProjectLanguageIconResolver;

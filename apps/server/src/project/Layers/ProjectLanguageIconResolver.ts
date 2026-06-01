@@ -16,6 +16,13 @@ const VUE_METADATA: ProjectIconMetadata = {
   label: "Vue",
 };
 
+const ROOT_TYPESCRIPT_MARKERS = [
+  "tsconfig.json",
+  "tsconfig.base.json",
+  "tsconfig.app.json",
+  "tsconfig.node.json",
+] as const;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -43,6 +50,15 @@ export const makeProjectLanguageIconResolver = Effect.gen(function* () {
     return stats?.type === "File";
   });
 
+  const hasRootFile = Effect.fn(function* (cwd: string, fileNames: readonly string[]) {
+    for (const fileName of fileNames) {
+      if (yield* rootFileExists(cwd, fileName)) {
+        return true;
+      }
+    }
+    return false;
+  });
+
   const readRootPackageJson = Effect.fn(function* (cwd: string) {
     const source = yield* fileSystem
       .readFileString(path.join(cwd, "package.json"))
@@ -62,7 +78,7 @@ export const makeProjectLanguageIconResolver = Effect.gen(function* () {
         return VUE_METADATA;
       }
 
-      if (yield* rootFileExists(cwd, "tsconfig.json")) {
+      if (yield* hasRootFile(cwd, ROOT_TYPESCRIPT_MARKERS)) {
         return TYPESCRIPT_METADATA;
       }
 
