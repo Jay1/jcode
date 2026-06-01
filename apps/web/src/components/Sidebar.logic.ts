@@ -234,6 +234,23 @@ export function pruneExpandedProjectThreadListsForCollapsedProjects<
   return changed ? nextExpandedProjectThreadListCwds : expandedProjectThreadListCwds;
 }
 
+export function pruneDismissedThreadStatusKeys(input: {
+  dismissedThreadStatusKeyByThreadId: Readonly<Record<string, string>>;
+  retainedThreadIds: ReadonlySet<ThreadId>;
+}): Readonly<Record<string, string>> {
+  const { dismissedThreadStatusKeyByThreadId, retainedThreadIds } = input;
+  const currentEntries = Object.entries(dismissedThreadStatusKeyByThreadId);
+  const nextEntries = currentEntries.filter(([threadId]) =>
+    retainedThreadIds.has(threadId as ThreadId),
+  );
+
+  if (nextEntries.length === currentEntries.length) {
+    return dismissedThreadStatusKeyByThreadId;
+  }
+
+  return Object.fromEntries(nextEntries);
+}
+
 export function resolveThreadRowClassName(input: {
   isActive: boolean;
   isSelected: boolean;

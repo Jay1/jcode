@@ -22,6 +22,7 @@ import {
   installDebugFeatureFlagConsoleCommands,
   isLoopbackHostname,
   isDuplicateProjectCreateError,
+  pruneDismissedThreadStatusKeys,
   pruneExpandedProjectThreadListsForCollapsedProjects,
   recoverExistingAddProjectTarget,
   resolveProjectEmptyState,
@@ -179,6 +180,40 @@ describe("resolveSidebarNewThreadEnvMode", () => {
         defaultEnvMode: "worktree",
       }),
     ).toBe("local");
+  });
+});
+
+
+describe("pruneDismissedThreadStatusKeys", () => {
+  it("returns the same object when every dismissed thread is retained", () => {
+    const current = {
+      "thread-a": "Plan Ready:turn-a",
+      "thread-b": "Needs Input:turn-b",
+    };
+
+    expect(
+      pruneDismissedThreadStatusKeys({
+        dismissedThreadStatusKeyByThreadId: current,
+        retainedThreadIds: new Set([
+          ThreadId.makeUnsafe("thread-a"),
+          ThreadId.makeUnsafe("thread-b"),
+        ]),
+      }),
+    ).toBe(current);
+  });
+
+  it("drops dismissed status for threads that are no longer retained", () => {
+    expect(
+      pruneDismissedThreadStatusKeys({
+        dismissedThreadStatusKeyByThreadId: {
+          "thread-a": "Plan Ready:turn-a",
+          "thread-b": "Needs Input:turn-b",
+        },
+        retainedThreadIds: new Set([ThreadId.makeUnsafe("thread-a")]),
+      }),
+    ).toEqual({
+      "thread-a": "Plan Ready:turn-a",
+    });
   });
 });
 
