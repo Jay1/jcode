@@ -418,11 +418,23 @@ export const MessagesTimeline = memo(function MessagesTimeline({
         row.kind === "work" || (row.kind === "message" && row.message.role === "assistant")
           ? "pb-2"
           : "pb-4",
-        row.kind === "message" && row.message.role === "assistant" ? "group/assistant" : null,
+        row.kind === "message" && row.message.role === "assistant"
+          ? "assistant-message-row group/assistant"
+          : null,
+        row.kind === "message" && row.message.role === "user" ? "user-message-row" : null,
+        row.kind === "work" ? "work-message-row" : null,
       )}
       data-timeline-row-kind={row.kind}
       data-message-id={row.kind === "message" ? row.message.id : undefined}
       data-message-role={row.kind === "message" ? row.message.role : undefined}
+      role={row.kind === "message" ? "article" : undefined}
+      aria-label={
+        row.kind === "message"
+          ? row.message.role === "assistant"
+            ? "Assistant message"
+            : "User message"
+          : undefined
+      }
     >
       {row.kind === "work" &&
         (() => {
@@ -745,7 +757,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                 </div>
               )}
               <div className="min-w-0 px-1 py-0.5">
-                <div data-assistant-message-id={row.message.id}>
+                <div className="app-assistant-message" data-assistant-message-id={row.message.id}>
                   <ChatMarkdown
                     text={messageText}
                     cwd={markdownCwd}

@@ -34,4 +34,11 @@ describe("Sidebar structure", () => {
     expect(sidebarSource).toContain("sidebar-project-header-icon");
     expect(sidebarSource).toContain("sidebar-project-header-label");
   });
+
+  it("uses tokenized hierarchy hooks for thread rows", () => {
+    expect(sidebarSource).toContain("sidebar-thread-row");
+    expect(sidebarSource).toContain("sidebar-thread-row-active");
+    expect(sidebarSource).toContain("var(--app-sidebar-row-bg)");
+    expect(sidebarSource).toContain("var(--app-sidebar-row-active-bg)");
+  });
 });

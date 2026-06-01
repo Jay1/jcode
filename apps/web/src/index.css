@@ -115,6 +115,41 @@
   will-change: opacity, transform;
 }
 
+.app-transcript-stage {
+  border-top: 1px solid var(--app-transcript-stage-border, transparent);
+  background:
+    linear-gradient(180deg, var(--app-transcript-stage-bg, transparent), transparent 42%),
+    var(--app-surface-canvas, var(--background));
+}
+
+.app-transcript-stage::after {
+  pointer-events: none;
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 20;
+  height: 5.5rem;
+  content: "";
+  background: linear-gradient(180deg, transparent, var(--app-transcript-edge-fade) 82%);
+}
+
+.app-assistant-message {
+  position: relative;
+  border-radius: 1rem;
+  border: 1px solid var(--app-assistant-message-border, transparent);
+  border-left-color: var(--app-assistant-message-accent, var(--app-assistant-message-border));
+  background: linear-gradient(
+    135deg,
+    var(--app-assistant-message-bg, transparent),
+    transparent 82%
+  );
+  padding: 0.55rem 0.75rem 0.65rem;
+}
+
+.app-assistant-message:focus-within {
+  box-shadow: inset 0 0 0 1px var(--app-state-focus, var(--ring));
+}
+
 @media (prefers-reduced-motion: reduce) {
   .chat-pane-enter {
     animation: none;
@@ -238,6 +273,17 @@
   --app-surface-toolbar-hover: var(--app-state-hover, var(--accent));
   --app-surface-toolbar-active: var(--app-state-selected, var(--accent));
   --app-surface-toolbar-border: var(--border);
+  --app-transcript-stage-bg: color-mix(in srgb, var(--app-surface-panel) 34%, transparent);
+  --app-transcript-stage-border: color-mix(in srgb, var(--border) 72%, transparent);
+  --app-transcript-edge-fade: var(--app-surface-canvas, var(--background));
+  --app-assistant-message-bg: color-mix(in srgb, var(--app-surface-card) 36%, transparent);
+  --app-assistant-message-border: color-mix(in srgb, var(--border) 58%, transparent);
+  --app-assistant-message-accent: color-mix(in srgb, var(--primary) 40%, transparent);
+  --app-sidebar-row-bg: transparent;
+  --app-sidebar-row-hover-bg: var(--app-state-hover, var(--accent));
+  --app-sidebar-row-active-bg: var(--app-state-selected, var(--accent));
+  --app-runtime-chip-bg: var(--app-chrome-control-bg, var(--accent));
+  --app-runtime-chip-border: var(--app-chrome-control-border, var(--border));
   --app-state-hover: var(--accent);
   --app-state-selected: var(--sidebar-accent-active);
   --app-state-selected-border: var(--primary);
