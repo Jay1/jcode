@@ -14,6 +14,18 @@ A cockpit is the user-facing control surface for coding-agent work. In JCode thi
 
 The cockpit coordinates local tools and provider runtimes; it should not leak raw provider protocol details directly into ordinary user-facing concepts.
 
+### Skill Library
+
+The Skill Library is the settings-native surface for discovering and managing coding-agent skills across providers such as OpenCode and Codex.
+
+Its first version should be a read-only installed-skills inventory with provider source and concise descriptions. The UI may reserve space for future management actions, but installing, uninstalling, and searching remote skill catalogs such as skills.sh belong to later iterations.
+
+The Skill Library should feel unified, but provider source boundaries remain explicit. The first design should include an all-installed overview while preserving provider groupings because OpenCode, Codex, Claude, Pi, and future providers can expose different metadata and management capabilities.
+
+Skill cards optimize for recognition in the first iteration. A card should make the skill's name, source provider, and use case scannable at a glance; full prompt content, dependency details, file paths, and management operations belong outside the card or in future detail surfaces.
+
+The first Skill Library should use carousel-like discovery rather than a pure carousel. A preview rail can provide delight, but provider-grouped grids or lists must remain available so large installed-skill sets stay browsable.
+
 ### Chat-Output Scannability
 
 Chat-output scannability is the cockpit quality that lets a maintainer quickly distinguish headings, file paths, commands, CSS or theme tokens, success states, pending states, and errors inside assistant output.
