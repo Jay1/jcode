@@ -766,7 +766,7 @@ const ThreadPrStatusBadgeBoundary = memo(function ThreadPrStatusBadgeBoundary({
   onOpen: (event: React.MouseEvent<HTMLElement>, prUrl: string) => void;
 }) {
   const gitStatusQuery = useQuery(gitStatusQueryOptions(branch !== null ? cwd : null));
-  const storedPrReference = lastKnownPr?.url.trim() ? lastKnownPr.url : null;
+  const storedPrReference = lastKnownPr?.url.trim() || null;
   const storedPrQuery = useQuery({
     ...gitResolvePullRequestQueryOptions({
       cwd: cwd !== null && storedPrReference !== null ? cwd : null,
