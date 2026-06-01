@@ -21,16 +21,19 @@
 
 ## Common Commands
 
-| Goal                         | Command                                                   |
-| ---------------------------- | --------------------------------------------------------- |
-| Start all local dev surfaces | `bun run dev`                                             |
-| Start server only            | `bun run dev:server`                                      |
-| Start web only               | `bun run dev:web`                                         |
-| Start desktop dev shell      | `bun run dev:desktop`                                     |
-| Start marketing site         | `bun run dev:marketing`                                   |
-| Run focused server test      | `bun run --cwd apps/server test src/path/to/file.test.ts` |
-| Run focused web test         | `bun run --cwd apps/web test src/path/to/file.test.ts`    |
-| Build desktop pipeline       | `bun run build:desktop`                                   |
+| Goal                                | Command                                                                    |
+| ----------------------------------- | -------------------------------------------------------------------------- |
+| Start all local dev surfaces        | `bun run dev`                                                              |
+| Start server only                   | `bun run dev:server`                                                       |
+| Start web only                      | `bun run dev:web`                                                          |
+| Start desktop dev shell             | `bun run dev:desktop`                                                      |
+| Start marketing site                | `bun run dev:marketing`                                                    |
+| Start server for browser automation | `JCODE_HOST=127.0.0.1 JCODE_DEV_AUTOMATION_ACCESS=true bun run dev:server` |
+| Run focused server test             | `bun run --cwd apps/server test src/path/to/file.test.ts`                  |
+| Run focused web test                | `bun run --cwd apps/web test src/path/to/file.test.ts`                     |
+| Build desktop pipeline              | `bun run build:desktop`                                                    |
+
+For loopback-only browser automation auth, see the [Dev Automation Access Grant](../security/dev-automation-access.md). Do not use that grant on wildcard, LAN, tailnet, or other remote-reachable hosts.
 
 ## Procedure
 

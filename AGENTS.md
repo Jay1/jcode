@@ -23,6 +23,15 @@
 - If LSP or tooling exits with a mise trust error, report that `.mise.toml` is untrusted instead of changing trust settings automatically.
 - Keep committed defaults publishable: no tokens, owner pairing links, private tailnet URLs, or machine-specific service files.
 
+## Dev Automation Access
+
+- For local browser or Playwright automation against JCode, prefer the dev automation access grant over manual pairing codes.
+- Start the server with an explicit loopback host and opt-in flag, for example `JCODE_HOST=127.0.0.1 JCODE_DEV_AUTOMATION_ACCESS=true` or `--host 127.0.0.1 --dev-automation-access`.
+- From the same-origin loopback browser context, request `POST /api/auth/automation-access-grant` to mint a normal owner `browser-session-cookie` session. Treat the cookie as a runtime secret.
+- Never use this grant on wildcard, tailnet, LAN, or other remote-reachable hosts; remote clients must continue through normal pairing.
+- Do not call this a bypass in docs or code. Use `dev automation access grant` or `automation access grant` and preserve the Server Auth Boundary described in `CONTEXT.md`.
+- Full reference: `docs/security/dev-automation-access.md`.
+
 ## Code Style
 
 - TypeScript is strict with `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, and `noImplicitOverride` from `tsconfig.base.json`.
