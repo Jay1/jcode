@@ -597,7 +597,8 @@ function normalizeProjectFromReadModel(
   const scripts = normalizeProjectScripts(incoming.scripts, previous?.scripts);
   const incomingIconMetadata = incoming.iconMetadata ?? null;
   const iconMetadata =
-    previous?.iconMetadata !== undefined && deepEqualJson(previous.iconMetadata, incomingIconMetadata)
+    previous?.iconMetadata !== undefined &&
+    deepEqualJson(previous.iconMetadata, incomingIconMetadata)
       ? previous.iconMetadata
       : incomingIconMetadata;
   const expanded =
@@ -656,7 +657,8 @@ function normalizeProjectFromShell(
   const scripts = normalizeProjectScripts(incoming.scripts, previous?.scripts);
   const incomingIconMetadata = incoming.iconMetadata ?? null;
   const iconMetadata =
-    previous?.iconMetadata !== undefined && deepEqualJson(previous.iconMetadata, incomingIconMetadata)
+    previous?.iconMetadata !== undefined &&
+    deepEqualJson(previous.iconMetadata, incomingIconMetadata)
       ? previous.iconMetadata
       : incomingIconMetadata;
   const expanded =

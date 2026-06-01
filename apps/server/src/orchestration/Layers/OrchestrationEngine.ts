@@ -1,4 +1,9 @@
-import type { OrchestrationEvent, OrchestrationReadModel, ProjectId, ThreadId } from "@jcode/contracts";
+import type {
+  OrchestrationEvent,
+  OrchestrationReadModel,
+  ProjectId,
+  ThreadId,
+} from "@jcode/contracts";
 import { CommandId, OrchestrationCommand, ORCHESTRATION_WS_METHODS } from "@jcode/contracts";
 import {
   Cause,
@@ -162,32 +167,30 @@ const makeOrchestrationEngine = Effect.gen(function* () {
     readonly workspaceRoot: string;
     readonly commandIdPrefix: string;
   }) {
-    yield* projectLanguageIconResolver
-      .resolveMetadata(input.workspaceRoot)
-      .pipe(
-        Effect.flatMap((iconMetadata) => {
-          if (iconMetadata === null) {
-            return Effect.void;
-          }
-          return enqueueInternalCommand({
-            type: "project.meta.update",
-            commandId: CommandId.makeUnsafe(`${input.commandIdPrefix}:${input.projectId}`),
+    yield* projectLanguageIconResolver.resolveMetadata(input.workspaceRoot).pipe(
+      Effect.flatMap((iconMetadata) => {
+        if (iconMetadata === null) {
+          return Effect.void;
+        }
+        return enqueueInternalCommand({
+          type: "project.meta.update",
+          commandId: CommandId.makeUnsafe(`${input.commandIdPrefix}:${input.projectId}`),
+          projectId: input.projectId,
+          iconMetadata,
+        }).pipe(Effect.asVoid);
+      }),
+      Effect.catchCause((cause) =>
+        Effect.logWarning("project icon metadata detection failed").pipe(
+          Effect.annotateLogs({
             projectId: input.projectId,
-            iconMetadata,
-          }).pipe(Effect.asVoid);
-        }),
-        Effect.catchCause((cause) =>
-          Effect.logWarning("project icon metadata detection failed").pipe(
-            Effect.annotateLogs({
-              projectId: input.projectId,
-              workspaceRoot: input.workspaceRoot,
-              cause: Cause.pretty(cause),
-            }),
-          ),
+            workspaceRoot: input.workspaceRoot,
+            cause: Cause.pretty(cause),
+          }),
         ),
-        Effect.forkIn(projectIconDetectionScope),
-        Effect.asVoid,
-      );
+      ),
+      Effect.forkIn(projectIconDetectionScope),
+      Effect.asVoid,
+    );
   });
 
   const scheduleMissingProjectIconMetadataBackfill = Effect.fn(function* () {
@@ -339,7 +342,9 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         iconMetadata:
           row.iconMetadataJson === null
             ? null
-            : (JSON.parse(row.iconMetadataJson) as OrchestrationReadModel["projects"][number]["iconMetadata"]),
+            : (JSON.parse(
+                row.iconMetadataJson,
+              ) as OrchestrationReadModel["projects"][number]["iconMetadata"]),
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
         deletedAt: row.deletedAt,

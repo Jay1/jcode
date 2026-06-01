@@ -47,9 +47,13 @@ const NoopProjectLanguageIconResolverLayer = Layer.succeed(ProjectLanguageIconRe
   resolveMetadata: () => Effect.succeed(null),
 } satisfies typeof ProjectLanguageIconResolver.Service);
 
-async function createOrchestrationSystem(input: {
-  readonly resolveProjectIconMetadata?: (cwd: string) => Effect.Effect<ProjectIconMetadata | null>;
-} = {}) {
+async function createOrchestrationSystem(
+  input: {
+    readonly resolveProjectIconMetadata?: (
+      cwd: string,
+    ) => Effect.Effect<ProjectIconMetadata | null>;
+  } = {},
+) {
   const ServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
     prefix: "t3-orchestration-engine-test-",
   });
@@ -169,7 +173,9 @@ describe("OrchestrationEngine", () => {
       Effect.gen(function* () {
         for (let attempt = 0; attempt < 20; attempt += 1) {
           const current = yield* engine.getReadModel();
-          const project = current.projects.find((entry) => entry.id === asProjectId("project-icon-create"));
+          const project = current.projects.find(
+            (entry) => entry.id === asProjectId("project-icon-create"),
+          );
           if (project?.iconMetadata !== null) {
             return current;
           }
@@ -193,10 +199,7 @@ describe("OrchestrationEngine", () => {
         Effect.map((chunk): OrchestrationEvent[] => Array.from(chunk)),
       ),
     );
-    expect(events.map((event) => event.type)).toEqual([
-      "project.created",
-      "project.meta-updated",
-    ]);
+    expect(events.map((event) => event.type)).toEqual(["project.created", "project.meta-updated"]);
     await system.dispose();
   });
 
