@@ -4,7 +4,7 @@
 // Exports: ChangedFilesTree
 
 import { type TurnId } from "@jcode/contracts";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type TurnDiffFileChange } from "../../types";
 import { buildTurnDiffTree, type TurnDiffTreeNode } from "../../lib/turnDiffTree";
 import { FolderIcon, FolderClosedIcon } from "~/lib/icons";
@@ -12,6 +12,12 @@ import { cn } from "~/lib/utils";
 import { DiffStatLabel, hasNonZeroStat } from "./DiffStatLabel";
 import { FileEntryIcon } from "./FileEntryIcon";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
+import {
+  getExpandedDirectoryPathsForTurn,
+  persistChangedFilesUiState,
+  readChangedFilesUiState,
+  setExpandedDirectoryPathsForTurn,
+} from "./ChangedFilesTree.uiState";
 
 const CHANGED_FILE_ROW_SEPARATOR_CLASS =
   "border-t border-[color:var(--color-border-light)]/60 first:border-t-0";
@@ -37,19 +43,49 @@ export const ChangedFilesTree = memo(function ChangedFilesTree(props: {
       ),
     [allDirectoriesExpanded, directoryPathsKey],
   );
-  const [expandedDirectories, setExpandedDirectories] = useState<Record<string, boolean>>(() =>
-    buildDirectoryExpansionState(directoryPathsKey ? directoryPathsKey.split("\u0000") : [], true),
-  );
+  const [expandedDirectories, setExpandedDirectories] = useState<Record<string, boolean>>(() => {
+    const directoryPaths = directoryPathsKey ? directoryPathsKey.split("\u0000") : [];
+    const persistedPaths = getExpandedDirectoryPathsForTurn(readChangedFilesUiState(), turnId);
+    const persistedSet = new Set(persistedPaths);
+    const state = buildDirectoryExpansionState(directoryPaths, true);
+    for (const path of directoryPaths) {
+      if (persistedSet.has(path)) {
+        state[path] = true;
+      }
+    }
+    return state;
+  });
   useEffect(() => {
-    setExpandedDirectories(allDirectoryExpansionState);
+    setExpandedDirectories((current) => {
+      const next = { ...allDirectoryExpansionState };
+      for (const path of Object.keys(current)) {
+        if (current[path] && path in next) {
+          next[path] = true;
+        }
+      }
+      return next;
+    });
   }, [allDirectoryExpansionState]);
 
-  const toggleDirectory = useCallback((pathValue: string, fallbackExpanded: boolean) => {
-    setExpandedDirectories((current) => ({
-      ...current,
-      [pathValue]: !(current[pathValue] ?? fallbackExpanded),
-    }));
-  }, []);
+  const toggleDirectory = useCallback(
+    (pathValue: string, fallbackExpanded: boolean) => {
+      setExpandedDirectories((current) => {
+        const next = {
+          ...current,
+          [pathValue]: !(current[pathValue] ?? fallbackExpanded),
+        };
+        const expandedPaths = Object.keys(next).filter((p) => next[p]);
+        const uiState = setExpandedDirectoryPathsForTurn(
+          readChangedFilesUiState(),
+          turnId,
+          expandedPaths,
+        );
+        persistChangedFilesUiState(uiState);
+        return next;
+      });
+    },
+    [turnId],
+  );
 
   const renderTreeNode = (node: TurnDiffTreeNode, depth: number) => {
     const leftPadding = 8 + depth * 14;
