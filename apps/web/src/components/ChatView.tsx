@@ -1070,6 +1070,7 @@ export default function ChatView({
   const storeSetTerminalWorkspaceTab = useTerminalStateStore((s) => s.setTerminalWorkspaceTab);
   const storeSetTerminalHeight = useTerminalStateStore((s) => s.setTerminalHeight);
   const storeSetTerminalMetadata = useTerminalStateStore((s) => s.setTerminalMetadata);
+  const storeSetTerminalTitleOverride = useTerminalStateStore((s) => s.setTerminalTitleOverride);
   const storeSetTerminalActivity = useTerminalStateStore((s) => s.setTerminalActivity);
   const storeSplitTerminalLeft = useTerminalStateStore((s) => s.splitTerminalLeft);
   const storeSplitTerminalRight = useTerminalStateStore((s) => s.splitTerminalRight);
@@ -3396,6 +3397,10 @@ export default function ChatView({
       ) => {
         if (!activeThreadId) return;
         storeSetTerminalActivity(activeThreadId, terminalId, activity);
+      },
+      onRenameTerminal: (terminalId: string, name: string) => {
+        if (!activeThreadId) return;
+        storeSetTerminalTitleOverride(activeThreadId, terminalId, name);
       },
       onAddTerminalContext: addTerminalContextToDraft,
     }),

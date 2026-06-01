@@ -3,7 +3,7 @@
 // Layer: Terminal presentation components
 // Depends on: caller-provided viewport renderer so xterm lifecycle can stay external.
 
-import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 
 import type { ResolvedTerminalVisualIdentity } from "@jcode/shared/terminalThreads";
 
@@ -45,6 +45,7 @@ interface TerminalViewportPaneProps {
   onNewTerminalTab?: ((terminalId: string) => void) | undefined;
   onMoveTerminalToGroup?: ((terminalId: string) => void) | undefined;
   onCloseTerminal?: ((terminalId: string) => void) | undefined;
+  onRenameTerminal?: ((terminalId: string, name: string) => void) | undefined;
   presentationMode: ThreadTerminalPresentationMode;
   onTogglePresentationMode?: (() => void) | undefined;
 }
@@ -70,6 +71,83 @@ function canMoveTerminalToOwnGroup(node: ThreadTerminalLayoutNode, terminalId: s
     }
     return canMoveTerminalToOwnGroup(child, terminalId);
   });
+}
+
+function InlineRenameField(props: {
+  initialValue: string;
+  onCommit: (value: string) => void;
+  onCancel: () => void;
+  className?: string | undefined;
+}) {
+  const [value, setValue] = useState(props.initialValue);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.select();
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        props.onCommit(value.trim());
+      } else if (event.key === "Escape") {
+        props.onCancel();
+      }
+    },
+    [value, props],
+  );
+
+  const handleBlur = useCallback(() => {
+    props.onCommit(value.trim());
+  }, [value, props]);
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={value}
+      onChange={(event) => setValue(event.target.value)}
+      onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
+      className={cn(
+        "bg-background px-1.5 py-0.5 text-[11px] leading-4 text-foreground outline-none ring-1 ring-inset ring-[var(--color-ring)]",
+        props.className,
+      )}
+      autoFocus
+    />
+  );
+}
+
+function TerminalTabTitle(props: {
+  title: string;
+  onRename: (name: string) => void;
+  className?: string | undefined;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+
+  if (isEditing) {
+    return (
+      <InlineRenameField
+        initialValue={props.title}
+        onCommit={(value) => {
+          setIsEditing(false);
+          props.onRename(value);
+        }}
+        onCancel={() => setIsEditing(false)}
+        className={props.className}
+      />
+    );
+  }
+
+  return (
+    <span
+      className={cn("cursor-pointer select-none", props.className)}
+      onDoubleClick={() => setIsEditing(true)}
+      title="Double-click to rename"
+    >
+      {props.title}
+    </span>
+  );
 }
 
 function PaneActionButton(props: {
@@ -110,6 +188,7 @@ export default function TerminalViewportPane({
   onNewTerminalTab,
   onMoveTerminalToGroup,
   onCloseTerminal,
+  onRenameTerminal,
   presentationMode,
   onTogglePresentationMode,
 }: TerminalViewportPaneProps) {
@@ -174,9 +253,15 @@ export default function TerminalViewportPane({
                           state={visualIdentity.state}
                         />
                       ) : null}
-                      <span className="max-w-40 truncate text-[11px] leading-4">
-                        {visualIdentity?.title ?? "Terminal"}
-                      </span>
+                      <TerminalTabTitle
+                        title={visualIdentity?.title ?? "Terminal"}
+                        onRename={(name) => {
+                          if (onRenameTerminal) {
+                            onRenameTerminal(terminalId, name);
+                          }
+                        }}
+                        className="max-w-40 truncate text-[11px] leading-4"
+                      />
                     </button>
                     {onCloseTerminal ? (
                       <button

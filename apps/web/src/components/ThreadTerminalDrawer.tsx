@@ -435,6 +435,7 @@ interface ThreadTerminalDrawerProps {
     terminalId: string,
     activity: { hasRunningSubprocess: boolean; agentState: TerminalActivityState | null },
   ) => void;
+  onRenameTerminal?: (terminalId: string, name: string) => void;
   onAddTerminalContext: (selection: TerminalContextSelection) => void;
   onTogglePresentationMode?: (() => void) | undefined;
 }
@@ -473,6 +474,7 @@ export default function ThreadTerminalDrawer({
   onResizeTerminalSplit,
   onTerminalMetadataChange,
   onTerminalActivityChange,
+  onRenameTerminal,
   onAddTerminalContext,
   onTogglePresentationMode,
 }: ThreadTerminalDrawerProps) {
@@ -665,6 +667,7 @@ export default function ThreadTerminalDrawer({
               }
               onMoveTerminalToGroup={isWorkspaceMode ? onMoveTerminalToGroup : undefined}
               onCloseTerminal={onCloseTerminal}
+              onRenameTerminal={onRenameTerminal}
               presentationMode={presentationMode}
               onTogglePresentationMode={onTogglePresentationMode}
               renderViewport={(terminalId, options) => (
