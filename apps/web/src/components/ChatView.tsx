@@ -193,6 +193,7 @@ import {
   shortcutLabelForCommand,
 } from "../keybindings";
 import PlanSidebar from "./PlanSidebar";
+import { PlanReviewPanel } from "./PlanReviewPanel";
 import TerminalWorkspaceTabs from "./TerminalWorkspaceTabs";
 import ThreadTerminalDrawer from "./ThreadTerminalDrawer";
 import {
@@ -351,6 +352,7 @@ import {
   revokeUserMessagePreviewUrls,
 } from "./ChatView.logic";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
+import { usePlanReview } from "../hooks/usePlanReview";
 import { useComposerSlashCommands } from "../hooks/useComposerSlashCommands";
 import { useFeatureFlags } from "../featureFlags";
 import { collapseCursorModelVariants } from "../cursorModelVariants";
@@ -959,6 +961,8 @@ export default function ChatView({
   const [pendingUserInputQuestionIndexByRequestId, setPendingUserInputQuestionIndexByRequestId] =
     useState<Record<string, number>>({});
   const [planSidebarOpen, setPlanSidebarOpen] = useState(false);
+  const [planReviewOpen, setPlanReviewOpen] = useState(false);
+  const planReview = usePlanReview();
   const [activeTaskListCompact, setActiveTaskListCompact] = useState(false);
   const [isComposerFooterCompact, setIsComposerFooterCompact] = useState(false);
   const [confirmedCustomBinaryPathsByProvider, setConfirmedCustomBinaryPathsByProvider] = useState<
@@ -8769,6 +8773,23 @@ export default function ChatView({
                 planSidebarDismissedForTurnRef.current = turnKey;
               }
             }}
+            onReview={() => setPlanReviewOpen(true)}
+          />
+        ) : null}
+        {planReviewOpen && sidebarProposedPlan?.planMarkdown ? (
+          <PlanReviewPanel
+            planTitle={sidebarProposedPlan.planMarkdown ? proposedPlanTitle(sidebarProposedPlan.planMarkdown) : null}
+            planMarkdown={sidebarProposedPlan.planMarkdown}
+            cwd={threadWorkspaceCwd ?? undefined}
+            annotations={planReview.annotations}
+            onAddAnnotation={planReview.addAnnotation}
+            onUpdateAnnotation={planReview.updateAnnotation}
+            onDeleteAnnotation={planReview.deleteAnnotation}
+            onDone={(md) => {
+              setPrompt(md);
+              setPlanReviewOpen(false);
+            }}
+            onClose={() => setPlanReviewOpen(false)}
           />
         ) : null}
       </div>

@@ -4,7 +4,7 @@ import {
   normalizePlanMarkdownForExport,
 } from "../../proposedPlan";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
-import { ArrowDownIcon, ArrowUpIcon, CopyIcon } from "~/lib/icons";
+import { ArrowDownIcon, ArrowUpIcon, CopyIcon, MessageCircleIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { Button } from "../ui/button";
@@ -20,6 +20,7 @@ interface ProposedPlanActionsProps {
   className?: string;
   buttonClassName?: string;
   iconClassName?: string;
+  onReview?: (() => void) | undefined;
 }
 
 export const ProposedPlanActions = memo(function ProposedPlanActions({
@@ -29,6 +30,7 @@ export const ProposedPlanActions = memo(function ProposedPlanActions({
   className,
   buttonClassName,
   iconClassName,
+  onReview,
 }: ProposedPlanActionsProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -152,6 +154,16 @@ export const ProposedPlanActions = memo(function ProposedPlanActions({
       >
         <CopyIcon className={cn("size-3.5", iconClassName)} />
       </PlanActionButton>
+      {onReview ? (
+        <PlanActionButton
+          label="Review plan"
+          onClick={onReview}
+          variant={variant}
+          className={buttonClassName}
+        >
+          <MessageCircleIcon className={cn("size-3.5", iconClassName)} />
+        </PlanActionButton>
+      ) : null}
     </div>
   );
 });
