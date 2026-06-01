@@ -2427,6 +2427,42 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             payload: message,
           },
         };
+        const messageRecord = message as Record<string, unknown>;
+        const stringField = (key: string): string | null => {
+          const value = messageRecord[key];
+          return typeof value === "string" && value.trim().length > 0 ? value : null;
+        };
+        const systemSubtype = sdkMessageSubtype(message);
+
+        if (systemSubtype === "thinking_tokens") {
+          return;
+        }
+        if (systemSubtype === "permission_denied") {
+          const toolName = stringField("tool_name") ?? "tool";
+          const reason = stringField("reason");
+          yield* offerRuntimeEvent({
+            ...base,
+            type: "runtime.error",
+            payload: {
+              message: `Claude permission denied for ${toolName}${reason ? `: ${reason}` : "."}`,
+              class: "permission_error",
+              detail: message,
+            },
+          });
+          return;
+        }
+        if (systemSubtype === "mirror_error") {
+          yield* offerRuntimeEvent({
+            ...base,
+            type: "runtime.error",
+            payload: {
+              message: stringField("error") ?? "Claude mirror error.",
+              class: "provider_error",
+              detail: message,
+            },
+          });
+          return;
+        }
 
         switch (message.subtype) {
           case "init":

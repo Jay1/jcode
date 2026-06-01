@@ -1261,6 +1261,101 @@ describe("ClaudeAdapterLive", () => {
     );
   });
 
+  it.effect("handles known Claude system subtypes without noisy generic warnings", () => {
+    const harness = makeHarness();
+    return Effect.gen(function* () {
+      const adapter = yield* ClaudeAdapter;
+
+      const runtimeEventsFiber = yield* Stream.take(adapter.streamEvents, 8).pipe(
+        Stream.runCollect,
+        Effect.forkChild,
+      );
+
+      const session = yield* adapter.startSession({
+        threadId: THREAD_ID,
+        provider: "claudeAgent",
+        runtimeMode: "full-access",
+      });
+
+      yield* adapter.sendTurn({
+        threadId: session.threadId,
+        input: "hello",
+        attachments: [],
+      });
+
+      harness.query.emit({
+        type: "system",
+        subtype: "thinking_tokens",
+        session_id: "sdk-session-system",
+        uuid: "system-thinking-tokens",
+      } as unknown as SDKMessage);
+
+      harness.query.emit({
+        type: "system",
+        subtype: "permission_denied",
+        session_id: "sdk-session-system",
+        uuid: "system-permission-denied",
+        tool_name: "Bash",
+        tool_use_id: "tool-denied-1",
+        reason: "User denied this tool call.",
+      } as unknown as SDKMessage);
+
+      harness.query.emit({
+        type: "system",
+        subtype: "mirror_error",
+        session_id: "sdk-session-system",
+        uuid: "system-mirror-error",
+        error: "Mirror stream disconnected.",
+      } as unknown as SDKMessage);
+
+      harness.query.emit({
+        type: "result",
+        subtype: "success",
+        is_error: false,
+        errors: [],
+        session_id: "sdk-session-system",
+        uuid: "result-system",
+      } as unknown as SDKMessage);
+
+      const runtimeEvents = Array.from(yield* Fiber.join(runtimeEventsFiber));
+      assert.deepEqual(
+        runtimeEvents.map((event) => event.type),
+        [
+          "session.started",
+          "session.configured",
+          "session.state.changed",
+          "turn.started",
+          "thread.started",
+          "runtime.error",
+          "runtime.error",
+          "turn.completed",
+        ],
+      );
+
+      const runtimeErrors = runtimeEvents.filter((event) => event.type === "runtime.error");
+      assert.equal(runtimeErrors.length, 2);
+      for (const event of runtimeErrors) {
+        assert.notEqual(event.type, "runtime.warning");
+      }
+      assert.equal(runtimeErrors[0]?.type, "runtime.error");
+      if (runtimeErrors[0]?.type === "runtime.error") {
+        assert.equal(runtimeErrors[0].payload.class, "permission_error");
+        assert.equal(
+          runtimeErrors[0].payload.message,
+          "Claude permission denied for Bash: User denied this tool call.",
+        );
+      }
+      assert.equal(runtimeErrors[1]?.type, "runtime.error");
+      if (runtimeErrors[1]?.type === "runtime.error") {
+        assert.equal(runtimeErrors[1].payload.class, "provider_error");
+        assert.equal(runtimeErrors[1].payload.message, "Mirror stream disconnected.");
+      }
+    }).pipe(
+      Effect.provideService(Random.Random, makeDeterministicRandomService()),
+      Effect.provide(harness.layer),
+    );
+  });
+
   it.effect("treats user-aborted Claude results as interrupted without a runtime error", () => {
     const harness = makeHarness();
     return Effect.gen(function* () {
