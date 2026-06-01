@@ -58,9 +58,6 @@ const {
 
       <footer class="footer">
         <span class="footer-copy">&copy; {new Date().getFullYear()} JCode</span>
-        <div class="footer-links">
-          <a href={REPO_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
-        </div>
       </footer>
     </div>
   </body>
@@ -68,11 +65,23 @@ const {
 
 <style is:global>
   :root {
-    --bg: #09090b;
-    --fg: #fafafa;
-    --fg-muted: #a1a1aa;
-    --fg-dim: #71717a;
-    --border: rgba(255, 255, 255, 0.08);
+    --bg: #1e1e2e;
+    --bg-deep: #11111b;
+    --bg-muted: #181825;
+    --surface: #242438;
+    --surface-raised: #313244;
+    --surface-high: #45475a;
+    --fg: #cdd6f4;
+    --fg-muted: #bac2de;
+    --fg-dim: #7f849c;
+    --accent: #cba6f7;
+    --accent-strong: #b4befe;
+    --accent-blue: #89b4fa;
+    --accent-green: #a6e3a1;
+    --accent-pink: #f5c2e7;
+    --accent-peach: #fab387;
+    --border: rgba(180, 190, 254, 0.16);
+    --shadow: rgba(17, 17, 27, 0.38);
   }
 
   * {
@@ -86,7 +95,10 @@ const {
   }
 
   body {
-    background: var(--bg);
+    background:
+      radial-gradient(circle at 16% -10%, rgba(203, 166, 247, 0.18), transparent 32rem),
+      radial-gradient(circle at 84% 6%, rgba(137, 180, 250, 0.14), transparent 28rem),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-muted) 48%, var(--bg-deep) 100%);
     color: var(--fg);
     font-family: "DM Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -100,7 +112,7 @@ const {
     position: fixed;
     inset: 0;
     pointer-events: none;
-    opacity: 0.035;
+    opacity: 0.045;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     background-repeat: repeat;
     background-size: 256px 256px;
@@ -146,8 +158,8 @@ const {
     align-items: center;
     justify-content: space-between;
     padding: 1.5rem 2.5rem;
-    opacity: 0.5;
-    transition: opacity 0.4s ease;
+    opacity: 0.86;
+    transition: opacity 0.4s ease, transform 0.4s ease;
   }
 
   .nav:hover {
@@ -183,7 +195,7 @@ const {
   }
 
   .nav-github:hover {
-    color: var(--fg);
+    color: var(--accent-strong);
   }
 
   .nav-github-arrow {
@@ -209,24 +221,9 @@ const {
   .footer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     padding: 1.5rem 2.5rem;
     font-size: 0.8rem;
     color: var(--fg-dim);
-  }
-
-  .footer-links {
-    display: flex;
-    gap: 1.25rem;
-  }
-
-  .footer-links a {
-    color: var(--fg-dim);
-    transition: color 0.3s ease;
-  }
-
-  .footer-links a:hover {
-    color: var(--fg);
   }
 
   /* ── Mobile ── */
