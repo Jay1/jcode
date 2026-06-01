@@ -15,12 +15,14 @@
 
 ## Start Here By Scenario
 
-| If you are doing this              | Start here                                                           | Then check                                                   |
-| ---------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------ |
-| Reviewing baseline posture         | [Security Baseline](baseline.md)                                     | [Repo Governance](../governance/repo-governance.md)          |
-| Changing provider/runtime handling | [Provider Runtime Architecture](../architecture/provider-runtime.md) | [`../../apps/server/AGENTS.md`](../../apps/server/AGENTS.md) |
-| Preparing release or publishing    | [Release Checklist](../release.md)                                   | [CI Operations Runbook](../runbooks/ci-operations.md)        |
+| If you are doing this               | Start here                                                           | Then check                                                   |
+| ----------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Reviewing baseline posture          | [Security Baseline](baseline.md)                                     | [Repo Governance](../governance/repo-governance.md)          |
+| Using local browser automation auth | [Dev Automation Access Grant](dev-automation-access.md)              | [`../../AGENTS.md`](../../AGENTS.md)                         |
+| Changing provider/runtime handling  | [Provider Runtime Architecture](../architecture/provider-runtime.md) | [`../../apps/server/AGENTS.md`](../../apps/server/AGENTS.md) |
+| Preparing release or publishing     | [Release Checklist](../release.md)                                   | [CI Operations Runbook](../runbooks/ci-operations.md)        |
 
 ## Documents
 
 - [Security Baseline](baseline.md)
+- [Dev Automation Access Grant](dev-automation-access.md)
