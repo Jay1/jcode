@@ -38,7 +38,30 @@ const {
     <div class="page">
       <nav class="nav">
         <a href="/" class="nav-brand" aria-label="JCode">
-          <img src="/logo.svg" alt="" class="nav-mark" aria-hidden="true" />
+          <svg class="nav-mark" xmlns="http://www.w3.org/2000/svg" viewBox="110 110 280 280" aria-hidden="true">
+            <defs>
+              <filter id="nav-logo-glow" x="-70%" y="-70%" width="240%" height="240%">
+                <feGaussianBlur stdDeviation="11" result="glow" />
+                <feColorMatrix
+                  in="glow"
+                  type="matrix"
+                  values="1 0 0 0 0.95  0 0.06 0 0 0  0 0 0.06 0 0  0 0 0 1 0"
+                  result="redGlow"
+                />
+                <feMerge>
+                  <feMergeNode in="redGlow" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            <g>
+              <circle class="nav-mark-dot" cx="336.7" cy="249.5" r="25.3" />
+              <circle class="nav-mark-dot" cx="336.7" cy="336.5" r="25.3" />
+              <circle class="nav-mark-dot" cx="249" cy="336.2" r="25.3" />
+              <ellipse class="nav-mark-dot" transform="matrix(0.3827 -0.9239 0.9239 0.3827 -211.055 356.6175)" cx="161.3" cy="336.2" rx="25.3" ry="25.3" />
+              <ellipse class="nav-mark-dot" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -45.6615 224.6646)" cx="248.4" cy="167.5" rx="25.3" ry="25.3" />
+            </g>
+          </svg>
           <span class="nav-wordmark">Code</span>
         </a>
         <a
@@ -77,8 +100,11 @@ const {
     --accent: #cba6f7;
     --accent-strong: #b4befe;
     --accent-blue: #89b4fa;
+    --accent-sky: #89dceb;
+    --accent-teal: #94e2d5;
     --accent-green: #a6e3a1;
     --accent-pink: #f5c2e7;
+    --accent-yellow: #f9e2af;
     --accent-peach: #fab387;
     --border: rgba(180, 190, 254, 0.16);
     --shadow: rgba(17, 17, 27, 0.38);
@@ -95,10 +121,7 @@ const {
   }
 
   body {
-    background:
-      radial-gradient(circle at 16% -10%, rgba(203, 166, 247, 0.18), transparent 32rem),
-      radial-gradient(circle at 84% 6%, rgba(137, 180, 250, 0.14), transparent 28rem),
-      linear-gradient(180deg, var(--bg) 0%, var(--bg-muted) 48%, var(--bg-deep) 100%);
+    background: var(--bg);
     color: var(--fg);
     font-family: "DM Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -158,28 +181,41 @@ const {
     align-items: center;
     justify-content: space-between;
     padding: 1.5rem 2.5rem;
-    opacity: 0.86;
-    transition: opacity 0.4s ease, transform 0.4s ease;
-  }
-
-  .nav:hover {
-    opacity: 1;
   }
 
   .nav-brand {
     display: flex;
     align-items: center;
-    gap: 0.32rem;
+    gap: 0.4rem;
   }
 
   .nav-mark {
-    width: 1.18rem;
-    height: 1.18rem;
+    width: 1.55rem;
+    height: 1.55rem;
+    overflow: visible;
+    flex-shrink: 0;
+    transition: filter 0.24s ease;
+  }
+
+  .nav-mark-dot {
+    fill: #d00000;
+    transition: fill 0.24s ease, filter 0.24s ease;
+  }
+
+  .nav-brand:hover .nav-mark {
+    filter: drop-shadow(0 0 3px rgba(255, 0, 0, 0.96))
+      drop-shadow(0 0 10px rgba(255, 31, 31, 0.9))
+      drop-shadow(0 0 22px rgba(255, 31, 31, 0.72));
+  }
+
+  .nav-brand:hover .nav-mark-dot {
+    fill: #ff3030;
+    filter: url("#nav-logo-glow");
   }
 
   .nav-wordmark {
     color: var(--fg);
-    font-size: 1.05rem;
+    font-size: 1.36rem;
     font-weight: 500;
     letter-spacing: -0.035em;
     line-height: 1;
