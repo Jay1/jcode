@@ -40,6 +40,18 @@ const pullRequests: GitHubPullRequestSummary[] = [
     baseRef: "main",
     headRef: "feature/older",
   },
+  {
+    number: 0,
+    title: "Ancient PR",
+    state: "closed",
+    updatedAt: "2026-04-10T12:00:00Z",
+    mergedAt: "2026-04-11T12:00:00Z",
+    author: "carol",
+    labels: ["maintenance"],
+    url: "https://github.com/owner/repo/pull/0",
+    baseRef: "main",
+    headRef: "feature/ancient",
+  },
 ];
 
 const releases: GitHubReleaseSummary[] = [
@@ -58,6 +70,14 @@ const releases: GitHubReleaseSummary[] = [
     author: "bob",
     prerelease: false,
     url: "https://github.com/owner/repo/releases/tag/v1.0.0",
+  },
+  {
+    tagName: "v0.9.0",
+    name: "Version 0.9",
+    publishedAt: "2026-04-10T13:00:00Z",
+    author: "carol",
+    prerelease: false,
+    url: "https://github.com/owner/repo/releases/tag/v0.9.0",
   },
 ];
 
@@ -146,8 +166,39 @@ describe("upstream-watch", () => {
       upstreams: [upstream],
     });
 
-    expect(result.deltas[0]?.pullRequests).toHaveLength(2);
-    expect(result.deltas[0]?.releases).toHaveLength(2);
+    expect(result.deltas[0]?.pullRequests.map((pullRequest) => pullRequest.number)).toEqual([2, 1]);
+    expect(result.deltas[0]?.releases.map((release) => release.tagName)).toEqual([
+      "v2.0.0",
+      "v1.0.0",
+    ]);
+    expect(result.report).toContain("Initial lookback: 30 days");
+    expect(existsSync(stateDir)).toBe(false);
+  });
+
+  it("uses since as an explicit dry-run override for older entries", async () => {
+    tempRoot = mkdtempSync(join(tmpdir(), "jcode-upstream-watch-test-"));
+    const stateDir = join(tempRoot, "state");
+
+    const result = await runUpstreamWatch({
+      clock: () => "2026-05-24T14:00:00Z",
+      githubClient: {
+        fetchPullRequests: async () => pullRequests,
+        fetchReleases: async () => releases,
+      },
+      since: "2026-04-01T00:00:00Z",
+      stateDir,
+      upstreams: [upstream],
+    });
+
+    expect(result.deltas[0]?.pullRequests.map((pullRequest) => pullRequest.number)).toEqual([
+      2, 1, 0,
+    ]);
+    expect(result.deltas[0]?.releases.map((release) => release.tagName)).toEqual([
+      "v2.0.0",
+      "v1.0.0",
+      "v0.9.0",
+    ]);
+    expect(result.wroteState).toBe(false);
     expect(existsSync(stateDir)).toBe(false);
   });
 
@@ -172,8 +223,14 @@ describe("upstream-watch", () => {
       upstreams: [upstream],
     });
 
-    expect(firstRun.deltas[0]?.pullRequests).toHaveLength(2);
-    expect(firstRun.deltas[0]?.releases).toHaveLength(2);
+    expect(firstRun.deltas[0]?.pullRequests.map((pullRequest) => pullRequest.number)).toEqual([
+      2, 1,
+    ]);
+    expect(firstRun.deltas[0]?.releases.map((release) => release.tagName)).toEqual([
+      "v2.0.0",
+      "v1.0.0",
+    ]);
+    expect(firstRun.report).toContain("Initial lookback: 30 days");
     expect(secondRun.deltas[0]?.pullRequests).toHaveLength(0);
     expect(secondRun.deltas[0]?.releases).toHaveLength(0);
 

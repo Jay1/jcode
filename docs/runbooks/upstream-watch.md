@@ -33,6 +33,8 @@ bun run upstream:watch -- --since 2026-05-01T00:00:00Z
 
 Use `--dry-run` to preview current deltas without writing local state. Use `--since` to inspect a one-off window without advancing the local cursor.
 
+When no saved cursor exists, the command starts from a 30-day initial lookback and notes that baseline in the report. A normal first run still advances local state to the latest fetched PR and release timestamps, so an unchanged follow-up run is empty. Pass `--since <iso-timestamp>` when you intentionally need to inspect older history.
+
 ## Local State
 
 State lives under `.jcode/upstream-watch/` and is ignored by git.
