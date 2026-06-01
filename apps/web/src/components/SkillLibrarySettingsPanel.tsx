@@ -15,7 +15,6 @@ import {
   buildSkillLibraryRows,
   countSkillLibraryRowsByProvider,
   filterSkillLibraryRows,
-  selectSkillLibraryPreviewRows,
   type SkillLibraryProviderFilter,
   type SkillLibraryRow,
 } from "../lib/skillLibrary";
@@ -36,7 +35,6 @@ const PROVIDERS: readonly ProviderKind[] = [
   "pi",
 ];
 
-const PREVIEW_SKILL_COUNT = 8;
 const MAX_COLLAPSED_PROVIDER_ROWS = 48;
 
 function getSkillTitle(row: SkillLibraryRow): string {
@@ -52,17 +50,17 @@ function getSkillDescription(row: SkillLibraryRow): string {
 function SkillGlyph({ provider }: { provider: ProviderKind }) {
   return (
     <span
-      className="inline-flex size-10 shrink-0 items-center justify-center rounded-[14px] border border-white/10 bg-linear-to-br from-foreground/18 to-foreground/5 shadow-xs"
+      className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-linear-to-br from-foreground/18 to-foreground/5 shadow-xs"
       data-provider={provider}
     >
-      <ListChecksIcon className="size-5 text-foreground/75" />
+      <ListChecksIcon className="size-4.5 text-foreground/75" />
     </span>
   );
 }
 
 function SourceBadge({ row }: { row: SkillLibraryRow }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+    <span className="inline-flex max-w-24 shrink-0 items-center truncate rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
       {row.providerLabel}
     </span>
   );
@@ -70,35 +68,17 @@ function SourceBadge({ row }: { row: SkillLibraryRow }) {
 
 function SkillRow({ row }: { row: SkillLibraryRow }) {
   return (
-    <div className="group flex items-center gap-3 rounded-2xl border border-border/50 bg-background/55 px-3 py-3 shadow-xs transition-colors hover:border-border hover:bg-(--sidebar-accent)">
+    <div className="group grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 px-4 py-3.5 transition-colors hover:bg-(--sidebar-accent)">
       <SkillGlyph provider={row.provider} />
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <p className="truncate text-[13px] font-semibold text-foreground">{getSkillTitle(row)}</p>
           <SourceBadge row={row} />
         </div>
-        <p className="mt-1 truncate text-[12px] text-muted-foreground">
+        <p className="mt-1 line-clamp-2 wrap-break-word text-[12px] leading-5 text-muted-foreground">
           {getSkillDescription(row)}
         </p>
       </div>
-      <span className="hidden rounded-full bg-foreground/5 px-2 py-1 text-[11px] font-medium text-muted-foreground sm:inline-flex">
-        Installed
-      </span>
-    </div>
-  );
-}
-
-function PreviewSkillCard({ row }: { row: SkillLibraryRow }) {
-  return (
-    <div className="min-w-55 max-w-65 rounded-3xl border border-border/60 bg-linear-to-br from-background via-background to-foreground/4 p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <SkillGlyph provider={row.provider} />
-        <SourceBadge row={row} />
-      </div>
-      <p className="mt-4 truncate text-sm font-semibold text-foreground">{getSkillTitle(row)}</p>
-      <p className="mt-1 line-clamp-2 text-[12px] leading-5 text-muted-foreground">
-        {getSkillDescription(row)}
-      </p>
     </div>
   );
 }
@@ -248,10 +228,6 @@ export function SkillLibrarySettingsPanel() {
     () => PROVIDERS.filter((provider) => providerCanListSkills[provider]),
     [providerCanListSkills],
   );
-  const previewRows = useMemo(
-    () => selectSkillLibraryPreviewRows(rows, PREVIEW_SKILL_COUNT),
-    [rows],
-  );
   const filteredRows = useMemo(
     () => filterSkillLibraryRows(rows, { query: deferredQuery, provider: providerFilter }),
     [deferredQuery, providerFilter, rows],
@@ -317,39 +293,49 @@ export function SkillLibrarySettingsPanel() {
   }, [providerCanListSkills, providerFilter]);
 
   return (
-    <div className="space-y-5">
-      <section className="overflow-hidden rounded-3xl border border-border/70 bg-linear-to-br from-background via-background to-foreground/3 p-5 shadow-xs">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-              Installed capabilities
-            </p>
-            <h2 className="mt-2 text-xl font-semibold text-foreground">Skill Library</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Browse installed skills across providers. This first version is read-only and keeps
-              management space reserved for future install and uninstall flows.
-            </p>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
-              <p className="text-lg font-semibold text-foreground">{rows.length}</p>
-              <p className="text-[11px] text-muted-foreground">Skills</p>
+    <div className="min-w-0 space-y-5">
+      <section className="min-w-0 space-y-2">
+        <h2 className="px-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          Installed capabilities
+        </h2>
+        <div className="min-w-0 rounded-2xl border border-border bg-card/60 p-4 shadow-sm sm:p-5">
+          <div className="space-y-5">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="max-w-xl text-sm leading-6 text-muted-foreground">
+                  Search installed skills by name, source, or description. Management actions are
+                  reserved until providers expose safe controls.
+                </p>
+              </div>
+              <span className="inline-flex w-fit shrink-0 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[11px] font-medium text-muted-foreground">
+                Read-only
+              </span>
             </div>
-            <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
-              <p className="text-lg font-semibold text-foreground">{activeProviders.length}</p>
-              <p className="text-[11px] text-muted-foreground">Sources</p>
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
-              <p className="text-lg font-semibold text-foreground">Read-only</p>
-              <p className="text-[11px] text-muted-foreground">V1 mode</p>
+            <div className="grid min-w-0 grid-cols-3 gap-2">
+              <div className="min-w-0 rounded-xl border border-border/60 bg-background/60 px-3 py-3">
+                <p className="truncate text-lg font-semibold text-foreground">{rows.length}</p>
+                <p className="truncate text-[11px] text-muted-foreground">Skills</p>
+              </div>
+              <div className="min-w-0 rounded-xl border border-border/60 bg-background/60 px-3 py-3">
+                <p className="truncate text-lg font-semibold text-foreground">
+                  {activeProviders.length}
+                </p>
+                <p className="truncate text-[11px] text-muted-foreground">Sources</p>
+              </div>
+              <div className="min-w-0 rounded-xl border border-border/60 bg-background/60 px-3 py-3">
+                <p className="truncate text-lg font-semibold text-foreground">
+                  {filteredRows.length}
+                </p>
+                <p className="truncate text-[11px] text-muted-foreground">Visible</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="rounded-3xl border border-border/70 bg-background/70 p-4 shadow-xs">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
+      <section className="min-w-0 rounded-2xl border border-border bg-card/60 p-4 shadow-sm sm:p-5">
+        <div className="space-y-3">
+          <div className="relative min-w-0">
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
@@ -360,7 +346,11 @@ export function SkillLibrarySettingsPanel() {
               className="pl-9"
             />
           </div>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Filter skills by source">
+          <div
+            className="flex min-w-0 flex-wrap gap-2"
+            role="group"
+            aria-label="Filter skills by source"
+          >
             <Button
               type="button"
               size="sm"
@@ -411,30 +401,7 @@ export function SkillLibrarySettingsPanel() {
         ) : null}
       </section>
 
-      {query.trim().length === 0 && previewRows.length > 0 ? (
-        <section className="space-y-3">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Skill preview deck</h3>
-            <p className="text-[12px] text-muted-foreground">
-              A quick deterministic sample; search and source filters are the complete browse path.
-            </p>
-          </div>
-          <div
-            className="flex snap-x gap-3 overflow-x-auto pb-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-            tabIndex={0}
-            role="region"
-            aria-label="Skill preview deck"
-          >
-            {previewRows.map((row) => (
-              <div key={row.key} className="snap-start">
-                <PreviewSkillCard row={row} />
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <section className="space-y-4">
+      <section className="min-w-0 space-y-4">
         {discoveryCwd === null ? (
           <div className="rounded-2xl border border-dashed border-border/70 bg-background/50 p-6 text-sm text-muted-foreground">
             Open a project or thread to discover installed provider skills.
@@ -558,8 +525,11 @@ export function SkillLibrarySettingsPanel() {
             const hiddenCount = providerRows.length - visibleRows.length;
 
             return (
-              <div key={provider} className="space-y-2">
-                <div className="flex items-center justify-between px-1">
+              <div
+                key={provider}
+                className="min-w-0 space-y-2 overflow-hidden rounded-2xl border border-border bg-card/60 p-3 shadow-sm"
+              >
+                <div className="flex min-w-0 items-center justify-between gap-3 px-1">
                   <h3 className="text-sm font-semibold text-foreground">
                     {PROVIDER_DISPLAY_NAMES[provider]}
                   </h3>
@@ -567,7 +537,7 @@ export function SkillLibrarySettingsPanel() {
                     {providerRows.length} skills
                   </span>
                 </div>
-                <div className="grid gap-2">
+                <div className="min-w-0 divide-y divide-border overflow-hidden rounded-xl border border-border bg-background/35">
                   {visibleRows.map((row) => (
                     <SkillRow key={row.key} row={row} />
                   ))}

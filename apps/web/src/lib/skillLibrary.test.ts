@@ -5,7 +5,6 @@ import {
   buildSkillLibraryRows,
   countSkillLibraryRowsByProvider,
   filterSkillLibraryRows,
-  selectSkillLibraryPreviewRows,
 } from "./skillLibrary";
 
 function skill(
@@ -66,7 +65,7 @@ describe("skill library helpers", () => {
     expect(filterSkillLibraryRows(rows, { query: "review", provider: "codex" })).toHaveLength(1);
   });
 
-  it("counts rows by provider and selects a deterministic preview subset", () => {
+  it("counts rows by provider", () => {
     const rows = buildSkillLibraryRows([
       {
         provider: "opencode" as ProviderKind,
@@ -81,31 +80,6 @@ describe("skill library helpers", () => {
     ]);
 
     expect(countSkillLibraryRowsByProvider(rows)).toEqual({ opencode: 2, codex: 1 });
-    expect(selectSkillLibraryPreviewRows(rows, 2).map((row) => row.provider)).toEqual([
-      "codex",
-      "opencode",
-    ]);
-  });
-
-  it("balances preview rows across providers before taking additional rows", () => {
-    const rows = buildSkillLibraryRows([
-      {
-        provider: "opencode",
-        providerLabel: "OpenCode",
-        skills: [skill("a-open"), skill("b-open"), skill("c-open")],
-      },
-      {
-        provider: "codex",
-        providerLabel: "Codex",
-        skills: [skill("z-codex")],
-      },
-    ]);
-
-    expect(selectSkillLibraryPreviewRows(rows, 3).map((row) => row.provider)).toEqual([
-      "codex",
-      "opencode",
-      "opencode",
-    ]);
   });
 
   it("keeps row keys unique when a provider reports duplicate skill paths", () => {

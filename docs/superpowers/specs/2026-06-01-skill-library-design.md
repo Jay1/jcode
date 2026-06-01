@@ -41,9 +41,9 @@ The likely implementation seam is:
 
 ## Information Architecture
 
-The Skill Library section should use a search-first catalog pattern with one visual preview rail. This is intentionally not a pure carousel: with 200+ skills, users need predictable scanning, filtering, and result counts more than hidden horizontal browsing.
+The Skill Library section should use a search-first catalog pattern with a contained Settings-native inventory. This is intentionally not a carousel: with 200+ skills, users need predictable scanning, filtering, and result counts more than hidden horizontal browsing.
 
-The section should include four levels:
+The section should include three levels:
 
 1. Hero summary
    - Total installed skills.
@@ -56,24 +56,18 @@ The section should include four levels:
    - Applied-filter summary when search or provider filters are active.
    - Optional density toggle between `Comfortable` and `Compact` if implementation cost stays low.
 
-3. Preview rail
-   - A horizontal, scroll-snapping rail of notable installed skills.
-   - This provides the “carousel” feeling without making the whole page depend on hidden horizontal navigation.
-   - Preview selection can be deterministic in v1: for example first N skills after sorting or skills matching common high-value categories.
-   - The rail should disappear or collapse when search is active so results stay primary.
-
-4. Provider-grouped inventory
+3. Provider-grouped inventory
    - Sections for OpenCode, Codex, Claude, Pi, and any future provider that exposes skills.
    - Each section shows dense capability rows by default, with a compact card treatment only where it does not reduce scannability.
    - Empty/unavailable provider states should explain whether the provider does not support skill discovery or simply returned no installed skills.
 
 ## Density Recommendation
 
-Use a hybrid of a polished preview rail and a dense inventory, not a full-page card grid.
+Use a polished dense inventory, not a full-page card grid or carousel.
 
 Public marketplace and catalog patterns converge on this split:
 
-- Raycast Store and Chrome Web Store use featured/curated rails for discovery, then a searchable complete catalog.
+- Raycast Store and Chrome Web Store demonstrate how visual discovery can complement catalog search, but JCode's first Settings version should prioritize containment and scanning over rails.
 - VS Code, JetBrains, GitHub Marketplace, and Open VSX use search, filters, sorting, and result counts as the durable path through large extension lists.
 - Open VSX's public extension-listing architecture is the closest code-level analogue: a React listing container coordinates query state, search, category filtering, sort state, loading states, and infinite scrolling for large extension results.
 - NN/g's card guidance says cards are visually engaging but less scannable and less space-efficient than lists when users are searching for a specific item.
@@ -82,10 +76,10 @@ Public marketplace and catalog patterns converge on this split:
 For JCode, the best balance is:
 
 - Top: a compact cockpit hero with total skills, provider count, and read-only status.
-- Flair: one horizontal `Skill preview deck` rail with 6-10 larger cards using provider accents.
+- Flair: polished Settings cards, compact metrics, and provider glyphs inside contained rows.
 - Workhorse: a dense grouped inventory where each row is about 72-96px tall on desktop and contains name, source badge, one-line description, and installed/read-only status.
 - Scale: keep all filtering client-side for v1, but structure rendering so virtualized rows or per-provider pagination can be added if the installed count grows beyond a few hundred.
-- Mobile: collapse provider filters into a tray/sheet or wrapped chips, hide the preview rail after search starts, and use single-column compact rows.
+- Mobile: collapse provider filters into a tray/sheet or wrapped chips and use single-column compact rows.
 
 Implementation notes for scale:
 
@@ -100,7 +94,7 @@ Recommended implementation shape:
 - Add a dedicated `SkillLibrarySettingsPanel` rather than rendering `PluginLibrary` inside Settings.
 - Reuse provider display names/icons and the existing discovery helpers from `apps/web/src/lib/providerDiscovery.ts` and `apps/web/src/lib/providerDiscoveryReactQuery.ts`.
 - Query provider capabilities first, then list skills for providers whose capabilities report skill discovery support.
-- Normalize the aggregated rows into `{ provider, providerLabel, skill, searchBlob }` so search, counts, preview selection, and rendering do not duplicate provider-specific logic.
+- Normalize the aggregated rows into `{ provider, providerLabel, skill, searchBlob }` so search, counts, and rendering do not duplicate provider-specific logic.
 - Keep future management actions behind capability flags; v1 should show no active install/uninstall controls.
 
 Primary references:
@@ -147,8 +141,6 @@ The first iteration should support:
 - Loading skeletons per provider group.
 - Error/empty states that do not imply the feature is broken when a provider lacks skill discovery.
 
-The preview rail should be keyboard and pointer accessible. It can scroll horizontally, but the provider-grouped inventory must remain the complete browse path.
-
 Filtering should be instant and should not scroll the user away from their current position unless the active query changes from empty to non-empty. Search should reuse the existing provider discovery normalization path so `$analyze`, `analyze`, and related descriptions behave consistently with composer skill lookup.
 
 ## Visual Direction
@@ -157,8 +149,8 @@ Use a refined cockpit-library aesthetic rather than a generic marketplace grid.
 
 Recommended visual cues:
 
-- A “deck of capabilities” hero rail with subtle depth, provider-colored accents, and compact metadata chips.
-- Cards that feel like operational capability tiles, not app-store listings.
+- A compact overview card with subtle depth, source counts, and read-only status.
+- Rows that feel like operational capability entries, not app-store listings.
 - Existing JCode typography, spacing, theme tokens, sidebar route chrome, and Settings panel language.
 - Provider icons where available, but keep names visible because source is semantically important.
 - Dense rows with subtle gradient left rails or provider glyphs so the inventory has visual identity without sacrificing scan speed.
@@ -181,8 +173,8 @@ Reserve clear seams for later work:
 ## Risks
 
 - Aggregating all providers can hide provider capability differences. Mitigation: keep source badges and provider sections explicit.
-- A pure carousel will not scale to large skill counts. Mitigation: use a preview rail plus complete provider-grouped inventory.
-- A full card grid can look better in screenshots but degrade real scanning. Mitigation: default to dense rows and reserve larger cards for the preview rail.
+- A pure carousel will not scale to large skill counts. Mitigation: use the complete provider-grouped inventory as the primary surface.
+- A full card grid can look better in screenshots but degrade real scanning. Mitigation: default to dense contained rows.
 - Filter labels can mirror provider internals instead of user intent. Mitigation: use plain labels such as source provider, installed status, and capability family; avoid protocol jargon.
 - Showing future management buttons too early can imply behavior that does not exist. Mitigation: reserve visual space without active install/uninstall controls.
 - Reusing `PluginLibrary` wholesale could create a bland or provider-filtered experience. Mitigation: share helper logic where useful, but make a dedicated Settings panel.
