@@ -582,11 +582,9 @@ describe("wsNativeApi", () => {
     const api = createWsNativeApi();
     await api.orchestration.getSnapshot();
 
-    expect(requestMock).toHaveBeenCalledWith(
-      ORCHESTRATION_WS_METHODS.getSnapshot,
-      undefined,
-      { timeoutMs: null },
-    );
+    expect(requestMock).toHaveBeenCalledWith(ORCHESTRATION_WS_METHODS.getSnapshot, undefined, {
+      timeoutMs: null,
+    });
   });
 
   it("uses no client timeout for orchestration snapshot getShellSnapshot", async () => {
@@ -596,11 +594,9 @@ describe("wsNativeApi", () => {
     const api = createWsNativeApi();
     await api.orchestration.getShellSnapshot();
 
-    expect(requestMock).toHaveBeenCalledWith(
-      ORCHESTRATION_WS_METHODS.getShellSnapshot,
-      undefined,
-      { timeoutMs: null },
-    );
+    expect(requestMock).toHaveBeenCalledWith(ORCHESTRATION_WS_METHODS.getShellSnapshot, undefined, {
+      timeoutMs: null,
+    });
   });
 
   it("uses no client timeout for full-thread diff requests", async () => {

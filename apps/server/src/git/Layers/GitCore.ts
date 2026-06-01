@@ -958,11 +958,17 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
         );
 
         if (remoteExists) {
-          const remoteNamesResult = yield* executeGit("GitCore.createWorktree.remoteNames", cwd, ["remote"], {
-            allowNonZeroExit: true,
-            timeoutMs: 5_000,
-          });
-          const remoteNames = remoteNamesResult.code === 0 ? parseRemoteNames(remoteNamesResult.stdout) : [];
+          const remoteNamesResult = yield* executeGit(
+            "GitCore.createWorktree.remoteNames",
+            cwd,
+            ["remote"],
+            {
+              allowNonZeroExit: true,
+              timeoutMs: 5_000,
+            },
+          );
+          const remoteNames =
+            remoteNamesResult.code === 0 ? parseRemoteNames(remoteNamesResult.stdout) : [];
           if (parseRemoteRefWithRemoteNames(branch, remoteNames)) {
             return `refs/remotes/${branch}`;
           }

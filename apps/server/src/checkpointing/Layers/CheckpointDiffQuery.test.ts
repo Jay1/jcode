@@ -153,7 +153,8 @@ describe("CheckpointDiffQueryLive", () => {
           getActiveProjectByWorkspaceRoot: () => Effect.die("unused"),
           getProjectShellById: () => Effect.die("unused"),
           getFirstActiveThreadIdByProjectId: () => Effect.die("unused"),
-          getThreadCheckpointContext: () => Effect.die("full checkpoint context should not be hydrated"),
+          getThreadCheckpointContext: () =>
+            Effect.die("full checkpoint context should not be hydrated"),
           getFullThreadDiffContext: () => Effect.succeed(Option.some(fullThreadDiffContext)),
           getThreadShellById: () => Effect.die("unused"),
           getThreadDetailById: () => Effect.die("unused"),
