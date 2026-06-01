@@ -183,7 +183,6 @@ describe("resolveSidebarNewThreadEnvMode", () => {
   });
 });
 
-
 describe("pruneDismissedThreadStatusKeys", () => {
   it("returns the same object when every dismissed thread is retained", () => {
     const current = {
