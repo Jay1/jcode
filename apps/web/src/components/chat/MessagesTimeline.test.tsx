@@ -112,15 +112,67 @@ describe("MessagesTimeline", () => {
     expect(markup).not.toContain('data-index="0"');
     expect(markup).not.toContain('class="relative" style="height:');
     expect(markup).toContain('data-timeline-row-kind="message"');
+    expect(markup).toContain('role="article"');
+    expect(markup).toContain('aria-label="Assistant message"');
+    expect(markup).toContain("assistant-message-row");
+    expect(markup).toContain("app-assistant-message");
     expect(markup).toContain("font-family:var(--font-chat-body-family)");
     expect(markup).not.toContain("font-family:var(--font-chat-code-family)");
     expect(markup).not.toContain("font-family:var(--font-ui-family)");
+  });
+
+  it("renders assistant turns as semantic transcript surfaces", async () => {
+    const { MessagesTimeline } = await import("./MessagesTimeline");
+    const markup = renderToStaticMarkup(
+      <MessagesTimeline
+        hasMessages
+        isWorking={false}
+        activeTurnInProgress={false}
+        activeTurnStartedAt={null}
+        timelineEntries={[
+          {
+            id: "entry-assistant-surface",
+            kind: "message",
+            createdAt: "2026-03-17T19:12:28.000Z",
+            message: {
+              id: MessageId.makeUnsafe("assistant-message-surface"),
+              role: "assistant",
+              text: "surface hierarchy body",
+              createdAt: "2026-03-17T19:12:28.000Z",
+              streaming: false,
+            },
+          },
+        ]}
+        completionDividerBeforeEntryId={null}
+        completionSummary={null}
+        turnDiffSummaryByAssistantMessageId={new Map()}
+        nowIso="2026-03-17T19:12:30.000Z"
+        expandedWorkGroups={{}}
+        onToggleWorkGroup={() => {}}
+        onOpenTurnDiff={() => {}}
+        revertTurnCountByUserMessageId={new Map()}
+        onRevertUserMessage={() => {}}
+        isRevertingCheckpoint={false}
+        onImageExpand={() => {}}
+        markdownCwd={undefined}
+        resolvedTheme="dark"
+        timestampFormat="locale"
+        workspaceRoot={undefined}
+      />,
+    );
+
+    expect(markup).toContain('role="article"');
+    expect(markup).toContain('aria-label="Assistant message"');
+    expect(markup).toContain("app-assistant-message");
+    expect(markup).toContain("data-assistant-message-id");
   });
 
   it("routes transcript prose through the chat body font variable", () => {
     const indexCss = readFileSync(new URL("../../index.css", import.meta.url), "utf8");
 
     expect(indexCss).toMatch(/--font-chat-body-family:\s*var\(\s*--font-ui-family\s*\);/);
+    expect(indexCss).toContain(".app-transcript-stage");
+    expect(indexCss).toContain(".app-assistant-message");
     expect(indexCss).toContain(".chat-markdown :not(pre) > code");
     expect(indexCss).toContain("font-family: var(--font-chat-code-family);");
     expect(indexCss).toContain("font-family: var(--font-chat-code-family) !important;");
