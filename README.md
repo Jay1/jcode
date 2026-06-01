@@ -1,8 +1,9 @@
 <p align="center">
-  <img src="./apps/web/public/jcode.png" alt="JCode logo" width="96" />
+  <img src="./apps/web/public/jcode.png" alt="JCode logo" width="96" /> 
+ 
 </p>
 
-# JCode
+
 
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/Jay1/jcode/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/badge/Release-Desktop-6f42c1?logo=github&logoColor=white)](https://github.com/Jay1/jcode/actions/workflows/release.yml)
@@ -15,26 +16,6 @@
 A local cockpit for coding agents, tuned for low-level and cybersecurity workflows.
 
 ## Installation
-
-### AI-Driven Install
-
-Copy the prompt below and paste it into your AI tool (Claude, Codex, OpenClaw, etc.) to install JCode on this machine:
-
-```markdown
-Install JCode desktop app on this machine. JCode is at https://github.com/Jay1/jcode
-
-1. Go to https://github.com/Jay1/jcode/releases/latest
-2. Detect the current OS and architecture (macOS ARM/x64, Windows x64, or Linux x64).
-3. Download the matching installer:
-   - macOS ARM: `JCode-*-arm64.dmg`
-   - macOS Intel: `JCode-*-x64.dmg`
-   - Windows: `JCode-*-x64.exe`
-   - Linux: `JCode-*-x86_64.AppImage`
-4. Run the installer or mount the DMG and drag JCode to Applications.
-5. Launch JCode and confirm it opens.
-
-If the latest release page or assets cannot be found, report the error.
-```
 
 ### Linux and macOS
 
