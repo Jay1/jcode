@@ -41,4 +41,10 @@ describe("Sidebar structure", () => {
     expect(sidebarSource).toContain("var(--app-sidebar-row-bg)");
     expect(sidebarSource).toContain("var(--app-sidebar-row-active-bg)");
   });
+
+  it("keeps PR status subscriptions inside the row badge boundary", () => {
+    expect(sidebarSource).toContain("function ThreadPrStatusBadgeBoundary");
+    expect(sidebarSource).toContain("gitStatusQueryOptions(branch !== null ? cwd : null)");
+    expect(sidebarSource).not.toContain("prByThreadId");
+  });
 });
