@@ -60,4 +60,28 @@ describe("resolveMarkdownFileLinkTarget", () => {
   it("does not treat app routes as file links", () => {
     expect(resolveMarkdownFileLinkTarget("/chat/settings")).toBeNull();
   });
+
+  it("resolves file paths containing spaces", () => {
+    expect(resolveMarkdownFileLinkTarget("my file.ts", "/Users/julius/project")).toBe(
+      "/Users/julius/project/my file.ts",
+    );
+  });
+
+  it("resolves file paths containing parentheses", () => {
+    expect(resolveMarkdownFileLinkTarget("file (copy).ts", "/Users/julius/project")).toBe(
+      "/Users/julius/project/file (copy).ts",
+    );
+  });
+
+  it("resolves relative paths with spaces in directory names", () => {
+    expect(resolveMarkdownFileLinkTarget("src/my folder/process.ts", "/Users/julius/project")).toBe(
+      "/Users/julius/project/src/my folder/process.ts",
+    );
+  });
+
+  it("resolves URL-encoded file paths with decoded spaces", () => {
+    expect(resolveMarkdownFileLinkTarget("my%20file.ts", "/Users/julius/project")).toBe(
+      "/Users/julius/project/my file.ts",
+    );
+  });
 });
