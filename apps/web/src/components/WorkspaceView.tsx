@@ -328,6 +328,7 @@ export default function WorkspaceView({ workspaceId }: { workspaceId: string }) 
       activeTerminalId: terminalState.activeTerminalId,
       terminalGroups: terminalState.terminalGroups,
       activeTerminalGroupId: terminalState.activeTerminalGroupId,
+      groupTitleOverridesById: terminalState.groupTitleOverridesById,
       focusRequestId,
       onSplitTerminal: splitWorkspaceTerminalRight,
       onSplitTerminalDown: splitWorkspaceTerminalDown,

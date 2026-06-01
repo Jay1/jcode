@@ -411,6 +411,7 @@ interface ThreadTerminalDrawerProps {
   activeTerminalId: string;
   terminalGroups: ThreadTerminalGroup[];
   activeTerminalGroupId: string;
+  groupTitleOverridesById: Record<string, string>;
   focusRequestId: number;
   onSplitTerminal: () => void;
   onSplitTerminalDown: () => void;
@@ -436,6 +437,7 @@ interface ThreadTerminalDrawerProps {
     activity: { hasRunningSubprocess: boolean; agentState: TerminalActivityState | null },
   ) => void;
   onRenameTerminal?: (terminalId: string, name: string) => void;
+  onRenameGroup?: (groupId: string, name: string) => void;
   onAddTerminalContext: (selection: TerminalContextSelection) => void;
   onTogglePresentationMode?: (() => void) | undefined;
 }
@@ -456,6 +458,7 @@ export default function ThreadTerminalDrawer({
   activeTerminalId,
   terminalGroups,
   activeTerminalGroupId,
+  groupTitleOverridesById,
   focusRequestId,
   onSplitTerminal,
   onSplitTerminalDown,
@@ -475,6 +478,7 @@ export default function ThreadTerminalDrawer({
   onTerminalMetadataChange,
   onTerminalActivityChange,
   onRenameTerminal,
+  onRenameGroup,
   onAddTerminalContext,
   onTogglePresentationMode,
 }: ThreadTerminalDrawerProps) {
@@ -617,6 +621,7 @@ export default function ThreadTerminalDrawer({
           terminalGroups={resolvedTerminalGroups}
           activeGroupId={resolvedActiveGroupId}
           terminalVisualIdentityById={terminalVisualIdentityById}
+          groupTitleOverridesById={groupTitleOverridesById}
           actions={topTabBarActions}
           onActiveGroupChange={(groupId) => {
             const nextGroup = resolvedTerminalGroups.find((group) => group.id === groupId);
@@ -624,6 +629,7 @@ export default function ThreadTerminalDrawer({
             onActiveTerminalChange(nextGroup.activeTerminalId);
           }}
           onCloseGroup={onCloseTerminalGroup}
+          onRenameGroup={onRenameGroup}
         />
       ) : null}
 
