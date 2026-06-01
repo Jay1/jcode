@@ -16,7 +16,12 @@ import {
   resolveAttachmentRelativePath,
 } from "./attachmentPaths";
 import { resolveAttachmentPathById } from "./attachmentStore.ts";
-import { authErrorResponse, makeEffectAuthRequest, serveAuthHttpRoute } from "./auth/http";
+import {
+  authErrorResponse,
+  canIssueDevAutomationAccess,
+  makeEffectAuthRequest,
+  serveAuthHttpRoute,
+} from "./auth/http";
 import { ServerAuth } from "./auth/Services/ServerAuth";
 import type { ServerAuthShape } from "./auth/Services/ServerAuth";
 import type { SessionCredentialServiceShape } from "./auth/Services/SessionCredentialService";
@@ -114,13 +119,14 @@ function corsHeadersForRequest(
   };
 }
 
-const authEffectRouteLayer = HttpRouter.add(
+export const authEffectRouteLayer = HttpRouter.add(
   "*",
   "/api/auth/*",
   Effect.gen(function* () {
     const request = yield* HttpServerRequest.HttpServerRequest;
     const serverAuth = yield* ServerAuth;
     const sessions = yield* SessionCredentialService;
+    const config = yield* ServerConfig;
     const url = HttpServerRequest.toURL(request);
     const corsHeaders = corsHeadersForRequest(request);
     if (request.method === "OPTIONS") {
@@ -180,6 +186,35 @@ const authEffectRouteLayer = HttpRouter.add(
         }),
         { headers: corsHeaders },
       );
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/auth/automation-access-grant") {
+      if (
+        !canIssueDevAutomationAccess({
+          config,
+          remoteAddress: request.remoteAddress ?? null,
+          host: Array.isArray(request.headers.host) ? request.headers.host[0] : request.headers.host,
+          origin: Array.isArray(request.headers.origin)
+            ? request.headers.origin[0]
+            : request.headers.origin,
+        })
+      ) {
+        return yield* Effect.fail({
+          message: "Dev automation access is unavailable.",
+          status: 403 as const,
+        });
+      }
+      const result = yield* serverAuth.issueDevAutomationSession();
+      return HttpServerResponse.jsonUnsafe(result.response, {
+        headers: {
+          ...corsHeaders,
+          "Set-Cookie": encodeCookie({
+            name: sessions.cookieName,
+            value: result.sessionToken,
+            expiresAt: result.response.expiresAt,
+          }),
+        },
+      });
     }
 
     if (request.method === "POST" && url.pathname === "/api/auth/ws-token") {
@@ -641,6 +676,7 @@ export function createHttpRequestHandler({
             url,
             req,
             respond,
+            serverConfig,
             serverAuth,
             sessionCredentials,
           });

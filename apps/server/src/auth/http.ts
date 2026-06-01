@@ -9,6 +9,12 @@ import {
 import { DateTime, Effect, Schema } from "effect";
 import { HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 
+import type { ServerConfigShape } from "../config";
+import {
+  isExplicitLoopbackHost,
+  isLoopbackRemoteAddress,
+  isSameOriginLoopbackRequest,
+} from "../startupAccess";
 import { AuthError, type AuthRequest, type ServerAuthShape } from "./Services/ServerAuth";
 import type { SessionCredentialServiceShape } from "./Services/SessionCredentialService";
 import { deriveAuthClientMetadata } from "./utils";
@@ -23,6 +29,7 @@ export interface AuthHttpRouteOptions {
   readonly url: URL;
   readonly req: http.IncomingMessage;
   readonly respond: Respond;
+  readonly serverConfig: ServerConfigShape;
   readonly serverAuth: ServerAuthShape;
   readonly sessionCredentials: Pick<SessionCredentialServiceShape, "cookieName">;
 }
@@ -172,6 +179,20 @@ function deriveRequestClientMetadata(req: http.IncomingMessage, label?: string) 
   });
 }
 
+export function canIssueDevAutomationAccess(input: {
+  readonly config: Pick<ServerConfigShape, "devAutomationAccess" | "host">;
+  readonly remoteAddress: string | null | undefined;
+  readonly host: string | undefined;
+  readonly origin: string | undefined;
+}): boolean {
+  return (
+    input.config.devAutomationAccess &&
+    isExplicitLoopbackHost(input.config.host) &&
+    isLoopbackRemoteAddress(input.remoteAddress) &&
+    isSameOriginLoopbackRequest({ host: input.host, origin: input.origin })
+  );
+}
+
 const authenticateOwnerSession = (input: {
   readonly serverAuth: ServerAuthShape;
   readonly authRequest: AuthRequest;
@@ -250,6 +271,31 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
         deriveRequestClientMetadata(input.req),
       );
       respondJson(input.respond, 200, result);
+      return;
+    }
+
+    if (method === "POST" && input.url.pathname === "/api/auth/automation-access-grant") {
+      if (
+        !canIssueDevAutomationAccess({
+          config: input.serverConfig,
+          remoteAddress: input.req.socket.remoteAddress ?? null,
+          host: headers.host,
+          origin: headers.origin,
+        })
+      ) {
+        return yield* new AuthError({
+          message: "Dev automation access is unavailable.",
+          status: 403,
+        });
+      }
+      const result = yield* input.serverAuth.issueDevAutomationSession();
+      respondJson(input.respond, 200, result.response, {
+        "Set-Cookie": encodeCookie({
+          name: input.sessionCredentials.cookieName,
+          value: result.sessionToken,
+          expiresAt: result.response.expiresAt,
+        }),
+      });
       return;
     }
 
