@@ -933,6 +933,52 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
         },
       ).pipe(Effect.map((result) => result.code === 0));
 
+    const worktreeRemoteStartPointExists = (
+      cwd: string,
+      branch: string,
+    ): Effect.Effect<boolean, GitCommandError> =>
+      executeGit(
+        "GitCore.createWorktree.remoteStartPointExists",
+        cwd,
+        ["show-ref", "--verify", "--quiet", `refs/remotes/${branch}`],
+        {
+          allowNonZeroExit: true,
+          timeoutMs: 5_000,
+        },
+      ).pipe(Effect.map((result) => result.code === 0));
+
+    const resolveWorktreeStartPoint = (
+      cwd: string,
+      branch: string,
+    ): Effect.Effect<string, GitCommandError> =>
+      Effect.gen(function* () {
+        const [localExists, remoteExists] = yield* Effect.all(
+          [branchExists(cwd, branch), worktreeRemoteStartPointExists(cwd, branch)],
+          { concurrency: "unbounded" },
+        );
+
+        if (remoteExists) {
+          const remoteNamesResult = yield* executeGit("GitCore.createWorktree.remoteNames", cwd, ["remote"], {
+            allowNonZeroExit: true,
+            timeoutMs: 5_000,
+          });
+          const remoteNames = remoteNamesResult.code === 0 ? parseRemoteNames(remoteNamesResult.stdout) : [];
+          if (parseRemoteRefWithRemoteNames(branch, remoteNames)) {
+            return `refs/remotes/${branch}`;
+          }
+        }
+
+        if (localExists) {
+          return `refs/heads/${branch}`;
+        }
+
+        if (remoteExists) {
+          return `refs/remotes/${branch}`;
+        }
+
+        return branch;
+      });
+
     const resolveAvailableBranchName = (
       cwd: string,
       desiredBranch: string,
@@ -2077,9 +2123,12 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
         const sanitizedBranch = targetBranch.replace(/\//g, "-");
         const repoName = path.basename(input.cwd);
         const worktreePath = input.path ?? path.join(worktreesDir, repoName, sanitizedBranch);
+        const startPoint = input.newBranch
+          ? yield* resolveWorktreeStartPoint(input.cwd, input.branch)
+          : input.branch;
         const args = input.newBranch
-          ? ["worktree", "add", "-b", input.newBranch, worktreePath, input.branch]
-          : ["worktree", "add", worktreePath, input.branch];
+          ? ["worktree", "add", "-b", input.newBranch, worktreePath, startPoint]
+          : ["worktree", "add", worktreePath, startPoint];
 
         yield* executeGit("GitCore.createWorktree", input.cwd, args, {
           fallbackErrorMessage: "git worktree add failed",

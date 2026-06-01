@@ -50,6 +50,14 @@ export function resolveBranchToolbarValue(input: {
   return currentGitBranch ?? activeThreadBranch;
 }
 
+export function resolvePostCheckoutStatusCwd(input: {
+  branchIsRemote: boolean | undefined;
+  branchCwd: string;
+  checkoutCwd: string;
+}): string | null {
+  return input.branchIsRemote === true ? input.checkoutCwd : null;
+}
+
 // Local threads should mirror the concrete checkout; stale thread metadata makes
 // the current Git branch appear selectable while clicks only perform a no-op.
 export function shouldSyncLocalThreadBranch(input: {
@@ -174,8 +182,7 @@ export function resolveBranchSelectionTarget(input: {
     };
   }
 
-  const nextWorktreePath =
-    activeWorktreePath !== null && branch.isDefault ? null : activeWorktreePath;
+  const nextWorktreePath = activeWorktreePath;
 
   return {
     checkoutCwd: nextWorktreePath ?? activeProjectCwd,

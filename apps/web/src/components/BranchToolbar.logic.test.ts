@@ -7,6 +7,7 @@ import {
   resolveAssociatedWorktreeMetadataAfterWorkspacePatch,
   resolveDraftEnvModeAfterBranchChange,
   resolveBranchToolbarValue,
+  resolvePostCheckoutStatusCwd,
   shouldSyncLocalThreadBranch,
 } from "./BranchToolbar.logic";
 
@@ -334,7 +335,7 @@ describe("resolveBranchSelectionTarget", () => {
     });
   });
 
-  it("checks out the default branch in the main repo when leaving a secondary worktree", () => {
+  it("keeps default branch checkout scoped to the current secondary worktree", () => {
     expect(
       resolveBranchSelectionTarget({
         activeProjectCwd: "/repo",
@@ -345,8 +346,8 @@ describe("resolveBranchSelectionTarget", () => {
         },
       }),
     ).toEqual({
-      checkoutCwd: "/repo",
-      nextWorktreePath: null,
+      checkoutCwd: "/repo/.jcode/worktrees/feature-a",
+      nextWorktreePath: "/repo/.jcode/worktrees/feature-a",
       reuseExistingWorktree: false,
     });
   });
@@ -366,5 +367,27 @@ describe("resolveBranchSelectionTarget", () => {
       nextWorktreePath: "/repo/.jcode/worktrees/feature-a",
       reuseExistingWorktree: false,
     });
+  });
+});
+
+describe("resolvePostCheckoutStatusCwd", () => {
+  it("refreshes remote branch status from the checkout target cwd", () => {
+    expect(
+      resolvePostCheckoutStatusCwd({
+        branchIsRemote: true,
+        branchCwd: "/repo/.jcode/worktrees/feature-a",
+        checkoutCwd: "/repo",
+      }),
+    ).toBe("/repo");
+  });
+
+  it("skips post-checkout status refresh for local branch selections", () => {
+    expect(
+      resolvePostCheckoutStatusCwd({
+        branchIsRemote: false,
+        branchCwd: "/repo/.jcode/worktrees/feature-a",
+        checkoutCwd: "/repo",
+      }),
+    ).toBeNull();
   });
 });

@@ -1170,6 +1170,82 @@ it.layer(TestLayer)("git integration", (it) => {
       }),
     );
 
+    it.effect("qualifies local branch start points before creating a worktree", () =>
+      Effect.gen(function* () {
+        const tmp = yield* makeTmpDir();
+        yield* initRepoWithCommit(tmp);
+        yield* (yield* GitCore).createBranch({ cwd: tmp, branch: "feature/shared" });
+
+        const realGitCore = yield* GitCore;
+        let worktreeArgs: ReadonlyArray<string> | null = null;
+        const core = yield* makeIsolatedGitCore((input) => {
+          if (input.args[0] === "worktree" && input.args[1] === "add") {
+            worktreeArgs = [...input.args];
+          }
+          return realGitCore.execute(input);
+        });
+
+        const wtPath = path.join(tmp, "wt-qualified-local");
+        yield* core.createWorktree({
+          cwd: tmp,
+          branch: "feature/shared",
+          newBranch: "wt-qualified-local",
+          path: wtPath,
+        });
+
+        expect(worktreeArgs).toEqual([
+          "worktree",
+          "add",
+          "-b",
+          "wt-qualified-local",
+          wtPath,
+          "refs/heads/feature/shared",
+        ]);
+
+        yield* core.removeWorktree({ cwd: tmp, path: wtPath });
+      }),
+    );
+
+    it.effect("qualifies remote branch start points before creating a worktree", () =>
+      Effect.gen(function* () {
+        const tmp = yield* makeTmpDir();
+        const remote = yield* makeTmpDir();
+        yield* git(remote, ["init", "--bare"]);
+        yield* initRepoWithCommit(tmp);
+        yield* git(tmp, ["remote", "add", "origin", remote]);
+        yield* (yield* GitCore).createBranch({ cwd: tmp, branch: "feature/shared" });
+        yield* git(tmp, ["push", "origin", "feature/shared"]);
+
+        const realGitCore = yield* GitCore;
+        let worktreeArgs: ReadonlyArray<string> | null = null;
+        const core = yield* makeIsolatedGitCore((input) => {
+          if (input.args[0] === "worktree" && input.args[1] === "add") {
+            worktreeArgs = [...input.args];
+          }
+          return realGitCore.execute(input);
+        });
+
+        const wtPath = path.join(tmp, "wt-qualified-remote");
+        yield* core.createWorktree({
+          cwd: tmp,
+          branch: "origin/feature/shared",
+          newBranch: "wt-qualified-remote",
+          path: wtPath,
+        });
+
+        expect(worktreeArgs).toEqual([
+          "worktree",
+          "add",
+          "-b",
+          "wt-qualified-remote",
+          wtPath,
+          "refs/remotes/origin/feature/shared",
+        ]);
+
+        yield* core.removeWorktree({ cwd: tmp, path: wtPath });
+      }),
+    );
+
     it.effect("throws when new branch name already exists", () =>
       Effect.gen(function* () {
         const tmp = yield* makeTmpDir();
