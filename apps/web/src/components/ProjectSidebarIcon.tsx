@@ -24,18 +24,17 @@ const projectFaviconPresence = new Map<string, boolean>();
 type ProjectIconArtwork = {
   icon: IconType;
   color: string;
-  background: string;
 };
 
 const PROJECT_ICON_ARTWORK: Record<ProjectIconId, ProjectIconArtwork> = {
-  go: { icon: SiGo, color: "#00ADD8", background: "rgba(0, 173, 216, 0.16)" },
-  javascript: { icon: SiJavascript, color: "#F7DF1E", background: "rgba(247, 223, 30, 0.16)" },
-  python: { icon: SiPython, color: "#3776AB", background: "rgba(55, 118, 171, 0.16)" },
-  react: { icon: SiReact, color: "#61DAFB", background: "rgba(97, 218, 251, 0.16)" },
-  rust: { icon: SiRust, color: "#DEA584", background: "rgba(222, 165, 132, 0.16)" },
-  svelte: { icon: SiSvelte, color: "#FF3E00", background: "rgba(255, 62, 0, 0.16)" },
-  typescript: { icon: SiTypescript, color: "#3178C6", background: "rgba(49, 120, 198, 0.18)" },
-  vue: { icon: SiVuedotjs, color: "#42B883", background: "rgba(66, 184, 131, 0.16)" },
+  go: { icon: SiGo, color: "#00ADD8" },
+  javascript: { icon: SiJavascript, color: "#F7DF1E" },
+  python: { icon: SiPython, color: "#3776AB" },
+  react: { icon: SiReact, color: "#61DAFB" },
+  rust: { icon: SiRust, color: "#DEA584" },
+  svelte: { icon: SiSvelte, color: "#FF3E00" },
+  typescript: { icon: SiTypescript, color: "#3178C6" },
+  vue: { icon: SiVuedotjs, color: "#42B883" },
 };
 
 interface ProjectSidebarIconProps {
@@ -140,13 +139,13 @@ export function ProjectSidebarIcon({
     return (
       <span
         aria-label={`${iconMetadata.label} project icon`}
-        className={`${className} inline-flex shrink-0 items-center justify-center rounded-[4px] border border-current/20 shadow-[0_0_0_1px_rgba(0,0,0,0.14)]`}
+        className={`${className} inline-flex shrink-0 items-center justify-center`}
         data-project-icon-id={iconMetadata.iconId}
         role="img"
-        style={{ backgroundColor: artwork.background, color: artwork.color }}
+        style={{ color: artwork.color }}
         title={iconMetadata.label}
       >
-        <Icon aria-hidden="true" className="size-[82%]" focusable="false" />
+        <Icon aria-hidden="true" className="size-[94%]" focusable="false" />
       </span>
     );
   }
