@@ -28,6 +28,7 @@ import {
   useCallback,
   useEffect,
   lazy,
+  memo,
   useMemo,
   useRef,
   Suspense,
@@ -752,6 +753,45 @@ function ThreadPrStatusBadge({
     </Tooltip>
   );
 }
+
+const ThreadPrStatusBadgeBoundary = memo(function ThreadPrStatusBadgeBoundary({
+  branch,
+  cwd,
+  lastKnownPr,
+  onOpen,
+}: {
+  branch: SidebarThreadSummary["branch"];
+  cwd: string | null;
+  lastKnownPr: NonNullable<SidebarThreadSummary["lastKnownPr"]> | null;
+  onOpen: (event: React.MouseEvent<HTMLElement>, prUrl: string) => void;
+}) {
+  const gitStatusQuery = useQuery(gitStatusQueryOptions(branch !== null ? cwd : null));
+  const storedPrReference = lastKnownPr?.url.trim() || null;
+  const storedPrQuery = useQuery({
+    ...gitResolvePullRequestQueryOptions({
+      cwd: cwd !== null && storedPrReference !== null ? cwd : null,
+      reference: storedPrReference,
+    }),
+    refetchInterval: 60_000,
+  });
+  const status = gitStatusQuery.data;
+  const branchMatches = branch !== null && status?.branch !== null && status?.branch === branch;
+  const livePr = branchMatches ? (status?.pr ?? null) : null;
+  const resolvedStoredPr = storedPrQuery.data?.pullRequest ?? null;
+  const storedPr =
+    cwd !== null && lastKnownPr != null
+      ? resolvedStoredPr !== null
+        ? toThreadPr(resolvedStoredPr)
+        : toThreadPr(lastKnownPr)
+      : null;
+  const prStatus = prStatusIndicator(livePr ?? storedPr ?? null);
+
+  if (!prStatus) {
+    return null;
+  }
+
+  return <ThreadPrStatusBadge prStatus={prStatus} onOpen={onOpen} />;
+});
 
 function terminalStatusFromThreadState(input: {
   runningTerminalIds: string[];
@@ -3809,105 +3849,7 @@ export default function Sidebar() {
     () => new Set([...visibleSidebarThreadIds, ...visibleChatThreadIds]),
     [visibleChatThreadIds, visibleSidebarThreadIds],
   );
-  const visibleSidebarThreads = useMemo(
-    () => sidebarDisplayThreads.filter((thread) => visibleSidebarThreadIdSet.has(thread.id)),
-    [sidebarDisplayThreads, visibleSidebarThreadIdSet],
-  );
-  // PR badges only render on visible rows, so keep git/PR query setup off hidden project history.
-  const threadGitTargets = useMemo(
-    () =>
-      visibleSidebarThreads.map((thread) => ({
-        threadId: thread.id,
-        branch: thread.branch,
-        lastKnownPr: thread.lastKnownPr ?? null,
-        cwd: resolveThreadWorkspaceCwd({
-          projectCwd: projectCwdById.get(thread.projectId) ?? null,
-          envMode: thread.envMode,
-          worktreePath: thread.worktreePath,
-        }),
-      })),
-    [projectCwdById, visibleSidebarThreads],
-  );
-  const threadGitStatusCwds = useMemo(
-    () => [
-      ...new Set(
-        threadGitTargets
-          .filter((target) => target.branch !== null)
-          .map((target) => target.cwd)
-          .filter((cwd): cwd is string => cwd !== null),
-      ),
-    ],
-    [threadGitTargets],
-  );
-  const threadGitStatusQueries = useQueries({
-    queries: threadGitStatusCwds.map((cwd) => ({
-      ...gitStatusQueryOptions(cwd),
-      staleTime: 30_000,
-      refetchInterval: 60_000,
-    })),
-  });
-  const threadStoredPrTargets = useMemo(
-    () =>
-      threadGitTargets.flatMap((target) =>
-        target.cwd !== null &&
-        target.lastKnownPr !== null &&
-        target.lastKnownPr.url.trim().length > 0
-          ? [{ ...target, cwd: target.cwd, lastKnownPr: target.lastKnownPr }]
-          : [],
-      ),
-    [threadGitTargets],
-  );
-  const threadStoredPrQueries = useQueries({
-    queries: threadStoredPrTargets.map((target) => ({
-      ...gitResolvePullRequestQueryOptions({
-        cwd: target.cwd,
-        reference: target.lastKnownPr.url,
-      }),
-      staleTime: 30_000,
-      refetchInterval: 60_000,
-    })),
-  });
-  const prByThreadId = useMemo(() => {
-    const statusByCwd = new Map<string, GitStatusResult>();
-    for (let index = 0; index < threadGitStatusCwds.length; index += 1) {
-      const cwd = threadGitStatusCwds[index];
-      if (!cwd) continue;
-      const status = threadGitStatusQueries[index]?.data;
-      if (status) {
-        statusByCwd.set(cwd, status);
-      }
-    }
-
-    const storedPrByThreadId = new Map<ThreadId, ThreadPr>();
-    for (let index = 0; index < threadStoredPrTargets.length; index += 1) {
-      const target = threadStoredPrTargets[index];
-      if (!target) {
-        continue;
-      }
-      const result = threadStoredPrQueries[index]?.data?.pullRequest ?? null;
-      if (result) {
-        storedPrByThreadId.set(target.threadId, toThreadPr(result));
-        continue;
-      }
-      storedPrByThreadId.set(target.threadId, toThreadPr(target.lastKnownPr));
-    }
-
-    const map = new Map<ThreadId, ThreadPr>();
-    for (const target of threadGitTargets) {
-      const status = target.cwd ? statusByCwd.get(target.cwd) : undefined;
-      const branchMatches =
-        target.branch !== null && status?.branch !== null && status?.branch === target.branch;
-      const livePr = branchMatches ? (status?.pr ?? null) : null;
-      map.set(target.threadId, livePr ?? storedPrByThreadId.get(target.threadId) ?? null);
-    }
-    return map;
-  }, [
-    threadGitStatusCwds,
-    threadGitStatusQueries,
-    threadGitTargets,
-    threadStoredPrQueries,
-    threadStoredPrTargets,
-  ]);
+  // PR badges only render on visible rows, so each mounted badge owns its git/PR subscriptions.
   const isManualProjectSorting = appSettings.sidebarProjectSortOrder === "manual";
   const threadJumpCommandByThreadId = useMemo(() => {
     const mapping = new Map<ThreadId, NonNullable<ReturnType<typeof threadJumpCommandForIndex>>>();
@@ -4105,11 +4047,13 @@ export default function Sidebar() {
     });
     const threadStatus = resolveThreadStatusForSidebar(thread);
     const isSubagentThread = Boolean(thread.parentThreadId);
-    const prStatus = prStatusIndicator(prByThreadId.get(thread.id) ?? null);
-    const leadingPrStatus =
-      isSubagentThread || thread.forkSourceThreadId || thread.sidechatSourceThreadId
-        ? null
-        : prStatus;
+    const threadWorkspaceCwd = resolveThreadWorkspaceCwd({
+      projectCwd: projectCwdById.get(thread.projectId) ?? null,
+      envMode: thread.envMode,
+      worktreePath: thread.worktreePath,
+    });
+    const showLeadingPrStatus =
+      !isSubagentThread && !thread.forkSourceThreadId && !thread.sidechatSourceThreadId;
     const handoffBadgeLabel = resolveThreadHandoffBadgeLabel(thread);
     const threadJumpLabel = visibleThreadJumpLabelByThreadId.get(thread.id) ?? null;
     const threadJumpLabelParts =
@@ -4189,8 +4133,13 @@ export default function Sidebar() {
             />
           ) : null}
           <div className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
-            {leadingPrStatus ? (
-              <ThreadPrStatusBadge prStatus={leadingPrStatus} onOpen={openPrLink} />
+            {showLeadingPrStatus ? (
+              <ThreadPrStatusBadgeBoundary
+                branch={thread.branch}
+                cwd={threadWorkspaceCwd}
+                lastKnownPr={thread.lastKnownPr ?? null}
+                onOpen={openPrLink}
+              />
             ) : null}
             <Tooltip>
               <TooltipTrigger
@@ -4279,7 +4228,6 @@ export default function Sidebar() {
     const isSelected = selectedThreadIds.has(thread.id);
     const isHighlighted = isActive || isSelected;
     const threadStatus = resolveThreadStatusForSidebar(thread);
-    const prStatus = prStatusIndicator(prByThreadId.get(thread.id) ?? null);
     const terminalStatus = terminalStatusFromThreadState({
       runningTerminalIds: threadTerminalState.runningTerminalIds,
       terminalAttentionStatesById: threadTerminalState.terminalAttentionStatesById,
@@ -4296,10 +4244,13 @@ export default function Sidebar() {
       includeHandoffBadge: !isDisposableThread,
     });
     const isSubagentThread = Boolean(thread.parentThreadId);
-    const leadingPrStatus =
-      isSubagentThread || thread.forkSourceThreadId || thread.sidechatSourceThreadId
-        ? null
-        : prStatus;
+    const threadWorkspaceCwd = resolveThreadWorkspaceCwd({
+      projectCwd: projectCwdById.get(thread.projectId) ?? null,
+      envMode: thread.envMode,
+      worktreePath: thread.worktreePath,
+    });
+    const showLeadingPrStatus =
+      !isSubagentThread && !thread.forkSourceThreadId && !thread.sidechatSourceThreadId;
     const handoffBadgeLabel = resolveThreadHandoffBadgeLabel(thread);
     const subagentPresentation = isSubagentThread
       ? resolveSubagentPresentationForThread({
@@ -4468,8 +4419,13 @@ export default function Sidebar() {
               isSubagentThread ? "gap-[5px]" : "gap-1.5",
             )}
           >
-            {leadingPrStatus ? (
-              <ThreadPrStatusBadge prStatus={leadingPrStatus} onOpen={openPrLink} />
+            {showLeadingPrStatus ? (
+              <ThreadPrStatusBadgeBoundary
+                branch={thread.branch}
+                cwd={threadWorkspaceCwd}
+                lastKnownPr={thread.lastKnownPr ?? null}
+                onOpen={openPrLink}
+              />
             ) : null}
             {renamingThreadId === thread.id ? (
               <input
