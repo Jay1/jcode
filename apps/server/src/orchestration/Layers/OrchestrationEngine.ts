@@ -172,6 +172,10 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         if (iconMetadata === null) {
           return Effect.void;
         }
+        const project = readModel.projects.find((entry) => entry.id === input.projectId);
+        if (!project || project.deletedAt !== null || project.iconMetadata !== null) {
+          return Effect.void;
+        }
         return enqueueInternalCommand({
           type: "project.meta.update",
           commandId: CommandId.makeUnsafe(`${input.commandIdPrefix}:${input.projectId}`),
@@ -188,7 +192,6 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           }),
         ),
       ),
-      Effect.forkIn(projectIconDetectionScope),
       Effect.asVoid,
     );
   });
@@ -214,7 +217,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           commandIdPrefix: "project-icon-backfill",
         }),
       { concurrency: 1 },
-    );
+    ).pipe(Effect.forkIn(projectIconDetectionScope), Effect.asVoid);
   });
 
   // When deferred projection slips, recover with one background bootstrap replay instead of
@@ -607,7 +610,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
             projectId: event.payload.projectId,
             workspaceRoot: event.payload.workspaceRoot,
             commandIdPrefix: "project-icon-detect",
-          });
+          }).pipe(Effect.forkIn(projectIconDetectionScope), Effect.asVoid);
         },
         { concurrency: 1 },
       );
