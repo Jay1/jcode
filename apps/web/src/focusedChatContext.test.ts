@@ -20,6 +20,7 @@ function makeProject(): Project {
     localName: null,
     cwd: "/tmp/project",
     defaultModelSelection: { provider: "codex", model: "gpt-5.4-mini" },
+    iconMetadata: null,
     expanded: true,
     scripts: [],
   };

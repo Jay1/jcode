@@ -134,6 +134,7 @@ function makeProject(
     },
     expanded: true,
     scripts: [],
+    iconMetadata: null,
     ...overrides,
   };
 }
@@ -186,6 +187,7 @@ function makeReadModel(thread: OrchestrationReadModel["threads"][number]): Orche
         updatedAt: "2026-02-27T00:00:00.000Z",
         deletedAt: null,
         scripts: [],
+        iconMetadata: null,
       },
     ],
     threads: [thread],
@@ -208,6 +210,7 @@ function makeReadModelProject(
     updatedAt: "2026-02-27T00:00:00.000Z",
     deletedAt: null,
     scripts: [],
+    iconMetadata: null,
     ...overrides,
   };
 }
@@ -269,6 +272,34 @@ describe("store pure functions", () => {
     );
 
     expect(next.threads[0]?.branch).toBe("feature/semantic-branch");
+  });
+
+  it("preserves project icon metadata from read-model syncs", () => {
+    const readModel = makeReadModel(makeReadModelThread({}));
+    const next = syncServerReadModel(
+      {
+        projects: [],
+        threads: [],
+        sidebarThreadSummaryById: {},
+        threadsHydrated: false,
+      },
+      {
+        ...readModel,
+        projects: [
+          makeReadModelProject({
+            iconMetadata: {
+              iconId: "typescript",
+              label: "TypeScript",
+            },
+          }),
+        ],
+      },
+    );
+
+    expect(next.projects[0]?.iconMetadata).toEqual({
+      iconId: "typescript",
+      label: "TypeScript",
+    });
   });
 
   it("does not regress a semantic branch when local workspace patches only report a temp branch", () => {
@@ -467,6 +498,10 @@ describe("store pure functions", () => {
               model: "gpt-5-codex",
             },
             scripts: [],
+            iconMetadata: {
+              iconId: "vue",
+              label: "Vue",
+            },
             createdAt: "2026-02-27T00:00:00.000Z",
             updatedAt: "2026-02-27T00:00:00.000Z",
           },
@@ -482,6 +517,10 @@ describe("store pure functions", () => {
       remoteName: "Live Project",
       folderName: "live-project",
       cwd: "/tmp/live-project",
+      iconMetadata: {
+        iconId: "vue",
+        label: "Vue",
+      },
       createdAt: "2026-02-27T00:00:00.000Z",
       updatedAt: "2026-02-27T00:00:00.000Z",
     });
@@ -492,6 +531,7 @@ describe("store pure functions", () => {
       projects: [
         makeProject({
           id: ProjectId.makeUnsafe("project-live"),
+          iconMetadata: null,
           name: "Local Name",
           remoteName: "Original Name",
           localName: "Local Name",
@@ -523,6 +563,10 @@ describe("store pure functions", () => {
               runOnWorktreeCreate: false,
             },
           ],
+          iconMetadata: {
+            iconId: "typescript",
+            label: "TypeScript",
+          },
           updatedAt: "2026-02-27T00:05:00.000Z",
         },
         { aggregateKind: "project" },
@@ -547,6 +591,10 @@ describe("store pure functions", () => {
           runOnWorktreeCreate: false,
         },
       ],
+      iconMetadata: {
+        iconId: "typescript",
+        label: "TypeScript",
+      },
     });
   });
 

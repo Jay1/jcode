@@ -13,6 +13,7 @@ import type {
   OrchestrationThreadActivity,
   ThreadHandoff,
   ProjectScript as ContractProjectScript,
+  ProjectIconMetadata,
   ThreadId,
   ProjectId,
   TurnId,
@@ -131,6 +132,7 @@ export interface Project {
   localName: string | null;
   cwd: string;
   defaultModelSelection: ModelSelection | null;
+  iconMetadata: ProjectIconMetadata | null;
   expanded: boolean;
   createdAt?: string | undefined;
   updatedAt?: string | undefined;

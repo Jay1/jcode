@@ -595,6 +595,11 @@ function normalizeProjectFromReadModel(
       ? null
       : normalizeModelSelection(incoming.defaultModelSelection, previous?.defaultModelSelection);
   const scripts = normalizeProjectScripts(incoming.scripts, previous?.scripts);
+  const incomingIconMetadata = incoming.iconMetadata ?? null;
+  const iconMetadata =
+    previous?.iconMetadata !== undefined && deepEqualJson(previous.iconMetadata, incomingIconMetadata)
+      ? previous.iconMetadata
+      : incomingIconMetadata;
   const expanded =
     previous?.expanded ??
     (persistedExpandedProjectCwds.size > 0
@@ -614,7 +619,8 @@ function normalizeProjectFromReadModel(
     previous.expanded === expanded &&
     previous.createdAt === incoming.createdAt &&
     previous.updatedAt === incoming.updatedAt &&
-    previous.scripts === scripts
+    previous.scripts === scripts &&
+    previous.iconMetadata === iconMetadata
   ) {
     return previous;
   }
@@ -632,6 +638,7 @@ function normalizeProjectFromReadModel(
     createdAt: incoming.createdAt,
     updatedAt: incoming.updatedAt,
     scripts,
+    iconMetadata,
   } satisfies Project;
 }
 
@@ -647,6 +654,11 @@ function normalizeProjectFromShell(
       ? null
       : normalizeModelSelection(incoming.defaultModelSelection, previous?.defaultModelSelection);
   const scripts = normalizeProjectScripts(incoming.scripts, previous?.scripts);
+  const incomingIconMetadata = incoming.iconMetadata ?? null;
+  const iconMetadata =
+    previous?.iconMetadata !== undefined && deepEqualJson(previous.iconMetadata, incomingIconMetadata)
+      ? previous.iconMetadata
+      : incomingIconMetadata;
   const expanded =
     previous?.expanded ??
     (persistedExpandedProjectCwds.size > 0
@@ -666,7 +678,8 @@ function normalizeProjectFromShell(
     previous.expanded === expanded &&
     previous.createdAt === incoming.createdAt &&
     previous.updatedAt === incoming.updatedAt &&
-    previous.scripts === scripts
+    previous.scripts === scripts &&
+    previous.iconMetadata === iconMetadata
   ) {
     return previous;
   }
@@ -684,6 +697,7 @@ function normalizeProjectFromShell(
     createdAt: incoming.createdAt,
     updatedAt: incoming.updatedAt,
     scripts,
+    iconMetadata,
   } satisfies Project;
 }
 
@@ -2953,6 +2967,7 @@ function applyOrchestrationEvent(
         workspaceRoot: event.payload.workspaceRoot,
         defaultModelSelection: event.payload.defaultModelSelection,
         scripts: event.payload.scripts,
+        iconMetadata: event.payload.iconMetadata,
         createdAt: event.payload.createdAt,
         updatedAt: event.payload.updatedAt,
         deletedAt: null,
@@ -2975,6 +2990,10 @@ function applyOrchestrationEvent(
             ? event.payload.defaultModelSelection
             : existingProject.defaultModelSelection,
         scripts: event.payload.scripts ?? existingProject.scripts,
+        iconMetadata:
+          event.payload.iconMetadata !== undefined
+            ? event.payload.iconMetadata
+            : existingProject.iconMetadata,
         createdAt: existingProject.createdAt ?? event.payload.updatedAt,
         updatedAt: event.payload.updatedAt,
         deletedAt: null,

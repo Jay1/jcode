@@ -16,11 +16,11 @@ import {
 import { type FilesystemBrowseResult, type ProviderKind } from "@jcode/contracts";
 import { isGenericChatThreadTitle } from "@jcode/shared/chatThreads";
 import { BsChat } from "react-icons/bs";
-import { HiOutlineFolderOpen } from "react-icons/hi2";
 import { LuArrowDownToLine, LuArrowLeft, LuCornerLeftUp, LuFolderPlus } from "react-icons/lu";
 import { type ComponentType, useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FolderClosed } from "./FolderClosed";
+import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
 import { ClaudeAI, CursorIcon, Gemini, KiloIcon, OpenAI, OpenCodeIcon, PiIcon } from "./Icons";
 import { formatRelativeTime } from "./Sidebar";
 import { readNativeApi } from "~/nativeApi";
@@ -977,7 +977,14 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                             props.onOpenProject(project.id);
                           }}
                         >
-                          <PaletteIcon icon={HiOutlineFolderOpen} />
+                          <div className="relative flex size-5 shrink-0 items-center justify-center text-muted-foreground">
+                            <ProjectSidebarIcon
+                              cwd={project.cwd}
+                              expanded
+                              iconMetadata={project.iconMetadata}
+                              className="size-4"
+                            />
+                          </div>
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-[length:var(--app-font-size-ui,12px)] text-foreground">
                               {project.name || "Untitled project"}
