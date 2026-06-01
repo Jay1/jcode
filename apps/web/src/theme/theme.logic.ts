@@ -982,10 +982,25 @@ function buildAppDepthVariables(
       "--app-scroll-button-hover-fg": palette.mauve,
       "--app-scrollbar-thumb": formatRgba(surface1, variant === "dark" ? 0.72 : 0.64),
       "--app-scrollbar-thumb-hover": formatRgba(surface1, variant === "dark" ? 0.92 : 0.82),
+      "--app-chrome-control-bg": palette.surface0,
+      "--app-chrome-control-border": palette.surface1,
+      "--app-chrome-control-fg": pack.theme.ink,
+      "--app-chrome-control-hover-bg": palette.surface1,
+      "--app-chrome-control-hover-fg": pack.theme.ink,
+      "--app-chrome-control-active-bg": formatRgba(accent, variant === "dark" ? 0.14 : 0.12),
+      "--app-control-icon-bg": "transparent",
+      "--app-control-icon-border": formatRgba(surface1, variant === "dark" ? 0.55 : 0.46),
+      "--app-control-icon-fg": formatRgba(parseHexColor(pack.theme.ink), 0.62),
+      "--app-control-icon-hover-bg": palette.surface0,
+      "--app-control-icon-hover-fg": formatRgba(parseHexColor(pack.theme.ink), 0.86),
       "--app-state-focus": palette.blue,
       "--app-state-hover": palette.surface0,
       "--app-state-selected": formatRgba(accent, variant === "dark" ? 0.14 : 0.12),
       "--app-state-selected-border": pack.theme.accent,
+      "--app-metadata-fg": formatRgba(parseHexColor(pack.theme.ink), 0.86),
+      "--app-metadata-muted-fg": formatRgba(parseHexColor(pack.theme.ink), 0.62),
+      "--app-text-metadata": formatRgba(parseHexColor(pack.theme.ink), 0.62),
+      "--app-text-metadata-strong": formatRgba(parseHexColor(pack.theme.ink), 0.86),
       "--app-status-error-bg": formatRgba(diffRemoved, variant === "dark" ? 0.14 : 0.1),
       "--app-status-error-border": formatRgba(diffRemoved, variant === "dark" ? 0.42 : 0.32),
       ...buildStatusVariables(
@@ -1016,6 +1031,10 @@ function buildAppDepthVariables(
       "--app-surface-panel": variant === "dark" ? palette.mantle : "#ffffff",
       "--app-surface-sidebar": variant === "dark" ? palette.mantle : palette.mantle,
       "--app-surface-topbar": variant === "dark" ? palette.mantle : palette.mantle,
+      "--app-surface-toolbar": variant === "dark" ? palette.mantle : palette.mantle,
+      "--app-surface-toolbar-active": palette.surface1,
+      "--app-surface-toolbar-border": palette.surface1,
+      "--app-surface-toolbar-hover": palette.surface0,
       ...buildSubagentAccentVariables([
         palette.red,
         palette.green,
@@ -1032,6 +1051,10 @@ function buildAppDepthVariables(
       "--app-terminal-search-match-bg": palette.surface1,
       "--app-terminal-search-match-border": palette.blue,
       "--app-terminal-search-match-overview": palette.peach,
+      "--app-work-row-bg": formatRgba(parseHexColor(palette.base), 0.82),
+      "--app-work-row-border": formatRgba(surface1, 0.52),
+      "--app-work-row-hover-bg": palette.surface0,
+      "--app-work-row-icon": formatRgba(parseHexColor(pack.theme.ink), 0.48),
       "--app-wordmark-prefix": APP_WORDMARK_PREFIX_BLOOD_RED,
     };
   }
@@ -1115,6 +1138,7 @@ function buildProfileAppDepthVariables(
   const accent = parseHexColor(pack.theme.accent);
   const diffRemoved = parseHexColor(pack.theme.semanticColors.diffRemoved);
   const diffAdded = parseHexColor(pack.theme.semanticColors.diffAdded);
+  const ink = parseHexColor(pack.theme.ink);
   const warningColor = profile.warning ?? (variant === "dark" ? "#f5b44a" : "#d97706");
   const warning = parseHexColor(warningColor);
   const toneLift = getThemeDepthToneLift(profile.tone, variant);
@@ -1180,10 +1204,25 @@ function buildProfileAppDepthVariables(
     "--app-scroll-button-hover-fg": pack.theme.accent,
     "--app-scrollbar-thumb": resolvedTokens.derived.iconTertiary,
     "--app-scrollbar-thumb-hover": resolvedTokens.derived.iconSecondary,
+    "--app-chrome-control-bg": resolvedTokens.derived.controlBackground,
+    "--app-chrome-control-border": resolvedTokens.derived.borderLight,
+    "--app-chrome-control-fg": resolvedTokens.derived.textForegroundSecondary,
+    "--app-chrome-control-hover-bg": resolvedTokens.derived.buttonSecondaryBackgroundHover,
+    "--app-chrome-control-hover-fg": resolvedTokens.derived.textForeground,
+    "--app-chrome-control-active-bg": resolvedTokens.derived.buttonSecondaryBackgroundActive,
+    "--app-control-icon-bg": "transparent",
+    "--app-control-icon-border": resolvedTokens.derived.borderLight,
+    "--app-control-icon-fg": resolvedTokens.derived.textForegroundTertiary,
+    "--app-control-icon-hover-bg": resolvedTokens.derived.buttonSecondaryBackgroundHover,
+    "--app-control-icon-hover-fg": resolvedTokens.derived.textForeground,
     "--app-state-focus": resolvedTokens.derived.borderFocus,
     "--app-state-hover": resolvedTokens.derived.buttonSecondaryBackgroundHover,
     "--app-state-selected": formatRgba(accent, selectedAlpha),
     "--app-state-selected-border": pack.theme.accent,
+    "--app-metadata-fg": formatRgba(ink, variant === "dark" ? 0.86 : 0.88),
+    "--app-metadata-muted-fg": formatRgba(ink, variant === "dark" ? 0.62 : 0.66),
+    "--app-text-metadata": formatRgba(ink, variant === "dark" ? 0.62 : 0.66),
+    "--app-text-metadata-strong": formatRgba(ink, variant === "dark" ? 0.86 : 0.88),
     "--app-status-error-bg": formatRgba(diffRemoved, variant === "dark" ? 0.12 : 0.08),
     "--app-status-error-border": formatRgba(diffRemoved, variant === "dark" ? 0.36 : 0.28),
     ...buildStatusVariables(
@@ -1222,12 +1261,20 @@ function buildProfileAppDepthVariables(
     "--app-surface-panel": panel,
     "--app-surface-sidebar": sidebar,
     "--app-surface-topbar": topbar,
+    "--app-surface-toolbar": topbar,
+    "--app-surface-toolbar-active": resolvedTokens.derived.buttonSecondaryBackgroundActive,
+    "--app-surface-toolbar-border": resolvedTokens.derived.border,
+    "--app-surface-toolbar-hover": resolvedTokens.derived.buttonSecondaryBackgroundHover,
     "--app-terminal-search-active-match-bg": activeSearchBackground,
     "--app-terminal-search-active-match-border": warningColor,
     "--app-terminal-search-active-match-overview": warningColor,
     "--app-terminal-search-match-bg": cardHeader,
     "--app-terminal-search-match-border": pack.theme.accent,
     "--app-terminal-search-match-overview": pack.theme.semanticColors.diffAdded,
+    "--app-work-row-bg": formatRgba(parseHexColor(panel), variant === "dark" ? 0.82 : 0.88),
+    "--app-work-row-border": resolvedTokens.derived.borderLight,
+    "--app-work-row-hover-bg": resolvedTokens.derived.elevatedSecondary,
+    "--app-work-row-icon": formatRgba(ink, variant === "dark" ? 0.48 : 0.52),
     "--app-wordmark-prefix": APP_WORDMARK_PREFIX_BLOOD_RED,
   };
 }

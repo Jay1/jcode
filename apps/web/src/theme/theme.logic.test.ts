@@ -32,10 +32,33 @@ const REQUIRED_APP_DEPTH_TOKENS = [
   "--app-surface-card",
   "--app-surface-card-header",
   "--app-surface-composer",
+  "--app-surface-toolbar",
+  "--app-surface-toolbar-hover",
+  "--app-surface-toolbar-active",
+  "--app-surface-toolbar-border",
+  "--app-chrome-control-bg",
+  "--app-chrome-control-border",
+  "--app-chrome-control-fg",
+  "--app-chrome-control-hover-bg",
+  "--app-chrome-control-hover-fg",
+  "--app-chrome-control-active-bg",
   "--app-state-hover",
   "--app-state-selected",
   "--app-state-selected-border",
   "--app-state-focus",
+  "--app-metadata-fg",
+  "--app-metadata-muted-fg",
+  "--app-text-metadata",
+  "--app-text-metadata-strong",
+  "--app-control-icon-fg",
+  "--app-control-icon-hover-fg",
+  "--app-control-icon-bg",
+  "--app-control-icon-hover-bg",
+  "--app-control-icon-border",
+  "--app-work-row-bg",
+  "--app-work-row-hover-bg",
+  "--app-work-row-border",
+  "--app-work-row-icon",
   "--app-status-error-bg",
   "--app-status-error-border",
   "--app-status-error-dot",
@@ -441,6 +464,33 @@ describe("buildThemeCssVariables", () => {
     expect(tokens.derived.textButtonPrimary).not.toBe(tokens.derived.buttonPrimaryBackground);
   });
 
+  it("derives semantic chrome control tokens from non-palette theme math", () => {
+    const importedTheme = parseThemeShareString(PROVIDED_THEME_STRING);
+    const pack = {
+      codeThemeId: importedTheme.codeThemeId,
+      theme: importedTheme.theme,
+    };
+    const tokens = buildResolvedThemeTokens(pack, importedTheme.variant);
+    const cssVariables = buildThemeCssVariables(pack, importedTheme.variant);
+
+    expect(cssVariables.variables["--app-chrome-control-bg"]).toBe(
+      tokens.derived.controlBackground,
+    );
+    expect(cssVariables.variables["--app-chrome-control-border"]).toBe(tokens.derived.borderLight);
+    expect(cssVariables.variables["--app-chrome-control-fg"]).toBe(
+      tokens.derived.textForegroundSecondary,
+    );
+    expect(cssVariables.variables["--app-chrome-control-hover-bg"]).toBe(
+      tokens.derived.buttonSecondaryBackgroundHover,
+    );
+    expect(cssVariables.variables["--app-chrome-control-hover-fg"]).toBe(
+      tokens.derived.textForeground,
+    );
+    expect(cssVariables.variables["--app-chrome-control-active-bg"]).toBe(
+      tokens.derived.buttonSecondaryBackgroundActive,
+    );
+  });
+
   it("emits Catppuccin Mocha app-depth tokens from official palette layers", () => {
     const cssVariables = buildThemeCssVariables(
       {
@@ -455,6 +505,31 @@ describe("buildThemeCssVariables", () => {
     expect(cssVariables.variables["--app-surface-topbar"]).toBe("#181825");
     expect(cssVariables.variables["--app-surface-card"]).toBe("#1e1e2e");
     expect(cssVariables.variables["--app-surface-card-header"]).toBe("#313244");
+    expect(cssVariables.variables["--app-surface-toolbar"]).toBe("#181825");
+    expect(cssVariables.variables["--app-surface-toolbar-hover"]).toBe("#313244");
+    expect(cssVariables.variables["--app-surface-toolbar-active"]).toBe("#45475a");
+    expect(cssVariables.variables["--app-surface-toolbar-border"]).toBe("#45475a");
+    expect(cssVariables.variables["--app-chrome-control-bg"]).toBe("#313244");
+    expect(cssVariables.variables["--app-chrome-control-border"]).toBe("#45475a");
+    expect(cssVariables.variables["--app-chrome-control-fg"]).toBe("#cdd6f4");
+    expect(cssVariables.variables["--app-chrome-control-hover-bg"]).toBe("#45475a");
+    expect(cssVariables.variables["--app-chrome-control-hover-fg"]).toBe("#cdd6f4");
+    expect(cssVariables.variables["--app-chrome-control-active-bg"]).toBe(
+      "rgba(203, 166, 247, 0.14)",
+    );
+    expect(cssVariables.variables["--app-metadata-fg"]).toBe("rgba(205, 214, 244, 0.86)");
+    expect(cssVariables.variables["--app-metadata-muted-fg"]).toBe("rgba(205, 214, 244, 0.62)");
+    expect(cssVariables.variables["--app-text-metadata"]).toBe("rgba(205, 214, 244, 0.62)");
+    expect(cssVariables.variables["--app-text-metadata-strong"]).toBe("rgba(205, 214, 244, 0.86)");
+    expect(cssVariables.variables["--app-control-icon-fg"]).toBe("rgba(205, 214, 244, 0.62)");
+    expect(cssVariables.variables["--app-control-icon-hover-fg"]).toBe("rgba(205, 214, 244, 0.86)");
+    expect(cssVariables.variables["--app-control-icon-bg"]).toBe("transparent");
+    expect(cssVariables.variables["--app-control-icon-hover-bg"]).toBe("#313244");
+    expect(cssVariables.variables["--app-control-icon-border"]).toBe("rgba(69, 71, 90, 0.55)");
+    expect(cssVariables.variables["--app-work-row-bg"]).toBe("rgba(30, 30, 46, 0.82)");
+    expect(cssVariables.variables["--app-work-row-hover-bg"]).toBe("#313244");
+    expect(cssVariables.variables["--app-work-row-border"]).toBe("rgba(69, 71, 90, 0.52)");
+    expect(cssVariables.variables["--app-work-row-icon"]).toBe("rgba(205, 214, 244, 0.48)");
     expect(cssVariables.variables["--app-state-hover"]).toBe("#313244");
     expect(cssVariables.variables["--app-state-selected"]).toBe("rgba(203, 166, 247, 0.14)");
     expect(cssVariables.variables["--app-state-selected-border"]).toBe("#cba6f7");

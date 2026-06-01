@@ -768,7 +768,7 @@ function ComposerControlSkeleton(props: { widthClassName: string }) {
     <div
       aria-hidden="true"
       className={cn(
-        "flex h-8 shrink-0 items-center rounded-md border border-border/50 px-2",
+        "flex h-8 shrink-0 items-center rounded-md border border-(--app-chrome-control-border) px-2",
         props.widthClassName,
       )}
     >
@@ -782,7 +782,7 @@ function ComposerModelLoadingControl(props: { widthClassName: string }) {
     <div
       aria-label="Loading models"
       className={cn(
-        "flex h-8 shrink-0 items-center gap-2 rounded-md border border-border/50 px-2 text-muted-foreground",
+        "flex h-8 shrink-0 items-center gap-2 rounded-md border border-(--app-chrome-control-border) px-2 text-(--app-chrome-control-fg)",
         props.widthClassName,
       )}
     >
@@ -7471,7 +7471,7 @@ export default function ChatView({
                   </button>
                   <button
                     type="button"
-                    className="inline-flex size-6 items-center justify-center rounded-lg text-[var(--color-text-foreground-secondary)] transition-colors hover:bg-[var(--app-state-hover)] hover:text-[var(--color-text-foreground)]"
+                    className="inline-flex size-6 items-center justify-center rounded-lg text-(--app-chrome-control-fg) transition-colors hover:bg-(--app-chrome-control-hover-bg) hover:text-(--app-chrome-control-hover-fg)"
                     aria-label="Delete queued follow-up"
                     onClick={() => removeQueuedComposerTurn(queuedTurn.id)}
                   >
@@ -7482,7 +7482,7 @@ export default function ChatView({
                       render={
                         <button
                           type="button"
-                          className="inline-flex size-6 items-center justify-center rounded-lg text-[var(--color-text-foreground-secondary)] transition-colors hover:bg-[var(--app-state-hover)] hover:text-[var(--color-text-foreground)]"
+                          className="inline-flex size-6 items-center justify-center rounded-lg text-(--app-chrome-control-fg) transition-colors hover:bg-(--app-chrome-control-hover-bg) hover:text-(--app-chrome-control-hover-fg)"
                           aria-label="Queued follow-up actions"
                         />
                       }
@@ -8204,7 +8204,7 @@ export default function ChatView({
                               </button>
                               <button
                                 type="button"
-                                className="inline-flex size-6 items-center justify-center rounded-lg text-[var(--color-text-foreground-secondary)] transition-colors hover:bg-[var(--app-state-hover)] hover:text-[var(--color-text-foreground)]"
+                                className="inline-flex size-6 items-center justify-center rounded-lg text-(--app-chrome-control-fg) transition-colors hover:bg-(--app-chrome-control-hover-bg) hover:text-(--app-chrome-control-hover-fg)"
                                 aria-label="Delete queued follow-up"
                                 onClick={() => removeQueuedComposerTurn(queuedTurn.id)}
                               >
@@ -8215,7 +8215,7 @@ export default function ChatView({
                                   render={
                                     <button
                                       type="button"
-                                      className="inline-flex size-6 items-center justify-center rounded-lg text-[var(--color-text-foreground-secondary)] transition-colors hover:bg-[var(--app-state-hover)] hover:text-[var(--color-text-foreground)]"
+                                      className="inline-flex size-6 items-center justify-center rounded-lg text-(--app-chrome-control-fg) transition-colors hover:bg-(--app-chrome-control-hover-bg) hover:text-(--app-chrome-control-hover-fg)"
                                       aria-label="Queued follow-up actions"
                                     />
                                   }

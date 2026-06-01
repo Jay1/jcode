@@ -841,8 +841,8 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                     correspondingUserMessageId != null &&
                     revertTurnCountByUserMessageId.has(correspondingUserMessageId);
                   return (
-                    <div className="mt-5 overflow-hidden rounded-xl border border-[color:var(--color-border-light)] bg-[var(--app-diff-card-bg)]">
-                      <div className="flex items-center justify-between gap-2 border-b border-[color:var(--color-border-light)] bg-[var(--app-diff-card-header-bg)] px-3 py-2">
+                    <div className="mt-5 overflow-hidden rounded-xl border border-[color:var(--app-work-row-border)] bg-[var(--app-diff-card-bg)]">
+                      <div className="flex items-center justify-between gap-2 border-b border-[color:var(--app-work-row-border)] bg-[var(--app-diff-card-header-bg)] px-3 py-2">
                         <span
                           className="truncate font-normal text-foreground/92"
                           style={{ fontSize: chatTypographyStyle.fontSize }}
@@ -854,7 +854,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                         <div className="flex items-center gap-4">
                           <button
                             type="button"
-                            className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground/70 transition-colors hover:bg-[var(--app-state-hover)] hover:text-foreground/80"
+                            className="inline-flex items-center justify-center rounded-md p-1 text-[var(--app-metadata-muted-fg)] transition-colors hover:bg-[var(--app-work-row-hover-bg)] hover:text-[var(--app-metadata-fg)]"
                             aria-expanded={fileChangesExpanded}
                             aria-label={
                               fileChangesExpanded
@@ -869,13 +869,13 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                           >
                             <DisclosureChevron
                               open={fileChangesExpanded}
-                              className="dark:text-muted-foreground/50"
+                              className="text-[var(--app-work-row-icon)]"
                             />
                           </button>
                           {canUndo && (
                             <button
                               type="button"
-                              className="flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+                              className="flex items-center gap-1 text-[var(--app-metadata-muted-fg)] transition-colors hover:text-[var(--app-metadata-fg)]"
                               style={{ fontSize: chatTypographyStyle.fontSize }}
                               onClick={() => onRevertUserMessage(correspondingUserMessageId)}
                             >
@@ -891,14 +891,14 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                             <button
                               key={file.path}
                               type="button"
-                              className="group flex w-full items-center gap-2 border-t border-[color:var(--color-border-light)] px-3 py-1.5 text-left first:border-t-0 transition-colors hover:bg-[var(--app-state-hover)]"
+                              className="group flex w-full items-center gap-2 border-t border-[color:var(--app-work-row-border)] bg-[var(--app-work-row-bg)] px-3 py-1.5 text-left first:border-t-0 transition-colors hover:bg-[var(--app-work-row-hover-bg)]"
                               onClick={() => onOpenTurnDiff(turnSummary.turnId, file.path)}
                             >
                               <FileEntryIcon
                                 pathValue={file.path}
                                 kind="file"
                                 theme={resolvedTheme}
-                                className="size-4 shrink-0 opacity-50 dark:opacity-30"
+                                className="size-4 shrink-0 text-[var(--app-work-row-icon)]"
                               />
                               <span
                                 className="font-system-ui truncate font-normal underline-offset-2 group-hover:underline group-focus-visible:underline"
@@ -929,7 +929,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                 })()}
                 <div className="mt-0.5 flex items-center gap-2">
                   <p
-                    className="font-system-ui tabular-nums text-muted-foreground/45"
+                    className="font-system-ui tabular-nums text-[var(--app-metadata-muted-fg)]"
                     style={{ fontSize: `${appTypographyScale.uiTimestampPx}px` }}
                   >
                     {assistantMeta}
@@ -940,7 +940,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                         text={assistantCopyState.text ?? ""}
                         size="icon-xs"
                         variant="outline"
-                        className="border-border/50 bg-background/35 text-muted-foreground/45 shadow-none hover:border-border/70 hover:bg-background/55 hover:text-muted-foreground/70"
+                        className="border-[color:var(--app-chrome-control-border)] bg-[var(--app-chrome-control-bg)] text-[var(--app-chrome-control-fg)] shadow-none hover:border-[color:var(--app-chrome-control-border)] hover:bg-[var(--app-chrome-control-hover-bg)] hover:text-[var(--app-chrome-control-hover-fg)]"
                       />
                     </div>
                   ) : null}
@@ -963,7 +963,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
 
       {row.kind === "working" && (
         <div
-          className="flex items-center gap-1 pt-1 pl-1 text-muted-foreground/70 font-system-ui"
+          className="flex items-center gap-1 pt-1 pl-1 text-[var(--app-metadata-muted-fg)] font-system-ui"
           style={{ fontSize: `${appTypographyScale.uiSmPx}px` }}
         >
           <span>
@@ -981,9 +981,9 @@ export const MessagesTimeline = memo(function MessagesTimeline({
             )}
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse" />
-            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:200ms]" />
-            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:400ms]" />
+            <span className="h-1 w-1 rounded-full bg-[var(--app-work-row-icon)] animate-pulse" />
+            <span className="h-1 w-1 rounded-full bg-[var(--app-work-row-icon)] animate-pulse [animation-delay:200ms]" />
+            <span className="h-1 w-1 rounded-full bg-[var(--app-work-row-icon)] animate-pulse [animation-delay:400ms]" />
           </span>
         </div>
       )}
@@ -1880,7 +1880,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                   "group flex w-full max-w-full items-baseline gap-1 text-left transition-opacity duration-150",
                   compact
                     ? "px-0 py-[1px] hover:opacity-95"
-                    : "rounded-md border border-border/45 bg-background/65 px-2 py-1 hover:bg-background/80",
+                    : "rounded-md border border-[color:var(--app-work-row-border)] bg-[var(--app-work-row-bg)] px-2 py-1 hover:bg-[var(--app-work-row-hover-bg)]",
                   canOpenEditedDiff ? "cursor-pointer" : "cursor-default",
                 )}
                 title={changedFilePath}
@@ -1891,7 +1891,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                 }}
               >
                 <span
-                  className="font-system-ui shrink-0 font-medium text-muted-foreground/72"
+                  className="font-system-ui shrink-0 font-medium text-[var(--app-metadata-muted-fg)]"
                   style={{ fontSize: `${rowFontSizePx}px` }}
                 >
                   Edited
@@ -1930,7 +1930,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
           >
             <span
               className={cn(
-                "flex shrink-0 items-center justify-center text-muted-foreground/40",
+                "flex shrink-0 items-center justify-center text-[var(--app-work-row-icon)]",
                 compact ? "size-4" : "size-5",
               )}
             >
@@ -1940,7 +1940,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
               <p
                 className={cn(
                   compact ? "truncate leading-5" : "truncate leading-6",
-                  "font-medium text-foreground/72",
+                  "font-medium text-[var(--app-metadata-fg)]",
                 )}
                 style={{ fontSize: `${rowFontSizePx}px` }}
                 title={hoverText}
@@ -1949,7 +1949,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
               </p>
               {subagentMeta ? (
                 <p
-                  className="truncate leading-4 text-muted-foreground/32"
+                  className="truncate leading-4 text-[var(--app-metadata-muted-fg)]"
                   style={{ fontSize: `${Math.max(11, rowFontSizePx - 1)}px` }}
                   title={subagentMeta}
                 >
@@ -1961,7 +1961,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
           {visibleSubagents.length > 0 || hiddenSubagentCount > 0 ? (
             <div
               className={cn(
-                "space-y-[5px] rounded-[14px] border border-border/45 bg-background/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+                "space-y-[5px] rounded-[14px] border border-[color:var(--app-work-row-border)] bg-[var(--app-work-row-bg)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
                 compact ? "px-2.5 py-2" : "px-3 py-[9px]",
               )}
             >
@@ -1976,7 +1976,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                 return (
                   <div
                     key={`${workEntry.id}:${subagent.threadId}`}
-                    className="flex items-start gap-2.5 rounded-xl border border-border/28 bg-background/82 px-[11px] py-2"
+                    className="flex items-start gap-2.5 rounded-xl border border-[color:var(--app-work-row-border)] bg-[var(--app-work-row-bg)] px-[11px] py-2"
                   >
                     <span
                       className={cn(
@@ -1988,7 +1988,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                     />
                     <div className="min-w-0 flex-1">
                       <div
-                        className="truncate font-semibold leading-[18px] text-foreground/90"
+                        className="truncate font-semibold leading-[18px] text-[var(--app-metadata-fg)]"
                         style={{ fontSize: `${rowFontSizePx}px` }}
                         title={presentation.fullLabel}
                       >
@@ -1996,14 +1996,14 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                           {presentation.nickname ?? primaryLabel}
                         </span>
                         {presentation.role ? (
-                          <span className="ml-1 text-[11px] font-medium text-muted-foreground/48">
+                          <span className="ml-1 text-[11px] font-medium text-[var(--app-metadata-muted-fg)]">
                             ({presentation.role})
                           </span>
                         ) : null}
                       </div>
                       {secondaryLabel ? (
                         <div
-                          className="truncate pt-0.5 leading-4 text-muted-foreground/56"
+                          className="truncate pt-0.5 leading-4 text-[var(--app-metadata-muted-fg)]"
                           style={{ fontSize: `${Math.max(11, rowFontSizePx - 1)}px` }}
                           title={secondaryLabel}
                         >
@@ -2012,11 +2012,11 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                       ) : null}
                       {subagent.latestUpdate ? (
                         <div
-                          className="flex items-baseline gap-1.5 pt-1 text-muted-foreground/42"
+                          className="flex items-baseline gap-1.5 pt-1 text-[var(--app-metadata-muted-fg)]"
                           style={{ fontSize: `${Math.max(10, rowFontSizePx - 2)}px` }}
                           title={subagent.latestUpdate}
                         >
-                          <span className="shrink-0 uppercase tracking-[0.14em] text-muted-foreground/30">
+                          <span className="shrink-0 uppercase tracking-[0.14em] text-[var(--app-work-row-icon)]">
                             Latest
                           </span>
                           <span className="truncate">{subagent.latestUpdate}</span>
@@ -2041,9 +2041,9 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                       <button
                         type="button"
                         className={cn(
-                          "shrink-0 rounded-full border border-border/45 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground/62 transition-colors",
+                          "shrink-0 rounded-full border border-[color:var(--app-work-row-border)] px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.12em] text-[var(--app-metadata-muted-fg)] transition-colors",
                           canOpenThread
-                            ? "hover:border-foreground/15 hover:text-foreground/84"
+                            ? "hover:border-[color:var(--app-work-row-border)] hover:bg-[var(--app-work-row-hover-bg)] hover:text-[var(--app-metadata-fg)]"
                             : "cursor-default opacity-50",
                         )}
                         disabled={!canOpenThread}
@@ -2060,7 +2060,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                 );
               })}
               {hiddenSubagentCount > 0 ? (
-                <div className="pl-4 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/46">
+                <div className="pl-4 text-[10px] uppercase tracking-[0.12em] text-[var(--app-metadata-muted-fg)]">
                   +{hiddenSubagentCount} more
                 </div>
               ) : null}
@@ -2080,7 +2080,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
               {showIconLeft && (
                 <span
                   className={cn(
-                    "flex shrink-0 items-center justify-center text-muted-foreground/40",
+                    "flex shrink-0 items-center justify-center text-[var(--app-work-row-icon)]",
                     compact ? "size-4" : "size-5",
                   )}
                 >
@@ -2091,13 +2091,13 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                 <p
                   className={cn(
                     compact ? "truncate leading-5" : "truncate leading-6",
-                    "text-muted-foreground/50",
+                    "text-[var(--app-metadata-muted-fg)]",
                   )}
                   style={{ fontSize: `${rowFontSizePx}px` }}
                 >
                   {showInlineWebSearchIcon || showInlineGitHubIcon || showInlineMcpIcon ? (
                     <span
-                      className="mr-1 inline-flex align-[-0.125em] text-muted-foreground/38"
+                      className="mr-1 inline-flex align-[-0.125em] text-[var(--app-work-row-icon)]"
                       data-inline-tool-icon={
                         showInlineGitHubIcon ? "github" : showInlineMcpIcon ? "mcp" : "web-search"
                       }
@@ -2128,11 +2128,14 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                       ) : null}
                     </span>
                   ) : null}
-                  <span className="text-muted-foreground/48" data-work-entry-display-text="true">
+                  <span
+                    className="text-[var(--app-metadata-muted-fg)]"
+                    data-work-entry-display-text="true"
+                  >
                     {displayTextParts ? (
                       <>
                         <span
-                          className="font-medium text-muted-foreground/72"
+                          className="font-medium text-[var(--app-metadata-fg)]"
                           data-work-entry-action-word="true"
                         >
                           {displayTextParts.action}
@@ -2147,7 +2150,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
               </div>
               {showIconRight && (
                 <span
-                  className="flex shrink-0 items-center justify-center text-muted-foreground/40"
+                  className="flex shrink-0 items-center justify-center text-[var(--app-work-row-icon)]"
                   style={{ width: rowFontSizePx, height: rowFontSizePx }}
                 >
                   <EntryIcon style={{ width: rowFontSizePx, height: rowFontSizePx }} />

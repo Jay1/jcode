@@ -1156,7 +1156,7 @@ describe("MessagesTimeline", () => {
     );
 
     expect(markup).toContain(
-      '<span class="font-medium text-muted-foreground/72" data-work-entry-action-word="true">Searched</span> 2 files found',
+      '<span class="font-medium text-[var(--app-metadata-fg)]" data-work-entry-action-word="true">Searched</span> 2 files found',
     );
   });
 

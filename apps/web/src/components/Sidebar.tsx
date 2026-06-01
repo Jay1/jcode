@@ -4017,7 +4017,7 @@ export default function Sidebar() {
         aria-label="Archive thread"
         title="Archive thread"
         className={cn(
-          "sidebar-icon-button inline-flex justify-center hover:text-foreground/89",
+          "sidebar-icon-button inline-flex justify-center",
           compact ? "size-[18px]" : "size-5",
           toneClassName,
         )}
@@ -5682,7 +5682,7 @@ export default function Sidebar() {
                                     )}
                                     <button
                                       type="button"
-                                      className="sidebar-icon-button ml-auto inline-flex size-5 shrink-0 text-muted-foreground/50 opacity-0 transition-opacity group-hover/ws:opacity-100"
+                                      className="sidebar-icon-button ml-auto inline-flex size-5 shrink-0 opacity-0 transition-opacity group-hover/ws:opacity-100"
                                       aria-label="Delete workspace"
                                       onClick={(event) => {
                                         event.stopPropagation();

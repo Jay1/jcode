@@ -58,12 +58,12 @@
 
 @layer components {
   .sidebar-icon-button {
-    @apply items-center justify-center rounded-sm p-0.5 text-muted-foreground/60 transition-colors hover:text-foreground/82 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
-    background: transparent;
+    @apply items-center justify-center rounded-sm p-0.5 text-[var(--app-control-icon-fg,var(--muted-foreground))] transition-colors hover:text-[var(--app-control-icon-hover-fg,var(--foreground))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--app-state-focus,var(--ring))];
+    background: var(--app-control-icon-bg, transparent);
   }
 
   .sidebar-icon-button:hover {
-    background: var(--color-background-button-secondary-hover);
+    background: var(--app-control-icon-hover-bg, var(--color-background-button-secondary-hover));
   }
 
   /* Let the renderer switch between Codex-style translucent and opaque shells
@@ -234,10 +234,42 @@
   --app-surface-card: var(--card);
   --app-surface-card-header: var(--muted);
   --app-surface-composer: var(--card);
+  --app-surface-toolbar: var(--app-surface-topbar, var(--background));
+  --app-surface-toolbar-hover: var(--app-state-hover, var(--accent));
+  --app-surface-toolbar-active: var(--app-state-selected, var(--accent));
+  --app-surface-toolbar-border: var(--border);
   --app-state-hover: var(--accent);
   --app-state-selected: var(--sidebar-accent-active);
   --app-state-selected-border: var(--primary);
   --app-state-focus: var(--ring);
+  --app-text-metadata: var(--muted-foreground);
+  --app-text-metadata-strong: var(--foreground);
+  --app-control-icon-fg: var(--app-text-metadata, var(--muted-foreground));
+  --app-control-icon-hover-fg: var(--app-text-metadata-strong, var(--foreground));
+  --app-control-icon-bg: transparent;
+  --app-control-icon-hover-bg: var(--app-surface-toolbar-hover, var(--accent));
+  --app-control-icon-border: transparent;
+  --app-chrome-control-bg: var(
+    --color-background-control,
+    var(--app-surface-toolbar-hover, var(--accent))
+  );
+  --app-chrome-control-border: var(--app-surface-toolbar-border, var(--border));
+  --app-chrome-control-fg: var(--color-text-foreground-secondary, var(--foreground));
+  --app-chrome-control-hover-bg: var(
+    --color-background-button-secondary-hover,
+    var(--app-surface-toolbar-active, var(--accent))
+  );
+  --app-chrome-control-hover-fg: var(--color-text-foreground, var(--foreground));
+  --app-chrome-control-active-bg: var(
+    --color-background-button-secondary-active,
+    var(--app-state-selected, var(--accent))
+  );
+  --app-metadata-fg: var(--app-text-metadata-strong, var(--foreground));
+  --app-metadata-muted-fg: var(--app-text-metadata, var(--muted-foreground));
+  --app-work-row-bg: var(--app-surface-card, var(--card));
+  --app-work-row-hover-bg: var(--app-surface-card-header, var(--muted));
+  --app-work-row-border: var(--border);
+  --app-work-row-icon: var(--app-text-metadata, var(--muted-foreground));
   --app-status-error-bg: var(--destructive);
   --app-status-error-border: var(--destructive);
   --app-status-error-dot: var(--destructive-foreground);

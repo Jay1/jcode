@@ -26,4 +26,3 @@
 
 - [Testing Strategy](strategy.md)
 - [Appearance Regression Testing](appearance-regressions.md)
-- [Appearance Regression Testing](appearance-regressions.md)

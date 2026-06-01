@@ -1205,7 +1205,7 @@ export default function GitActionsControl({
   if (!gitCwd) return null;
 
   const headerGhostClass =
-    "bg-transparent not-disabled:before:shadow-none dark:not-disabled:before:shadow-none [:hover,[data-pressed]]:bg-[var(--sidebar-accent)] dark:[:hover,[data-pressed]]:bg-[var(--sidebar-accent)]";
+    "border-(--app-chrome-control-border) bg-(--app-chrome-control-bg) text-(--app-chrome-control-fg) not-disabled:before:shadow-none dark:not-disabled:before:shadow-none [:hover,[data-pressed]]:bg-(--app-chrome-control-hover-bg) [:hover,[data-pressed]]:text-(--app-chrome-control-hover-fg) dark:[:hover,[data-pressed]]:bg-(--app-chrome-control-hover-bg) data-pressed:bg-(--app-chrome-control-active-bg)";
 
   return (
     <>
@@ -1286,7 +1286,7 @@ export default function GitActionsControl({
             <MenuPopup
               align="end"
               side="bottom"
-              className="w-50 rounded-lg border-[color:var(--color-border)] bg-[var(--composer-surface)] shadow-lg"
+              className="w-50 rounded-lg border-(--app-chrome-control-border) bg-(--app-work-row-bg) shadow-lg"
             >
               <MenuGroup>
                 <MenuGroupLabel>Git actions</MenuGroupLabel>

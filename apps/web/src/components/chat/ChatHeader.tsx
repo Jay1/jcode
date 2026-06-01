@@ -250,7 +250,7 @@ export const ChatHeader = memo(function ChatHeader({
                 className={cn(
                   "flex min-w-0 items-center gap-2",
                   showSidechatTitleChip &&
-                    "rounded-lg bg-secondary py-1 pl-2 pr-1 text-secondary-foreground",
+                    "rounded-lg bg-(--app-chrome-control-bg) py-1 pl-2 pr-1 text-(--app-chrome-control-fg)",
                 )}
               >
                 {threadIconKind === "none" ? null : (
@@ -282,7 +282,7 @@ export const ChatHeader = memo(function ChatHeader({
                       render={
                         <button
                           type="button"
-                          className="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/55 hover:text-foreground [-webkit-app-region:no-drag]"
+                          className="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-(--app-chrome-control-fg) transition-colors hover:bg-(--app-chrome-control-hover-bg) hover:text-(--app-chrome-control-hover-fg) [-webkit-app-region:no-drag]"
                           aria-label="Close selected sidechat"
                           onClick={(event) => {
                             event.stopPropagation();
@@ -335,7 +335,7 @@ export const ChatHeader = memo(function ChatHeader({
                         size="xs"
                         variant="outline"
                         className={cn(
-                          "shrink-0 bg-transparent not-disabled:before:shadow-none dark:not-disabled:before:shadow-none [:hover,[data-pressed]]:bg-[var(--sidebar-accent)] dark:[:hover,[data-pressed]]:bg-[var(--sidebar-accent)]",
+                          "shrink-0 border-(--app-chrome-control-border) bg-(--app-chrome-control-bg) text-(--app-chrome-control-fg) not-disabled:before:shadow-none dark:not-disabled:before:shadow-none [:hover,[data-pressed]]:bg-(--app-chrome-control-hover-bg) [:hover,[data-pressed]]:text-(--app-chrome-control-hover-fg) dark:[:hover,[data-pressed]]:bg-(--app-chrome-control-hover-bg) data-pressed:bg-(--app-chrome-control-active-bg)",
                           compact ? "gap-1" : "gap-1.5",
                         )}
                         aria-label={handoffActionLabel}
