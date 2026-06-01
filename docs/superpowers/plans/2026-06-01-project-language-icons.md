@@ -21,7 +21,7 @@
 - `apps/server/src/project/Services/ProjectLanguageIconResolver.ts`: new service interface for bounded project icon detection.
 - `apps/server/src/project/Layers/ProjectLanguageIconResolver.ts`: root-level marker-file detector, modeled after `ProjectFaviconResolver` but without recursive scanning.
 - `apps/server/src/project/Layers/ProjectLanguageIconResolver.test.ts`: detector tests for TypeScript/Vue priority, null fallback, and bounded probing.
-- `apps/server/src/orchestration/decider.ts`: include optional icon metadata in `project.meta.update` events.
+- `apps/server/src/orchestration/decider.ts`: include optional icon metadata in `project.meta-updated` events.
 - `apps/server/src/orchestration/projectMetadataProjection.ts`: persist icon metadata on created/meta-updated events.
 - `apps/server/src/persistence/Services/ProjectionProjects.ts`: add icon metadata to projected project schema.
 - `apps/server/src/persistence/Layers/ProjectionProjects.ts`: persist/select icon metadata JSON.
