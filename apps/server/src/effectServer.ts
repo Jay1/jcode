@@ -1,4 +1,5 @@
 import http from "node:http";
+import type { Duplex } from "node:stream";
 
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer";
 import type { ServerSettingsError } from "@jcode/contracts";
@@ -57,6 +58,38 @@ export class ServerLifecycleError extends Schema.TaggedErrorClass<ServerLifecycl
   },
 ) {}
 
+export function trackUpgradedSocketsForShutdown(server: http.Server) {
+  const sockets = new Set<Duplex>();
+  const close = server.close;
+  const destroyUpgradedSockets = () => {
+    for (const socket of sockets) {
+      socket.destroy();
+    }
+    sockets.clear();
+  };
+  const removeSocket = (socket: Duplex) => {
+    sockets.delete(socket);
+  };
+  const onUpgrade = (_req: http.IncomingMessage, socket: Duplex) => {
+    sockets.add(socket);
+    socket.once("close", () => removeSocket(socket));
+  };
+  server.on("upgrade", onUpgrade);
+  server.close = function closeTrackedUpgradedSockets(
+    this: http.Server,
+    callback?: (err?: Error) => void,
+  ) {
+    destroyUpgradedSockets();
+    return close.call(this, callback);
+  } as http.Server["close"];
+
+  return () => {
+    server.close = close;
+    server.off("upgrade", onUpgrade);
+    destroyUpgradedSockets();
+  };
+}
+
 export const createEffectServer = Effect.fn(function* () {
   const config = yield* ServerConfig;
   const keybindings = yield* Keybindings;
@@ -92,6 +125,10 @@ export const createEffectServer = Effect.fn(function* () {
   }, listenOptions).pipe(
     Effect.mapError((cause) => new ServerLifecycleError({ operation: "httpServerListen", cause })),
   );
+  if (nodeServer) {
+    const stopTrackingUpgradedSockets = trackUpgradedSocketsForShutdown(nodeServer);
+    yield* Effect.addFinalizer(() => Effect.sync(stopTrackingUpgradedSockets));
+  }
 
   const routesLayer = Layer.mergeAll(makeEffectHttpRouteLayer(readiness), websocketRpcRouteLayer);
   const httpApp = yield* HttpRouter.toHttpEffect(routesLayer);
