@@ -47,4 +47,15 @@ describe("auth utils", () => {
       browser: "Chrome",
     });
   });
+
+  it("classifies Linux user agents before Mac compatibility tokens", () => {
+    expect(
+      deriveAuthClientMetadata({
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (X11; Linux x86_64; Macintosh; Intel Mac OS X) AppleWebKit Chrome/123",
+        },
+      }).os,
+    ).toBe("Linux");
+  });
 });

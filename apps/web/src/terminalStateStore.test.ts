@@ -361,4 +361,76 @@ describe("terminalStateStore actions", () => {
       },
     ]);
   });
+
+  it("sets and persists terminal title overrides", () => {
+    const store = useTerminalStateStore.getState();
+    store.setTerminalTitleOverride(THREAD_ID, "default", "My Build Terminal");
+
+    const terminalState = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadId,
+      THREAD_ID,
+    );
+    expect(terminalState.terminalTitleOverridesById).toEqual({
+      default: "My Build Terminal",
+    });
+  });
+
+  it("removes terminal title override when set to empty string", () => {
+    const store = useTerminalStateStore.getState();
+    store.setTerminalTitleOverride(THREAD_ID, "default", "Custom Title");
+    store.setTerminalTitleOverride(THREAD_ID, "default", "");
+
+    const terminalState = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadId,
+      THREAD_ID,
+    );
+    expect(terminalState.terminalTitleOverridesById).toEqual({});
+  });
+
+  it("clears title override when terminal closes", () => {
+    const store = useTerminalStateStore.getState();
+    store.newTerminal(THREAD_ID, "terminal-2");
+    store.setTerminalTitleOverride(THREAD_ID, "terminal-2", "Custom Title");
+    store.closeTerminal(THREAD_ID, "terminal-2");
+
+    const terminalState = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadId,
+      THREAD_ID,
+    );
+    expect(terminalState.terminalTitleOverridesById).toEqual({});
+  });
+
+  it("sets and clears group title overrides", () => {
+    const store = useTerminalStateStore.getState();
+    store.setGroupTitleOverride(THREAD_ID, "group-default", "Build Group");
+
+    let terminalState = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadId,
+      THREAD_ID,
+    );
+    expect(terminalState.groupTitleOverridesById).toEqual({
+      "group-default": "Build Group",
+    });
+
+    store.setGroupTitleOverride(THREAD_ID, "group-default", "");
+
+    terminalState = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadId,
+      THREAD_ID,
+    );
+    expect(terminalState.groupTitleOverridesById).toEqual({});
+  });
+
+  it("clears group title override when group closes", () => {
+    const store = useTerminalStateStore.getState();
+    store.newTerminal(THREAD_ID, "terminal-2");
+    store.setGroupTitleOverride(THREAD_ID, "group-terminal-2", "Scratch Group");
+    store.closeTerminalGroup(THREAD_ID, "group-terminal-2");
+
+    const terminalState = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadId,
+      THREAD_ID,
+    );
+    expect(terminalState.groupTitleOverridesById).toEqual({});
+  });
 });

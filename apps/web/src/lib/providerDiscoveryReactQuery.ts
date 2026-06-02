@@ -7,9 +7,11 @@ import type {
   ProviderListPluginsResult,
   ProviderListSkillsResult,
   ProviderReadPluginResult,
+  ProviderStartOptions,
 } from "@jcode/contracts";
 import { queryOptions } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
+import { buildCodexProviderOptionsKey } from "./providerOptions";
 
 const EMPTY_SKILLS_RESULT: ProviderListSkillsResult = {
   skills: [],
@@ -48,25 +50,59 @@ export const providerDiscoveryQueryKeys = {
   all: ["provider-discovery"] as const,
   composerCapabilities: (provider: ProviderKind) =>
     ["provider-discovery", "composer-capabilities", provider] as const,
-  commands: (provider: ProviderKind, cwd: string | null, query: string, agentDir: string | null) =>
-    ["provider-discovery", "commands", provider, cwd, query, agentDir] as const,
+  commands: (
+    provider: ProviderKind,
+    cwd: string | null,
+    query: string,
+    agentDir: string | null,
+    providerOptionsKey: string | null,
+  ) =>
+    ["provider-discovery", "commands", provider, cwd, query, agentDir, providerOptionsKey] as const,
   skills: (
     provider: ProviderKind,
     cwd: string | null,
     query: string,
     agentDir: string | null,
     threadId: string | null,
-  ) => ["provider-discovery", "skills", provider, cwd, query, agentDir, threadId] as const,
-  plugins: (provider: ProviderKind, cwd: string | null) =>
-    ["provider-discovery", "plugins", provider, cwd] as const,
-  plugin: (provider: ProviderKind, marketplacePath: string, pluginName: string) =>
-    ["provider-discovery", "plugin", provider, marketplacePath, pluginName] as const,
+    providerOptionsKey: string | null,
+  ) =>
+    [
+      "provider-discovery",
+      "skills",
+      provider,
+      cwd,
+      query,
+      agentDir,
+      threadId,
+      providerOptionsKey,
+    ] as const,
+  plugins: (
+    provider: ProviderKind,
+    cwd: string | null,
+    threadId: string | null,
+    providerOptionsKey: string | null,
+  ) => ["provider-discovery", "plugins", provider, cwd, threadId, providerOptionsKey] as const,
+  plugin: (
+    provider: ProviderKind,
+    marketplacePath: string,
+    pluginName: string,
+    providerOptionsKey: string | null,
+  ) =>
+    [
+      "provider-discovery",
+      "plugin",
+      provider,
+      marketplacePath,
+      pluginName,
+      providerOptionsKey,
+    ] as const,
   models: (
     provider: ProviderKind,
     binaryPath: string | null,
     apiEndpoint: string | null,
     agentDir: string | null,
     serverUrl: string | null,
+    providerOptionsKey: string | null,
   ) =>
     [
       "provider-discovery",
@@ -76,6 +112,7 @@ export const providerDiscoveryQueryKeys = {
       apiEndpoint,
       agentDir,
       serverUrl,
+      providerOptionsKey,
     ] as const,
   agents: (provider: ProviderKind, binaryPath: string | null, serverUrl: string | null) =>
     ["provider-discovery", "agents", provider, binaryPath, serverUrl] as const,
@@ -97,9 +134,11 @@ export function providerSkillsQueryOptions(input: {
   cwd: string | null;
   threadId?: string | null;
   agentDir?: string | null;
+  providerOptions?: ProviderStartOptions | null | undefined;
   query: string;
   enabled?: boolean;
 }) {
+  const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
   return queryOptions({
     queryKey: providerDiscoveryQueryKeys.skills(
       input.provider,
@@ -107,6 +146,7 @@ export function providerSkillsQueryOptions(input: {
       input.query,
       input.agentDir ?? null,
       input.threadId ?? null,
+      providerOptionsKey,
     ),
     queryFn: async () => {
       const api = ensureNativeApi();
@@ -118,6 +158,7 @@ export function providerSkillsQueryOptions(input: {
         cwd: input.cwd,
         ...(input.threadId ? { threadId: input.threadId } : {}),
         ...(input.agentDir ? { agentDir: input.agentDir } : {}),
+        ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
       });
     },
     enabled: (input.enabled ?? true) && input.cwd !== null,
@@ -131,15 +172,18 @@ export function providerCommandsQueryOptions(input: {
   cwd: string | null;
   threadId?: string | null;
   agentDir?: string | null;
+  providerOptions?: ProviderStartOptions | null | undefined;
   query: string;
   enabled?: boolean;
 }) {
+  const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
   return queryOptions({
     queryKey: providerDiscoveryQueryKeys.commands(
       input.provider,
       input.cwd,
       input.query,
       input.agentDir ?? null,
+      providerOptionsKey,
     ),
     queryFn: async () => {
       const api = ensureNativeApi();
@@ -151,6 +195,7 @@ export function providerCommandsQueryOptions(input: {
         cwd: input.cwd,
         ...(input.threadId ? { threadId: input.threadId } : {}),
         ...(input.agentDir ? { agentDir: input.agentDir } : {}),
+        ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
       });
     },
     enabled: (input.enabled ?? true) && input.cwd !== null,
@@ -166,8 +211,10 @@ export function providerModelsQueryOptions(input: {
   agentDir?: string | null;
   serverUrl?: string | null;
   serverPassword?: string | null;
+  providerOptions?: ProviderStartOptions | null | undefined;
   enabled?: boolean;
 }) {
+  const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
   return queryOptions({
     queryKey: providerDiscoveryQueryKeys.models(
       input.provider,
@@ -175,6 +222,7 @@ export function providerModelsQueryOptions(input: {
       input.apiEndpoint ?? null,
       input.agentDir ?? null,
       input.serverUrl ?? null,
+      providerOptionsKey,
     ),
     queryFn: async () => {
       const api = ensureNativeApi();
@@ -185,6 +233,7 @@ export function providerModelsQueryOptions(input: {
         ...(input.agentDir ? { agentDir: input.agentDir } : {}),
         ...(input.serverUrl ? { serverUrl: input.serverUrl } : {}),
         ...(input.serverPassword ? { serverPassword: input.serverPassword } : {}),
+        ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
       });
     },
     enabled: input.enabled ?? true,
@@ -234,16 +283,24 @@ export function providerPluginsQueryOptions(input: {
   provider: ProviderKind;
   cwd: string | null;
   threadId?: string | null;
+  providerOptions?: ProviderStartOptions | null | undefined;
   enabled?: boolean;
 }) {
+  const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
   return queryOptions({
-    queryKey: providerDiscoveryQueryKeys.plugins(input.provider, input.cwd),
+    queryKey: providerDiscoveryQueryKeys.plugins(
+      input.provider,
+      input.cwd,
+      input.threadId ?? null,
+      providerOptionsKey,
+    ),
     queryFn: async () => {
       const api = ensureNativeApi();
       return api.provider.listPlugins({
         provider: input.provider,
         ...(input.cwd ? { cwd: input.cwd } : {}),
         ...(input.threadId ? { threadId: input.threadId } : {}),
+        ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
       });
     },
     enabled: input.enabled ?? true,
@@ -256,13 +313,16 @@ export function providerReadPluginQueryOptions(input: {
   provider: ProviderKind;
   marketplacePath: string;
   pluginName: string;
+  providerOptions?: ProviderStartOptions | null | undefined;
   enabled?: boolean;
 }) {
+  const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
   return queryOptions({
     queryKey: providerDiscoveryQueryKeys.plugin(
       input.provider,
       input.marketplacePath,
       input.pluginName,
+      providerOptionsKey,
     ),
     queryFn: async (): Promise<ProviderReadPluginResult> => {
       const api = ensureNativeApi();
@@ -270,6 +330,7 @@ export function providerReadPluginQueryOptions(input: {
         provider: input.provider,
         marketplacePath: input.marketplacePath,
         pluginName: input.pluginName,
+        ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
       });
     },
     enabled: input.enabled ?? true,

@@ -9,7 +9,10 @@ import {
 } from "@jcode/contracts";
 import { describe, expect, it } from "vitest";
 
-import { hasLiveThreadsWithMissingProjects } from "./desktopProjectRecovery";
+import {
+  hasLiveThreadsWithMissingProjects,
+  shouldRepairDesktopProjectBootstrapSnapshot,
+} from "./desktopProjectRecovery";
 
 function makeProject(
   overrides: Partial<OrchestrationReadModel["projects"][number]> = {},
@@ -179,5 +182,26 @@ describe("desktopProjectRecovery", () => {
   it("accepts shell snapshots that do not carry deleted markers", () => {
     expect(hasLiveThreadsWithMissingProjects(makeShellSnapshot())).toBe(false);
     expect(hasLiveThreadsWithMissingProjects(makeShellSnapshot({ projects: [] }))).toBe(true);
+  });
+
+  it("repairs empty desktop startup shell snapshots", () => {
+    expect(
+      shouldRepairDesktopProjectBootstrapSnapshot(
+        makeShellSnapshot({
+          projects: [],
+          threads: [],
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("repairs desktop startup shell snapshots with live threads missing project rows", () => {
+    expect(shouldRepairDesktopProjectBootstrapSnapshot(makeShellSnapshot({ projects: [] }))).toBe(
+      true,
+    );
+  });
+
+  it("accepts healthy desktop startup shell snapshots without repair", () => {
+    expect(shouldRepairDesktopProjectBootstrapSnapshot(makeShellSnapshot())).toBe(false);
   });
 });

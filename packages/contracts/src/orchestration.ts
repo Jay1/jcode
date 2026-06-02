@@ -7,7 +7,11 @@ import {
   OpenCodeModelOptions,
   PiModelOptions,
 } from "./model";
-import { ProviderMentionReference, ProviderSkillReference } from "./providerDiscovery";
+import {
+  ProviderMentionReference,
+  ProviderSkillReference,
+  ProviderStartOptions,
+} from "./providerDiscovery";
 import { ProjectKind } from "./project";
 import {
   ApprovalRequestId,
@@ -130,54 +134,6 @@ export const ModelSelection = Schema.Union([
   PiModelSelection,
 ]);
 export type ModelSelection = typeof ModelSelection.Type;
-
-export const CodexProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-  homePath: Schema.optional(TrimmedNonEmptyString),
-});
-
-export const ClaudeProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-  permissionMode: Schema.optional(TrimmedNonEmptyString),
-  maxThinkingTokens: Schema.optional(NonNegativeInt),
-});
-
-export const GeminiProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-});
-
-export const CursorProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-  apiEndpoint: Schema.optional(TrimmedNonEmptyString),
-});
-
-export const OpenCodeProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-  serverUrl: Schema.optional(TrimmedNonEmptyString),
-  serverPassword: Schema.optional(TrimmedNonEmptyString),
-});
-
-export const KiloProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-  serverUrl: Schema.optional(TrimmedNonEmptyString),
-  serverPassword: Schema.optional(TrimmedNonEmptyString),
-});
-
-export const PiProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-  agentDir: Schema.optional(TrimmedNonEmptyString),
-});
-
-export const ProviderStartOptions = Schema.Struct({
-  codex: Schema.optional(CodexProviderStartOptions),
-  claudeAgent: Schema.optional(ClaudeProviderStartOptions),
-  cursor: Schema.optional(CursorProviderStartOptions),
-  gemini: Schema.optional(GeminiProviderStartOptions),
-  kilo: Schema.optional(KiloProviderStartOptions),
-  opencode: Schema.optional(OpenCodeProviderStartOptions),
-  pi: Schema.optional(PiProviderStartOptions),
-});
-export type ProviderStartOptions = typeof ProviderStartOptions.Type;
 
 export const RuntimeMode = Schema.Literals(["approval-required", "full-access"]);
 export type RuntimeMode = typeof RuntimeMode.Type;

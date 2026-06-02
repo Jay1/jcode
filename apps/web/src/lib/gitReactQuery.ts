@@ -6,6 +6,7 @@ import type {
 import { mutationOptions, queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "../nativeApi";
 import { buildPatchCacheKey } from "./diffRendering";
+import { buildCodexProviderOptionsKey } from "./providerOptions";
 
 const GIT_STATUS_STALE_TIME_MS = 30_000;
 const GIT_STATUS_REFETCH_INTERVAL_MS = 60_000;
@@ -149,7 +150,7 @@ export function gitSummarizeDiffQueryOptions(input: {
       ? buildPatchCacheKey(normalizedPatch, "git-diff-summary")
       : null;
 
-  const providerOptionsKey = input.providerOptions ? JSON.stringify(input.providerOptions) : null;
+  const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
 
   return queryOptions({
     queryKey: gitQueryKeys.diffSummary(

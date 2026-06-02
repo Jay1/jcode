@@ -1,8 +1,9 @@
-import type {
-  AuthBearerBootstrapResult,
-  AuthSessionState,
-  AuthWebSocketTokenResult,
-  ExecutionEnvironmentDescriptor,
+import {
+  AuthHttpRoutes,
+  type AuthBearerBootstrapResult,
+  type AuthSessionState,
+  type AuthWebSocketTokenResult,
+  type ExecutionEnvironmentDescriptor,
 } from "@jcode/contracts";
 
 export class RemoteAuthHttpError extends Error {
@@ -90,8 +91,8 @@ export function bootstrapRemoteBearerSession(input: {
 }): Promise<AuthBearerBootstrapResult> {
   return fetchRemoteJson<AuthBearerBootstrapResult>({
     httpBaseUrl: input.httpBaseUrl,
-    pathname: "/api/auth/bootstrap/bearer",
-    method: "POST",
+    pathname: AuthHttpRoutes.bootstrapBearer.pathname,
+    method: AuthHttpRoutes.bootstrapBearer.method,
     body: { credential: input.credential },
   });
 }
@@ -102,7 +103,8 @@ export function fetchRemoteSessionState(input: {
 }): Promise<AuthSessionState> {
   return fetchRemoteJson<AuthSessionState>({
     httpBaseUrl: input.httpBaseUrl,
-    pathname: "/api/auth/session",
+    pathname: AuthHttpRoutes.session.pathname,
+    method: AuthHttpRoutes.session.method,
     bearerToken: input.bearerToken,
   });
 }
@@ -127,8 +129,8 @@ export function issueRemoteWebSocketToken(input: {
 }): Promise<AuthWebSocketTokenResult> {
   return fetchRemoteJson<AuthWebSocketTokenResult>({
     httpBaseUrl: input.httpBaseUrl,
-    pathname: "/api/auth/ws-token",
-    method: "POST",
+    pathname: AuthHttpRoutes.webSocketToken.pathname,
+    method: AuthHttpRoutes.webSocketToken.method,
     bearerToken: input.bearerToken,
   });
 }

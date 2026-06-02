@@ -17,6 +17,8 @@ import {
   type ServerConfigStreamEvent,
   type ServerDiagnosticsResult,
   type ServerLifecycleStreamEvent,
+  ServerVoiceTranscriptionErrorDetail,
+  type ServerVoiceTranscriptionErrorDetail as ServerVoiceTranscriptionErrorDetailType,
 } from "@jcode/contracts";
 import { clamp } from "effect/Number";
 import {
@@ -159,12 +161,38 @@ function readDescendantProcesses(rootPid: number): Promise<ProcessTableRow[]> {
   });
 }
 
-function toWsRpcError(cause: unknown, fallbackMessage: string) {
+function readVoiceTranscriptionErrorDetail(
+  cause: unknown,
+): ServerVoiceTranscriptionErrorDetailType | undefined {
+  let current = cause;
+  const seen = new Set<unknown>();
+  while (current && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+    const candidate = current as { code?: unknown; detail?: unknown; cause?: unknown };
+    if (Schema.is(ServerVoiceTranscriptionErrorDetail)(candidate.detail)) {
+      return candidate.detail;
+    }
+    if (candidate.code === "auth-expired") {
+      return { kind: "server.voice-transcription", code: "auth-expired" };
+    }
+    current = candidate.cause;
+  }
+  return undefined;
+}
+
+function toWsRpcError(
+  cause: unknown,
+  fallbackMessage: string,
+  detail?: ServerVoiceTranscriptionErrorDetailType,
+) {
   return Schema.is(WsRpcError)(cause)
-    ? cause
+    ? detail && !cause.detail
+      ? new WsRpcError({ message: cause.message, detail, cause: cause.cause })
+      : cause
     : new WsRpcError({
         message:
           cause instanceof Error && cause.message.length > 0 ? cause.message : fallbackMessage,
+        ...(detail ? { detail } : {}),
         cause,
       });
 }
@@ -665,21 +693,23 @@ export const makeWsRpcLayer = () =>
             "Failed to load server diagnostics",
           ),
         [WS_METHODS.serverTranscribeVoice]: (input) =>
-          rpcEffect(
-            providerAdapterRegistry
-              .getByProvider(input.provider)
-              .pipe(
-                Effect.flatMap((adapter) =>
-                  adapter.transcribeVoice
-                    ? adapter.transcribeVoice(input)
-                    : Effect.fail(
-                        new Error(
-                          `Voice transcription is unavailable for provider '${input.provider}'.`,
-                        ),
-                      ),
-                ),
+          providerAdapterRegistry.getByProvider(input.provider).pipe(
+            Effect.flatMap((adapter) =>
+              adapter.transcribeVoice
+                ? adapter.transcribeVoice(input)
+                : Effect.fail(
+                    new Error(
+                      `Voice transcription is unavailable for provider '${input.provider}'.`,
+                    ),
+                  ),
+            ),
+            Effect.mapError((cause) =>
+              toWsRpcError(
+                cause,
+                "Voice transcription failed",
+                readVoiceTranscriptionErrorDetail(cause),
               ),
-            "Voice transcription failed",
+            ),
           ),
         [WS_METHODS.serverUpsertKeybinding]: (input) =>
           rpcEffect(

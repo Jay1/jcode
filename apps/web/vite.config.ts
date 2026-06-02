@@ -37,6 +37,7 @@ export default defineConfig({
       "@pierre/diffs",
       "@pierre/diffs/react",
       "@pierre/diffs/worker/worker.js",
+      "react-dom/client",
       "react-icons/gr",
     ],
   },

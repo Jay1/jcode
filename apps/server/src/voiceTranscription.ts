@@ -7,6 +7,7 @@
 import { Buffer } from "node:buffer";
 
 import type {
+  ServerVoiceTranscriptionErrorCode,
   ServerVoiceTranscriptionInput,
   ServerVoiceTranscriptionResult,
 } from "@jcode/contracts";
@@ -18,6 +19,15 @@ const MAX_DURATION_MS = 120_000;
 export interface ChatGptVoiceAuthContext {
   readonly token: string;
   readonly transcriptionUrl?: string;
+}
+
+export class VoiceTranscriptionAuthExpiredError extends Error {
+  readonly code: ServerVoiceTranscriptionErrorCode = "auth-expired";
+
+  constructor(message = "Your ChatGPT login has expired. Sign in again.") {
+    super(message);
+    this.name = "VoiceTranscriptionAuthExpiredError";
+  }
 }
 
 // Validate the captured WAV clip and retry once if the ChatGPT session needs a refresh.
@@ -50,6 +60,10 @@ export async function transcribeVoiceWithChatGptSession(input: {
       token: auth.token,
       ...(auth.transcriptionUrl ? { transcriptionUrl: auth.transcriptionUrl } : {}),
     });
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    throw new VoiceTranscriptionAuthExpiredError(await readTranscriptionErrorMessage(response));
   }
 
   if (!response.ok) {

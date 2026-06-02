@@ -45,6 +45,7 @@ import {
 } from "~/lib/providerDiscoveryReactQuery";
 import { serverConfigQueryOptions } from "~/lib/serverReactQuery";
 import { useFocusedChatContext } from "~/focusedChatContext";
+import { getProviderStartOptions, useAppSettings } from "~/appSettings";
 import {
   CheckIcon,
   CircleAlertIcon,
@@ -362,6 +363,8 @@ function SectionHeader({ title }: { title: string }) {
 // ── Main component ─────────────────────────────────────────────────────────
 
 export function PluginLibrary() {
+  const { settings } = useAppSettings();
+  const providerOptions = useMemo(() => getProviderStartOptions(settings), [settings]);
   const firstProject = useStore(useMemo(() => createFirstProjectSelector(), []));
   const { activeProject: focusedProject, activeThread, focusedThreadId } = useFocusedChatContext();
   const activeProject = focusedProject ?? firstProject ?? null;
@@ -465,6 +468,7 @@ export function PluginLibrary() {
       provider: selectedProvider,
       cwd: discoveryCwd,
       threadId: providerThreadId,
+      ...(providerOptions ? { providerOptions } : {}),
       enabled: selectedTab === "plugins" && canListPlugins,
     }),
   );
@@ -475,6 +479,7 @@ export function PluginLibrary() {
       cwd: discoveryCwd,
       threadId: providerThreadId,
       query: selectedTab === "skills" ? deferredSkillSearch : "",
+      ...(providerOptions ? { providerOptions } : {}),
       enabled: selectedTab === "skills" && canListSkills && discoveryCwd !== null,
     }),
   );

@@ -1892,6 +1892,9 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
             cwd: input.cwd,
             ...(input.threadId !== undefined ? { threadId: input.threadId } : {}),
             ...(input.forceReload !== undefined ? { forceReload: input.forceReload } : {}),
+            ...(input.providerOptions !== undefined
+              ? { providerOptions: input.providerOptions }
+              : {}),
           }),
         catch: (cause) =>
           new ProviderAdapterRequestError({
@@ -1912,6 +1915,9 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
               ? { forceRemoteSync: input.forceRemoteSync }
               : {}),
             ...(input.forceReload !== undefined ? { forceReload: input.forceReload } : {}),
+            ...(input.providerOptions !== undefined
+              ? { providerOptions: input.providerOptions }
+              : {}),
           }),
         catch: (cause) =>
           new ProviderAdapterRequestError({
@@ -1928,6 +1934,9 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           manager.readPlugin({
             marketplacePath: input.marketplacePath,
             pluginName: input.pluginName,
+            ...(input.providerOptions !== undefined
+              ? { providerOptions: input.providerOptions }
+              : {}),
           }),
         catch: (cause) =>
           new ProviderAdapterRequestError({
@@ -1938,9 +1947,9 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           }),
       }).pipe(Effect.map((result) => result satisfies ProviderReadPluginResult));
 
-    const listModels: NonNullable<CodexAdapterShape["listModels"]> = (_input) =>
+    const listModels: NonNullable<CodexAdapterShape["listModels"]> = (input) =>
       Effect.tryPromise({
-        try: () => manager.listModels(),
+        try: () => manager.listModels(undefined, input.providerOptions),
         catch: (cause) =>
           new ProviderAdapterRequestError({
             provider: PROVIDER,

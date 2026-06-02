@@ -17,6 +17,9 @@ export type PersistedServerRuntimeState = typeof PersistedServerRuntimeState.Typ
 const decodePersistedServerRuntimeState = Schema.decodeUnknownEffect(
   Schema.fromJsonString(PersistedServerRuntimeState),
 );
+const encodePersistedServerRuntimeState = Schema.encodeEffect(
+  Schema.fromJsonString(PersistedServerRuntimeState),
+);
 
 const runtimeOriginForConfig = (
   config: Pick<ServerConfigShape, "host">,
@@ -43,9 +46,12 @@ export const persistServerRuntimeState = (input: {
   readonly path: string;
   readonly state: PersistedServerRuntimeState;
 }) =>
-  writeFileStringAtomically({
-    filePath: input.path,
-    contents: `${JSON.stringify(input.state)}\n`,
+  Effect.gen(function* () {
+    const encoded = yield* encodePersistedServerRuntimeState(input.state);
+    yield* writeFileStringAtomically({
+      filePath: input.path,
+      contents: `${encoded}\n`,
+    });
   });
 
 export const clearPersistedServerRuntimeState = (path: string) =>

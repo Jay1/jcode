@@ -7,7 +7,10 @@
 import type { ServerVoiceTranscriptionInput } from "@jcode/contracts";
 import { describe, expect, it, vi } from "vitest";
 
-import { transcribeVoiceWithChatGptSession } from "./voiceTranscription";
+import {
+  transcribeVoiceWithChatGptSession,
+  VoiceTranscriptionAuthExpiredError,
+} from "./voiceTranscription";
 
 const WAV_BASE64 = Buffer.from("RIFF0000WAVE", "ascii").toString("base64");
 
@@ -56,5 +59,34 @@ describe("transcribeVoiceWithChatGptSession", () => {
     expect(resolveAuth).toHaveBeenNthCalledWith(1, false);
     expect(resolveAuth).toHaveBeenNthCalledWith(2, true);
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("marks rejected ChatGPT auth after refresh as auth-expired", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("{}", { status: 401 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 403 }));
+
+    await expect(
+      transcribeVoiceWithChatGptSession({
+        request: baseRequest,
+        resolveAuth: async (refreshToken) => ({
+          token: refreshToken ? "fresh-chatgpt-token" : "stale-chatgpt-token",
+        }),
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      }),
+    ).rejects.toMatchObject({ code: "auth-expired" });
+  });
+
+  it("marks missing ChatGPT auth tokens as auth-expired", async () => {
+    await expect(
+      transcribeVoiceWithChatGptSession({
+        request: baseRequest,
+        resolveAuth: async () => {
+          throw new VoiceTranscriptionAuthExpiredError("No ChatGPT session token is available.");
+        },
+        fetchImpl: vi.fn() as unknown as typeof fetch,
+      }),
+    ).rejects.toMatchObject({ code: "auth-expired" });
   });
 });

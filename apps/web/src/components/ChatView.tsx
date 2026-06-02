@@ -193,6 +193,7 @@ import {
   shortcutLabelForCommand,
 } from "../keybindings";
 import PlanSidebar from "./PlanSidebar";
+import { PlanReviewPanel } from "./PlanReviewPanel";
 import TerminalWorkspaceTabs from "./TerminalWorkspaceTabs";
 import ThreadTerminalDrawer from "./ThreadTerminalDrawer";
 import {
@@ -351,6 +352,7 @@ import {
   revokeUserMessagePreviewUrls,
 } from "./ChatView.logic";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
+import { usePlanReview } from "../hooks/usePlanReview";
 import { useComposerSlashCommands } from "../hooks/useComposerSlashCommands";
 import { useFeatureFlags } from "../featureFlags";
 import { collapseCursorModelVariants } from "../cursorModelVariants";
@@ -959,6 +961,8 @@ export default function ChatView({
   const [pendingUserInputQuestionIndexByRequestId, setPendingUserInputQuestionIndexByRequestId] =
     useState<Record<string, number>>({});
   const [planSidebarOpen, setPlanSidebarOpen] = useState(false);
+  const [planReviewOpen, setPlanReviewOpen] = useState(false);
+  const planReview = usePlanReview();
   const [activeTaskListCompact, setActiveTaskListCompact] = useState(false);
   const [isComposerFooterCompact, setIsComposerFooterCompact] = useState(false);
   const [confirmedCustomBinaryPathsByProvider, setConfirmedCustomBinaryPathsByProvider] = useState<
@@ -1070,6 +1074,8 @@ export default function ChatView({
   const storeSetTerminalWorkspaceTab = useTerminalStateStore((s) => s.setTerminalWorkspaceTab);
   const storeSetTerminalHeight = useTerminalStateStore((s) => s.setTerminalHeight);
   const storeSetTerminalMetadata = useTerminalStateStore((s) => s.setTerminalMetadata);
+  const storeSetTerminalTitleOverride = useTerminalStateStore((s) => s.setTerminalTitleOverride);
+  const storeSetGroupTitleOverride = useTerminalStateStore((s) => s.setGroupTitleOverride);
   const storeSetTerminalActivity = useTerminalStateStore((s) => s.setTerminalActivity);
   const storeSplitTerminalLeft = useTerminalStateStore((s) => s.splitTerminalLeft);
   const storeSplitTerminalRight = useTerminalStateStore((s) => s.splitTerminalRight);
@@ -1426,10 +1432,16 @@ export default function ChatView({
     activeThread?.modelSelection,
     composerDraft.modelSelectionByProvider,
   ]);
+  const providerOptionsForDispatch = useMemo(() => getProviderStartOptions(settings), [settings]);
   const claudeDynamicModelsQuery = useQuery(
     providerModelsQueryOptions({ provider: "claudeAgent" }),
   );
-  const codexDynamicModelsQuery = useQuery(providerModelsQueryOptions({ provider: "codex" }));
+  const codexDynamicModelsQuery = useQuery(
+    providerModelsQueryOptions({
+      provider: "codex",
+      ...(providerOptionsForDispatch ? { providerOptions: providerOptionsForDispatch } : {}),
+    }),
+  );
   const cursorDynamicModelsQuery = useQuery(
     providerModelsQueryOptions({
       provider: "cursor",
@@ -1685,7 +1697,6 @@ export default function ChatView({
     selectedModelOptionsForDispatch,
     selectedProvider,
   ]);
-  const providerOptionsForDispatch = useMemo(() => getProviderStartOptions(settings), [settings]);
   const selectedModelForPicker =
     selectedModelSelection.provider === selectedProvider
       ? selectedModelSelection.model
@@ -1908,6 +1919,15 @@ export default function ChatView({
     ],
   );
   const planSidebarLabel = sidebarProposedPlan || interactionMode === "plan" ? "Plan" : "Tasks";
+  const planReviewPlanIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const planId = sidebarProposedPlan?.id ?? null;
+    if (planReviewPlanIdRef.current === planId) {
+      return;
+    }
+    planReviewPlanIdRef.current = planId;
+    planReview.resetAnnotations();
+  }, [planReview.resetAnnotations, sidebarProposedPlan?.id]);
   const [activeTaskListCardHeight, setActiveTaskListCardHeight] = useState(0);
   const activeTaskListCardRef = useRef<HTMLDivElement | null>(null);
   const previousActiveTaskListCardHeightRef = useRef(0);
@@ -2381,6 +2401,7 @@ export default function ChatView({
       cwd: composerSkillCwd,
       threadId,
       agentDir: selectedProvider === "pi" ? settings.piAgentDir || null : null,
+      ...(providerOptionsForDispatch ? { providerOptions: providerOptionsForDispatch } : {}),
       query:
         composerTriggerKind === "slash-command" || composerTriggerKind === "slash-model"
           ? (composerTrigger?.query ?? "")
@@ -2399,6 +2420,7 @@ export default function ChatView({
       cwd: composerSkillCwd,
       threadId,
       agentDir: selectedProvider === "pi" ? settings.piAgentDir || null : null,
+      ...(providerOptionsForDispatch ? { providerOptions: providerOptionsForDispatch } : {}),
       query: skillTriggerQuery,
       enabled:
         (isSkillTrigger || selectedProvider === "pi") &&
@@ -2411,6 +2433,7 @@ export default function ChatView({
       provider: selectedProvider,
       cwd: composerSkillCwd,
       threadId,
+      ...(providerOptionsForDispatch ? { providerOptions: providerOptionsForDispatch } : {}),
       enabled:
         supportsPluginDiscovery(providerComposerCapabilitiesQuery.data) &&
         composerSkillCwd !== null,
@@ -3358,6 +3381,7 @@ export default function ChatView({
       activeTerminalId: terminalState.activeTerminalId,
       terminalGroups: terminalState.terminalGroups,
       activeTerminalGroupId: terminalState.activeTerminalGroupId,
+      groupTitleOverridesById: terminalState.groupTitleOverridesById,
       focusRequestId: terminalFocusRequestId,
       onSplitTerminal: splitTerminalRight,
       onSplitTerminalDown: splitTerminalDown,
@@ -3397,6 +3421,14 @@ export default function ChatView({
         if (!activeThreadId) return;
         storeSetTerminalActivity(activeThreadId, terminalId, activity);
       },
+      onRenameTerminal: (terminalId: string, name: string) => {
+        if (!activeThreadId) return;
+        storeSetTerminalTitleOverride(activeThreadId, terminalId, name);
+      },
+      onRenameGroup: (groupId: string, name: string) => {
+        if (!activeThreadId) return;
+        storeSetGroupTitleOverride(activeThreadId, groupId, name);
+      },
       onAddTerminalContext: addTerminalContextToDraft,
     }),
     [
@@ -3427,6 +3459,7 @@ export default function ChatView({
       terminalState.terminalAttentionStatesById,
       terminalState.terminalCliKindsById,
       terminalState.terminalGroups,
+      terminalState.groupTitleOverridesById,
       terminalState.terminalHeight,
       terminalState.terminalIds,
       terminalState.terminalLabelsById,
@@ -8764,6 +8797,27 @@ export default function ChatView({
                 planSidebarDismissedForTurnRef.current = turnKey;
               }
             }}
+            onReview={() => setPlanReviewOpen(true)}
+          />
+        ) : null}
+        {planReviewOpen && sidebarProposedPlan?.planMarkdown ? (
+          <PlanReviewPanel
+            planTitle={
+              sidebarProposedPlan.planMarkdown
+                ? proposedPlanTitle(sidebarProposedPlan.planMarkdown)
+                : null
+            }
+            planMarkdown={sidebarProposedPlan.planMarkdown}
+            cwd={threadWorkspaceCwd ?? undefined}
+            annotations={planReview.annotations}
+            onAddAnnotation={planReview.addAnnotation}
+            onUpdateAnnotation={planReview.updateAnnotation}
+            onDeleteAnnotation={planReview.deleteAnnotation}
+            onDone={(md) => {
+              setPrompt(md);
+              setPlanReviewOpen(false);
+            }}
+            onClose={() => setPlanReviewOpen(false)}
           />
         ) : null}
       </div>

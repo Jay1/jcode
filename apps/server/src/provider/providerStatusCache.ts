@@ -22,6 +22,7 @@ const PROVIDER_STATUS_CACHE_IDS = [
 const decodeProviderStatusCache = Schema.decodeUnknownEffect(
   Schema.fromJsonString(ServerProviderStatus),
 );
+const encodeProviderStatusCache = Schema.encodeEffect(Schema.fromJsonString(ServerProviderStatus));
 
 const providerOrderRank = (provider: ServerProviderStatus["provider"]): number => {
   const rank = PROVIDER_STATUS_CACHE_IDS.indexOf(provider);
@@ -78,7 +79,10 @@ export const writeProviderStatusCache = (input: {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const encoded = `${JSON.stringify(input.provider, null, 2)}\n`;
+    const providerForCache = (({ updateState: _updateState, ...provider }) => provider)(
+      input.provider,
+    );
+    const encoded = `${yield* encodeProviderStatusCache(providerForCache)}\n`;
 
     yield* fs.makeDirectory(path.dirname(input.filePath), { recursive: true });
     yield* fs.writeFileString(tempPath, encoded);

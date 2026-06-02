@@ -47,6 +47,7 @@ interface PlanSidebarProps {
   workspaceRoot: string | undefined;
   timestampFormat: TimestampFormat;
   onClose: () => void;
+  onReview?: () => void;
 }
 
 const PlanSidebar = memo(function PlanSidebar({
@@ -56,6 +57,7 @@ const PlanSidebar = memo(function PlanSidebar({
   workspaceRoot,
   timestampFormat,
   onClose,
+  onReview,
 }: PlanSidebarProps) {
   const [proposedPlanExpanded, setProposedPlanExpanded] = useState(false);
   const planMarkdown = activeProposedPlan?.planMarkdown ?? null;
@@ -86,6 +88,7 @@ const PlanSidebar = memo(function PlanSidebar({
               workspaceRoot={workspaceRoot}
               variant="ghost"
               buttonClassName="text-muted-foreground/50 hover:text-foreground/70"
+              {...(onReview ? { onReview } : {})}
             />
           ) : null}
           <Button

@@ -52,6 +52,7 @@ interface ThreadTerminalState {
   activeTerminalId: string;
   terminalGroups: ThreadTerminalGroup[];
   activeTerminalGroupId: string;
+  groupTitleOverridesById: Record<string, string>;
 }
 
 const TERMINAL_STATE_STORAGE_KEY = "jcode:terminal-state:v1";
@@ -112,6 +113,21 @@ function normalizeTerminalCliKinds(
         terminalId.length > 0 && (cliKind === "codex" || cliKind === "claude"),
     )
     .filter(([terminalId]) => validTerminalIdSet.has(terminalId))
+    .toSorted(([leftId], [rightId]) => leftId.localeCompare(rightId));
+  return Object.fromEntries(normalizedEntries);
+}
+
+function normalizeGroupTitleOverrides(
+  groupTitleOverridesById: Record<string, string> | null | undefined,
+  groupIds: string[],
+): Record<string, string> {
+  const validGroupIdSet = new Set(groupIds);
+  const normalizedEntries = Object.entries(groupTitleOverridesById ?? {})
+    .map(([groupId, titleOverride]) => [groupId.trim(), titleOverride.trim()] as const)
+    .filter(
+      ([groupId, titleOverride]) =>
+        groupId.length > 0 && titleOverride.length > 0 && validGroupIdSet.has(groupId),
+    )
     .toSorted(([leftId], [rightId]) => leftId.localeCompare(rightId));
   return Object.fromEntries(normalizedEntries);
 }
@@ -333,6 +349,8 @@ function threadTerminalStateEqual(left: ThreadTerminalState, right: ThreadTermin
     JSON.stringify(left.terminalCliKindsById) === JSON.stringify(right.terminalCliKindsById) &&
     JSON.stringify(left.terminalAttentionStatesById) ===
       JSON.stringify(right.terminalAttentionStatesById) &&
+    JSON.stringify(left.groupTitleOverridesById) ===
+      JSON.stringify(right.groupTitleOverridesById) &&
     arraysEqual(left.runningTerminalIds, right.runningTerminalIds) &&
     terminalGroupsEqual(left.terminalGroups, right.terminalGroups)
   );
@@ -356,6 +374,7 @@ const DEFAULT_THREAD_TERMINAL_STATE: ThreadTerminalState = Object.freeze({
     createTerminalGroup(fallbackGroupId(DEFAULT_THREAD_TERMINAL_ID), DEFAULT_THREAD_TERMINAL_ID),
   ],
   activeTerminalGroupId: fallbackGroupId(DEFAULT_THREAD_TERMINAL_ID),
+  groupTitleOverridesById: {},
 });
 
 function createDefaultThreadTerminalState(): ThreadTerminalState {
@@ -368,6 +387,7 @@ function createDefaultThreadTerminalState(): ThreadTerminalState {
     terminalAttentionStatesById: { ...DEFAULT_THREAD_TERMINAL_STATE.terminalAttentionStatesById },
     runningTerminalIds: [...DEFAULT_THREAD_TERMINAL_STATE.runningTerminalIds],
     terminalGroups: copyTerminalGroups(DEFAULT_THREAD_TERMINAL_STATE.terminalGroups),
+    groupTitleOverridesById: { ...DEFAULT_THREAD_TERMINAL_STATE.groupTitleOverridesById },
   };
 }
 
@@ -426,6 +446,11 @@ function normalizeThreadTerminalState(state: ThreadTerminalState): ThreadTermina
       ? setActiveTerminalInGroupLayout(group, activeTerminalId)
       : group,
   );
+  const groupIds = syncedTerminalGroups.map((group) => group.id);
+  const groupTitleOverridesById = normalizeGroupTitleOverrides(
+    (state as Partial<ThreadTerminalState>).groupTitleOverridesById,
+    groupIds,
+  );
 
   const normalized: ThreadTerminalState = {
     entryPoint: state.entryPoint === "terminal" ? "terminal" : "chat",
@@ -446,6 +471,7 @@ function normalizeThreadTerminalState(state: ThreadTerminalState): ThreadTermina
     activeTerminalId,
     terminalGroups: syncedTerminalGroups,
     activeTerminalGroupId: resolvedActiveTerminalGroupId,
+    groupTitleOverridesById,
   };
   return threadTerminalStateEqual(state, normalized) ? state : normalized;
 }
@@ -811,6 +837,32 @@ function setThreadTerminalTitleOverride(
   };
 }
 
+function setThreadGroupTitleOverride(
+  state: ThreadTerminalState,
+  groupId: string,
+  titleOverride: string | null | undefined,
+): ThreadTerminalState {
+  const normalized = normalizeThreadTerminalState(state);
+  if (!normalized.terminalGroups.some((group) => group.id === groupId)) {
+    return normalized;
+  }
+  const normalizedTitleOverride = titleOverride?.trim() ?? "";
+  const currentTitleOverride = normalized.groupTitleOverridesById[groupId] ?? "";
+  if (currentTitleOverride === normalizedTitleOverride) {
+    return normalized;
+  }
+  const nextTitleOverridesById = { ...normalized.groupTitleOverridesById };
+  if (normalizedTitleOverride.length === 0) {
+    delete nextTitleOverridesById[groupId];
+  } else {
+    nextTitleOverridesById[groupId] = normalizedTitleOverride;
+  }
+  return {
+    ...normalized,
+    groupTitleOverridesById: nextTitleOverridesById,
+  };
+}
+
 function splitThreadTerminal(state: ThreadTerminalState, terminalId: string): ThreadTerminalState {
   return upsertTerminalIntoGroups(state, terminalId, "split", "right");
 }
@@ -992,6 +1044,11 @@ function closeThreadTerminal(state: ThreadTerminalState, terminalId: string): Th
     activeTerminalId: nextActiveTerminalId,
     terminalGroups,
     activeTerminalGroupId: nextActiveTerminalGroupId,
+    groupTitleOverridesById: Object.fromEntries(
+      Object.entries(normalized.groupTitleOverridesById).filter(([id]) =>
+        terminalGroups.some((group) => group.id === id),
+      ),
+    ),
   });
 }
 
@@ -1225,6 +1282,11 @@ interface TerminalStateStoreState {
     terminalId: string,
     titleOverride: string | null | undefined,
   ) => void;
+  setGroupTitleOverride: (
+    threadId: ThreadId,
+    groupId: string,
+    titleOverride: string | null | undefined,
+  ) => void;
   splitTerminal: (threadId: ThreadId, terminalId: string) => void;
   splitTerminalLeft: (threadId: ThreadId, terminalId: string) => void;
   splitTerminalRight: (threadId: ThreadId, terminalId: string) => void;
@@ -1304,6 +1366,10 @@ export const useTerminalStateStore = create<TerminalStateStoreState>()(
         setTerminalTitleOverride: (threadId, terminalId, titleOverride) =>
           updateTerminal(threadId, (state) =>
             setThreadTerminalTitleOverride(state, terminalId, titleOverride),
+          ),
+        setGroupTitleOverride: (threadId, groupId, titleOverride) =>
+          updateTerminal(threadId, (state) =>
+            setThreadGroupTitleOverride(state, groupId, titleOverride),
           ),
         splitTerminal: (threadId, terminalId) =>
           updateTerminal(threadId, (state) => splitThreadTerminal(state, terminalId)),

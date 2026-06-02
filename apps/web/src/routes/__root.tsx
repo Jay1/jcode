@@ -70,7 +70,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useUIFont } from "../hooks/useUIFont";
 import { useNativeFontSmoothing } from "../hooks/useNativeFontSmoothing";
 import { invalidateGitQueries } from "../lib/gitReactQuery";
-import { hasLiveThreadsWithMissingProjects } from "../lib/desktopProjectRecovery";
+import { shouldRepairDesktopProjectBootstrapSnapshot } from "../lib/desktopProjectRecovery";
 import { parseDiffRouteSearch } from "../diffRouteSearch";
 import { resolveSplitViewThreadIds, selectSplitView, useSplitViewStore } from "../splitViewStore";
 import { providerDiscoveryQueryKeys } from "../lib/providerDiscoveryReactQuery";
@@ -1165,9 +1165,7 @@ function DesktopProjectBootstrap() {
     void api.orchestration
       .getShellSnapshot()
       .then((snapshot) => {
-        const needsRepair =
-          (snapshot.projects.length === 0 && snapshot.threads.length === 0) ||
-          hasLiveThreadsWithMissingProjects(snapshot);
+        const needsRepair = shouldRepairDesktopProjectBootstrapSnapshot(snapshot);
         if (!needsRepair) {
           useStore.getState().syncServerShellSnapshot(snapshot);
           return snapshot;

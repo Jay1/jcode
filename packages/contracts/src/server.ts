@@ -194,6 +194,15 @@ export const ServerVoiceTranscriptionResult = Schema.Struct({
 });
 export type ServerVoiceTranscriptionResult = typeof ServerVoiceTranscriptionResult.Type;
 
+export const ServerVoiceTranscriptionErrorCode = Schema.Literals(["auth-expired"]);
+export type ServerVoiceTranscriptionErrorCode = typeof ServerVoiceTranscriptionErrorCode.Type;
+
+export const ServerVoiceTranscriptionErrorDetail = Schema.Struct({
+  kind: Schema.Literal("server.voice-transcription"),
+  code: ServerVoiceTranscriptionErrorCode,
+});
+export type ServerVoiceTranscriptionErrorDetail = typeof ServerVoiceTranscriptionErrorDetail.Type;
+
 export const ServerUpsertKeybindingInput = KeybindingRule;
 export type ServerUpsertKeybindingInput = typeof ServerUpsertKeybindingInput.Type;
 

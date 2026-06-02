@@ -3,6 +3,7 @@ import type http from "node:http";
 import {
   AuthBootstrapInput,
   AuthCreatePairingCredentialInput,
+  AuthHttpRoutes,
   AuthRevokeClientSessionInput,
   AuthRevokePairingLinkInput,
 } from "@jcode/contracts";
@@ -216,13 +217,19 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
   const headers = authRequest.headers;
 
   const route = Effect.gen(function* () {
-    if (method === "GET" && input.url.pathname === "/api/auth/session") {
+    if (
+      method === AuthHttpRoutes.session.method &&
+      input.url.pathname === AuthHttpRoutes.session.pathname
+    ) {
       const session = yield* input.serverAuth.getSessionState(authRequest);
       respondJson(input.respond, 200, session);
       return;
     }
 
-    if (method === "POST" && input.url.pathname === "/api/auth/bootstrap") {
+    if (
+      method === AuthHttpRoutes.bootstrap.method &&
+      input.url.pathname === AuthHttpRoutes.bootstrap.pathname
+    ) {
       const payload = yield* readJsonBody(input.req, "Invalid bootstrap payload.").pipe(
         Effect.flatMap((body) =>
           decodeBootstrapInput(body).pipe(
@@ -251,7 +258,10 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
       return;
     }
 
-    if (method === "POST" && input.url.pathname === "/api/auth/bootstrap/bearer") {
+    if (
+      method === AuthHttpRoutes.bootstrapBearer.method &&
+      input.url.pathname === AuthHttpRoutes.bootstrapBearer.pathname
+    ) {
       const payload = yield* readJsonBody(input.req, "Invalid bootstrap payload.").pipe(
         Effect.flatMap((body) =>
           decodeBootstrapInput(body).pipe(
@@ -299,14 +309,20 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
       return;
     }
 
-    if (method === "POST" && input.url.pathname === "/api/auth/ws-token") {
+    if (
+      method === AuthHttpRoutes.webSocketToken.method &&
+      input.url.pathname === AuthHttpRoutes.webSocketToken.pathname
+    ) {
       const session = yield* input.serverAuth.authenticateHttpRequest(authRequest);
       const result = yield* input.serverAuth.issueWebSocketToken(session);
       respondJson(input.respond, 200, result);
       return;
     }
 
-    if (method === "POST" && input.url.pathname === "/api/auth/pairing-token") {
+    if (
+      method === AuthHttpRoutes.pairingToken.method &&
+      input.url.pathname === AuthHttpRoutes.pairingToken.pathname
+    ) {
       const session = yield* input.serverAuth.authenticateHttpRequest(authRequest);
       if (session.role !== "owner") {
         return yield* new AuthError({
@@ -335,14 +351,20 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
       return;
     }
 
-    if (method === "GET" && input.url.pathname === "/api/auth/pairing-links") {
+    if (
+      method === AuthHttpRoutes.pairingLinks.method &&
+      input.url.pathname === AuthHttpRoutes.pairingLinks.pathname
+    ) {
       yield* authenticateOwnerSession({ serverAuth: input.serverAuth, authRequest });
       const pairingLinks = yield* input.serverAuth.listPairingLinks();
       respondJson(input.respond, 200, pairingLinks);
       return;
     }
 
-    if (method === "POST" && input.url.pathname === "/api/auth/pairing-links/revoke") {
+    if (
+      method === AuthHttpRoutes.revokePairingLink.method &&
+      input.url.pathname === AuthHttpRoutes.revokePairingLink.pathname
+    ) {
       yield* authenticateOwnerSession({ serverAuth: input.serverAuth, authRequest });
       const payload = yield* readJsonBody(input.req, "Invalid revoke pairing link payload.").pipe(
         Effect.flatMap((body) =>
@@ -363,7 +385,10 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
       return;
     }
 
-    if (method === "GET" && input.url.pathname === "/api/auth/clients") {
+    if (
+      method === AuthHttpRoutes.clients.method &&
+      input.url.pathname === AuthHttpRoutes.clients.pathname
+    ) {
       const session = yield* authenticateOwnerSession({
         serverAuth: input.serverAuth,
         authRequest,
@@ -373,7 +398,10 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
       return;
     }
 
-    if (method === "POST" && input.url.pathname === "/api/auth/clients/revoke") {
+    if (
+      method === AuthHttpRoutes.revokeClient.method &&
+      input.url.pathname === AuthHttpRoutes.revokeClient.pathname
+    ) {
       const session = yield* authenticateOwnerSession({
         serverAuth: input.serverAuth,
         authRequest,
@@ -400,7 +428,10 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
       return;
     }
 
-    if (method === "POST" && input.url.pathname === "/api/auth/clients/revoke-others") {
+    if (
+      method === AuthHttpRoutes.revokeOtherClients.method &&
+      input.url.pathname === AuthHttpRoutes.revokeOtherClients.pathname
+    ) {
       const session = yield* authenticateOwnerSession({
         serverAuth: input.serverAuth,
         authRequest,

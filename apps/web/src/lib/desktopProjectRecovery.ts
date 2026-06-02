@@ -18,3 +18,12 @@ export function hasLiveThreadsWithMissingProjects(snapshot: ProjectRecoverySnaps
     return isLiveThread && !liveProjectIds.has(thread.projectId);
   });
 }
+
+export function shouldRepairDesktopProjectBootstrapSnapshot(
+  snapshot: OrchestrationShellSnapshot,
+): boolean {
+  return (
+    (snapshot.projects.length === 0 && snapshot.threads.length === 0) ||
+    hasLiveThreadsWithMissingProjects(snapshot)
+  );
+}

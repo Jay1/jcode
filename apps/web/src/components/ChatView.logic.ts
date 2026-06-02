@@ -3,6 +3,7 @@ import {
   ThreadId,
   type ModelSelection,
   type ProviderKind,
+  type ServerVoiceTranscriptionErrorDetail,
   type ServerProviderAuthStatus,
   type ThreadId as ThreadIdType,
 } from "@jcode/contracts";
@@ -161,6 +162,14 @@ export function sanitizeVoiceErrorMessage(message: string): string {
 export function isVoiceAuthExpiredMessage(message: string): boolean {
   const normalized = message.toLowerCase();
   return normalized.includes("chatgpt login has expired") || normalized.includes("sign in again");
+}
+
+export function isVoiceAuthExpiredError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  const detail = (error as { detail?: Partial<ServerVoiceTranscriptionErrorDetail> }).detail;
+  return detail?.kind === "server.voice-transcription" && detail.code === "auth-expired";
 }
 
 export function describeVoiceRecordingStartError(error: unknown): string {

@@ -13,6 +13,7 @@ import { toastManager } from "../ui/toast";
 import {
   deriveComposerVoiceState,
   describeVoiceRecordingStartError,
+  isVoiceAuthExpiredError,
   isVoiceAuthExpiredMessage,
   sanitizeVoiceErrorMessage,
 } from "../ChatView.logic";
@@ -202,7 +203,7 @@ export function useComposerVoiceController(
         error instanceof Error
           ? sanitizeVoiceErrorMessage(error.message)
           : "The voice note could not be transcribed.";
-      const authExpired = isVoiceAuthExpiredMessage(description);
+      const authExpired = isVoiceAuthExpiredError(error) || isVoiceAuthExpiredMessage(description);
       if (authExpired) {
         refreshVoiceStatus();
       }

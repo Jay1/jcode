@@ -3,7 +3,7 @@
 // Layer: Terminal presentation components
 // Depends on: terminal visual identities plus shared popover/button styling.
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import type {
   ResolvedTerminalVisualIdentity,
@@ -15,6 +15,7 @@ import { XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 
 import type { ResolvedTerminalGroupLayout } from "./TerminalLayout";
+import InlineRenameField from "./InlineRenameField";
 import TerminalActivityIndicator from "./TerminalActivityIndicator";
 import TerminalIdentityIcon from "./TerminalIdentityIcon";
 
@@ -118,10 +119,14 @@ export function TerminalWorkspaceTabBar(props: {
   terminalGroups: ResolvedTerminalGroupLayout[];
   activeGroupId: string;
   terminalVisualIdentityById: ReadonlyMap<string, ResolvedTerminalVisualIdentity>;
+  groupTitleOverridesById: Record<string, string>;
   actions: ReadonlyArray<TerminalChromeActionItem>;
   onActiveGroupChange: (groupId: string) => void;
   onCloseGroup: (groupId: string) => void;
+  onRenameGroup?: ((groupId: string, name: string) => void) | undefined;
 }) {
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+
   return (
     <div className="flex min-w-0 items-stretch justify-between bg-background">
       <div className="flex min-w-0 items-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -140,7 +145,10 @@ export function TerminalWorkspaceTabBar(props: {
               return nextPriority > bestPriority ? terminalId : bestTerminalId;
             }, null) ?? terminalGroup.activeTerminalId;
           const visualIdentity = props.terminalVisualIdentityById.get(previewTerminalId);
-          const closeTabLabel = `Close ${visualIdentity?.title ?? "Terminal tab"}`;
+          const groupTitleOverride = props.groupTitleOverridesById[terminalGroup.id];
+          const displayTitle = groupTitleOverride?.trim() || visualIdentity?.title || "Terminal";
+          const closeTabLabel = `Close ${displayTitle}`;
+          const isEditing = editingGroupId === terminalGroup.id;
           return (
             <div
               key={terminalGroup.id}
@@ -151,44 +159,63 @@ export function TerminalWorkspaceTabBar(props: {
                   : "border-b border-border/70 bg-transparent text-muted-foreground hover:bg-[var(--sidebar-accent)] hover:text-foreground",
               )}
             >
-              <button
-                type="button"
-                className="flex min-w-0 items-center gap-2 text-left"
-                onClick={() => props.onActiveGroupChange(terminalGroup.id)}
-              >
-                <TerminalIdentityIcon
-                  className="size-3 shrink-0"
-                  iconKey={visualIdentity?.iconKey ?? "terminal"}
+              {isEditing && props.onRenameGroup ? (
+                <InlineRenameField
+                  initialValue={displayTitle}
+                  onCommit={(value) => {
+                    props.onRenameGroup?.(terminalGroup.id, value);
+                    setEditingGroupId(null);
+                  }}
+                  onCancel={() => setEditingGroupId(null)}
+                  className="min-w-0 flex-1"
                 />
-                {visualIdentity && visualIdentity.state !== "idle" ? (
-                  <TerminalActivityIndicator
-                    className="text-foreground/70"
-                    state={visualIdentity.state}
+              ) : (
+                <button
+                  type="button"
+                  className="flex min-w-0 items-center gap-2 text-left"
+                  onClick={() => props.onActiveGroupChange(terminalGroup.id)}
+                  onDoubleClick={() => {
+                    if (props.onRenameGroup) {
+                      setEditingGroupId(terminalGroup.id);
+                    }
+                  }}
+                >
+                  <TerminalIdentityIcon
+                    className="size-3 shrink-0"
+                    iconKey={visualIdentity?.iconKey ?? "terminal"}
                   />
-                ) : null}
-                <span className="truncate text-[12px] leading-4 text-current/90">
-                  {visualIdentity?.title ?? "Terminal"}
-                </span>
-                {terminalGroup.terminalIds.length > 1 ? (
-                  <span className="shrink-0 text-[10px] text-current/55">
-                    {terminalGroup.terminalIds.length}
+                  {visualIdentity && visualIdentity.state !== "idle" ? (
+                    <TerminalActivityIndicator
+                      className="text-foreground/70"
+                      state={visualIdentity.state}
+                    />
+                  ) : null}
+                  <span className="truncate text-[12px] leading-4 text-current/90">
+                    {displayTitle}
                   </span>
-                ) : null}
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "inline-flex size-4 shrink-0 items-center justify-center text-muted-foreground/80 transition hover:bg-background/55 hover:text-foreground",
-                  props.terminalGroups.length <= 1 ? "hidden" : "",
-                )}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  props.onCloseGroup(terminalGroup.id);
-                }}
-                aria-label={closeTabLabel}
-              >
-                <XIcon className="size-2.75" />
-              </button>
+                  {terminalGroup.terminalIds.length > 1 ? (
+                    <span className="shrink-0 text-[10px] text-current/55">
+                      {terminalGroup.terminalIds.length}
+                    </span>
+                  ) : null}
+                </button>
+              )}
+              {!isEditing ? (
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex size-4 shrink-0 items-center justify-center text-muted-foreground/80 transition hover:bg-background/55 hover:text-foreground",
+                    props.terminalGroups.length <= 1 ? "hidden" : "",
+                  )}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    props.onCloseGroup(terminalGroup.id);
+                  }}
+                  aria-label={closeTabLabel}
+                >
+                  <XIcon className="size-2.75" />
+                </button>
+              ) : null}
             </div>
           );
         })}

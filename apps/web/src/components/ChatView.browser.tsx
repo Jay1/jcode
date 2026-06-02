@@ -238,14 +238,23 @@ function createSnapshotForTargetUser(options: {
   targetMessageId: MessageId;
   targetText: string;
   targetAttachmentCount?: number;
+  assistantMessageOverride?: {
+    index: number;
+    id?: MessageId;
+    text: string;
+  };
   sessionStatus?: OrchestrationSessionStatus;
 }): OrchestrationReadModel {
   const messages: Array<OrchestrationReadModel["threads"][number]["messages"][number]> = [];
 
   for (let index = 0; index < 22; index += 1) {
     const isTarget = index === 3;
+    const assistantOverride =
+      options.assistantMessageOverride?.index === index ? options.assistantMessageOverride : null;
     const userId = `msg-user-${index}` as MessageId;
-    const assistantId = `msg-assistant-${index}` as MessageId;
+    const assistantId = assistantOverride
+      ? (assistantOverride.id ?? (`msg-assistant-${index}` as MessageId))
+      : (`msg-assistant-${index}` as MessageId);
     const attachments =
       isTarget && (options.targetAttachmentCount ?? 0) > 0
         ? Array.from({ length: options.targetAttachmentCount ?? 0 }, (_, attachmentIndex) => ({
@@ -268,7 +277,7 @@ function createSnapshotForTargetUser(options: {
     messages.push(
       createAssistantMessage({
         id: assistantId,
-        text: `assistant filler ${index}`,
+        text: assistantOverride ? assistantOverride.text : `assistant filler ${index}`,
         offsetSeconds: messages.length * 3,
       }),
     );
@@ -1604,6 +1613,92 @@ describe("ChatView timeline estimator parity (full app)", () => {
         },
         { timeout: 8_000, interval: 16 },
       );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("renders representative assistant markdown through the ChatView timeline surface", async () => {
+    const targetAssistantMessageId = "msg-assistant-markdown-output" as MessageId;
+    const localFileHref = "/repo/project/apps/web/src/components/ChatMarkdown.tsx:635";
+    const spacedFileHref = "/repo/project/apps/web/src/my file (copy).ts:42";
+    const spacedFileRenderedHref = "/repo/project/apps/web/src/my%20file%20(copy).ts:42";
+    const externalHref = "https://example.com/docs";
+    const commandText = "bun run --cwd apps/web test src/components/ChatMarkdown.test.tsx";
+    const warningText = "Warning: verify local links before shipping.";
+    const assistantMarkdown = [
+      "# Markdown QA Output",
+      "",
+      `Open [ChatMarkdown.tsx:635](${localFileHref}).`,
+      `Open [my file (copy).ts](<${spacedFileHref}>).`,
+      `Run \`${commandText}\` before merging.`,
+      "",
+      `> ${warningText}`,
+      "",
+      "```sh",
+      commandText,
+      "```",
+      "",
+      `Read [external docs](${externalHref}).`,
+    ].join("\n");
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotForTargetUser({
+        targetMessageId: "msg-user-markdown-output-target" as MessageId,
+        targetText: "show representative markdown",
+        assistantMessageOverride: {
+          index: 21,
+          id: targetAssistantMessageId,
+          text: assistantMarkdown,
+        },
+      }),
+    });
+
+    try {
+      const markdown = await waitForElement(
+        () =>
+          document.querySelector<HTMLElement>(
+            `[data-message-role="assistant"] [data-assistant-message-id="${targetAssistantMessageId}"] .chat-markdown`,
+          ),
+        "Unable to find the representative assistant markdown root.",
+      );
+
+      const heading = markdown.querySelector<HTMLHeadingElement>("h1");
+      const blockquote = markdown.querySelector<HTMLQuoteElement>("blockquote");
+      const inlineCommand = markdown.querySelector<HTMLElement>("code.chat-markdown-code--command");
+      const fencedCode = markdown.querySelector<HTMLElement>("pre");
+      const anchors = Array.from(markdown.querySelectorAll<HTMLAnchorElement>("a"));
+      const findAnchorByHref = (href: string) =>
+        anchors.find((anchor) => anchor.getAttribute("href") === href);
+      const chatMarkdownLink = findAnchorByHref(localFileHref);
+      const spacedFileLink = anchors.find((anchor) =>
+        anchor.textContent?.includes("my file (copy).ts"),
+      );
+      const externalLink = findAnchorByHref(externalHref);
+
+      expect(heading).not.toBeNull();
+      expect(heading!.textContent).toBe("Markdown QA Output");
+      expect(blockquote).not.toBeNull();
+      expect(blockquote!.textContent).toContain(warningText);
+      await expect(page.getByText(warningText)).toBeVisible();
+      expect(inlineCommand).not.toBeNull();
+      expect(inlineCommand!.textContent).toBe(commandText);
+      expect(fencedCode).not.toBeNull();
+      expect(fencedCode!.textContent).toContain(commandText);
+
+      expect(chatMarkdownLink, "Expected local ChatMarkdown file link.").toBeTruthy();
+      expect(spacedFileLink, "Expected local file link with spaces and parentheses.").toBeTruthy();
+      for (const localFileLink of [chatMarkdownLink, spacedFileLink]) {
+        expect(localFileLink).toBeInstanceOf(HTMLAnchorElement);
+        expect(localFileLink!.getAttribute("target")).toBeNull();
+        expect(localFileLink!.getAttribute("rel")).toBeNull();
+      }
+      expect(chatMarkdownLink!.getAttribute("href")).toBe(localFileHref);
+      expect(spacedFileLink!.getAttribute("href")).toBe(spacedFileRenderedHref);
+
+      expect(externalLink, "Expected external docs link.").toBeTruthy();
+      expect(externalLink!.getAttribute("target")).toBe("_blank");
+      expect(externalLink!.getAttribute("rel")).toBe("noopener noreferrer");
     } finally {
       await mounted.cleanup();
     }

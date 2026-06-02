@@ -1,4 +1,4 @@
-import { ThreadId } from "@jcode/contracts";
+import { ThreadId, WsRpcError } from "@jcode/contracts";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,6 +8,7 @@ import {
   deriveComposerSendState,
   deriveComposerVoiceState,
   describeVoiceRecordingStartError,
+  isVoiceAuthExpiredError,
   hasServerAcknowledgedLocalDispatch,
   isVoiceAuthExpiredMessage,
   resolveActiveThreadTitle,
@@ -117,6 +118,19 @@ describe("voice helpers", () => {
   it("detects auth-expired copy in sanitized voice errors", () => {
     expect(isVoiceAuthExpiredMessage("Sign in again to ChatGPT")).toBe(true);
     expect(isVoiceAuthExpiredMessage("The microphone could not be opened.")).toBe(false);
+  });
+
+  it("detects typed voice transcription auth expiry without message sniffing", () => {
+    const error = new WsRpcError({
+      message: "Voice transcription failed",
+      detail: {
+        kind: "server.voice-transcription",
+        code: "auth-expired",
+      },
+    });
+
+    expect(isVoiceAuthExpiredError(error)).toBe(true);
+    expect(isVoiceAuthExpiredMessage(error.message)).toBe(false);
   });
 
   it("maps microphone permission errors to clearer copy", () => {
