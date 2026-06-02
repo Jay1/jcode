@@ -5,6 +5,7 @@ import {
   type AuthBootstrapResult,
   type AuthClientSession,
   type AuthCreatePairingCredentialInput,
+  AuthHttpRoutes,
   type AuthPairingCredentialResult,
   type AuthPairingLink,
   type AuthRevokeClientSessionInput,
@@ -604,40 +605,50 @@ export function createWsNativeApi(): NativeApi {
       getEnvironment: () => transport.request(WS_METHODS.serverGetEnvironment),
       getSettings: () => transport.request(WS_METHODS.serverGetSettings),
       updateSettings: (input) => transport.request(WS_METHODS.serverUpdateSettings, input),
-      getAuthSession: () => requestAuthJson<AuthSessionState>("/api/auth/session"),
+      getAuthSession: () =>
+        requestAuthJson<AuthSessionState>(AuthHttpRoutes.session.pathname, {
+          method: AuthHttpRoutes.session.method,
+        }),
       bootstrapAuth: (input: AuthBootstrapInput) =>
-        requestAuthJson<AuthBootstrapResult>("/api/auth/bootstrap", {
-          method: "POST",
+        requestAuthJson<AuthBootstrapResult>(AuthHttpRoutes.bootstrap.pathname, {
+          method: AuthHttpRoutes.bootstrap.method,
           body: input,
         }),
       bootstrapBearerAuth: (input: AuthBootstrapInput) =>
-        requestAuthJson<AuthBearerBootstrapResult>("/api/auth/bootstrap/bearer", {
-          method: "POST",
+        requestAuthJson<AuthBearerBootstrapResult>(AuthHttpRoutes.bootstrapBearer.pathname, {
+          method: AuthHttpRoutes.bootstrapBearer.method,
           body: input,
         }),
       issueAuthWebSocketToken: () =>
-        requestAuthJson<AuthWebSocketTokenResult>("/api/auth/ws-token", { method: "POST" }),
+        requestAuthJson<AuthWebSocketTokenResult>(AuthHttpRoutes.webSocketToken.pathname, {
+          method: AuthHttpRoutes.webSocketToken.method,
+        }),
       createAuthPairingToken: (input?: AuthCreatePairingCredentialInput) =>
-        requestAuthJson<AuthPairingCredentialResult>("/api/auth/pairing-token", {
-          method: "POST",
+        requestAuthJson<AuthPairingCredentialResult>(AuthHttpRoutes.pairingToken.pathname, {
+          method: AuthHttpRoutes.pairingToken.method,
           ...(input ? { body: input } : {}),
         }),
       listAuthPairingLinks: () =>
-        requestAuthJson<ReadonlyArray<AuthPairingLink>>("/api/auth/pairing-links"),
+        requestAuthJson<ReadonlyArray<AuthPairingLink>>(AuthHttpRoutes.pairingLinks.pathname, {
+          method: AuthHttpRoutes.pairingLinks.method,
+        }),
       revokeAuthPairingLink: (input: AuthRevokePairingLinkInput) =>
-        requestAuthJson<{ revoked: boolean }>("/api/auth/pairing-links/revoke", {
-          method: "POST",
+        requestAuthJson<{ revoked: boolean }>(AuthHttpRoutes.revokePairingLink.pathname, {
+          method: AuthHttpRoutes.revokePairingLink.method,
           body: input,
         }),
-      listAuthClients: () => requestAuthJson<ReadonlyArray<AuthClientSession>>("/api/auth/clients"),
+      listAuthClients: () =>
+        requestAuthJson<ReadonlyArray<AuthClientSession>>(AuthHttpRoutes.clients.pathname, {
+          method: AuthHttpRoutes.clients.method,
+        }),
       revokeAuthClient: (input: AuthRevokeClientSessionInput) =>
-        requestAuthJson<{ revoked: boolean }>("/api/auth/clients/revoke", {
-          method: "POST",
+        requestAuthJson<{ revoked: boolean }>(AuthHttpRoutes.revokeClient.pathname, {
+          method: AuthHttpRoutes.revokeClient.method,
           body: input,
         }),
       revokeOtherAuthClients: () =>
-        requestAuthJson<{ revokedCount: number }>("/api/auth/clients/revoke-others", {
-          method: "POST",
+        requestAuthJson<{ revokedCount: number }>(AuthHttpRoutes.revokeOtherClients.pathname, {
+          method: AuthHttpRoutes.revokeOtherClients.method,
         }),
       onAuthAccess,
       refreshProviders: () => transport.request(WS_METHODS.serverRefreshProviders),
