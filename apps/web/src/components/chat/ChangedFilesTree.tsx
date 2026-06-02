@@ -4,7 +4,7 @@
 // Exports: ChangedFilesTree
 
 import { type TurnId } from "@jcode/contracts";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { type TurnDiffFileChange } from "../../types";
 import { buildTurnDiffTree, type TurnDiffTreeNode } from "../../lib/turnDiffTree";
 import { FolderIcon, FolderClosedIcon } from "~/lib/icons";
@@ -22,6 +22,12 @@ import {
 const CHANGED_FILE_ROW_SEPARATOR_CLASS =
   "border-t border-[color:var(--color-border-light)]/60 first:border-t-0";
 
+type ExpandedDirectoryState = {
+  readonly turnId: TurnId;
+  readonly directoryPathsKey: string;
+  readonly expandedDirectories: Record<string, boolean>;
+};
+
 export const ChangedFilesTree = memo(function ChangedFilesTree(props: {
   turnId: TurnId;
   files: ReadonlyArray<TurnDiffFileChange>;
@@ -35,56 +41,76 @@ export const ChangedFilesTree = memo(function ChangedFilesTree(props: {
     () => collectDirectoryPaths(treeNodes).join("\u0000"),
     [treeNodes],
   );
-  const allDirectoryExpansionState = useMemo(
-    () =>
-      buildDirectoryExpansionState(
-        directoryPathsKey ? directoryPathsKey.split("\u0000") : [],
+  const directoryPaths = useMemo(
+    () => (directoryPathsKey ? directoryPathsKey.split("\u0000") : []),
+    [directoryPathsKey],
+  );
+  const [expandedDirectoryState, setExpandedDirectoryState] = useState<ExpandedDirectoryState>(() =>
+    buildExpandedDirectoryState(directoryPaths, directoryPathsKey, turnId, allDirectoriesExpanded),
+  );
+  const expandedDirectories = useMemo(() => {
+    if (
+      expandedDirectoryState.turnId === turnId &&
+      expandedDirectoryState.directoryPathsKey === directoryPathsKey
+    ) {
+      return expandedDirectoryState.expandedDirectories;
+    }
+    return buildExpandedDirectoryState(
+      directoryPaths,
+      directoryPathsKey,
+      turnId,
+      allDirectoriesExpanded,
+    ).expandedDirectories;
+  }, [allDirectoriesExpanded, directoryPaths, directoryPathsKey, expandedDirectoryState, turnId]);
+  useEffect(() => {
+    setExpandedDirectoryState(
+      buildExpandedDirectoryState(
+        directoryPaths,
+        directoryPathsKey,
+        turnId,
         allDirectoriesExpanded,
       ),
-    [allDirectoriesExpanded, directoryPathsKey],
-  );
-  const [expandedDirectories, setExpandedDirectories] = useState<Record<string, boolean>>(() => {
-    const directoryPaths = directoryPathsKey ? directoryPathsKey.split("\u0000") : [];
-    const persistedPaths = getExpandedDirectoryPathsForTurn(readChangedFilesUiState(), turnId);
-    const persistedSet = new Set(persistedPaths);
-    const state = buildDirectoryExpansionState(directoryPaths, true);
-    for (const path of directoryPaths) {
-      if (persistedSet.has(path)) {
-        state[path] = true;
-      }
-    }
-    return state;
-  });
+    );
+  }, [allDirectoriesExpanded, directoryPaths, directoryPathsKey, turnId]);
+
   useEffect(() => {
-    setExpandedDirectories((current) => {
-      const next = { ...allDirectoryExpansionState };
-      for (const path of Object.keys(current)) {
-        if (current[path] && path in next) {
-          next[path] = true;
-        }
-      }
-      return next;
-    });
-  }, [allDirectoryExpansionState]);
+    if (
+      expandedDirectoryState.turnId !== turnId ||
+      expandedDirectoryState.directoryPathsKey !== directoryPathsKey
+    ) {
+      return;
+    }
+    const expandedPaths = Object.keys(expandedDirectories).filter(
+      (path) => expandedDirectories[path],
+    );
+    const uiState = setExpandedDirectoryPathsForTurn(
+      readChangedFilesUiState(),
+      turnId,
+      expandedPaths,
+    );
+    persistChangedFilesUiState(uiState);
+  }, [directoryPathsKey, expandedDirectories, expandedDirectoryState, turnId]);
 
   const toggleDirectory = useCallback(
     (pathValue: string, fallbackExpanded: boolean) => {
-      setExpandedDirectories((current) => {
-        const next = {
-          ...current,
-          [pathValue]: !(current[pathValue] ?? fallbackExpanded),
+      setExpandedDirectoryState((current) => {
+        const currentState =
+          current.turnId === turnId && current.directoryPathsKey === directoryPathsKey
+            ? current
+            : buildExpandedDirectoryState(
+                directoryPaths,
+                directoryPathsKey,
+                turnId,
+                allDirectoriesExpanded,
+              );
+        const expandedDirectories = {
+          ...currentState.expandedDirectories,
+          [pathValue]: !(currentState.expandedDirectories[pathValue] ?? fallbackExpanded),
         };
-        const expandedPaths = Object.keys(next).filter((p) => next[p]);
-        const uiState = setExpandedDirectoryPathsForTurn(
-          readChangedFilesUiState(),
-          turnId,
-          expandedPaths,
-        );
-        persistChangedFilesUiState(uiState);
-        return next;
+        return { ...currentState, expandedDirectories };
       });
     },
-    [turnId],
+    [allDirectoriesExpanded, directoryPaths, directoryPathsKey, turnId],
   );
 
   const renderTreeNode = (node: TurnDiffTreeNode, depth: number) => {
@@ -186,4 +212,21 @@ function buildDirectoryExpansionState(
     expandedState[directoryPath] = expanded;
   }
   return expandedState;
+}
+
+function buildExpandedDirectoryState(
+  directoryPaths: ReadonlyArray<string>,
+  directoryPathsKey: string,
+  turnId: TurnId,
+  allDirectoriesExpanded: boolean,
+): ExpandedDirectoryState {
+  const persistedPaths = getExpandedDirectoryPathsForTurn(readChangedFilesUiState(), turnId);
+  const persistedSet = new Set(persistedPaths);
+  const expandedDirectories = buildDirectoryExpansionState(directoryPaths, allDirectoriesExpanded);
+  for (const directoryPath of directoryPaths) {
+    if (persistedSet.has(directoryPath)) {
+      expandedDirectories[directoryPath] = true;
+    }
+  }
+  return { turnId, directoryPathsKey, expandedDirectories };
 }
