@@ -1432,10 +1432,16 @@ export default function ChatView({
     activeThread?.modelSelection,
     composerDraft.modelSelectionByProvider,
   ]);
+  const providerOptionsForDispatch = useMemo(() => getProviderStartOptions(settings), [settings]);
   const claudeDynamicModelsQuery = useQuery(
     providerModelsQueryOptions({ provider: "claudeAgent" }),
   );
-  const codexDynamicModelsQuery = useQuery(providerModelsQueryOptions({ provider: "codex" }));
+  const codexDynamicModelsQuery = useQuery(
+    providerModelsQueryOptions({
+      provider: "codex",
+      ...(providerOptionsForDispatch ? { providerOptions: providerOptionsForDispatch } : {}),
+    }),
+  );
   const cursorDynamicModelsQuery = useQuery(
     providerModelsQueryOptions({
       provider: "cursor",
@@ -1691,7 +1697,6 @@ export default function ChatView({
     selectedModelOptionsForDispatch,
     selectedProvider,
   ]);
-  const providerOptionsForDispatch = useMemo(() => getProviderStartOptions(settings), [settings]);
   const selectedModelForPicker =
     selectedModelSelection.provider === selectedProvider
       ? selectedModelSelection.model
@@ -1914,6 +1919,15 @@ export default function ChatView({
     ],
   );
   const planSidebarLabel = sidebarProposedPlan || interactionMode === "plan" ? "Plan" : "Tasks";
+  const planReviewPlanIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const planId = sidebarProposedPlan?.id ?? null;
+    if (planReviewPlanIdRef.current === planId) {
+      return;
+    }
+    planReviewPlanIdRef.current = planId;
+    planReview.resetAnnotations();
+  }, [planReview.resetAnnotations, sidebarProposedPlan?.id]);
   const [activeTaskListCardHeight, setActiveTaskListCardHeight] = useState(0);
   const activeTaskListCardRef = useRef<HTMLDivElement | null>(null);
   const previousActiveTaskListCardHeightRef = useRef(0);
@@ -2387,6 +2401,7 @@ export default function ChatView({
       cwd: composerSkillCwd,
       threadId,
       agentDir: selectedProvider === "pi" ? settings.piAgentDir || null : null,
+      ...(providerOptionsForDispatch ? { providerOptions: providerOptionsForDispatch } : {}),
       query:
         composerTriggerKind === "slash-command" || composerTriggerKind === "slash-model"
           ? (composerTrigger?.query ?? "")
@@ -2405,6 +2420,7 @@ export default function ChatView({
       cwd: composerSkillCwd,
       threadId,
       agentDir: selectedProvider === "pi" ? settings.piAgentDir || null : null,
+      ...(providerOptionsForDispatch ? { providerOptions: providerOptionsForDispatch } : {}),
       query: skillTriggerQuery,
       enabled:
         (isSkillTrigger || selectedProvider === "pi") &&
@@ -2417,6 +2433,7 @@ export default function ChatView({
       provider: selectedProvider,
       cwd: composerSkillCwd,
       threadId,
+      ...(providerOptionsForDispatch ? { providerOptions: providerOptionsForDispatch } : {}),
       enabled:
         supportsPluginDiscovery(providerComposerCapabilitiesQuery.data) &&
         composerSkillCwd !== null,
@@ -3442,6 +3459,7 @@ export default function ChatView({
       terminalState.terminalAttentionStatesById,
       terminalState.terminalCliKindsById,
       terminalState.terminalGroups,
+      terminalState.groupTitleOverridesById,
       terminalState.terminalHeight,
       terminalState.terminalIds,
       terminalState.terminalLabelsById,

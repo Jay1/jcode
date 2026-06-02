@@ -2,7 +2,7 @@ import { PROVIDER_DISPLAY_NAMES, type ProviderKind } from "@jcode/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
-import { useAppSettings } from "../appSettings";
+import { getProviderStartOptions, useAppSettings } from "../appSettings";
 import { useFocusedChatContext } from "../focusedChatContext";
 import { ListChecksIcon, SearchIcon } from "../lib/icons";
 import { resolveProviderDiscoveryCwd } from "../lib/providerDiscovery";
@@ -85,6 +85,7 @@ function SkillRow({ row }: { row: SkillLibraryRow }) {
 
 export function SkillLibrarySettingsPanel() {
   const { settings } = useAppSettings();
+  const providerOptions = useMemo(() => getProviderStartOptions(settings), [settings]);
   const firstProject = useStore(useMemo(() => createFirstProjectSelector(), []));
   const { activeProject: focusedProject, activeThread } = useFocusedChatContext();
   const activeProject = focusedProject ?? firstProject ?? null;
@@ -137,6 +138,7 @@ export function SkillLibrarySettingsPanel() {
       provider: "codex",
       cwd: discoveryCwd,
       query: "",
+      ...(providerOptions ? { providerOptions } : {}),
       enabled: providerCanListSkills.codex,
     }),
   );

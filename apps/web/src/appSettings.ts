@@ -300,7 +300,7 @@ export function serverSettingsToAppSettings(settings: ServerSettings): Partial<A
     claudeBinaryPath: settings.providers.claudeAgent.binaryPath,
     codexBinaryPath: settings.providers.codex.binaryPath,
     codexHomePath: settings.providers.codex.homePath,
-    codexLaunchArgs: settings.providers.codex.launchArgs,
+    codexLaunchArgs: settings.providers.codex.launchArgs ?? "",
     cursorApiEndpoint: settings.providers.cursor.apiEndpoint,
     cursorBinaryPath: settings.providers.cursor.binaryPath,
     defaultThreadEnvMode: settings.defaultThreadEnvMode,

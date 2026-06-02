@@ -14,6 +14,21 @@ const GIT_BRANCHES_REFETCH_INTERVAL_MS = 60_000;
 const GIT_DIFF_SUMMARY_GC_TIME_MS = 30 * 60_000;
 const GIT_WORKING_TREE_DIFF_STALE_TIME_MS = 5_000;
 
+function codexProviderOptionsKey(
+  providerOptions: ProviderStartOptions | null | undefined,
+): string | null {
+  const codexOptions = providerOptions?.codex;
+  if (!codexOptions) {
+    return null;
+  }
+
+  return JSON.stringify({
+    binaryPath: codexOptions.binaryPath ?? null,
+    homePath: codexOptions.homePath ?? null,
+    launchArgs: codexOptions.launchArgs ?? null,
+  });
+}
+
 export const gitQueryKeys = {
   all: ["git"] as const,
   status: (cwd: string | null) => ["git", "status", cwd] as const,
@@ -149,7 +164,7 @@ export function gitSummarizeDiffQueryOptions(input: {
       ? buildPatchCacheKey(normalizedPatch, "git-diff-summary")
       : null;
 
-  const providerOptionsKey = input.providerOptions ? JSON.stringify(input.providerOptions) : null;
+  const providerOptionsKey = codexProviderOptionsKey(input.providerOptions);
 
   return queryOptions({
     queryKey: gitQueryKeys.diffSummary(

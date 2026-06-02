@@ -1,3 +1,4 @@
+import { ServerSettings } from "@jcode/contracts";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
 
@@ -265,44 +266,87 @@ describe("normalizeStoredAppSettings", () => {
 describe("server-backed app settings", () => {
   it("maps the Project Folder setting from server settings", () => {
     expect(
-      serverSettingsToAppSettings({
-        addProjectBaseDirectory: "/home/jay/code",
-        defaultThreadEnvMode: "local",
-        enableAssistantStreaming: false,
-        providers: {
-          claudeAgent: { enabled: true, binaryPath: "claude", launchArgs: "", customModels: [] },
-          codex: {
-            enabled: true,
-            binaryPath: "codex",
-            homePath: "",
-            launchArgs: "",
-            customModels: [],
+      serverSettingsToAppSettings(
+        Schema.decodeSync(ServerSettings)({
+          addProjectBaseDirectory: "/home/jay/code",
+          defaultThreadEnvMode: "local",
+          enableAssistantStreaming: false,
+          providers: {
+            claudeAgent: { enabled: true, binaryPath: "claude", launchArgs: "", customModels: [] },
+            codex: {
+              enabled: true,
+              binaryPath: "codex",
+              homePath: "",
+              launchArgs: "",
+              customModels: [],
+            },
+            cursor: { enabled: true, binaryPath: "agent", apiEndpoint: "", customModels: [] },
+            gemini: { enabled: true, binaryPath: "gemini", customModels: [] },
+            kilo: {
+              enabled: true,
+              binaryPath: "kilo",
+              serverUrl: "",
+              serverPassword: "",
+              customModels: [],
+            },
+            opencode: {
+              enabled: true,
+              binaryPath: "opencode",
+              serverUrl: "",
+              serverPassword: "",
+              runtimeProfiles: [],
+              activeRuntimeProfileId: "",
+              customModels: [],
+            },
+            pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
           },
-          cursor: { enabled: true, binaryPath: "agent", apiEndpoint: "", customModels: [] },
-          gemini: { enabled: true, binaryPath: "gemini", customModels: [] },
-          kilo: {
-            enabled: true,
-            binaryPath: "kilo",
-            serverUrl: "",
-            serverPassword: "",
-            customModels: [],
-          },
-          opencode: {
-            enabled: true,
-            binaryPath: "opencode",
-            serverUrl: "",
-            serverPassword: "",
-            runtimeProfiles: [],
-            activeRuntimeProfileId: "",
-            customModels: [],
-          },
-          pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
-        },
-        textGenerationModelSelection: { provider: "codex", model: "gpt-5.4" },
-      }),
+          textGenerationModelSelection: { provider: "codex", model: "gpt-5.4" },
+        }),
+      ),
     ).toMatchObject({
       addProjectBaseDirectory: "/home/jay/code",
     });
+  });
+
+  it("defaults optional Codex launch args from server settings", () => {
+    expect(
+      serverSettingsToAppSettings(
+        Schema.decodeSync(ServerSettings)({
+          addProjectBaseDirectory: "/home/jay/code",
+          defaultThreadEnvMode: "local",
+          enableAssistantStreaming: false,
+          providers: {
+            claudeAgent: { enabled: true, binaryPath: "claude", launchArgs: "", customModels: [] },
+            codex: {
+              enabled: true,
+              binaryPath: "codex",
+              homePath: "",
+              customModels: [],
+            },
+            cursor: { enabled: true, binaryPath: "agent", apiEndpoint: "", customModels: [] },
+            gemini: { enabled: true, binaryPath: "gemini", customModels: [] },
+            kilo: {
+              enabled: true,
+              binaryPath: "kilo",
+              serverUrl: "",
+              serverPassword: "",
+              customModels: [],
+            },
+            opencode: {
+              enabled: true,
+              binaryPath: "opencode",
+              serverUrl: "",
+              serverPassword: "",
+              runtimeProfiles: [],
+              activeRuntimeProfileId: "",
+              customModels: [],
+            },
+            pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
+          },
+          textGenerationModelSelection: { provider: "codex", model: "gpt-5.4" },
+        }),
+      ).codexLaunchArgs,
+    ).toBe("");
   });
 
   it("maps Project Folder updates to server settings patches", () => {

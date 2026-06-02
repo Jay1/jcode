@@ -4,6 +4,7 @@ import {
   gitMutationKeys,
   gitPreparePullRequestThreadMutationOptions,
   gitPullMutationOptions,
+  gitSummarizeDiffQueryOptions,
   gitRunStackedActionMutationOptions,
 } from "./gitReactQuery";
 
@@ -44,5 +45,35 @@ describe("git mutation options", () => {
       queryClient,
     });
     expect(options.mutationKey).toEqual(gitMutationKeys.preparePullRequestThread("/repo/a"));
+  });
+});
+
+describe("gitSummarizeDiffQueryOptions", () => {
+  it("keys summaries by Codex provider options without leaking unrelated provider secrets", () => {
+    const options = gitSummarizeDiffQueryOptions({
+      cwd: "/repo/a",
+      patch: "diff --git a/file.ts b/file.ts",
+      providerOptions: {
+        codex: {
+          binaryPath: "/bin/custom-codex",
+          homePath: "/tmp/custom-codex-home",
+          launchArgs: "--profile custom",
+        },
+        kilo: {
+          serverPassword: "kilo-secret-password",
+        },
+        opencode: {
+          serverPassword: "opencode-secret-password",
+        },
+      },
+    });
+
+    const keyText = JSON.stringify(options.queryKey);
+    expect(keyText).toContain("/bin/custom-codex");
+    expect(keyText).toContain("/tmp/custom-codex-home");
+    expect(keyText).toContain("--profile custom");
+    expect(keyText).not.toContain("kilo-secret-password");
+    expect(keyText).not.toContain("opencode-secret-password");
+    expect(keyText).not.toContain("serverPassword");
   });
 });
