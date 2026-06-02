@@ -4,7 +4,7 @@
 // Exports: provider discovery schemas and inferred types used by the WS/native API.
 
 import { Schema } from "effect";
-import { TrimmedNonEmptyString } from "./baseSchemas";
+import { NonNegativeInt, TrimmedNonEmptyString } from "./baseSchemas";
 import { ProviderOptionDescriptor } from "./model";
 
 const ProviderDiscoveryKind = Schema.Literals([
@@ -64,12 +64,62 @@ export const ProviderGetComposerCapabilitiesInput = Schema.Struct({
 });
 export type ProviderGetComposerCapabilitiesInput = typeof ProviderGetComposerCapabilitiesInput.Type;
 
+export const CodexProviderStartOptions = Schema.Struct({
+  binaryPath: Schema.optional(TrimmedNonEmptyString),
+  homePath: Schema.optional(TrimmedNonEmptyString),
+  launchArgs: Schema.optional(TrimmedNonEmptyString),
+});
+
+export const ClaudeProviderStartOptions = Schema.Struct({
+  binaryPath: Schema.optional(TrimmedNonEmptyString),
+  permissionMode: Schema.optional(TrimmedNonEmptyString),
+  maxThinkingTokens: Schema.optional(NonNegativeInt),
+});
+
+export const GeminiProviderStartOptions = Schema.Struct({
+  binaryPath: Schema.optional(TrimmedNonEmptyString),
+});
+
+export const CursorProviderStartOptions = Schema.Struct({
+  binaryPath: Schema.optional(TrimmedNonEmptyString),
+  apiEndpoint: Schema.optional(TrimmedNonEmptyString),
+});
+
+export const OpenCodeProviderStartOptions = Schema.Struct({
+  binaryPath: Schema.optional(TrimmedNonEmptyString),
+  serverUrl: Schema.optional(TrimmedNonEmptyString),
+  serverPassword: Schema.optional(TrimmedNonEmptyString),
+});
+
+export const KiloProviderStartOptions = Schema.Struct({
+  binaryPath: Schema.optional(TrimmedNonEmptyString),
+  serverUrl: Schema.optional(TrimmedNonEmptyString),
+  serverPassword: Schema.optional(TrimmedNonEmptyString),
+});
+
+export const PiProviderStartOptions = Schema.Struct({
+  binaryPath: Schema.optional(TrimmedNonEmptyString),
+  agentDir: Schema.optional(TrimmedNonEmptyString),
+});
+
+export const ProviderStartOptions = Schema.Struct({
+  codex: Schema.optional(CodexProviderStartOptions),
+  claudeAgent: Schema.optional(ClaudeProviderStartOptions),
+  cursor: Schema.optional(CursorProviderStartOptions),
+  gemini: Schema.optional(GeminiProviderStartOptions),
+  kilo: Schema.optional(KiloProviderStartOptions),
+  opencode: Schema.optional(OpenCodeProviderStartOptions),
+  pi: Schema.optional(PiProviderStartOptions),
+});
+export type ProviderStartOptions = typeof ProviderStartOptions.Type;
+
 export const ProviderListSkillsInput = Schema.Struct({
   provider: ProviderDiscoveryKind,
   cwd: TrimmedNonEmptyString,
   threadId: Schema.optional(TrimmedNonEmptyString),
   agentDir: Schema.optional(TrimmedNonEmptyString),
   forceReload: Schema.optional(Schema.Boolean),
+  providerOptions: Schema.optional(ProviderStartOptions),
 });
 export type ProviderListSkillsInput = typeof ProviderListSkillsInput.Type;
 
@@ -92,6 +142,7 @@ export const ProviderListCommandsInput = Schema.Struct({
   threadId: Schema.optional(TrimmedNonEmptyString),
   agentDir: Schema.optional(TrimmedNonEmptyString),
   forceReload: Schema.optional(Schema.Boolean),
+  providerOptions: Schema.optional(ProviderStartOptions),
 });
 export type ProviderListCommandsInput = typeof ProviderListCommandsInput.Type;
 
@@ -183,6 +234,7 @@ export const ProviderListPluginsInput = Schema.Struct({
   threadId: Schema.optional(TrimmedNonEmptyString),
   forceRemoteSync: Schema.optional(Schema.Boolean),
   forceReload: Schema.optional(Schema.Boolean),
+  providerOptions: Schema.optional(ProviderStartOptions),
 });
 export type ProviderListPluginsInput = typeof ProviderListPluginsInput.Type;
 
@@ -200,6 +252,7 @@ export const ProviderReadPluginInput = Schema.Struct({
   provider: ProviderDiscoveryKind,
   marketplacePath: TrimmedNonEmptyString,
   pluginName: TrimmedNonEmptyString,
+  providerOptions: Schema.optional(ProviderStartOptions),
 });
 export type ProviderReadPluginInput = typeof ProviderReadPluginInput.Type;
 
@@ -228,6 +281,7 @@ export const ProviderListModelsInput = Schema.Struct({
   agentDir: Schema.optional(TrimmedNonEmptyString),
   serverUrl: Schema.optional(TrimmedNonEmptyString),
   serverPassword: Schema.optional(TrimmedNonEmptyString),
+  providerOptions: Schema.optional(ProviderStartOptions),
 });
 export type ProviderListModelsInput = typeof ProviderListModelsInput.Type;
 

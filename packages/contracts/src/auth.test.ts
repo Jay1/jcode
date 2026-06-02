@@ -86,12 +86,30 @@ it("exposes shared auth HTTP endpoint metadata", () => {
       bootstrap: [AuthHttpRoutes.bootstrap.method, AuthHttpRoutes.bootstrap.pathname],
       bearer: [AuthHttpRoutes.bootstrapBearer.method, AuthHttpRoutes.bootstrapBearer.pathname],
       wsToken: [AuthHttpRoutes.webSocketToken.method, AuthHttpRoutes.webSocketToken.pathname],
+      pairingToken: [AuthHttpRoutes.pairingToken.method, AuthHttpRoutes.pairingToken.pathname],
+      pairingLinks: [AuthHttpRoutes.pairingLinks.method, AuthHttpRoutes.pairingLinks.pathname],
+      revokePairingLink: [
+        AuthHttpRoutes.revokePairingLink.method,
+        AuthHttpRoutes.revokePairingLink.pathname,
+      ],
+      clients: [AuthHttpRoutes.clients.method, AuthHttpRoutes.clients.pathname],
+      revokeClient: [AuthHttpRoutes.revokeClient.method, AuthHttpRoutes.revokeClient.pathname],
+      revokeOtherClients: [
+        AuthHttpRoutes.revokeOtherClients.method,
+        AuthHttpRoutes.revokeOtherClients.pathname,
+      ],
     },
     {
       session: ["GET", "/api/auth/session"],
       bootstrap: ["POST", "/api/auth/bootstrap"],
       bearer: ["POST", "/api/auth/bootstrap/bearer"],
       wsToken: ["POST", "/api/auth/ws-token"],
+      pairingToken: ["POST", "/api/auth/pairing-token"],
+      pairingLinks: ["GET", "/api/auth/pairing-links"],
+      revokePairingLink: ["POST", "/api/auth/pairing-links/revoke"],
+      clients: ["GET", "/api/auth/clients"],
+      revokeClient: ["POST", "/api/auth/clients/revoke"],
+      revokeOtherClients: ["POST", "/api/auth/clients/revoke-others"],
     },
   );
 });

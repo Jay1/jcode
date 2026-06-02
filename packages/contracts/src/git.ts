@@ -1,7 +1,7 @@
 import { Option, Schema } from "effect";
 import { NonNegativeInt, PositiveInt, TrimmedNonEmptyString } from "./baseSchemas";
 import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "./model";
-import { ProviderStartOptions } from "./orchestration";
+import { ProviderStartOptions } from "./providerDiscovery";
 
 const TrimmedNonEmptyStringSchema = TrimmedNonEmptyString;
 
