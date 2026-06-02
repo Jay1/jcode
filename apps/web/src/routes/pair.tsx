@@ -1,3 +1,4 @@
+import { AuthHttpRoutes } from "@jcode/contracts";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -14,8 +15,8 @@ export const Route = createFileRoute("/pair")({
 });
 
 async function bootstrapSameOrigin(credential: string): Promise<void> {
-  const response = await fetch("/api/auth/bootstrap", {
-    method: "POST",
+  const response = await fetch(AuthHttpRoutes.bootstrap.pathname, {
+    method: AuthHttpRoutes.bootstrap.method,
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ credential }),

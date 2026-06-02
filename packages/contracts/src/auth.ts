@@ -171,3 +171,69 @@ export const AuthSessionState = Schema.Struct({
   expiresAt: Schema.optionalKey(Schema.DateTimeUtcFromString),
 });
 export type AuthSessionState = typeof AuthSessionState.Type;
+
+const AuthRevokedResult = Schema.Struct({
+  revoked: Schema.Boolean,
+});
+
+const AuthRevokedCountResult = Schema.Struct({
+  revokedCount: NonNegativeInt,
+});
+
+export const AuthHttpRoutes = {
+  session: {
+    method: "GET",
+    pathname: "/api/auth/session",
+    response: AuthSessionState,
+  },
+  bootstrap: {
+    method: "POST",
+    pathname: "/api/auth/bootstrap",
+    request: AuthBootstrapInput,
+    response: AuthBootstrapResult,
+  },
+  bootstrapBearer: {
+    method: "POST",
+    pathname: "/api/auth/bootstrap/bearer",
+    request: AuthBootstrapInput,
+    response: AuthBearerBootstrapResult,
+  },
+  webSocketToken: {
+    method: "POST",
+    pathname: "/api/auth/ws-token",
+    response: AuthWebSocketTokenResult,
+  },
+  pairingToken: {
+    method: "POST",
+    pathname: "/api/auth/pairing-token",
+    request: AuthCreatePairingCredentialInput,
+    response: AuthPairingCredentialResult,
+  },
+  pairingLinks: {
+    method: "GET",
+    pathname: "/api/auth/pairing-links",
+    response: Schema.Array(AuthPairingLink),
+  },
+  revokePairingLink: {
+    method: "POST",
+    pathname: "/api/auth/pairing-links/revoke",
+    request: AuthRevokePairingLinkInput,
+    response: AuthRevokedResult,
+  },
+  clients: {
+    method: "GET",
+    pathname: "/api/auth/clients",
+    response: Schema.Array(AuthClientSession),
+  },
+  revokeClient: {
+    method: "POST",
+    pathname: "/api/auth/clients/revoke",
+    request: AuthRevokeClientSessionInput,
+    response: AuthRevokedResult,
+  },
+  revokeOtherClients: {
+    method: "POST",
+    pathname: "/api/auth/clients/revoke-others",
+    response: AuthRevokedCountResult,
+  },
+} as const;
