@@ -46,6 +46,39 @@ describe("providerStatusCache", () => {
     expect(result).toEqual(readyCodexStatus);
   });
 
+  it("does not persist transient provider update state", async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const fileSystem = yield* FileSystem.FileSystem;
+        const tempDir = yield* fileSystem.makeTempDirectoryScoped({
+          prefix: "t3-provider-status-cache-update-",
+        });
+        const cachePath = resolveProviderStatusCachePath({
+          stateDir: tempDir,
+          provider: readyCodexStatus.provider,
+        });
+
+        yield* writeProviderStatusCache({
+          filePath: cachePath,
+          provider: {
+            ...readyCodexStatus,
+            updateState: {
+              status: "running",
+              startedAt: "2026-04-15T10:00:00.000Z",
+              finishedAt: null,
+              message: "Updating provider",
+              output: "download in progress",
+            },
+          },
+        });
+
+        return yield* readProviderStatusCache(cachePath);
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    );
+
+    expect(result).toEqual(readyCodexStatus);
+  });
+
   it("ignores malformed cache files", async () => {
     const result = await Effect.runPromise(
       Effect.gen(function* () {

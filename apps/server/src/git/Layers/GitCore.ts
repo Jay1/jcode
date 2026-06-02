@@ -75,7 +75,7 @@ class StatusUpstreamRefreshCacheKey extends Data.Class<{
 }> {}
 
 interface ExecuteGitOptions {
-  timeoutMs?: number | undefined;
+  timeoutMs?: Duration.Input | undefined;
   allowNonZeroExit?: boolean | undefined;
   fallbackErrorMessage?: string | undefined;
   env?: NodeJS.ProcessEnv | undefined;
@@ -1070,7 +1070,7 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
         ["fetch", "--quiet", "--no-tags", upstream.remoteName, refspec],
         {
           allowNonZeroExit: true,
-          timeoutMs: Duration.toMillis(STATUS_UPSTREAM_REFRESH_TIMEOUT),
+          timeoutMs: STATUS_UPSTREAM_REFRESH_TIMEOUT,
         },
       ).pipe(Effect.asVoid);
     };

@@ -7,7 +7,7 @@
  * @module GitCore
  */
 import { ServiceMap } from "effect";
-import type { Effect, Scope } from "effect";
+import type { Duration, Effect, Scope } from "effect";
 import type {
   GitCheckoutInput,
   GitCreateBranchInput,
@@ -37,7 +37,7 @@ export interface ExecuteGitInput {
   readonly args: ReadonlyArray<string>;
   readonly env?: NodeJS.ProcessEnv;
   readonly allowNonZeroExit?: boolean;
-  readonly timeoutMs?: number;
+  readonly timeoutMs?: Duration.Input;
   readonly maxOutputBytes?: number;
   readonly progress?: ExecuteGitProgress;
 }
@@ -82,7 +82,7 @@ export interface GitCommitProgress {
 }
 
 export interface GitCommitOptions {
-  readonly timeoutMs?: number;
+  readonly timeoutMs?: Duration.Input;
   readonly progress?: GitCommitProgress;
 }
 

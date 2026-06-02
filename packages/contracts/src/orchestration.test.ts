@@ -143,12 +143,11 @@ it.effect("preserves Pi model selections when decoding model selections", () =>
 it.effect("preserves Pi model selections through the JSON codec", () =>
   Effect.gen(function* () {
     const codec = Schema.fromJsonString(ModelSelection);
-    const parsed = yield* Schema.decodeUnknownEffect(codec)(
-      JSON.stringify({
-        provider: "pi",
-        model: "openai/gpt-5.5",
-      }),
-    );
+    const encoded = yield* Schema.encodeEffect(codec)({
+      provider: "pi",
+      model: "openai/gpt-5.5",
+    });
+    const parsed = yield* Schema.decodeUnknownEffect(codec)(encoded);
 
     assert.deepStrictEqual(parsed, {
       provider: "pi",

@@ -7,7 +7,7 @@ import path from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
-import { Effect, FileSystem, Layer, PlatformError, Schema, Scope } from "effect";
+import { Duration, Effect, FileSystem, Layer, PlatformError, Schema, Scope } from "effect";
 import { describe, expect, vi } from "vitest";
 
 import { GitCoreLive, makeGitCore } from "./GitCore.ts";
@@ -1506,6 +1506,22 @@ it.layer(TestLayer)("git integration", (it) => {
   });
 
   describe("GitCore", () => {
+    it.effect("accepts Effect Duration inputs for execute timeouts", () =>
+      Effect.gen(function* () {
+        const tmp = yield* makeTmpDir();
+        const core = yield* GitCore;
+
+        const result = yield* core.execute({
+          operation: "GitCore.test.durationTimeout",
+          cwd: tmp,
+          args: ["--version"],
+          timeoutMs: Duration.millis(10_000),
+        });
+
+        expect(result.code).toBe(0);
+      }),
+    );
+
     it.effect("supports branch lifecycle operations through the service API", () =>
       Effect.gen(function* () {
         const tmp = yield* makeTmpDir();
