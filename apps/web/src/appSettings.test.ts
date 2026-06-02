@@ -271,7 +271,13 @@ describe("server-backed app settings", () => {
         enableAssistantStreaming: false,
         providers: {
           claudeAgent: { enabled: true, binaryPath: "claude", launchArgs: "", customModels: [] },
-          codex: { enabled: true, binaryPath: "codex", homePath: "", customModels: [] },
+          codex: {
+            enabled: true,
+            binaryPath: "codex",
+            homePath: "",
+            launchArgs: "",
+            customModels: [],
+          },
           cursor: { enabled: true, binaryPath: "agent", apiEndpoint: "", customModels: [] },
           gemini: { enabled: true, binaryPath: "gemini", customModels: [] },
           kilo: {
@@ -321,6 +327,7 @@ describe("getProviderStartOptions", () => {
         claudeBinaryPath: "/usr/local/bin/claude",
         codexBinaryPath: "",
         codexHomePath: "/Users/you/.codex",
+        codexLaunchArgs: "--ask-for-approval never --sandbox danger-full-access",
         cursorApiEndpoint: "http://localhost:3000",
         cursorBinaryPath: "/usr/local/bin/agent",
         geminiBinaryPath: "/usr/local/bin/gemini",
@@ -339,6 +346,7 @@ describe("getProviderStartOptions", () => {
       },
       codex: {
         homePath: "/Users/you/.codex",
+        launchArgs: "--ask-for-approval never --sandbox danger-full-access",
       },
       cursor: {
         apiEndpoint: "http://localhost:3000",
@@ -356,6 +364,7 @@ describe("getProviderStartOptions", () => {
         claudeBinaryPath: "",
         codexBinaryPath: "",
         codexHomePath: "",
+        codexLaunchArgs: "",
         cursorApiEndpoint: "",
         cursorBinaryPath: "",
         geminiBinaryPath: "",
@@ -572,6 +581,7 @@ describe("AppSettingsSchema", () => {
       claudeBinaryPath: "",
       chatFontSizePx: DEFAULT_CHAT_FONT_SIZE_PX,
       codexBinaryPath: "/usr/local/bin/codex",
+      codexLaunchArgs: "",
       codexHomePath: "",
       geminiBinaryPath: "",
       defaultThreadEnvMode: "local",
