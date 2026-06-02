@@ -196,6 +196,28 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
     }).pipe(Effect.provide(makeKeybindingsLayer())),
   );
 
+  it.effect("normalizes legacy thread navigation commands during runtime load", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const { keybindingsConfigPath } = yield* ServerConfig;
+      yield* writeRawKeybindingsConfig(keybindingsConfigPath, [
+        { key: "mod+]", command: "thread.next", when: "!terminalFocus" },
+        { key: "mod+[", command: "thread.previous", when: "!terminalFocus" },
+      ]);
+
+      const configState = yield* Effect.gen(function* () {
+        const keybindings = yield* Keybindings;
+        return yield* keybindings.loadConfigState;
+      });
+
+      const byCommand = new Map(configState.keybindings.map((entry) => [entry.command, entry]));
+      assert.equal(byCommand.get("chat.visible.next")?.shortcut.key, "]");
+      assert.equal(byCommand.get("chat.visible.previous")?.shortcut.key, "[");
+      assert.deepEqual(configState.issues, []);
+      assert.include(yield* fs.readFileString(keybindingsConfigPath), "thread.next");
+    }).pipe(Effect.provide(makeKeybindingsLayer())),
+  );
+
   it.effect("uses defaults in runtime when config is malformed without overriding file", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
@@ -353,6 +375,33 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
         { key: "mod+shift+r", command: "script.run-tests.run" },
       ]);
       assert.isTrue(resolved.some((entry) => entry.command === "script.run-tests.run"));
+    }).pipe(Effect.provide(makeKeybindingsLayer())),
+  );
+
+  it.effect("normalizes legacy thread navigation commands when mutating keybindings", () =>
+    Effect.gen(function* () {
+      const { keybindingsConfigPath } = yield* ServerConfig;
+      yield* writeRawKeybindingsConfig(keybindingsConfigPath, [
+        { key: "mod+]", command: "thread.next", when: "!terminalFocus" },
+        { key: "mod+[", command: "thread.previous", when: "!terminalFocus" },
+      ]);
+
+      yield* Effect.gen(function* () {
+        const keybindings = yield* Keybindings;
+        return yield* keybindings.upsertKeybindingRule({
+          key: "mod+shift+r",
+          command: "script.run-tests.run",
+        });
+      });
+
+      const persisted = yield* readKeybindingsConfig(keybindingsConfigPath);
+      const byCommand = new Map(persisted.map((entry) => [entry.command, entry]));
+
+      assert.equal(byCommand.get("chat.visible.next")?.key, "mod+]");
+      assert.equal(byCommand.get("chat.visible.previous")?.key, "mod+[");
+      assert.equal(byCommand.get("script.run-tests.run")?.key, "mod+shift+r");
+      assert.isFalse(persisted.some((entry) => String(entry.command) === "thread.next"));
+      assert.isFalse(persisted.some((entry) => String(entry.command) === "thread.previous"));
     }).pipe(Effect.provide(makeKeybindingsLayer())),
   );
 
