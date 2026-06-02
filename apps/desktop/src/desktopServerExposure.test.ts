@@ -75,4 +75,32 @@ describe("desktopServerExposure", () => {
       "http://192.168.1.44:58090",
     );
   });
+
+  it("falls back to loopback when network mode has no usable LAN address", () => {
+    const state = resolveDesktopServerExposureState({
+      mode: "network-accessible",
+      activeMode: "network-accessible",
+      port: 58090,
+      networkInterfaces: {
+        en0: [{ address: "169.254.1.20", family: "IPv4", internal: false }],
+        lo: [{ address: "127.0.0.1", family: "IPv4", internal: true }],
+      },
+    });
+
+    expect(state.endpointUrl).toBeNull();
+
+    const endpoints = resolveDesktopAdvertisedEndpoints(state);
+
+    expect(endpoints).toEqual([
+      {
+        id: "desktop-loopback:58090",
+        label: "This machine",
+        httpBaseUrl: "http://127.0.0.1:58090",
+        wsBaseUrl: "ws://127.0.0.1:58090",
+        reachability: "loopback",
+        isDefault: true,
+        description: "Reachable from this desktop app and browser on the same machine.",
+      },
+    ]);
+  });
 });

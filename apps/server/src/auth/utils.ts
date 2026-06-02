@@ -68,9 +68,9 @@ function inferOs(userAgent: string | undefined): string | undefined {
   if (!normalized) return undefined;
   if (/iphone|ipad|ipod/.test(normalized)) return "iOS";
   if (/android/.test(normalized)) return "Android";
-  if (/mac os x|macintosh/.test(normalized)) return "macOS";
   if (/windows nt/.test(normalized)) return "Windows";
   if (/linux/.test(normalized)) return "Linux";
+  if (/mac os x|macintosh/.test(normalized)) return "macOS";
   return undefined;
 }
 
