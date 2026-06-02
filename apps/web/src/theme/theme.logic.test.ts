@@ -418,6 +418,58 @@ describe("code theme seeds", () => {
 });
 
 describe("buildThemeCssVariables", () => {
+  it("uses translucent Electron material on macOS when the theme allows transparent windows", () => {
+    const cssVariables = buildThemeCssVariables(
+      {
+        codeThemeId: "codex",
+        theme: {
+          ...DEFAULT_THEME_STATE.chromeThemes.dark,
+          opaqueWindows: false,
+        },
+      },
+      "dark",
+      { electron: true, isMac: true },
+    );
+
+    expect(cssVariables.material).toBe("translucent");
+    expect(cssVariables.variables["--app-sidebar-backdrop-filter"]).toBe(
+      "blur(8px) saturate(135%)",
+    );
+  });
+
+  it("uses opaque Electron material off macOS when the theme allows transparent windows", () => {
+    const cssVariables = buildThemeCssVariables(
+      {
+        codeThemeId: "codex",
+        theme: {
+          ...DEFAULT_THEME_STATE.chromeThemes.dark,
+          opaqueWindows: false,
+        },
+      },
+      "dark",
+      { electron: true, isMac: false },
+    );
+
+    expect(cssVariables.material).toBe("opaque");
+    expect(cssVariables.variables["--app-sidebar-backdrop-filter"]).toBe("none");
+  });
+
+  it("keeps macOS Electron shell material opaque when opaque windows are enabled", () => {
+    const cssVariables = buildThemeCssVariables(
+      {
+        codeThemeId: "codex",
+        theme: {
+          ...DEFAULT_THEME_STATE.chromeThemes.dark,
+          opaqueWindows: true,
+        },
+      },
+      "dark",
+      { electron: true, isMac: true },
+    );
+
+    expect(cssVariables.material).toBe("opaque");
+  });
+
   it("derives the renderer token map from the imported theme pack", () => {
     const importedTheme = parseThemeShareString(PROVIDED_THEME_STRING);
     const cssVariables = buildThemeCssVariables(
@@ -439,6 +491,23 @@ describe("buildThemeCssVariables", () => {
     expect(cssVariables.variables["--theme-font-ui-family"]).toBe("Inter");
     expect(cssVariables.variables["--theme-font-code-family"]).toBe('"Jetbrains Mono"');
     expect(cssVariables.variables["--app-wordmark-prefix"]).toBe("#d00000");
+  });
+
+  it("uses opaque browser material on macOS when the theme allows transparent windows", () => {
+    const cssVariables = buildThemeCssVariables(
+      {
+        codeThemeId: "codex",
+        theme: {
+          ...DEFAULT_THEME_STATE.chromeThemes.dark,
+          opaqueWindows: false,
+        },
+      },
+      "dark",
+      { electron: false, isMac: true },
+    );
+
+    expect(cssVariables.material).toBe("opaque");
+    expect(cssVariables.variables["--app-sidebar-backdrop-filter"]).toBe("none");
   });
 
   it("exposes a structured derived-token surface for retrieving non-stored colors", () => {
