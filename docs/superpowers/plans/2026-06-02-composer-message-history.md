@@ -1,6 +1,6 @@
 # Composer Message History Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add current-thread Up/Down composer history navigation without changing server contracts.
 
@@ -9,6 +9,7 @@
 - `apps/web/src/composer-logic.ts`: Add pure helpers for filtering sent native user messages and resolving history navigation state.
 - `apps/web/src/composer-logic.test.ts`: Add red/green unit tests for history derivation and Up/Down boundary behavior.
 - `apps/web/src/components/ChatView.tsx`: Wire helper into the existing composer command-key path and reset navigation state on edits, clears, and thread switches.
+- `apps/web/src/components/ComposerPromptEditor.tsx`: No changes required; its existing `onCommandKeyDown` hook already forwards ArrowUp/ArrowDown to `ChatView`.
 
 ## Tasks
 
