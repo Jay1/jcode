@@ -3,7 +3,7 @@
 // Layer: Terminal presentation components
 // Depends on: terminal visual identities plus shared popover/button styling.
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import type {
   ResolvedTerminalVisualIdentity,
@@ -15,52 +15,9 @@ import { XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 
 import type { ResolvedTerminalGroupLayout } from "./TerminalLayout";
+import InlineRenameField from "./InlineRenameField";
 import TerminalActivityIndicator from "./TerminalActivityIndicator";
 import TerminalIdentityIcon from "./TerminalIdentityIcon";
-
-function InlineRenameField(props: {
-  initialValue: string;
-  onCommit: (value: string) => void;
-  onCancel: () => void;
-  className?: string | undefined;
-}) {
-  const [value, setValue] = useState(props.initialValue);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.select();
-  }, []);
-
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") {
-        props.onCommit(value.trim());
-      } else if (event.key === "Escape") {
-        props.onCancel();
-      }
-    },
-    [value, props],
-  );
-
-  const handleBlur = useCallback(() => {
-    props.onCommit(value.trim());
-  }, [value, props]);
-
-  return (
-    <input
-      ref={inputRef}
-      type="text"
-      value={value}
-      onChange={(event) => setValue(event.target.value)}
-      onKeyDown={handleKeyDown}
-      onBlur={handleBlur}
-      className={cn(
-        "bg-background px-1.5 py-0.5 text-[11px] leading-4 text-foreground outline-none ring-1 ring-inset ring-[var(--color-ring)]",
-        props.className,
-      )}
-    />
-  );
-}
 
 function terminalVisualStatePriority(state: TerminalVisualState): number {
   switch (state) {
