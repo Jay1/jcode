@@ -7271,13 +7271,13 @@ export default function ChatView({
         state: composerHistoryNavigationRef.current,
       });
       if (result.handled) {
-        const nextCursor = collapseExpandedComposerCursor(result.prompt, result.prompt.length);
+        const nextCursor = collapseExpandedComposerCursor(result.prompt, result.expandedCursor);
         composerHistoryNavigationRef.current = result.state;
         composerHistoryAppliedPromptRef.current = result.prompt;
         promptRef.current = result.prompt;
         setPrompt(result.prompt);
         setComposerCursor(nextCursor);
-        setComposerTrigger(detectComposerTrigger(result.prompt, result.prompt.length));
+        setComposerTrigger(detectComposerTrigger(result.prompt, result.expandedCursor));
         setComposerHighlightedItemId(null);
         window.requestAnimationFrame(() => {
           composerEditorRef.current?.focusAt(nextCursor);

@@ -17,7 +17,7 @@ export interface ComposerTrigger {
 
 export interface ComposerHistoryMessageLike {
   role: string;
-  source?: string | null;
+  source?: "native" | "handoff-import" | "fork-import";
   text: string;
 }
 
@@ -36,6 +36,7 @@ export function deriveComposerMessageHistory(
 export interface ComposerMessageHistoryNavigationState {
   index: number;
   draftBeforeHistory: string;
+  draftBeforeHistoryExpandedCursor: number;
 }
 
 export interface ComposerMessageHistoryNavigationInput {
@@ -49,6 +50,7 @@ export interface ComposerMessageHistoryNavigationInput {
 export interface ComposerMessageHistoryNavigationResult {
   handled: boolean;
   prompt: string;
+  expandedCursor: number;
   state: ComposerMessageHistoryNavigationState | null;
 }
 
@@ -56,47 +58,79 @@ export function resolveComposerMessageHistoryNavigation(
   input: ComposerMessageHistoryNavigationInput,
 ): ComposerMessageHistoryNavigationResult {
   if (input.history.length === 0) {
-    return { handled: false, prompt: input.prompt, state: input.state };
+    return {
+      handled: false,
+      prompt: input.prompt,
+      expandedCursor: input.expandedCursor,
+      state: input.state,
+    };
   }
 
   const isNavigatingHistory = input.state !== null;
   if (input.direction === "previous" && !isNavigatingHistory && input.expandedCursor !== 0) {
-    return { handled: false, prompt: input.prompt, state: input.state };
+    return {
+      handled: false,
+      prompt: input.prompt,
+      expandedCursor: input.expandedCursor,
+      state: input.state,
+    };
   }
   if (
     input.direction === "next" &&
     !isNavigatingHistory &&
     input.expandedCursor !== input.prompt.length
   ) {
-    return { handled: false, prompt: input.prompt, state: input.state };
+    return {
+      handled: false,
+      prompt: input.prompt,
+      expandedCursor: input.expandedCursor,
+      state: input.state,
+    };
   }
 
   if (input.direction === "previous") {
     const index = input.state
       ? Math.min(input.history.length - 1, Math.max(0, input.state.index - 1))
       : input.history.length - 1;
+    const prompt = input.history[index] ?? input.prompt;
     return {
       handled: true,
-      prompt: input.history[index] ?? input.prompt,
+      prompt,
+      expandedCursor: prompt.length,
       state: {
         index,
         draftBeforeHistory: input.state?.draftBeforeHistory ?? input.prompt,
+        draftBeforeHistoryExpandedCursor:
+          input.state?.draftBeforeHistoryExpandedCursor ?? input.expandedCursor,
       },
     };
   }
 
   if (!input.state) {
-    return { handled: false, prompt: input.prompt, state: null };
+    return {
+      handled: false,
+      prompt: input.prompt,
+      expandedCursor: input.expandedCursor,
+      state: null,
+    };
   }
 
   const nextIndex = input.state.index + 1;
   if (nextIndex >= input.history.length) {
-    return { handled: true, prompt: input.state.draftBeforeHistory, state: null };
+    return {
+      handled: true,
+      prompt: input.state.draftBeforeHistory,
+      expandedCursor: input.state.draftBeforeHistoryExpandedCursor,
+      state: null,
+    };
   }
+
+  const prompt = input.history[nextIndex] ?? input.prompt;
 
   return {
     handled: true,
-    prompt: input.history[nextIndex] ?? input.prompt,
+    prompt,
+    expandedCursor: prompt.length,
     state: { ...input.state, index: nextIndex },
   };
 }

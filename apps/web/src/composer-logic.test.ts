@@ -205,7 +205,7 @@ describe("deriveComposerMessageHistory", () => {
 
   it("ignores non-native user messages and blank prompts", () => {
     const history = deriveComposerMessageHistory([
-      { role: "user", source: "imported", text: "external" },
+      { role: "user", source: "handoff-import", text: "external" },
       { role: "user", source: "native", text: "   \n" },
       { role: "user", text: "legacy native" },
       { role: "user", source: "native", text: "kept" },
@@ -228,7 +228,8 @@ describe("resolveComposerMessageHistoryNavigation", () => {
     expect(result).toEqual({
       handled: true,
       prompt: "second prompt",
-      state: { index: 1, draftBeforeHistory: "draft" },
+      expandedCursor: "second prompt".length,
+      state: { index: 1, draftBeforeHistory: "draft", draftBeforeHistoryExpandedCursor: 0 },
     });
   });
 
@@ -238,13 +239,14 @@ describe("resolveComposerMessageHistoryNavigation", () => {
       direction: "previous",
       prompt: "second prompt",
       expandedCursor: "second prompt".length,
-      state: { index: 1, draftBeforeHistory: "draft" },
+      state: { index: 1, draftBeforeHistory: "draft", draftBeforeHistoryExpandedCursor: 2 },
     });
 
     expect(previous).toEqual({
       handled: true,
       prompt: "first prompt",
-      state: { index: 0, draftBeforeHistory: "draft" },
+      expandedCursor: "first prompt".length,
+      state: { index: 0, draftBeforeHistory: "draft", draftBeforeHistoryExpandedCursor: 2 },
     });
 
     const next = resolveComposerMessageHistoryNavigation({
@@ -258,7 +260,8 @@ describe("resolveComposerMessageHistoryNavigation", () => {
     expect(next).toEqual({
       handled: true,
       prompt: "second prompt",
-      state: { index: 1, draftBeforeHistory: "draft" },
+      expandedCursor: "second prompt".length,
+      state: { index: 1, draftBeforeHistory: "draft", draftBeforeHistoryExpandedCursor: 2 },
     });
   });
 
@@ -268,12 +271,13 @@ describe("resolveComposerMessageHistoryNavigation", () => {
       direction: "next",
       prompt: "second prompt",
       expandedCursor: "second prompt".length,
-      state: { index: 1, draftBeforeHistory: "draft" },
+      state: { index: 1, draftBeforeHistory: "draft", draftBeforeHistoryExpandedCursor: 2 },
     });
 
     expect(result).toEqual({
       handled: true,
       prompt: "draft",
+      expandedCursor: 2,
       state: null,
     });
   });
@@ -287,7 +291,7 @@ describe("resolveComposerMessageHistoryNavigation", () => {
         expandedCursor: 2,
         state: null,
       }),
-    ).toEqual({ handled: false, prompt: "draft", state: null });
+    ).toEqual({ handled: false, prompt: "draft", expandedCursor: 2, state: null });
 
     expect(
       resolveComposerMessageHistoryNavigation({
@@ -297,7 +301,7 @@ describe("resolveComposerMessageHistoryNavigation", () => {
         expandedCursor: 2,
         state: null,
       }),
-    ).toEqual({ handled: false, prompt: "draft", state: null });
+    ).toEqual({ handled: false, prompt: "draft", expandedCursor: 2, state: null });
   });
 
   it("uses expanded cursor offsets for prompts with collapsed inline tokens", () => {
@@ -309,9 +313,9 @@ describe("resolveComposerMessageHistoryNavigation", () => {
         direction: "next",
         prompt,
         expandedCursor: prompt.length,
-        state: { index: 0, draftBeforeHistory: "draft" },
+        state: { index: 0, draftBeforeHistory: "draft", draftBeforeHistoryExpandedCursor: 1 },
       }),
-    ).toEqual({ handled: true, prompt: "draft", state: null });
+    ).toEqual({ handled: true, prompt: "draft", expandedCursor: 1, state: null });
 
     expect(
       resolveComposerMessageHistoryNavigation({
@@ -321,7 +325,7 @@ describe("resolveComposerMessageHistoryNavigation", () => {
         expandedCursor: "reuse @".length,
         state: null,
       }),
-    ).toEqual({ handled: false, prompt, state: null });
+    ).toEqual({ handled: false, prompt, expandedCursor: "reuse @".length, state: null });
   });
 });
 
