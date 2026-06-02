@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { ApprovalRequestId, ThreadId } from "@jcode/contracts";
+import { ApprovalRequestId, ThreadId, type ProviderStartOptions } from "@jcode/contracts";
 
 import {
   buildCodexProcessEnv,
@@ -31,6 +31,120 @@ const approvalRequiredTurnOverrides = {
   approvalPolicy: "untrusted",
   sandboxPolicy: { type: "readOnly" },
 } as const;
+const codexDiscoveryOptionsWithSecrets = {
+  codex: {
+    binaryPath: "/bin/custom-codex",
+    homePath: "/tmp/custom-codex-home",
+    launchArgs: "--profile custom",
+  },
+  kilo: {
+    binaryPath: "/bin/kilo",
+    serverUrl: "http://127.0.0.1:4111",
+    serverPassword: "kilo-secret-password",
+  },
+  opencode: {
+    binaryPath: "/bin/opencode",
+    serverUrl: "http://127.0.0.1:4112",
+    serverPassword: "opencode-secret-password",
+  },
+} as const satisfies ProviderStartOptions;
+const codexDiscoveryOptionsWithDifferentSecrets = {
+  ...codexDiscoveryOptionsWithSecrets,
+  kilo: {
+    ...codexDiscoveryOptionsWithSecrets.kilo,
+    serverPassword: "changed-kilo-secret-password",
+  },
+  opencode: {
+    ...codexDiscoveryOptionsWithSecrets.opencode,
+    serverPassword: "changed-opencode-secret-password",
+  },
+} as const satisfies ProviderStartOptions;
+
+function createCodexDiscoveryContext() {
+  return {
+    session: {
+      provider: "codex",
+      status: "ready",
+      threadId: "thread_1",
+      runtimeMode: "full-access",
+      model: "gpt-5.3-codex",
+      resumeCursor: { threadId: "thread_1" },
+      createdAt: "2026-02-10T00:00:00.000Z",
+      updatedAt: "2026-02-10T00:00:00.000Z",
+    },
+    account: {
+      type: "unknown",
+      planType: null,
+      sparkEnabled: true,
+    },
+    collabReceiverTurns: new Map(),
+    collabReceiverParents: new Map(),
+  };
+}
+
+function createPluginListResponse(pluginName: string) {
+  return {
+    result: {
+      marketplaces: [
+        {
+          name: "openai-curated",
+          path: "/Users/test/.agents/plugins/marketplace.json",
+          plugins: [
+            {
+              id: `plugin/${pluginName}`,
+              name: pluginName,
+              source: {
+                path: `/Users/test/.codex/plugins/cache/openai-curated/${pluginName}`,
+              },
+              installed: true,
+              enabled: true,
+              installPolicy: "INSTALLED_BY_DEFAULT",
+              authPolicy: "ON_USE",
+            },
+          ],
+        },
+      ],
+    },
+  };
+}
+
+function createPluginReadResponse(pluginName: string) {
+  return {
+    result: {
+      plugin: {
+        marketplaceName: "openai-curated",
+        marketplacePath: "/Users/test/.agents/plugins/marketplace.json",
+        summary: {
+          id: `plugin/${pluginName}`,
+          name: pluginName,
+          source: {
+            path: `/Users/test/.codex/plugins/cache/openai-curated/${pluginName}`,
+          },
+          installed: true,
+          enabled: true,
+          installPolicy: "INSTALLED_BY_DEFAULT",
+          authPolicy: "ON_USE",
+        },
+        skills: [],
+        apps: [],
+        mcpServers: [],
+      },
+    },
+  };
+}
+
+function createModelListResponse(modelId: string) {
+  return {
+    result: {
+      items: [
+        {
+          id: modelId,
+          name: modelId.toUpperCase(),
+        },
+      ],
+    },
+  };
+}
 
 function createSendTurnHarness(runtimeMode: "approval-required" | "full-access" = "full-access") {
   const manager = new CodexAppServerManager();
@@ -537,6 +651,9 @@ describe("startSession", () => {
     expect(
       buildCodexAppServerArgs('--config model_provider=ollama --sandbox "danger full"'),
     ).toEqual(["--config", "model_provider=ollama", "--sandbox", "danger full", "app-server"]);
+    expect(
+      buildCodexAppServerArgs('--config "home=C:\\Users\\me\\.codex" --config regex=\\d+'),
+    ).toEqual(["--config", "home=C:\\Users\\me\\.codex", "--config", "regex=\\d+", "app-server"]);
     expect(buildCodexAppServerArgs("   ")).toEqual(["app-server"]);
   });
 
@@ -1136,7 +1253,7 @@ describe("CodexAppServerManager discovery", () => {
     const getOrCreateDiscoverySession = vi
       .spyOn(
         manager as unknown as {
-          getOrCreateDiscoverySession: (cwd: string) => Promise<unknown>;
+          getOrCreateDiscoverySession: (cwd: string, providerOptions?: unknown) => Promise<unknown>;
         },
         "getOrCreateDiscoverySession",
       )
@@ -1159,9 +1276,184 @@ describe("CodexAppServerManager discovery", () => {
       threadId: "thread_missing",
     });
 
-    expect(getOrCreateDiscoverySession).toHaveBeenCalledWith("/repo-b");
+    expect(getOrCreateDiscoverySession).toHaveBeenCalledWith("/repo-b", undefined);
     expect(sendRequest).toHaveBeenCalledWith(discoveryContext, "skills/list", {
       cwds: ["/repo-b"],
+    });
+  });
+
+  it("passes configured Codex options into discovery sessions", async () => {
+    const manager = new CodexAppServerManager();
+    const discoveryContext = {
+      session: {
+        provider: "codex",
+        status: "ready",
+        threadId: "__codex_discovery__:/repo",
+        runtimeMode: "full-access",
+        model: "gpt-5.5",
+        cwd: "/repo",
+        createdAt: "2026-02-10T00:00:00.000Z",
+        updatedAt: "2026-02-10T00:00:00.000Z",
+      },
+      account: {
+        type: "unknown",
+        planType: null,
+        sparkEnabled: true,
+      },
+      child: {
+        killed: false,
+      },
+      output: {
+        close: vi.fn(),
+      },
+      pending: new Map(),
+      pendingApprovals: new Map(),
+      pendingUserInputs: new Map(),
+      collabReceiverTurns: new Map(),
+      collabReceiverParents: new Map(),
+      nextRequestId: 1,
+      stopping: false,
+      discovery: true,
+    };
+    const providerOptions = {
+      codex: {
+        binaryPath: "/bin/custom-codex",
+        homePath: "/tmp/custom-codex-home",
+        launchArgs: "--profile custom",
+      },
+    };
+    const getOrCreateDiscoverySession = vi
+      .spyOn(
+        manager as unknown as {
+          getOrCreateDiscoverySession: (cwd: string, providerOptions?: unknown) => Promise<unknown>;
+        },
+        "getOrCreateDiscoverySession",
+      )
+      .mockResolvedValue(discoveryContext);
+    const sendRequest = vi
+      .spyOn(
+        manager as unknown as {
+          sendRequest: (...args: unknown[]) => Promise<unknown>;
+        },
+        "sendRequest",
+      )
+      .mockResolvedValue({ result: { data: [] } });
+
+    await manager.listSkills({
+      cwd: "/repo",
+      providerOptions,
+    });
+
+    expect(getOrCreateDiscoverySession).toHaveBeenCalledWith("/repo", providerOptions);
+    expect(sendRequest).toHaveBeenCalledWith(discoveryContext, "skills/list", {
+      cwds: ["/repo"],
+    });
+  });
+
+  it("does not reuse a thread session when discovery has custom Codex options", async () => {
+    const manager = new CodexAppServerManager();
+    const activeContext = {
+      session: {
+        provider: "codex",
+        status: "ready",
+        threadId: "thread_active",
+        runtimeMode: "full-access",
+        model: "gpt-5.3-codex",
+        cwd: "/repo",
+        resumeCursor: { threadId: "thread_active" },
+        createdAt: "2026-02-10T00:00:00.000Z",
+        updatedAt: "2026-02-10T00:00:00.000Z",
+      },
+      account: {
+        type: "unknown",
+        planType: null,
+        sparkEnabled: true,
+      },
+      child: {
+        killed: false,
+      },
+      output: {
+        close: vi.fn(),
+      },
+      pending: new Map(),
+      pendingApprovals: new Map(),
+      pendingUserInputs: new Map(),
+      collabReceiverTurns: new Map(),
+      collabReceiverParents: new Map(),
+      nextRequestId: 1,
+      stopping: false,
+    };
+    const discoveryContext = {
+      session: {
+        provider: "codex",
+        status: "ready",
+        threadId: "__codex_discovery__:/repo",
+        runtimeMode: "full-access",
+        model: "gpt-5.5",
+        cwd: "/repo",
+        createdAt: "2026-02-10T00:00:00.000Z",
+        updatedAt: "2026-02-10T00:00:00.000Z",
+      },
+      account: {
+        type: "unknown",
+        planType: null,
+        sparkEnabled: true,
+      },
+      child: {
+        killed: false,
+      },
+      output: {
+        close: vi.fn(),
+      },
+      pending: new Map(),
+      pendingApprovals: new Map(),
+      pendingUserInputs: new Map(),
+      collabReceiverTurns: new Map(),
+      collabReceiverParents: new Map(),
+      nextRequestId: 1,
+      stopping: false,
+      discovery: true,
+    };
+    const providerOptions = {
+      codex: {
+        binaryPath: "/bin/custom-codex",
+        homePath: "/tmp/custom-codex-home",
+        launchArgs: "--profile custom",
+      },
+    };
+
+    (
+      manager as unknown as {
+        sessions: Map<string, unknown>;
+      }
+    ).sessions.set("thread_active", activeContext);
+
+    const getOrCreateDiscoverySession = vi
+      .spyOn(
+        manager as unknown as {
+          getOrCreateDiscoverySession: (cwd: string, providerOptions?: unknown) => Promise<unknown>;
+        },
+        "getOrCreateDiscoverySession",
+      )
+      .mockResolvedValue(discoveryContext);
+    const sendRequest = vi
+      .spyOn(
+        manager as unknown as {
+          sendRequest: (...args: unknown[]) => Promise<unknown>;
+        },
+        "sendRequest",
+      )
+      .mockResolvedValue({ result: { skills: [] } });
+
+    await manager.listSkills({
+      cwd: "/repo",
+      threadId: "thread_active",
+      providerOptions,
+    });
+
+    expect(getOrCreateDiscoverySession).toHaveBeenCalledWith("/repo", providerOptions);
+    expect(sendRequest).toHaveBeenCalledWith(discoveryContext, "skills/list", {
+      cwds: ["/repo"],
     });
   });
 
@@ -1239,7 +1531,7 @@ describe("CodexAppServerManager discovery", () => {
       threadId: "thread_1",
     });
 
-    expect(resolveContextForDiscovery).toHaveBeenCalledWith("thread_1", "/repo");
+    expect(resolveContextForDiscovery).toHaveBeenCalledWith("thread_1", "/repo", undefined);
     expect(sendRequest).toHaveBeenCalledWith(context, "skills/list", {
       cwds: ["/repo"],
     });
@@ -1416,7 +1708,7 @@ describe("CodexAppServerManager discovery", () => {
       forceRemoteSync: true,
     });
 
-    expect(resolveContextForDiscovery).toHaveBeenCalledWith("thread_1", "/repo");
+    expect(resolveContextForDiscovery).toHaveBeenCalledWith("thread_1", "/repo", undefined);
     expect(sendRequest).toHaveBeenCalledWith(context, "plugin/list", {
       cwds: ["/repo"],
       forceRemoteSync: true,
@@ -1463,6 +1755,54 @@ describe("CodexAppServerManager discovery", () => {
       remoteSyncError: "Remote sync unavailable",
       source: "codex-app-server",
       cached: false,
+    });
+  });
+
+  it("passes provider options to plugin discovery without keying the cache by provider passwords", async () => {
+    const manager = new CodexAppServerManager();
+    const context = createCodexDiscoveryContext();
+    const resolveContextForDiscovery = vi
+      .spyOn(
+        manager as unknown as {
+          resolveContextForDiscovery: (
+            threadId?: string,
+            cwd?: string,
+            providerOptions?: ProviderStartOptions,
+          ) => unknown;
+        },
+        "resolveContextForDiscovery",
+      )
+      .mockReturnValue(context);
+    const sendRequest = vi
+      .spyOn(
+        manager as unknown as {
+          sendRequest: (...args: unknown[]) => Promise<unknown>;
+        },
+        "sendRequest",
+      )
+      .mockResolvedValue(createPluginListResponse("github"));
+
+    const firstResult = await manager.listPlugins({
+      cwd: "/repo",
+      threadId: "thread_1",
+      providerOptions: codexDiscoveryOptionsWithSecrets,
+    });
+    const secondResult = await manager.listPlugins({
+      cwd: "/repo",
+      threadId: "thread_1",
+      providerOptions: codexDiscoveryOptionsWithDifferentSecrets,
+    });
+
+    expect(resolveContextForDiscovery).toHaveBeenCalledTimes(1);
+    expect(resolveContextForDiscovery).toHaveBeenCalledWith(
+      "thread_1",
+      "/repo",
+      codexDiscoveryOptionsWithSecrets,
+    );
+    expect(sendRequest).toHaveBeenCalledTimes(1);
+    expect(secondResult).toEqual({
+      ...firstResult,
+      cached: true,
     });
   });
 
@@ -1565,7 +1905,7 @@ describe("CodexAppServerManager discovery", () => {
       pluginName: "github",
     });
 
-    expect(resolveContextForDiscovery).toHaveBeenCalledWith(undefined);
+    expect(resolveContextForDiscovery).toHaveBeenCalledWith(undefined, undefined, undefined);
     expect(sendRequest).toHaveBeenCalledWith(context, "plugin/read", {
       marketplacePath: "/Users/test/.agents/plugins/marketplace.json",
       pluginName: "github",
@@ -1627,6 +1967,97 @@ describe("CodexAppServerManager discovery", () => {
       },
       source: "codex-app-server",
       cached: false,
+    });
+  });
+
+  it("passes provider options to plugin detail reads without keying the cache by provider passwords", async () => {
+    const manager = new CodexAppServerManager();
+    const context = createCodexDiscoveryContext();
+    const resolveContextForDiscovery = vi
+      .spyOn(
+        manager as unknown as {
+          resolveContextForDiscovery: (
+            threadId?: string,
+            cwd?: string,
+            providerOptions?: ProviderStartOptions,
+          ) => unknown;
+        },
+        "resolveContextForDiscovery",
+      )
+      .mockReturnValue(context);
+    const sendRequest = vi
+      .spyOn(
+        manager as unknown as {
+          sendRequest: (...args: unknown[]) => Promise<unknown>;
+        },
+        "sendRequest",
+      )
+      .mockResolvedValue(createPluginReadResponse("github"));
+
+    const firstResult = await manager.readPlugin({
+      marketplacePath: "/Users/test/.agents/plugins/marketplace.json",
+      pluginName: "github",
+      providerOptions: codexDiscoveryOptionsWithSecrets,
+    });
+    const secondResult = await manager.readPlugin({
+      marketplacePath: "/Users/test/.agents/plugins/marketplace.json",
+      pluginName: "github",
+      providerOptions: codexDiscoveryOptionsWithDifferentSecrets,
+    });
+
+    expect(resolveContextForDiscovery).toHaveBeenCalledTimes(1);
+    expect(resolveContextForDiscovery).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      codexDiscoveryOptionsWithSecrets,
+    );
+    expect(sendRequest).toHaveBeenCalledTimes(1);
+    expect(secondResult).toEqual({
+      ...firstResult,
+      cached: true,
+    });
+  });
+
+  it("passes provider options to model discovery without keying the cache by provider passwords", async () => {
+    const manager = new CodexAppServerManager();
+    const context = createCodexDiscoveryContext();
+    const resolveContextForDiscovery = vi
+      .spyOn(
+        manager as unknown as {
+          resolveContextForDiscovery: (
+            threadId?: string,
+            cwd?: string,
+            providerOptions?: ProviderStartOptions,
+          ) => unknown;
+        },
+        "resolveContextForDiscovery",
+      )
+      .mockReturnValue(context);
+    const sendRequest = vi
+      .spyOn(
+        manager as unknown as {
+          sendRequest: (...args: unknown[]) => Promise<unknown>;
+        },
+        "sendRequest",
+      )
+      .mockResolvedValue(createModelListResponse("gpt-5.5"));
+
+    const firstResult = await manager.listModels("thread_1", codexDiscoveryOptionsWithSecrets);
+    const secondResult = await manager.listModels(
+      "thread_1",
+      codexDiscoveryOptionsWithDifferentSecrets,
+    );
+
+    expect(resolveContextForDiscovery).toHaveBeenCalledTimes(1);
+    expect(resolveContextForDiscovery).toHaveBeenCalledWith(
+      "thread_1",
+      undefined,
+      codexDiscoveryOptionsWithSecrets,
+    );
+    expect(sendRequest).toHaveBeenCalledTimes(1);
+    expect(secondResult).toEqual({
+      ...firstResult,
+      cached: true,
     });
   });
 });
