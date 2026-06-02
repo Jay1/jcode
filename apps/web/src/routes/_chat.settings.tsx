@@ -171,6 +171,9 @@ type InstallProviderSettings = {
   homePathKey?: "codexHomePath";
   homePlaceholder?: string;
   homeDescription?: ReactNode;
+  launchArgsKey?: "codexLaunchArgs";
+  launchArgsPlaceholder?: string;
+  launchArgsDescription?: ReactNode;
   apiEndpointKey?: "cursorApiEndpoint";
   apiEndpointPlaceholder?: string;
   apiEndpointDescription?: ReactNode;
@@ -273,6 +276,13 @@ const INSTALL_PROVIDER_SETTINGS: readonly InstallProviderSettings[] = [
     homePathKey: "codexHomePath",
     homePlaceholder: "CODEX_HOME",
     homeDescription: "Optional custom Codex home and config directory.",
+    launchArgsKey: "codexLaunchArgs",
+    launchArgsPlaceholder: "Additional Codex CLI arguments",
+    launchArgsDescription: (
+      <>
+        Optional Codex CLI arguments passed before <code>app-server</code>.
+      </>
+    ),
   },
   {
     provider: "claudeAgent",
@@ -588,7 +598,7 @@ function SettingsRouteView() {
   const providerUpdatesRef = useRef<HTMLDivElement | null>(null);
   const providerInstallsRef = useRef<HTMLDivElement | null>(null);
   const [openInstallProviders, setOpenInstallProviders] = useState<Record<ProviderKind, boolean>>({
-    codex: Boolean(settings.codexBinaryPath || settings.codexHomePath),
+    codex: Boolean(settings.codexBinaryPath || settings.codexHomePath || settings.codexLaunchArgs),
     claudeAgent: Boolean(settings.claudeBinaryPath),
     cursor: Boolean(settings.cursorBinaryPath || settings.cursorApiEndpoint),
     gemini: Boolean(settings.geminiBinaryPath),
@@ -656,6 +666,7 @@ function SettingsRouteView() {
   const isProviderOrderDirty = !sameProviderOrder(settings.providerOrder, defaults.providerOrder);
   const codexBinaryPath = settings.codexBinaryPath;
   const codexHomePath = settings.codexHomePath;
+  const codexLaunchArgs = settings.codexLaunchArgs;
   const claudeBinaryPath = settings.claudeBinaryPath;
   const cursorBinaryPath = settings.cursorBinaryPath;
   const cursorApiEndpoint = settings.cursorApiEndpoint;
@@ -783,7 +794,8 @@ function SettingsRouteView() {
   const isInstallSettingsDirty = visibleInstallProviderSettings.some((providerSettings) =>
     providerSettings.provider === "codex"
       ? settings.codexBinaryPath !== defaults.codexBinaryPath ||
-        settings.codexHomePath !== defaults.codexHomePath
+        settings.codexHomePath !== defaults.codexHomePath ||
+        settings.codexLaunchArgs !== defaults.codexLaunchArgs
       : providerSettings.provider === "claudeAgent"
         ? settings.claudeBinaryPath !== defaults.claudeBinaryPath
         : providerSettings.provider === "cursor"
@@ -2647,6 +2659,7 @@ function SettingsRouteView() {
                       claudeBinaryPath: defaults.claudeBinaryPath,
                       codexBinaryPath: defaults.codexBinaryPath,
                       codexHomePath: defaults.codexHomePath,
+                      codexLaunchArgs: defaults.codexLaunchArgs,
                       cursorBinaryPath: defaults.cursorBinaryPath,
                       cursorApiEndpoint: defaults.cursorApiEndpoint,
                       geminiBinaryPath: defaults.geminiBinaryPath,
@@ -2680,7 +2693,8 @@ function SettingsRouteView() {
                   const isDirty =
                     providerSettings.provider === "codex"
                       ? settings.codexBinaryPath !== defaults.codexBinaryPath ||
-                        settings.codexHomePath !== defaults.codexHomePath
+                        settings.codexHomePath !== defaults.codexHomePath ||
+                        settings.codexLaunchArgs !== defaults.codexLaunchArgs
                       : providerSettings.provider === "claudeAgent"
                         ? settings.claudeBinaryPath !== defaults.claudeBinaryPath
                         : providerSettings.provider === "cursor"
@@ -2884,6 +2898,34 @@ function SettingsRouteView() {
                                   {providerSettings.homeDescription ? (
                                     <span className="mt-1 block text-xs text-muted-foreground">
                                       {providerSettings.homeDescription}
+                                    </span>
+                                  ) : null}
+                                </label>
+                              ) : null}
+
+                              {providerSettings.launchArgsKey ? (
+                                <label
+                                  htmlFor={`provider-install-${providerSettings.launchArgsKey}`}
+                                  className="block"
+                                >
+                                  <span className="block text-xs font-medium text-foreground">
+                                    Codex launch arguments
+                                  </span>
+                                  <Input
+                                    id={`provider-install-${providerSettings.launchArgsKey}`}
+                                    className="mt-1"
+                                    value={codexLaunchArgs}
+                                    onChange={(event) =>
+                                      updateSettings({
+                                        codexLaunchArgs: event.target.value,
+                                      })
+                                    }
+                                    placeholder={providerSettings.launchArgsPlaceholder}
+                                    spellCheck={false}
+                                  />
+                                  {providerSettings.launchArgsDescription ? (
+                                    <span className="mt-1 block text-xs text-muted-foreground">
+                                      {providerSettings.launchArgsDescription}
                                     </span>
                                   ) : null}
                                 </label>
