@@ -322,10 +322,7 @@ import { ProjectPicker } from "./chat/ProjectPicker";
 import { ProviderHealthBanner } from "./chat/ProviderHealthBanner";
 import { ThreadErrorBanner } from "./chat/ThreadErrorBanner";
 import { RateLimitBanner } from "./chat/RateLimitBanner";
-import {
-  deriveLatestRateLimitStatus,
-  type RateLimitStatus,
-} from "./chat/RateLimitBanner.logic";
+import { deriveLatestRateLimitStatus, type RateLimitStatus } from "./chat/RateLimitBanner.logic";
 import {
   ACTIVE_TURN_LAYOUT_SETTLE_DELAY_MS,
   appendVoiceTranscriptToPrompt,
