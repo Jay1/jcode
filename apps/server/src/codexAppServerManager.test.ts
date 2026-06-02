@@ -7,6 +7,7 @@ import { ApprovalRequestId, ThreadId } from "@jcode/contracts";
 
 import {
   buildCodexProcessEnv,
+  buildCodexAppServerArgs,
   buildCodexInitializeParams,
   CODEX_DEFAULT_MODE_DEVELOPER_INSTRUCTIONS,
   CODEX_PLAN_MODE_DEVELOPER_INSTRUCTIONS,
@@ -532,6 +533,13 @@ describe("resolveCodexModelForAccount", () => {
 });
 
 describe("startSession", () => {
+  it("places Codex launch arguments before the app-server subcommand", () => {
+    expect(
+      buildCodexAppServerArgs('--config model_provider=ollama --sandbox "danger full"'),
+    ).toEqual(["--config", "model_provider=ollama", "--sandbox", "danger full", "app-server"]);
+    expect(buildCodexAppServerArgs("   ")).toEqual(["app-server"]);
+  });
+
   it("enables Codex experimental api capabilities during initialize", () => {
     expect(buildCodexInitializeParams()).toEqual({
       clientInfo: {
