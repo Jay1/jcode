@@ -114,11 +114,14 @@ import {
 } from "./ChatView.selectors";
 import {
   clampCollapsedComposerCursor,
+  type ComposerMessageHistoryNavigationState,
   type ComposerTrigger,
   collapseExpandedComposerCursor,
+  deriveComposerMessageHistory,
   detectComposerTrigger,
   expandCollapsedComposerCursor,
   replaceTextRange,
+  resolveComposerMessageHistoryNavigation,
   stripComposerTriggerText,
 } from "../composer-logic";
 import {
@@ -934,6 +937,8 @@ export default function ChatView({
     useMemo(() => createProjectSelector(fallbackDraftProjectId), [fallbackDraftProjectId]),
   );
   const promptRef = useRef(prompt);
+  const composerHistoryNavigationRef = useRef<ComposerMessageHistoryNavigationState | null>(null);
+  const composerHistoryAppliedPromptRef = useRef<string | null>(null);
   const [isDragOverComposer, setIsDragOverComposer] = useState(false);
   const [expandedImage, setExpandedImage] = useState<ExpandedImagePreview | null>(null);
   const [optimisticUserMessages, setOptimisticUserMessages] = useState<ChatMessage[]>([]);
@@ -1097,6 +1102,13 @@ export default function ChatView({
     },
     [setComposerDraftPrompt, threadId],
   );
+  const resetComposerHistoryNavigation = useCallback(() => {
+    composerHistoryNavigationRef.current = null;
+    composerHistoryAppliedPromptRef.current = null;
+  }, []);
+  useEffect(() => {
+    resetComposerHistoryNavigation();
+  }, [resetComposerHistoryNavigation, threadId]);
   const addComposerImage = useCallback(
     (image: ComposerImageAttachment) => {
       addComposerDraftImage(threadId, image);
@@ -2248,6 +2260,16 @@ export default function ChatView({
     attachmentPreviewHandoffByMessageId,
     optimisticUserMessages,
   ]);
+  const composerMessageHistory = useMemo(
+    () =>
+      deriveComposerMessageHistory(
+        filterSidechatTranscriptMessages(
+          serverMessages ?? [],
+          Boolean(activeThread?.sidechatSourceThreadId),
+        ),
+      ),
+    [activeThread?.sidechatSourceThreadId, serverMessages],
+  );
   const timelineEntries = useMemo(
     () =>
       deriveTimelineEntries(timelineMessages, activeThread?.proposedPlans ?? [], workLogEntries),
@@ -5092,6 +5114,7 @@ export default function ChatView({
 
   const clearComposerInput = useCallback(
     (threadId: ThreadId) => {
+      resetComposerHistoryNavigation();
       promptRef.current = "";
       clearComposerDraftContent(threadId);
       setSelectedComposerSkills([]);
@@ -5100,7 +5123,7 @@ export default function ChatView({
       setComposerCursor(0);
       setComposerTrigger(null);
     },
-    [clearComposerDraftContent],
+    [clearComposerDraftContent, resetComposerHistoryNavigation],
   );
 
   const restoreQueuedTurnToComposer = useCallback(
@@ -5587,6 +5610,7 @@ export default function ChatView({
         description: toastCopy.description,
       });
     }
+    resetComposerHistoryNavigation();
     promptRef.current = "";
     clearComposerDraftContent(threadIdForSend);
     setComposerHighlightedItemId(null);
@@ -6903,13 +6927,14 @@ export default function ChatView({
   );
 
   const clearComposerSlashDraft = useCallback(() => {
+    resetComposerHistoryNavigation();
     promptRef.current = "";
     clearComposerDraftContent(threadId);
     setComposerHighlightedItemId(null);
     setComposerCursor(0);
     setComposerTrigger(null);
     scheduleComposerFocus();
-  }, [clearComposerDraftContent, scheduleComposerFocus, threadId]);
+  }, [clearComposerDraftContent, resetComposerHistoryNavigation, scheduleComposerFocus, threadId]);
 
   const slashEditorActions = useMemo(
     () => ({
@@ -7154,6 +7179,7 @@ export default function ChatView({
       terminalContextIds: string[],
     ) => {
       if (activePendingProgress?.activeQuestion && activePendingUserInput) {
+        resetComposerHistoryNavigation();
         onChangeActivePendingUserInputCustomAnswer(
           activePendingProgress.activeQuestion.id,
           nextPrompt,
@@ -7162,6 +7188,11 @@ export default function ChatView({
           cursorAdjacentToMention,
         );
         return;
+      }
+      if (composerHistoryAppliedPromptRef.current !== nextPrompt) {
+        resetComposerHistoryNavigation();
+      } else {
+        composerHistoryAppliedPromptRef.current = null;
       }
       promptRef.current = nextPrompt;
       setPrompt(nextPrompt);
@@ -7185,6 +7216,7 @@ export default function ChatView({
       composerTerminalContexts,
       composerCommandPicker,
       onChangeActivePendingUserInputCustomAnswer,
+      resetComposerHistoryNavigation,
       setPrompt,
       setComposerDraftTerminalContexts,
       setComposerCommandPicker,
@@ -7218,7 +7250,7 @@ export default function ChatView({
       return true;
     }
 
-    const { trigger } = resolveActiveComposerTrigger();
+    const { snapshot, trigger } = resolveActiveComposerTrigger();
     const menuIsActive = composerMenuOpenRef.current || trigger !== null;
 
     if (menuIsActive && isLocalFolderBrowserOpen) {
@@ -7252,6 +7284,38 @@ export default function ChatView({
           onSelectComposerItem(selectedItem);
           return true;
         }
+      }
+    }
+
+    if (
+      (key === "ArrowUp" || key === "ArrowDown") &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.shiftKey &&
+      !isComposerApprovalState &&
+      !activePendingProgress
+    ) {
+      const result = resolveComposerMessageHistoryNavigation({
+        history: composerMessageHistory,
+        direction: key === "ArrowUp" ? "previous" : "next",
+        prompt: snapshot.value,
+        expandedCursor: snapshot.expandedCursor,
+        state: composerHistoryNavigationRef.current,
+      });
+      if (result.handled) {
+        const nextCursor = collapseExpandedComposerCursor(result.prompt, result.expandedCursor);
+        composerHistoryNavigationRef.current = result.state;
+        composerHistoryAppliedPromptRef.current = result.prompt;
+        promptRef.current = result.prompt;
+        setPrompt(result.prompt);
+        setComposerCursor(nextCursor);
+        setComposerTrigger(detectComposerTrigger(result.prompt, result.expandedCursor));
+        setComposerHighlightedItemId(null);
+        window.requestAnimationFrame(() => {
+          composerEditorRef.current?.focusAt(nextCursor);
+        });
+        return true;
       }
     }
 

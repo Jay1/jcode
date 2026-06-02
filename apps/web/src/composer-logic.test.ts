@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   clampCollapsedComposerCursor,
   collapseExpandedComposerCursor,
+  deriveComposerMessageHistory,
   detectComposerTrigger,
   expandCollapsedComposerCursor,
   isCollapsedCursorAdjacentToInlineToken,
   parseStandaloneComposerSlashCommand,
   replaceTextRange,
+  resolveComposerMessageHistoryNavigation,
   stripComposerTriggerText,
 } from "./composer-logic";
 import { INLINE_TERMINAL_CONTEXT_PLACEHOLDER } from "./lib/terminalContext";
@@ -187,6 +189,143 @@ describe("detectComposerTrigger", () => {
     const trigger = detectComposerTrigger(text, text.length);
 
     expect(trigger).toBeNull();
+  });
+});
+
+describe("deriveComposerMessageHistory", () => {
+  it("keeps reusable native user message text in chronological order", () => {
+    const history = deriveComposerMessageHistory([
+      { role: "assistant", source: "native", text: "not reusable" },
+      { role: "user", source: "native", text: "first prompt" },
+      { role: "user", source: "native", text: "second prompt" },
+    ]);
+
+    expect(history).toEqual(["first prompt", "second prompt"]);
+  });
+
+  it("ignores non-native user messages and blank prompts", () => {
+    const history = deriveComposerMessageHistory([
+      { role: "user", source: "handoff-import", text: "external" },
+      { role: "user", source: "native", text: "   \n" },
+      { role: "user", text: "legacy native" },
+      { role: "user", source: "native", text: "kept" },
+    ]);
+
+    expect(history).toEqual(["legacy native", "kept"]);
+  });
+});
+
+describe("resolveComposerMessageHistoryNavigation", () => {
+  it("recalls the newest history entry when pressing up at the start of the prompt", () => {
+    const result = resolveComposerMessageHistoryNavigation({
+      history: ["first prompt", "second prompt"],
+      direction: "previous",
+      prompt: "draft",
+      expandedCursor: 0,
+      state: null,
+    });
+
+    expect(result).toEqual({
+      handled: true,
+      prompt: "second prompt",
+      expandedCursor: "second prompt".length,
+      state: { index: 1, draftBeforeHistory: "draft", draftBeforeHistoryExpandedCursor: 0 },
+    });
+  });
+
+  it("walks older and newer entries while preserving the original draft", () => {
+    const previous = resolveComposerMessageHistoryNavigation({
+      history: ["first prompt", "second prompt"],
+      direction: "previous",
+      prompt: "second prompt",
+      expandedCursor: "second prompt".length,
+      state: { index: 1, draftBeforeHistory: "draft", draftBeforeHistoryExpandedCursor: 2 },
+    });
+
+    expect(previous).toEqual({
+      handled: true,
+      prompt: "first prompt",
+      expandedCursor: "first prompt".length,
+      state: { index: 0, draftBeforeHistory: "draft", draftBeforeHistoryExpandedCursor: 2 },
+    });
+
+    const next = resolveComposerMessageHistoryNavigation({
+      history: ["first prompt", "second prompt"],
+      direction: "next",
+      prompt: "first prompt",
+      expandedCursor: "first prompt".length,
+      state: previous.state,
+    });
+
+    expect(next).toEqual({
+      handled: true,
+      prompt: "second prompt",
+      expandedCursor: "second prompt".length,
+      state: { index: 1, draftBeforeHistory: "draft", draftBeforeHistoryExpandedCursor: 2 },
+    });
+  });
+
+  it("restores the original draft when pressing down past the newest entry", () => {
+    const result = resolveComposerMessageHistoryNavigation({
+      history: ["first prompt", "second prompt"],
+      direction: "next",
+      prompt: "second prompt",
+      expandedCursor: "second prompt".length,
+      state: { index: 1, draftBeforeHistory: "draft", draftBeforeHistoryExpandedCursor: 2 },
+    });
+
+    expect(result).toEqual({
+      handled: true,
+      prompt: "draft",
+      expandedCursor: 2,
+      state: null,
+    });
+  });
+
+  it("does not handle arrows away from the expected prompt boundaries", () => {
+    expect(
+      resolveComposerMessageHistoryNavigation({
+        history: ["first prompt"],
+        direction: "previous",
+        prompt: "draft",
+        expandedCursor: 2,
+        state: null,
+      }),
+    ).toEqual({ handled: false, prompt: "draft", expandedCursor: 2, state: null });
+
+    expect(
+      resolveComposerMessageHistoryNavigation({
+        history: ["first prompt"],
+        direction: "next",
+        prompt: "draft",
+        expandedCursor: 2,
+        state: null,
+      }),
+    ).toEqual({ handled: false, prompt: "draft", expandedCursor: 2, state: null });
+  });
+
+  it("uses expanded cursor offsets for prompts with collapsed inline tokens", () => {
+    const prompt = "reuse @AGENTS.md";
+
+    expect(
+      resolveComposerMessageHistoryNavigation({
+        history: ["first prompt"],
+        direction: "next",
+        prompt,
+        expandedCursor: prompt.length,
+        state: { index: 0, draftBeforeHistory: "draft", draftBeforeHistoryExpandedCursor: 1 },
+      }),
+    ).toEqual({ handled: true, prompt: "draft", expandedCursor: 1, state: null });
+
+    expect(
+      resolveComposerMessageHistoryNavigation({
+        history: ["first prompt"],
+        direction: "next",
+        prompt,
+        expandedCursor: "reuse @".length,
+        state: null,
+      }),
+    ).toEqual({ handled: false, prompt, expandedCursor: "reuse @".length, state: null });
   });
 });
 
