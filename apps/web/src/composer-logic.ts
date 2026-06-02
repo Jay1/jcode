@@ -15,6 +15,92 @@ export interface ComposerTrigger {
   rangeEnd: number;
 }
 
+export interface ComposerHistoryMessageLike {
+  role: string;
+  source?: string | null;
+  text: string;
+}
+
+export function deriveComposerMessageHistory(
+  messages: ReadonlyArray<ComposerHistoryMessageLike>,
+): string[] {
+  return messages
+    .filter(
+      (message) =>
+        message.role === "user" && (message.source === undefined || message.source === "native"),
+    )
+    .map((message) => message.text)
+    .filter((text) => text.trim().length > 0);
+}
+
+export interface ComposerMessageHistoryNavigationState {
+  index: number;
+  draftBeforeHistory: string;
+}
+
+export interface ComposerMessageHistoryNavigationInput {
+  history: ReadonlyArray<string>;
+  direction: "previous" | "next";
+  prompt: string;
+  expandedCursor: number;
+  state: ComposerMessageHistoryNavigationState | null;
+}
+
+export interface ComposerMessageHistoryNavigationResult {
+  handled: boolean;
+  prompt: string;
+  state: ComposerMessageHistoryNavigationState | null;
+}
+
+export function resolveComposerMessageHistoryNavigation(
+  input: ComposerMessageHistoryNavigationInput,
+): ComposerMessageHistoryNavigationResult {
+  if (input.history.length === 0) {
+    return { handled: false, prompt: input.prompt, state: input.state };
+  }
+
+  const isNavigatingHistory = input.state !== null;
+  if (input.direction === "previous" && !isNavigatingHistory && input.expandedCursor !== 0) {
+    return { handled: false, prompt: input.prompt, state: input.state };
+  }
+  if (
+    input.direction === "next" &&
+    !isNavigatingHistory &&
+    input.expandedCursor !== input.prompt.length
+  ) {
+    return { handled: false, prompt: input.prompt, state: input.state };
+  }
+
+  if (input.direction === "previous") {
+    const index = input.state
+      ? Math.min(input.history.length - 1, Math.max(0, input.state.index - 1))
+      : input.history.length - 1;
+    return {
+      handled: true,
+      prompt: input.history[index] ?? input.prompt,
+      state: {
+        index,
+        draftBeforeHistory: input.state?.draftBeforeHistory ?? input.prompt,
+      },
+    };
+  }
+
+  if (!input.state) {
+    return { handled: false, prompt: input.prompt, state: null };
+  }
+
+  const nextIndex = input.state.index + 1;
+  if (nextIndex >= input.history.length) {
+    return { handled: true, prompt: input.state.draftBeforeHistory, state: null };
+  }
+
+  return {
+    handled: true,
+    prompt: input.history[nextIndex] ?? input.prompt,
+    state: { ...input.state, index: nextIndex },
+  };
+}
+
 export function stripComposerTriggerText(text: string, trigger: ComposerTrigger | null): string {
   if (!trigger) {
     return text;
