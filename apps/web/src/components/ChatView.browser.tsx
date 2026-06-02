@@ -2026,6 +2026,66 @@ describe("ChatView timeline estimator parity (full app)", () => {
     }
   });
 
+  it("navigates current-thread composer message history with Up and Down", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotForTargetUser({
+        targetMessageId: "msg-user-history-target" as MessageId,
+        targetText: "history target",
+      }),
+    });
+
+    try {
+      const composerEditor = await waitForComposerEditor();
+      const dispatchComposerKey = (key: "ArrowDown" | "ArrowUp") => {
+        composerEditor.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      };
+
+      composerEditor.focus();
+      expect(composerEditor.textContent).toBe("");
+
+      dispatchComposerKey("ArrowUp");
+      await vi.waitFor(
+        () => {
+          expect(composerEditor.textContent).toBe("filler user message 21");
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      dispatchComposerKey("ArrowUp");
+      await vi.waitFor(
+        () => {
+          expect(composerEditor.textContent).toBe("filler user message 20");
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      dispatchComposerKey("ArrowDown");
+      await vi.waitFor(
+        () => {
+          expect(composerEditor.textContent).toBe("filler user message 21");
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      dispatchComposerKey("ArrowDown");
+      await vi.waitFor(
+        () => {
+          expect(composerEditor.textContent).toBe("");
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
   it("opens the composer model picker with Cmd+Shift+M", async () => {
     const mounted = await mountChatView({
       viewport: DEFAULT_VIEWPORT,
