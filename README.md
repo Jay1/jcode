@@ -25,6 +25,7 @@ Install and set up JCode from https://github.com/Jay1/jcode on this machine.
 Steps:
 
 1. Clone the repo:
+
    ```bash
    git clone https://github.com/Jay1/jcode.git
    cd jcode
@@ -35,12 +36,14 @@ Steps:
    versions through whatever package manager is on this system.
 
 3. Install dependencies and build:
+
    ```bash
    bun install
    bun run build
    ```
 
 4. Start the dev server:
+
    ```bash
    bun run dev
    ```
