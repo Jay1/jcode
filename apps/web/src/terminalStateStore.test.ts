@@ -399,4 +399,38 @@ describe("terminalStateStore actions", () => {
     );
     expect(terminalState.terminalTitleOverridesById).toEqual({});
   });
+
+  it("sets and clears group title overrides", () => {
+    const store = useTerminalStateStore.getState();
+    store.setGroupTitleOverride(THREAD_ID, "group-default", "Build Group");
+
+    let terminalState = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadId,
+      THREAD_ID,
+    );
+    expect(terminalState.groupTitleOverridesById).toEqual({
+      "group-default": "Build Group",
+    });
+
+    store.setGroupTitleOverride(THREAD_ID, "group-default", "");
+
+    terminalState = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadId,
+      THREAD_ID,
+    );
+    expect(terminalState.groupTitleOverridesById).toEqual({});
+  });
+
+  it("clears group title override when group closes", () => {
+    const store = useTerminalStateStore.getState();
+    store.newTerminal(THREAD_ID, "terminal-2");
+    store.setGroupTitleOverride(THREAD_ID, "group-terminal-2", "Scratch Group");
+    store.closeTerminalGroup(THREAD_ID, "group-terminal-2");
+
+    const terminalState = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadId,
+      THREAD_ID,
+    );
+    expect(terminalState.groupTitleOverridesById).toEqual({});
+  });
 });

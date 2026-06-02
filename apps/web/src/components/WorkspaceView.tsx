@@ -381,6 +381,7 @@ export default function WorkspaceView({ workspaceId }: { workspaceId: string }) 
       terminalState.activeTerminalGroupId,
       terminalState.activeTerminalId,
       terminalState.terminalAttentionStatesById,
+      terminalState.groupTitleOverridesById,
       terminalState.runningTerminalIds,
       terminalState.terminalCliKindsById,
       terminalState.terminalGroups,

@@ -20,7 +20,7 @@ interface ProposedPlanActionsProps {
   className?: string;
   buttonClassName?: string;
   iconClassName?: string;
-  onReview?: (() => void) | undefined;
+  onReview?: () => void;
 }
 
 export const ProposedPlanActions = memo(function ProposedPlanActions({

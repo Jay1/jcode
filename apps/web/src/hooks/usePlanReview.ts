@@ -11,6 +11,7 @@ export interface UsePlanReviewResult {
   addAnnotation: (comment: string, quote: string | null) => void;
   updateAnnotation: (id: string, comment: string, quote: string | null) => void;
   deleteAnnotation: (id: string) => void;
+  resetAnnotations: () => void;
   buildComposerMarkdown: (planTitle: string | null) => string;
 }
 
@@ -18,7 +19,7 @@ export function usePlanReview(): UsePlanReviewResult {
   const [annotations, setAnnotations] = useState<PlanAnnotation[]>([]);
 
   const addAnnotation = useCallback((comment: string, quote: string | null) => {
-    const id = `annotation-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const id = `annotation-${crypto.randomUUID()}`;
     setAnnotations((prev) => [...prev, createPlanAnnotation(id, comment, quote)]);
   }, []);
 
@@ -30,6 +31,10 @@ export function usePlanReview(): UsePlanReviewResult {
 
   const deleteAnnotation = useCallback((id: string) => {
     setAnnotations((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
+  const resetAnnotations = useCallback(() => {
+    setAnnotations([]);
   }, []);
 
   const buildComposerMarkdown = useCallback(
@@ -44,6 +49,7 @@ export function usePlanReview(): UsePlanReviewResult {
     addAnnotation,
     updateAnnotation,
     deleteAnnotation,
+    resetAnnotations,
     buildComposerMarkdown,
   };
 }

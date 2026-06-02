@@ -10,18 +10,27 @@ export interface PlanReviewState {
   annotations: PlanAnnotation[];
 }
 
+function normalizeComment(comment: string): string {
+  const normalized = comment.trim();
+  if (normalized.length === 0) {
+    throw new Error("Plan annotation comment cannot be empty.");
+  }
+  return normalized;
+}
+
 export function createPlanAnnotation(
   id: string,
   comment: string,
   quote: string | null = null,
 ): PlanAnnotation {
   const now = new Date().toISOString();
+  const normalizedComment = normalizeComment(comment);
   return {
     id,
     createdAt: now,
     updatedAt: now,
     quote: quote && quote.trim().length > 0 ? quote.trim() : null,
-    comment: comment.trim(),
+    comment: normalizedComment,
   };
 }
 
@@ -31,7 +40,7 @@ export function updatePlanAnnotation(
 ): PlanAnnotation {
   return {
     ...annotation,
-    comment: updates.comment !== undefined ? updates.comment.trim() : annotation.comment,
+    comment: updates.comment !== undefined ? normalizeComment(updates.comment) : annotation.comment,
     quote:
       updates.quote !== undefined
         ? updates.quote && updates.quote.trim().length > 0

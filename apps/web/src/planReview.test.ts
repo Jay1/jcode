@@ -29,6 +29,12 @@ describe("createPlanAnnotation", () => {
     expect(annotation.quote).toBe("quoted");
   });
 
+  it("rejects empty comments", () => {
+    expect(() => createPlanAnnotation("a-empty", "   ")).toThrow(
+      "Plan annotation comment cannot be empty.",
+    );
+  });
+
   it("converts empty quote to null", () => {
     const annotation = createPlanAnnotation("a4", "comment", "");
     expect(annotation.quote).toBeNull();
@@ -45,6 +51,13 @@ describe("updatePlanAnnotation", () => {
     expect(updated.comment).toBe("New comment");
     expect(updated.quote).toBe("Quote");
     expect(updated.updatedAt).not.toBe(base.updatedAt);
+  });
+
+  it("rejects empty comment updates", () => {
+    const base = createPlanAnnotation("a1", "Old comment", "Quote");
+    expect(() => updatePlanAnnotation(base, { comment: "   " })).toThrow(
+      "Plan annotation comment cannot be empty.",
+    );
   });
 
   it("updates quote to null", () => {
