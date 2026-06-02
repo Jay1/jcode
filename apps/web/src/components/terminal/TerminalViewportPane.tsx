@@ -3,7 +3,14 @@
 // Layer: Terminal presentation components
 // Depends on: caller-provided viewport renderer so xterm lifecycle can stay external.
 
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 
 import type { ResolvedTerminalVisualIdentity } from "@jcode/shared/terminalThreads";
 

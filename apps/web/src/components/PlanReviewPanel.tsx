@@ -4,10 +4,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Textarea } from "./ui/textarea";
 import { XIcon, MessageCircleIcon, SquarePenIcon, Trash2, CheckIcon } from "~/lib/icons";
 import ChatMarkdown from "./ChatMarkdown";
-import {
-  buildPlanReviewComposerMarkdown,
-  type PlanAnnotation,
-} from "../planReview";
+import { buildPlanReviewComposerMarkdown, type PlanAnnotation } from "../planReview";
 
 interface PlanReviewPanelProps {
   planTitle: string | null;
@@ -137,7 +134,9 @@ export const PlanReviewPanel = memo(function PlanReviewPanel({
             <Textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder={quote ? "Add a comment about the selected quote..." : "Add a general comment..."}
+              placeholder={
+                quote ? "Add a comment about the selected quote..." : "Add a general comment..."
+              }
               className="min-h-[80px] text-[13px] resize-none"
             />
             <Button

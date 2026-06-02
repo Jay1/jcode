@@ -8784,7 +8784,11 @@ export default function ChatView({
         ) : null}
         {planReviewOpen && sidebarProposedPlan?.planMarkdown ? (
           <PlanReviewPanel
-            planTitle={sidebarProposedPlan.planMarkdown ? proposedPlanTitle(sidebarProposedPlan.planMarkdown) : null}
+            planTitle={
+              sidebarProposedPlan.planMarkdown
+                ? proposedPlanTitle(sidebarProposedPlan.planMarkdown)
+                : null
+            }
             planMarkdown={sidebarProposedPlan.planMarkdown}
             cwd={threadWorkspaceCwd ?? undefined}
             annotations={planReview.annotations}
