@@ -29,7 +29,7 @@ Skill Library is expected to become a major JCode module, not a temporary browse
 
 JCode will treat Skill Library as a Settings-native, provider-aware capability surface.
 
-The first implementation is a read-only installed-skills inventory. It must show installed skills across all providers that support skill discovery, make provider source visible, and reserve clear seams for later skill management. The visual design should use a preview rail for delight and discovery, but the complete browse path must be a dense, searchable, provider-grouped inventory.
+The first implementation is a read-only installed-skills inventory. It must show installed skills across all providers that support skill discovery, make provider source visible, and reserve clear seams for later skill management. The visual design should use a dense, searchable, provider-grouped inventory as the complete browse path.
 
 The Skill Library should be implemented as a dedicated Settings section and panel. It may reuse provider discovery helpers and small display patterns, but it should not render `PluginLibrary` wholesale as the main surface.
 
@@ -41,7 +41,7 @@ The Skill Library should be implemented as a dedicated Settings section and pane
 | ---------------- | ---------------------------------------------------------------------------- |
 | Complexity       | Low for v1                                                                   |
 | Density          | Poor for hundreds of skills                                                  |
-| Discovery        | Strong for a small preview subset                                            |
+| Discovery        | Strong for a small subset                                                    |
 | Future fit       | Weak because management/search/catalog actions need a complete inventory     |
 | Provider clarity | Weak unless every card carries source and alternate browse paths still exist |
 
@@ -79,13 +79,13 @@ Cons:
 - Route-level plugin browser semantics leak into Settings.
 - Does not create the distinct Skill Library module JCode needs.
 
-### Option C: Settings-native preview rail plus dense provider-grouped inventory
+### Option C: Settings-native dense provider-grouped inventory
 
 | Dimension        | Assessment                                                                |
 | ---------------- | ------------------------------------------------------------------------- |
 | Complexity       | Medium                                                                    |
 | Density          | Strong for hundreds of skills                                             |
-| Discovery        | Strong through preview rail plus search                                   |
+| Discovery        | Strong through search, source filters, and grouped rows                   |
 | Future fit       | Strong for details, install, uninstall, enable/disable, and catalog seams |
 | Provider clarity | Strong because each row/card keeps explicit source metadata               |
 
@@ -99,14 +99,14 @@ Pros:
 Cons:
 
 - More custom UI than reusing `PluginLibrary` wholesale.
-- Requires helper logic for aggregation, filtering, counts, and preview selection.
+- Requires helper logic for aggregation, filtering, counts, and row rendering.
 - Needs browser verification because it is visible Settings UI.
 
 ## Trade-Off Analysis
 
 Option C best matches JCode's cockpit model. A cockpit should expose high-value operational capability surfaces without leaking provider protocol details, while still making provider source boundaries explicit when those boundaries affect behavior.
 
-The preview rail preserves the memorable “carousel” quality without making horizontal scrolling the only way to browse. The dense inventory follows proven large-catalog patterns: search first, source filters, visible counts, grouped results, and clear empty states.
+The dense inventory follows proven large-catalog patterns: search first, source filters, visible counts, grouped results, and clear empty states. This keeps the first version contained in the Settings layout and avoids horizontal browsing for large installed skill sets.
 
 Keeping install and uninstall out of v1 avoids pretending all providers support the same management actions. Future management should be gated by provider-specific capability flags instead of generic buttons.
 

@@ -55,31 +55,3 @@ export function countSkillLibraryRowsByProvider(
   }
   return counts;
 }
-
-export function selectSkillLibraryPreviewRows(
-  rows: readonly SkillLibraryRow[],
-  limit: number,
-): SkillLibraryRow[] {
-  if (limit <= 0) return [];
-
-  const sortedRows = [...rows].sort((a, b) => {
-    const byName = a.skill.name.localeCompare(b.skill.name);
-    if (byName !== 0) return byName;
-    return a.provider.localeCompare(b.provider);
-  });
-  const providers = [...new Set(sortedRows.map((row) => row.provider))].sort();
-  const selected: SkillLibraryRow[] = [];
-
-  for (const provider of providers) {
-    const row = sortedRows.find((candidate) => candidate.provider === provider);
-    if (row) selected.push(row);
-    if (selected.length >= limit) return selected;
-  }
-
-  for (const row of sortedRows) {
-    if (!selected.includes(row)) selected.push(row);
-    if (selected.length >= limit) return selected;
-  }
-
-  return selected;
-}

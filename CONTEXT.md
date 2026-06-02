@@ -24,7 +24,7 @@ The Skill Library should feel unified, but provider source boundaries remain exp
 
 Skill cards optimize for recognition in the first iteration. A card should make the skill's name, source provider, and use case scannable at a glance; full prompt content, dependency details, file paths, and management operations belong outside the card or in future detail surfaces.
 
-The first Skill Library should use carousel-like discovery rather than a pure carousel. A preview rail can provide delight, but provider-grouped grids or lists must remain available so large installed-skill sets stay browsable.
+The first Skill Library should use a search-first command-library layout rather than a carousel. Provider-grouped lists must remain the complete browse path so large installed-skill sets stay contained and scannable.
 
 ### Chat-Output Scannability
 
