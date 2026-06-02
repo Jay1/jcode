@@ -68,7 +68,10 @@ import {
   resolveJCodeCodexHomeOverlayPath,
   shouldDisableJCodeBrowserPlugin,
 } from "./codexHomePaths.ts";
-import { transcribeVoiceWithChatGptSession } from "./voiceTranscription.ts";
+import {
+  transcribeVoiceWithChatGptSession,
+  VoiceTranscriptionAuthExpiredError,
+} from "./voiceTranscription.ts";
 
 type PendingRequestKey = string;
 
@@ -2053,7 +2056,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
 
     if (!token) {
-      throw new Error("No ChatGPT session token is available. Sign in to ChatGPT in Codex.");
+      throw new VoiceTranscriptionAuthExpiredError(
+        "No ChatGPT session token is available. Sign in to ChatGPT in Codex.",
+      );
     }
     if (authMethod !== "chatgpt" && authMethod !== "chatgptAuthTokens") {
       throw new Error("Voice transcription requires a ChatGPT-authenticated Codex session.");

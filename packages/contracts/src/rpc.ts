@@ -97,6 +97,7 @@ import {
   ServerUpdateSettingsInput,
   ServerUpdateSettingsResult,
   ServerUpsertKeybindingResult,
+  ServerVoiceTranscriptionErrorDetail,
   ServerVoiceTranscriptionInput,
   ServerVoiceTranscriptionResult,
 } from "./server";
@@ -114,6 +115,7 @@ import { WS_METHODS } from "./ws";
 
 export class WsRpcError extends Schema.TaggedErrorClass<WsRpcError>()("WsRpcError", {
   message: Schema.String,
+  detail: Schema.optional(ServerVoiceTranscriptionErrorDetail),
   cause: Schema.optional(Schema.Defect),
 }) {}
 
