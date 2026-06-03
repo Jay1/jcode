@@ -89,5 +89,4 @@ export {
   GroupText as ButtonGroupText,
   GroupSeparator,
   GroupSeparator as ButtonGroupSeparator,
-  groupVariants,
 };

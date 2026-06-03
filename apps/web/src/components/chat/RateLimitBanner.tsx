@@ -1,43 +1,8 @@
 import { memo } from "react";
-import type { OrchestrationThreadActivity } from "@jcode/contracts";
 import { Alert, AlertAction, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { CircleAlertIcon, XIcon } from "~/lib/icons";
-
-export type RateLimitStatus = {
-  status: "rejected" | "allowed_warning";
-  resetsAt?: string;
-  utilization?: number;
-};
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
-
-export function deriveLatestRateLimitStatus(
-  activities: ReadonlyArray<OrchestrationThreadActivity>,
-): RateLimitStatus | null {
-  const now = Date.now();
-  for (let i = activities.length - 1; i >= 0; i--) {
-    const activity = activities[i];
-    if (!activity || activity.kind !== "account.rate-limited") continue;
-    const payload = asRecord(activity.payload);
-    if (!payload) continue;
-    const status = payload.status;
-    if (status !== "rejected" && status !== "allowed_warning") continue;
-    // If resetsAt is in the past, the limit has expired — skip
-    if (typeof payload.resetsAt === "string") {
-      const resetsAtMs = Date.parse(payload.resetsAt);
-      if (!Number.isNaN(resetsAtMs) && resetsAtMs < now) continue;
-    }
-    return {
-      status,
-      ...(typeof payload.resetsAt === "string" ? { resetsAt: payload.resetsAt } : {}),
-      ...(typeof payload.utilization === "number" ? { utilization: payload.utilization } : {}),
-    };
-  }
-  return null;
-}
+import type { RateLimitStatus } from "./RateLimitBanner.logic";
 
 function formatResetsAt(resetsAt: string): string {
   const ms = Date.parse(resetsAt);

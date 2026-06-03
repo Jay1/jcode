@@ -16,7 +16,8 @@ import {
 } from "~/lib/icons";
 
 import { cn } from "~/lib/utils";
-import { Button, buttonVariants } from "~/components/ui/button";
+import { Button } from "~/components/ui/button";
+import { buttonVariants } from "~/components/ui/button.variants";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { buildVisibleToastLayout, shouldHideCollapsedToastContent } from "./toast.logic";
 import { parseDiffRouteSearch } from "../../diffRouteSearch";

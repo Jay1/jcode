@@ -1,5 +1,5 @@
 import { type ApprovalRequestId } from "@jcode/contracts";
-import { memo, useEffect, useEffectEvent, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import { type PendingUserInput } from "../../session-logic";
 import {
   derivePendingUserInputProgress,
@@ -78,19 +78,22 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
     };
   }, [activeQuestion?.id, isResponding]);
 
-  const handleOptionSelection = useEffectEvent((questionId: string, optionLabel: string) => {
-    const nextDraftAnswer = onToggleOption(questionId, optionLabel);
-    if (activeQuestion?.multiSelect) {
-      return;
-    }
-    if (autoAdvanceTimerRef.current !== null) {
-      window.clearTimeout(autoAdvanceTimerRef.current);
-    }
-    autoAdvanceTimerRef.current = window.setTimeout(() => {
-      autoAdvanceTimerRef.current = null;
-      onAdvanceRef.current(nextDraftAnswer ? { [questionId]: nextDraftAnswer } : undefined);
-    }, 200);
-  });
+  const handleOptionSelection = useCallback(
+    (questionId: string, optionLabel: string) => {
+      const nextDraftAnswer = onToggleOption(questionId, optionLabel);
+      if (activeQuestion?.multiSelect) {
+        return;
+      }
+      if (autoAdvanceTimerRef.current !== null) {
+        window.clearTimeout(autoAdvanceTimerRef.current);
+      }
+      autoAdvanceTimerRef.current = window.setTimeout(() => {
+        autoAdvanceTimerRef.current = null;
+        onAdvanceRef.current(nextDraftAnswer ? { [questionId]: nextDraftAnswer } : undefined);
+      }, 200);
+    },
+    [activeQuestion?.multiSelect, onToggleOption],
+  );
 
   // Keyboard shortcut: digits toggle options for multi-select prompts and preserve
   // the current auto-advance behavior for single-select questions.
@@ -121,7 +124,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [activeQuestion, isResponding]);
+  }, [activeQuestion, handleOptionSelection, isResponding]);
 
   if (!activeQuestion) {
     return null;

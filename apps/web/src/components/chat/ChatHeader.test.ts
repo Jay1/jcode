@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { resolveChatHeaderThreadIconKind } from "./ChatHeader";
+import { resolveChatHeaderThreadIconKind } from "./ChatHeader.logic";
 
 describe("resolveChatHeaderThreadIconKind", () => {
   it("uses the terminal icon for terminal-first threads", () => {
