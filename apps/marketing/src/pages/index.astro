@@ -24,20 +24,18 @@ import { RELEASES_URL } from "../lib/releases";
       <li class="feature-card">Keyboard-first control</li>
       <li class="feature-card">CTRL+K command bar</li>
       <li class="feature-card">27 built-in themes</li>
+      <li class="feature-card">Skill manager interface</li>
     </ul>
 
     <div class="screenshot-wrap">
-      <img src="/screenshot.png" alt="JCode" class="screenshot" />
+      <img src="/app_newlogo.png" alt="JCode" class="screenshot" />
     </div>
 
     <ul class="feature-rail feature-rail--right" aria-label="Workflow features">
       <li class="feature-card">One-button ship flow</li>
+      <li class="feature-card">Worktree per thread</li>
       <li class="feature-card">Binlex-ready workflows</li>
       <li class="feature-card">Low-level debugging depth</li>
-      <li class="feature-card feature-card--planned">
-        <span>Coming next</span>
-        <span class="feature-card-note">Planned</span>
-      </li>
     </ul>
   </section>
 </Layout>
@@ -121,7 +119,7 @@ import { RELEASES_URL } from "../lib/releases";
   .tagline {
     font-weight: 500;
     font-size: clamp(2rem, 5vw, 3.5rem);
-    letter-spacing: -0.035em;
+    letter-spacing: 0;
     line-height: 1.15;
     text-align: center;
     margin: 0 0 6vh;
@@ -135,21 +133,23 @@ import { RELEASES_URL } from "../lib/releases";
     display: inline-flex;
     align-items: center;
     gap: 0.55rem;
-    background: #fafafa;
-    color: #09090b;
+    background: var(--accent-blue);
+    color: var(--bg-deep);
     padding: 0.75rem 2rem;
     border-radius: 999px;
+    border: 1px solid rgba(205, 214, 244, 0.38);
     font-weight: 600;
     font-size: 0.9rem;
     margin-bottom: 1.25rem;
     opacity: 0;
     animation: fade-in 1s ease-out 0.15s forwards;
+    box-shadow: 0 16px 42px rgba(137, 180, 250, 0.2);
     transition: transform 0.25s ease, box-shadow 0.25s ease;
   }
 
   .hero-button:hover {
     transform: scale(1.03);
-    box-shadow: 0 0 24px rgba(255, 255, 255, 0.08);
+    box-shadow: 0 18px 48px rgba(137, 180, 250, 0.3);
   }
 
   .hero-button:active {
@@ -179,19 +179,19 @@ import { RELEASES_URL } from "../lib/releases";
 
   .other-platforms {
     font-size: 0.825rem;
-    color: var(--fg-dim);
+    color: var(--fg-muted);
     margin-bottom: 5vh;
     opacity: 0;
     animation: fade-in 1s ease-out 0.3s forwards;
     transition: color 0.3s ease;
     text-decoration: underline;
-    text-decoration-color: rgba(113, 113, 122, 0.4);
+    text-decoration-color: rgba(180, 190, 254, 0.42);
     text-underline-offset: 3px;
   }
 
   .other-platforms:hover {
-    color: var(--fg-muted);
-    text-decoration-color: var(--fg-muted);
+    color: var(--accent-strong);
+    text-decoration-color: var(--accent-strong);
   }
 
   /* ── Feature stage ── */
@@ -202,10 +202,10 @@ import { RELEASES_URL } from "../lib/releases";
     --feature-card-gap: 0.55rem;
     --feature-card-pad-y: 0.72rem;
     --feature-card-pad-x: 0.85rem;
-    --feature-card-radius: 12px;
-    --feature-card-bg: color-mix(in srgb, var(--fg) 2%, transparent);
-    --feature-card-bg-hover: color-mix(in srgb, var(--fg) 5%, transparent);
-    --feature-card-border-hover: color-mix(in srgb, var(--fg) 14%, transparent);
+    --feature-card-radius: 10px;
+    --feature-card-bg: rgba(49, 50, 68, 0.58);
+    --feature-card-bg-hover: rgba(69, 71, 90, 0.74);
+    --feature-card-border-hover: rgba(137, 180, 250, 0.38);
 
     width: min(95vw, 1880px);
     display: grid;
@@ -238,25 +238,59 @@ import { RELEASES_URL } from "../lib/releases";
     gap: var(--feature-card-gap);
     padding: var(--feature-card-pad-y) var(--feature-card-pad-x);
     border: 1px solid var(--border);
+    border-left: 3px solid var(--card-accent, var(--accent-blue));
     border-radius: var(--feature-card-radius);
     background: var(--feature-card-bg);
+    box-shadow: 0 10px 30px rgba(17, 17, 27, 0.12);
     color: var(--fg-muted);
     font-size: 0.82rem;
     font-weight: 500;
     line-height: 1.25;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
     transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease, transform 0.25s ease;
   }
 
   .feature-card:hover {
     background: var(--feature-card-bg-hover);
     border-color: var(--feature-card-border-hover);
-    color: var(--fg);
+    color: var(--accent-strong);
     transform: translateY(-1px);
   }
 
+  .feature-rail--left .feature-card:nth-child(1) {
+    --card-accent: var(--accent-blue);
+  }
+
+  .feature-rail--left .feature-card:nth-child(2) {
+    --card-accent: var(--accent-sky);
+  }
+
+  .feature-rail--left .feature-card:nth-child(3) {
+    --card-accent: var(--accent-green);
+  }
+
+  .feature-rail--left .feature-card:nth-child(4) {
+    --card-accent: var(--accent-teal);
+  }
+
+  .feature-rail--right .feature-card:nth-child(1) {
+    --card-accent: var(--accent-blue);
+  }
+
+  .feature-rail--right .feature-card:nth-child(2) {
+    --card-accent: var(--accent-green);
+  }
+
+  .feature-rail--right .feature-card:nth-child(3) {
+    --card-accent: var(--accent-sky);
+  }
+
+  .feature-rail--right .feature-card:nth-child(4) {
+    --card-accent: var(--accent-yellow);
+  }
+
   .feature-card-note {
-    color: var(--fg-dim);
+    color: var(--accent-peach);
     font-size: 0.68rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -271,13 +305,17 @@ import { RELEASES_URL } from "../lib/releases";
     opacity: 0;
     transform: scale(0.98);
     animation: screenshot-in 1s ease-out 0.15s forwards;
+    filter: drop-shadow(0 30px 70px rgba(17, 17, 27, 0.45));
   }
 
   .screenshot {
     width: 100%;
     display: block;
     border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(180, 190, 254, 0.22);
+    box-shadow:
+      0 0 0 1px rgba(49, 50, 68, 0.7),
+      0 0 44px rgba(137, 180, 250, 0.12);
     mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
     -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
   }

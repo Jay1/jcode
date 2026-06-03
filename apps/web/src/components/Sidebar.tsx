@@ -4328,7 +4328,7 @@ export default function Sidebar() {
             />
           ))}
         <SidebarMenuSubButton
-          render={<div role="button" tabIndex={0} />}
+          render={<div role="button" tabIndex={0} aria-label={thread.title} />}
           data-thread-entry-point={threadEntryPoint}
           size="sm"
           isActive={isActive}
@@ -4429,6 +4429,7 @@ export default function Sidebar() {
             ) : null}
             {renamingThreadId === thread.id ? (
               <input
+                aria-label="Thread title"
                 ref={(el) => {
                   if (el && renamingInputRef.current !== el) {
                     renamingInputRef.current = el;
@@ -4633,6 +4634,7 @@ export default function Sidebar() {
             <div className="flex min-w-0 flex-1 items-baseline gap-2 overflow-hidden">
               {isRenamingProject ? (
                 <input
+                  aria-label="Project name"
                   ref={(element) => {
                     if (element && renamingProjectInputRef.current !== element) {
                       renamingProjectInputRef.current = element;
@@ -4801,7 +4803,7 @@ export default function Sidebar() {
               {hasHiddenThreads && !isThreadListExpanded && (
                 <SidebarMenuSubItem className="w-full">
                   <SidebarMenuSubButton
-                    render={<button type="button" />}
+                    render={<button type="button" aria-label="Show more threads" />}
                     data-thread-selection-safe
                     size="sm"
                     className="h-7 w-full translate-x-0 justify-start rounded-lg pr-2 pl-8 text-left text-[length:var(--app-font-size-ui,12px)] text-muted-foreground/79 hover:bg-[var(--sidebar-accent)]"
@@ -4816,7 +4818,7 @@ export default function Sidebar() {
               {hasHiddenThreads && isThreadListExpanded && (
                 <SidebarMenuSubItem className="w-full">
                   <SidebarMenuSubButton
-                    render={<button type="button" />}
+                    render={<button type="button" aria-label="Show fewer threads" />}
                     data-thread-selection-safe
                     size="sm"
                     className="h-7 w-full translate-x-0 justify-start rounded-lg pr-2 pl-8 text-left text-[length:var(--app-font-size-ui,12px)] text-muted-foreground/79 hover:bg-[var(--sidebar-accent)]"
@@ -5478,7 +5480,7 @@ export default function Sidebar() {
                         return (
                           <SidebarMenuSubItem key={item.id} className="w-full">
                             <SidebarMenuSubButton
-                              render={<button type="button" />}
+                              render={<button type="button" aria-label={item.label} />}
                               size="sm"
                               isActive={isActive}
                               className="group/settings-nav-item h-7.5 w-full justify-start gap-2 rounded-lg px-2 py-0.5 text-[length:var(--app-font-size-ui,12px)] font-normal hover:bg-[var(--sidebar-accent)]"
@@ -5580,6 +5582,7 @@ export default function Sidebar() {
                               isRenaming ? (
                                 <div className="px-1.5 py-0.5">
                                   <input
+                                    aria-label="Workspace title"
                                     autoFocus
                                     value={renamingWorkspaceTitle}
                                     onChange={(event) => {
@@ -5841,6 +5844,7 @@ export default function Sidebar() {
                       >
                         <input
                           ref={addProjectInputRef}
+                          aria-label="Project path"
                           className="min-w-0 flex-1 bg-transparent pl-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none"
                           placeholder="/path/to/project"
                           value={newCwd}
@@ -5920,7 +5924,7 @@ export default function Sidebar() {
                     aria-label="Loading projects"
                   >
                     <div className="text-center text-[length:var(--app-font-size-ui,12px)] text-muted-foreground/58">
-                      Loading projects...
+                      Loading projects&hellip;
                     </div>
                     <div className="mx-auto grid w-full max-w-42 gap-1.5 opacity-70">
                       <div className="h-2 rounded-full bg-muted/55 animate-pulse" />

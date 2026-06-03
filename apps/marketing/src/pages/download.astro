@@ -120,7 +120,7 @@ import { RELEASES_URL } from "../lib/releases";
   .heading {
     font-weight: 500;
     font-size: clamp(1.75rem, 4vw, 2.75rem);
-    letter-spacing: -0.035em;
+    letter-spacing: 0;
     line-height: 1.15;
     text-align: center;
     margin-bottom: 0.5rem;
@@ -130,7 +130,7 @@ import { RELEASES_URL } from "../lib/releases";
 
   .subheading {
     font-size: 0.9rem;
-    color: var(--fg-dim);
+    color: var(--fg-muted);
     margin-bottom: 3.5rem;
     opacity: 0;
     animation: fade-in 1s ease-out 0.1s forwards;
@@ -140,17 +140,17 @@ import { RELEASES_URL } from "../lib/releases";
   }
 
   .changelog-link {
-    color: var(--fg-muted);
+    color: var(--accent-strong);
     font-size: 0.8rem;
     text-decoration: underline;
-    text-decoration-color: rgba(161, 161, 170, 0.4);
+    text-decoration-color: rgba(180, 190, 254, 0.42);
     text-underline-offset: 3px;
     transition: color 0.3s ease, text-decoration-color 0.3s ease;
   }
 
   .changelog-link:hover {
-    color: var(--fg);
-    text-decoration-color: var(--fg);
+    color: var(--accent);
+    text-decoration-color: var(--accent);
   }
 
   /* ── Platforms ── */
@@ -182,14 +182,14 @@ import { RELEASES_URL } from "../lib/releases";
   .platform-icon {
     width: 1.15em;
     height: 1.15em;
-    color: var(--fg-muted);
+    color: var(--accent-strong);
     flex-shrink: 0;
   }
 
   .platform-name {
     font-weight: 500;
     font-size: 1.1rem;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
   }
 
   /* ── Download cards ── */
@@ -205,15 +205,17 @@ import { RELEASES_URL } from "../lib/releases";
     flex-direction: column;
     gap: 0.2rem;
     padding: 0.85rem 1rem;
-    border-radius: 10px;
+    border-radius: 8px;
     border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.02);
-    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    background: rgba(49, 50, 68, 0.58);
+    box-shadow: 0 12px 34px rgba(17, 17, 27, 0.12);
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
   }
 
   .download-card:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(69, 71, 90, 0.74);
+    border-color: rgba(203, 166, 247, 0.34);
+    color: var(--accent-strong);
     transform: translateY(-1px);
   }
 
@@ -236,22 +238,22 @@ import { RELEASES_URL } from "../lib/releases";
   .releases-link {
     margin-top: 3rem;
     font-size: 0.825rem;
-    color: var(--fg-dim);
+    color: var(--fg-muted);
     opacity: 0;
     animation: fade-in 1s ease-out 0.35s forwards;
   }
 
   .releases-link a {
-    color: var(--fg-muted);
+    color: var(--accent-strong);
     text-decoration: underline;
-    text-decoration-color: rgba(161, 161, 170, 0.4);
+    text-decoration-color: rgba(180, 190, 254, 0.42);
     text-underline-offset: 3px;
     transition: color 0.3s ease, text-decoration-color 0.3s ease;
   }
 
   .releases-link a:hover {
-    color: var(--fg);
-    text-decoration-color: var(--fg);
+    color: var(--accent);
+    text-decoration-color: var(--accent);
   }
 
   /* ── Mobile ── */

@@ -136,6 +136,7 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
         value={query}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
+        aria-label="Find in terminal"
         placeholder="Find"
         className="h-6 w-28 min-w-0 flex-shrink bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
       />
