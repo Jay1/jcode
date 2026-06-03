@@ -5,6 +5,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
 import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
+import {
+  PROJECT_HEADER_ICON_SIZE_CLASS,
+  getProjectHeaderIconClassName,
+} from "./projectSidebarIconPresentation";
 
 type ImageLoadListener = () => void;
 
@@ -96,17 +100,55 @@ describe("ProjectSidebarIcon", () => {
     await screen.unmount();
   });
 
-  it("keeps the folder and favicon fallback when icon metadata is null", async () => {
+  it("keeps the sidebar project header wrapper flat for language icons", async () => {
     const imageRequests: string[] = [];
     installImageProbeRecorder(imageRequests);
 
     const screen = await render(
-      <span className="relative inline-flex size-5 items-center justify-center">
-        <ProjectSidebarIcon cwd="/workspace/plain-folder" expanded={false} iconMetadata={null} />
+      <span className={getProjectHeaderIconClassName()} data-testid="project-icon-wrapper">
+        <ProjectSidebarIcon
+          className={PROJECT_HEADER_ICON_SIZE_CLASS}
+          cwd="/workspace/typescript-app"
+          expanded={false}
+          iconMetadata={{ iconId: "typescript", label: "TypeScript" }}
+        />
       </span>,
     );
 
-    expect(screen.container.querySelector("svg")).not.toBeNull();
+    const wrapper = screen.getByTestId("project-icon-wrapper");
+    await expect.element(wrapper).toBeInTheDocument();
+    expect(getComputedStyle(wrapper.element()).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    expect(getComputedStyle(wrapper.element()).borderTopWidth).toBe("0px");
+    expect(wrapper.element().className).not.toContain("rounded-md");
+    expect(wrapper.element().className).not.toContain("bg-[");
+    expect(wrapper.element().className).not.toContain("border ");
+    expect(imageRequests).toEqual([]);
+    await screen.unmount();
+  });
+
+  it("keeps the sidebar project header wrapper flat for folder icons", async () => {
+    const imageRequests: string[] = [];
+    installImageProbeRecorder(imageRequests);
+
+    const screen = await render(
+      <span className={getProjectHeaderIconClassName()} data-testid="project-icon-wrapper">
+        <ProjectSidebarIcon
+          className={PROJECT_HEADER_ICON_SIZE_CLASS}
+          cwd="/workspace/plain-folder"
+          expanded={false}
+          iconMetadata={null}
+        />
+      </span>,
+    );
+
+    const wrapper = screen.getByTestId("project-icon-wrapper");
+    const folderIcon = screen.container.querySelector("svg");
+    await expect.element(wrapper).toBeInTheDocument();
+    expect(getComputedStyle(wrapper.element()).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    expect(getComputedStyle(wrapper.element()).borderTopWidth).toBe("0px");
+    expect(wrapper.element().className).not.toContain("rounded-md");
+    expect(folderIcon).not.toBeNull();
+    expect(folderIcon?.classList.contains(PROJECT_HEADER_ICON_SIZE_CLASS)).toBe(true);
     await vi.waitFor(() => {
       expect(screen.container.querySelector("img")?.getAttribute("src")).toContain(
         "/api/project-favicon",
