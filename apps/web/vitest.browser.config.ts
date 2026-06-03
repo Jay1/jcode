@@ -18,8 +18,20 @@ export default mergeConfig(
     test: {
       ...(localTestProfile
         ? {
+            fileParallelism: false,
             maxConcurrency: 1,
+            minWorkers: 1,
             maxWorkers: 1,
+            poolOptions: {
+              threads: {
+                maxThreads: 1,
+                minThreads: 1,
+              },
+              forks: {
+                maxForks: 1,
+                minForks: 1,
+              },
+            },
           }
         : {}),
       include: ["src/components/**/*.browser.tsx"],
