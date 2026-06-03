@@ -6,7 +6,7 @@
 // Notes: Pure UI; image URL building lives in `~/lib/localImageUrls`. No data
 //        fetching here so the component stays trivially testable.
 
-import { type MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 
 import { DownloadIcon, Loader2Icon, Maximize2, TriangleAlertIcon } from "~/lib/icons";
 
@@ -24,33 +24,32 @@ export interface GeneratedMarkdownImageProps {
 
 export function GeneratedMarkdownImage(props: GeneratedMarkdownImageProps) {
   const { src, alt, cwd, onImageExpand } = props;
-  const previewUrl = useMemo(() => buildLocalImageUrl({ src, cwd }), [src, cwd]);
-  const downloadUrl = useMemo(() => buildLocalImageUrl({ src, cwd, download: true }), [src, cwd]);
-  const fileName = useMemo(() => localImageFileName(src), [src]);
+  const previewUrl = buildLocalImageUrl({ src, cwd });
+  const downloadUrl = buildLocalImageUrl({ src, cwd, download: true });
+  const fileName = localImageFileName(src);
   const accessibleName = alt?.trim() || "Generated image";
   const [status, setStatus] = useState<GeneratedImageStatus>("loading");
+  const prevPreviewUrlRef = useRef(previewUrl);
 
-  useEffect(() => {
+  if (previewUrl !== prevPreviewUrlRef.current) {
+    prevPreviewUrlRef.current = previewUrl;
     setStatus("loading");
-  }, [previewUrl]);
+  }
 
-  const expandImage = useCallback(
-    (event: MouseEvent<HTMLElement>) => {
-      event.preventDefault();
-      if (status === "error") {
-        return;
-      }
-      onImageExpand?.({
-        images: [{ src: previewUrl, name: fileName || accessibleName }],
-        index: 0,
-      });
-    },
-    [accessibleName, fileName, onImageExpand, previewUrl, status],
-  );
+  const expandImage = (event: MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+    if (status === "error") {
+      return;
+    }
+    onImageExpand?.({
+      images: [{ src: previewUrl, name: fileName || accessibleName }],
+      index: 0,
+    });
+  };
 
-  const stopPropagation = useCallback((event: MouseEvent<HTMLElement>) => {
+  const stopPropagation = (event: MouseEvent<HTMLElement>) => {
     event.stopPropagation();
-  }, []);
+  };
 
   // <a download> needs a string; pass an empty string when we have no filename so
   // we still hint the browser to download instead of navigating.

@@ -953,15 +953,14 @@ export default function GitActionsControl({
     normalizedCreateBranchName !== normalizedCurrentBranchName &&
     branchNames.has(normalizedCreateBranchName);
 
-  const createAndCheckoutBranch = useCallback(
-    async (branchName: string) => {
-      const api = readNativeApi();
-      if (!api || !gitCwd) return;
+  const createAndCheckoutBranch = async (branchName: string) => {
+    const api = readNativeApi();
+    if (!api || !gitCwd) return;
 
-      const trimmedName = branchName.trim();
-      if (!trimmedName) return;
+    const trimmedName = branchName.trim();
+    if (!trimmedName) return;
 
-      setIsCreateBranchDialogOpen(false);
+    setIsCreateBranchDialogOpen(false);
       setCreateBranchName("");
 
       if (trimmedName.toLowerCase() === normalizedCurrentBranchName) {
@@ -1041,18 +1040,7 @@ export default function GitActionsControl({
           data: threadToastData,
         });
       }
-    },
-    [
-      activeThread?.worktreePath,
-      activeThreadId,
-      gitCwd,
-      hasOriginRemote,
-      normalizedCurrentBranchName,
-      queryClient,
-      setThreadWorkspaceAction,
-      threadToastData,
-    ],
-  );
+    };
 
   const openDialogForMenuItem = useCallback(
     (item: GitActionMenuItem) => {

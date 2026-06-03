@@ -1,6 +1,6 @@
 import { AuthHttpRoutes } from "@jcode/contracts";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { APP_DISPLAY_NAME } from "../branding";
 import { addSavedConnectionFromPairing } from "../connection/savedConnectionManager";
@@ -86,10 +86,11 @@ export function PairRoute() {
     [navigate],
   );
 
-  useEffect(() => {
-    if (!initialCredential) return;
+  const hasSubmittedRef = useRef(false);
+  if (initialCredential && !hasSubmittedRef.current) {
+    hasSubmittedRef.current = true;
     void submitPairing(initialCredential);
-  }, [initialCredential, submitPairing]);
+  }
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background px-4 text-foreground">

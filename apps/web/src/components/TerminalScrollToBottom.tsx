@@ -1,5 +1,5 @@
 import type { Terminal } from "@xterm/xterm";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "~/lib/utils";
 
 interface TerminalScrollToBottomProps {
@@ -9,15 +9,21 @@ interface TerminalScrollToBottomProps {
 export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps) {
   const [isVisible, setIsVisible] = useState(false);
   const visibilityRafRef = useRef<number | null>(null);
+  const prevTerminalRef = useRef(terminal);
 
-  const checkPosition = useCallback(() => {
+  if (!terminal && prevTerminalRef.current) {
+    setIsVisible(false);
+  }
+  prevTerminalRef.current = terminal;
+
+  const checkPosition = () => {
     if (!terminal) return;
     const buf = terminal.buffer.active;
     const nextVisible = buf.viewportY < buf.baseY;
     setIsVisible((current) => (current === nextVisible ? current : nextVisible));
-  }, [terminal]);
+  };
 
-  const scheduleVisibilityCheck = useCallback(() => {
+  const scheduleVisibilityCheck = () => {
     if (visibilityRafRef.current !== null) {
       return;
     }
@@ -25,11 +31,10 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
       visibilityRafRef.current = null;
       checkPosition();
     });
-  }, [checkPosition]);
+  };
 
   useEffect(() => {
     if (!terminal) {
-      setIsVisible(false);
       return;
     }
     scheduleVisibilityCheck();
@@ -43,9 +48,9 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
       d1.dispose();
       d2.dispose();
     };
-  }, [terminal, scheduleVisibilityCheck]);
+  }, [terminal]);
 
-  const handleClick = () => terminal?.scrollToBottom();
+  const scrollToBottom = () => terminal?.scrollToBottom();
 
   return (
     <div
@@ -56,7 +61,7 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
     >
       <button
         type="button"
-        onClick={handleClick}
+        onClick={scrollToBottom}
         className="flex size-7 items-center justify-center rounded-full border border-[color:var(--app-scroll-button-border)] bg-[var(--app-scroll-button-bg)] text-[var(--app-scroll-button-fg)] shadow-sm transition-colors hover:bg-[var(--app-scroll-button-hover-bg)] hover:text-[var(--app-scroll-button-hover-fg)]"
         aria-label="Scroll to bottom"
       >

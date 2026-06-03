@@ -460,9 +460,13 @@ function SplitPaneEmbeddedPanel(props: {
     return getLocalStorageItem(storageKey, Schema.Finite) ?? defaultPanelWidth;
   });
 
-  useEffect(() => {
+  const prevStorageKeyRef = useRef(storageKey);
+  const prevDefaultWidthRef = useRef(defaultPanelWidth);
+  if (storageKey !== prevStorageKeyRef.current || defaultPanelWidth !== prevDefaultWidthRef.current) {
+    prevStorageKeyRef.current = storageKey;
+    prevDefaultWidthRef.current = defaultPanelWidth;
     setPanelWidth(getLocalStorageItem(storageKey, Schema.Finite) ?? defaultPanelWidth);
-  }, [defaultPanelWidth, storageKey]);
+  }
 
   const shouldAcceptEmbeddedWidth = useCallback(
     (nextWidth: number) => {

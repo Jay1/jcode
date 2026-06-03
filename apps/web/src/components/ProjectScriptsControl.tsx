@@ -14,7 +14,6 @@ import React, {
   type FormEvent,
   type KeyboardEvent,
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -271,16 +270,14 @@ export default function ProjectScriptsControl({
 
   // Allow parent surfaces like the compact header menu to open the shared
   // "Add action" dialog without duplicating script form logic.
-  useEffect(() => {
-    if (openAddActionNonce === undefined) return;
-    if (lastOpenAddActionNonceRef.current === undefined) {
-      lastOpenAddActionNonceRef.current = openAddActionNonce;
-      return;
-    }
-    if (openAddActionNonce === lastOpenAddActionNonceRef.current) return;
+  if (
+    openAddActionNonce !== undefined &&
+    lastOpenAddActionNonceRef.current !== undefined &&
+    openAddActionNonce !== lastOpenAddActionNonceRef.current
+  ) {
     lastOpenAddActionNonceRef.current = openAddActionNonce;
     openAddDialog();
-  }, [openAddActionNonce]);
+  }
 
   const confirmDeleteScript = useCallback(() => {
     if (!editingScriptId) return;

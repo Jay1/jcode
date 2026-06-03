@@ -35,14 +35,15 @@ export default function ShortcutsDialog(props: {
 }) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const prevOpenRef = useRef(props.open);
 
-  // Reset the query each time the dialog opens so the user always starts fresh,
-  // and autofocus the search input so they can type immediately after Mod+/.
+  if (!props.open && prevOpenRef.current) {
+    setQuery("");
+  }
+  prevOpenRef.current = props.open;
+
   useEffect(() => {
-    if (!props.open) {
-      setQuery("");
-      return;
-    }
+    if (!props.open) return;
     const frame = window.requestAnimationFrame(() => {
       inputRef.current?.focus();
       inputRef.current?.select();

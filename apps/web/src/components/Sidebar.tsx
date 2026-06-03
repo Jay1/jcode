@@ -6101,6 +6101,7 @@ export default function Sidebar() {
       </SidebarFooter>
 
       <RenameThreadDialog
+        key={renameDialogThreadId ?? undefined}
         open={renameDialogThreadId !== null}
         currentTitle={
           renameDialogThreadId ? (sidebarThreadSummaryById[renameDialogThreadId]?.title ?? "") : ""

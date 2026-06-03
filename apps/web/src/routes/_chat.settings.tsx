@@ -896,9 +896,7 @@ function SettingsRouteView() {
       });
   }, [availableEditors, keybindingsConfigPath]);
 
-  useEffect(() => {
-    setBrowserNotificationPermission(readBrowserNotificationPermissionState());
-  }, []);
+
 
   const addCustomModel = useCallback(
     (provider: ProviderKind) => {

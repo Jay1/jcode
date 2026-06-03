@@ -58,12 +58,16 @@ export function useTerminalDrawerHeight(options: {
     onHeightChangeRef.current(clampedHeight);
   }, []);
 
-  useEffect(() => {
+  const prevHeightRef = useRef(options.height);
+  const prevResetKeyRef = useRef(options.resetKey);
+  if (options.height !== prevHeightRef.current || options.resetKey !== prevResetKeyRef.current) {
+    prevHeightRef.current = options.height;
+    prevResetKeyRef.current = options.resetKey;
     const clampedHeight = clampTerminalDrawerHeight(options.height);
     setDrawerHeight(clampedHeight);
     drawerHeightRef.current = clampedHeight;
     lastSyncedHeightRef.current = clampedHeight;
-  }, [options.height, options.resetKey]);
+  }
 
   const handleResizePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;

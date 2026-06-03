@@ -33,7 +33,6 @@ export function RenameThreadDialog({
       setIsSaving(false);
       return;
     }
-    setValue(currentTitle);
     const frame = window.requestAnimationFrame(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
@@ -41,7 +40,7 @@ export function RenameThreadDialog({
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [open, currentTitle]);
+  }, [open]);
 
   const trimmed = value.trim();
   const canSave = trimmed.length > 0 && !isSaving;

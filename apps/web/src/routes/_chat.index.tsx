@@ -5,7 +5,7 @@
 
 import { ThreadId } from "@jcode/contracts";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { SplashScreen } from "../components/SplashScreen";
 import { readSidebarUiState } from "../components/Sidebar.uiState";
@@ -14,17 +14,14 @@ import { useHandleNewChat } from "../hooks/useHandleNewChat";
 import { useSplitViewStore } from "../splitViewStore";
 import { useStore } from "../store";
 
-function ChatIndexRouteView() {
+export function ChatIndexRouteView() {
   const { handleNewChat } = useHandleNewChat();
   const navigate = useNavigate();
   const threadsHydrated = useStore((store) => store.threadsHydrated);
   const threadIds = useStore((state) => state.threadIds ?? []);
   const splitViewsHydrated = useSplitViewStore((state) => state.hasHydrated);
   const splitViewsById = useSplitViewStore((state) => state.splitViewsById);
-  const splitViewIds = useMemo(
-    () => Object.keys(splitViewsById).filter((splitViewId) => splitViewsById[splitViewId]),
-    [splitViewsById],
-  );
+  const splitViewIds = Object.keys(splitViewsById).filter((splitViewId) => splitViewsById[splitViewId]);
   const [attempt, setAttempt] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
