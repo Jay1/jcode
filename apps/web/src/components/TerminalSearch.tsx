@@ -111,6 +111,11 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
     onClose();
   };
 
+  useEffect(() => {
+    if (isOpen) return;
+    searchAddon?.clearDecorations();
+  }, [isOpen, searchAddon]);
+
   if (!isOpen) return null;
 
   return (

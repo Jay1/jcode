@@ -135,9 +135,8 @@ export function PullRequestThreadDialog({
       });
       onOpenChange(false);
       setPreparingMode(null);
-    } catch (error) {
+    } catch {
       setPreparingMode(null);
-      throw error;
     }
   };
 

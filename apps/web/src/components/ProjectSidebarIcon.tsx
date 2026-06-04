@@ -106,7 +106,12 @@ export function ProjectSidebarIcon({
   }
 
   return (
-    <ProjectFolderIcon className={className} faviconSrc={faviconSrc} FolderGlyph={FolderGlyph} />
+    <ProjectFolderIcon
+      key={faviconSrc}
+      className={className}
+      faviconSrc={faviconSrc}
+      FolderGlyph={FolderGlyph}
+    />
   );
 }
 

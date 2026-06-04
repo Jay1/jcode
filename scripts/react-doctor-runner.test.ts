@@ -21,6 +21,7 @@ describe("react-doctor runner", () => {
     ]);
     assert.equal(invocation.env.REACT_DOCTOR_PARALLEL, "0");
     assert.equal(invocation.maxRssMb, 1536);
+    assert.equal(invocation.memoryGuardSupported, process.platform === "linux");
     assert.equal(invocation.env.CI, "1");
     assert.equal(invocation.env.NO_COLOR, "1");
     assert.equal(invocation.env.FORCE_COLOR, "0");

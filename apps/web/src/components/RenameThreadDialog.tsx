@@ -49,6 +49,11 @@ export function RenameThreadDialog({
     onOpenChange(false);
   };
 
+  const requestCloseDialog = () => {
+    if (isSaving) return;
+    closeDialog();
+  };
+
   const handleSubmit = async () => {
     if (!canSave) return;
     setIsSaving(true);
@@ -63,7 +68,7 @@ export function RenameThreadDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(nextOpen) => (nextOpen ? onOpenChange(true) : closeDialog())}
+      onOpenChange={(nextOpen) => (nextOpen ? onOpenChange(true) : requestCloseDialog())}
     >
       <DialogPopup className="max-w-md">
         <DialogHeader>
@@ -86,14 +91,14 @@ export function RenameThreadDialog({
               onKeyDown={(event) => {
                 if (event.key === "Escape") {
                   event.preventDefault();
-                  closeDialog();
+                  requestCloseDialog();
                 }
               }}
             />
           </form>
         </DialogPanel>
         <DialogFooter>
-          <Button variant="outline" onClick={closeDialog} disabled={isSaving}>
+          <Button variant="outline" onClick={requestCloseDialog} disabled={isSaving}>
             Cancel
           </Button>
           <Button onClick={() => void handleSubmit()} disabled={!canSave}>

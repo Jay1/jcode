@@ -12,6 +12,7 @@ export interface ReactDoctorInvocation {
   args: string[];
   env: NodeJS.ProcessEnv;
   maxRssMb: number;
+  memoryGuardSupported: boolean;
   mode: ReactDoctorRunnerMode;
 }
 
@@ -44,6 +45,7 @@ export function buildReactDoctorInvocation(
       ...options.passthroughArgs,
     ],
     env: { ...process.env, ...SAFE_ENV },
+    memoryGuardSupported: process.platform === "linux",
     maxRssMb: DEFAULT_MAX_RSS_MB,
     mode: options.mode,
   };
@@ -101,19 +103,28 @@ async function main(argv: string[]): Promise<number> {
   }
 
   return await new Promise((resolve) => {
+    let killRequested = false;
     const child = spawn(invocation.command, invocation.args, {
       env: invocation.env,
       detached: process.platform !== "win32",
       stdio: "inherit",
     });
 
+    if (!invocation.memoryGuardSupported) {
+      console.warn(
+        `React Doctor memory guard is not active on ${process.platform}; RSS monitoring is only supported on Linux.`,
+      );
+    }
+
     const memoryCheckInterval = setInterval(() => {
-      if (!child.pid) return;
+      if (!child.pid || killRequested || !invocation.memoryGuardSupported) return;
       const rssMb = readProcessTreeRssMb(child.pid);
       if (rssMb <= invocation.maxRssMb) return;
       console.error(
         `React Doctor exceeded ${invocation.maxRssMb} MB RSS (${rssMb} MB). Terminating the process group.`,
       );
+      killRequested = true;
+      clearInterval(memoryCheckInterval);
       killProcessGroup(child.pid);
     }, 1_000);
 
