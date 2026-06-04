@@ -896,8 +896,6 @@ function SettingsRouteView() {
       });
   }, [availableEditors, keybindingsConfigPath]);
 
-
-
   const addCustomModel = useCallback(
     (provider: ProviderKind) => {
       const customModelInput = customModelInputByProvider[provider];

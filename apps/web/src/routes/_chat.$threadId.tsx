@@ -462,7 +462,10 @@ function SplitPaneEmbeddedPanel(props: {
 
   const prevStorageKeyRef = useRef(storageKey);
   const prevDefaultWidthRef = useRef(defaultPanelWidth);
-  if (storageKey !== prevStorageKeyRef.current || defaultPanelWidth !== prevDefaultWidthRef.current) {
+  if (
+    storageKey !== prevStorageKeyRef.current ||
+    defaultPanelWidth !== prevDefaultWidthRef.current
+  ) {
     prevStorageKeyRef.current = storageKey;
     prevDefaultWidthRef.current = defaultPanelWidth;
     setPanelWidth(getLocalStorageItem(storageKey, Schema.Finite) ?? defaultPanelWidth);

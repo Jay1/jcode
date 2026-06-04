@@ -21,7 +21,9 @@ export function ChatIndexRouteView() {
   const threadIds = useStore((state) => state.threadIds ?? []);
   const splitViewsHydrated = useSplitViewStore((state) => state.hasHydrated);
   const splitViewsById = useSplitViewStore((state) => state.splitViewsById);
-  const splitViewIds = Object.keys(splitViewsById).filter((splitViewId) => splitViewsById[splitViewId]);
+  const splitViewIds = Object.keys(splitViewsById).filter(
+    (splitViewId) => splitViewsById[splitViewId],
+  );
   const [attempt, setAttempt] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
