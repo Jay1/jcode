@@ -142,18 +142,28 @@ describe("ProjectSidebarIcon", () => {
     );
 
     const wrapper = screen.getByTestId("project-icon-wrapper");
+    const folderIconBoxElement = screen.container.querySelector("[data-project-folder-icon]");
     const folderIcon = screen.container.querySelector("svg");
+    const folderIconBox = folderIconBoxElement?.getBoundingClientRect();
+    const folderGlyphBox = folderIcon?.getBoundingClientRect();
     await expect.element(wrapper).toBeInTheDocument();
     expect(getComputedStyle(wrapper.element()).backgroundColor).toBe("rgba(0, 0, 0, 0)");
     expect(getComputedStyle(wrapper.element()).borderTopWidth).toBe("0px");
     expect(wrapper.element().className).not.toContain("rounded-md");
+    expect(folderIconBoxElement?.classList.contains(PROJECT_HEADER_ICON_SIZE_CLASS)).toBe(true);
     expect(folderIcon).not.toBeNull();
-    expect(folderIcon?.classList.contains(PROJECT_HEADER_ICON_SIZE_CLASS)).toBe(true);
+    expect(folderIconBox?.width).toBeGreaterThanOrEqual(17);
+    expect(folderIconBox?.height).toBeGreaterThanOrEqual(17);
+    expect(folderGlyphBox?.width).toBe(folderIconBox?.width);
+    expect(folderGlyphBox?.height).toBe(folderIconBox?.height);
     await vi.waitFor(() => {
       expect(screen.container.querySelector("img")?.getAttribute("src")).toContain(
         "/api/project-favicon",
       );
     });
+    const faviconBadgeBox = screen.container.querySelector("img")?.getBoundingClientRect();
+    expect(faviconBadgeBox?.width).toBeLessThanOrEqual(13);
+    expect(faviconBadgeBox?.height).toBeLessThanOrEqual(13);
     expect(imageRequests).toHaveLength(1);
     await screen.unmount();
   });

@@ -162,8 +162,11 @@ function ProjectFolderIcon({
   }, [faviconSrc]);
 
   return (
-    <span className="relative inline-flex shrink-0 items-center justify-center">
-      <FolderGlyph aria-hidden="true" focusable="false" className={className} />
+    <span
+      className={`${className} relative inline-flex shrink-0 items-center justify-center`}
+      data-project-folder-icon="true"
+    >
+      <FolderGlyph aria-hidden="true" focusable="false" className="size-full" />
       {hasFavicon ? (
         <img
           src={faviconSrc}
