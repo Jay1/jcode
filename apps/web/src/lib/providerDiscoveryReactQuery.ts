@@ -1,5 +1,7 @@
 import type {
   ProviderComposerCapabilities,
+  ProviderInstallSkillInput,
+  ProviderInstallSkillResult,
   ProviderKind,
   ProviderListAgentsResult,
   ProviderListCommandsResult,
@@ -7,9 +9,15 @@ import type {
   ProviderListPluginsResult,
   ProviderListSkillsResult,
   ProviderReadPluginResult,
+  ProviderSearchCatalogInput,
+  ProviderSearchCatalogResult,
+  ProviderSetSkillEnabledInput,
+  ProviderSetSkillEnabledResult,
   ProviderStartOptions,
+  ProviderUninstallSkillInput,
+  ProviderUninstallSkillResult,
 } from "@jcode/contracts";
-import { queryOptions } from "@tanstack/react-query";
+import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
 import { buildCodexProviderOptionsKey } from "./providerOptions";
 
@@ -366,4 +374,48 @@ export function supportsThreadImport(
   capabilities: ProviderComposerCapabilities | undefined,
 ): boolean {
   return capabilities?.supportsThreadImport === true;
+}
+
+export function supportsSkillInstall(
+  capabilities: ProviderComposerCapabilities | undefined,
+): boolean {
+  return capabilities?.supportsSkillInstall === true;
+}
+
+export function supportsSkillUninstall(
+  capabilities: ProviderComposerCapabilities | undefined,
+): boolean {
+  return capabilities?.supportsSkillUninstall === true;
+}
+
+export function supportsSkillToggle(
+  capabilities: ProviderComposerCapabilities | undefined,
+): boolean {
+  return capabilities?.supportsSkillToggle === true;
+}
+
+export function installSkillMutationOptions() {
+  return mutationOptions<ProviderInstallSkillResult, Error, ProviderInstallSkillInput>({
+    mutationFn: (input) => ensureNativeApi().provider.installSkill(input),
+  });
+}
+
+export function uninstallSkillMutationOptions() {
+  return mutationOptions<ProviderUninstallSkillResult, Error, ProviderUninstallSkillInput>({
+    mutationFn: (input) => ensureNativeApi().provider.uninstallSkill(input),
+  });
+}
+
+export function setSkillEnabledMutationOptions() {
+  return mutationOptions<ProviderSetSkillEnabledResult, Error, ProviderSetSkillEnabledInput>({
+    mutationFn: (input) => ensureNativeApi().provider.setSkillEnabled(input),
+  });
+}
+
+export function searchSkillsCatalogQueryOptions(input: ProviderSearchCatalogInput) {
+  return queryOptions({
+    queryKey: [...providerDiscoveryQueryKeys.all, "catalog-search", input.query] as const,
+    queryFn: () => ensureNativeApi().provider.searchSkillsCatalog(input),
+    enabled: input.query.trim().length > 0,
+  });
 }

@@ -8,6 +8,10 @@ import {
   providerPluginsQueryOptions,
   providerReadPluginQueryOptions,
   providerSkillsQueryOptions,
+  searchSkillsCatalogQueryOptions,
+  supportsSkillInstall,
+  supportsSkillToggle,
+  supportsSkillUninstall,
 } from "./providerDiscoveryReactQuery";
 import * as nativeApi from "../nativeApi";
 
@@ -224,5 +228,35 @@ describe("providerModelsQueryOptions", () => {
     expect(defaultOptions.queryKey).not.toEqual(customOptions.queryKey);
     expect(customOptions.queryKey).not.toEqual(alternateOptions.queryKey);
     expectSecretSafeCodexKey(customOptions.queryKey);
+  });
+});
+
+describe("skill management capabilities", () => {
+  it("exposes install, uninstall, and toggle support only when providers opt in", () => {
+    const capabilities = {
+      provider: "opencode" as const,
+      supportsSkillMentions: true,
+      supportsSkillDiscovery: true,
+      supportsNativeSlashCommandDiscovery: true,
+      supportsPluginMentions: false,
+      supportsPluginDiscovery: false,
+      supportsRuntimeModelList: false,
+    };
+
+    expect(supportsSkillInstall({ ...capabilities, supportsSkillInstall: true })).toBe(true);
+    expect(supportsSkillInstall(undefined)).toBe(false);
+    expect(supportsSkillUninstall(capabilities)).toBe(false);
+    expect(supportsSkillToggle(capabilities)).toBe(false);
+  });
+});
+
+describe("searchSkillsCatalogQueryOptions", () => {
+  it("keys catalog searches by query text", () => {
+    const first = searchSkillsCatalogQueryOptions({ query: "analyze" });
+    const second = searchSkillsCatalogQueryOptions({ query: "review" });
+
+    expect(first.queryKey).not.toEqual(second.queryKey);
+    expect(first.queryKey).toContain("catalog-search");
+    expect(first.enabled).toBe(true);
   });
 });
