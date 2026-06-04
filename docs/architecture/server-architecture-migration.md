@@ -1,5 +1,18 @@
 # Server Architecture Migration Inventory
 
+| Field           | Value                                                                                                                   |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Status          | Active                                                                                                                  |
+| Type            | Architecture inventory                                                                                                  |
+| Owner           | Engineering                                                                                                             |
+| Audience        | Server maintainers, web transport maintainers, contract maintainers, and automation agents                              |
+| Scope           | Server migration entry points, protocol compatibility constraints, local methods, phase scope, and verification targets |
+| Canonical path  | `docs/architecture/server-architecture-migration.md`                                                                    |
+| Last reviewed   | 2026-06-04                                                                                                              |
+| Review cadence  | Event-driven; review when server runtime, web transport, contracts, architecture docs, or migration phase scope changes |
+| Source of truth | `apps/server`, `apps/web`, `packages/contracts`, and `docs/architecture` docs                                           |
+| Verification    | Source-check named runtime and contracts and run focused formatting with `bunx oxfmt@0.52.0 --check <file>`             |
+
 This document tracks compatibility constraints for the controlled migration from the current legacy T3code-style server toward the newer upstream modular server architecture.
 
 ## Current Entry Points
