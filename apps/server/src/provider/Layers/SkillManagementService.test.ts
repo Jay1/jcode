@@ -32,6 +32,57 @@ vendor/review-kit@code-review  92 installs
       },
     ]);
   });
+
+  it("parses entries without URLs", () => {
+    const output = `owner/analyze-tools@analyze  12 installs`;
+
+    expect(parseSkillsFindOutput(output)).toEqual([
+      {
+        packageRef: "owner/analyze-tools",
+        skillName: "analyze",
+        installCount: 12,
+      },
+    ]);
+  });
+
+  it("parses M-suffix install counts", () => {
+    const output = `owner/popular-tools@analyze  1.5M installs`;
+
+    expect(parseSkillsFindOutput(output)).toEqual([
+      {
+        packageRef: "owner/popular-tools",
+        skillName: "analyze",
+        installCount: 1_500_000,
+      },
+    ]);
+  });
+
+  it("skips malformed catalog lines and unparsable install counts", () => {
+    const output = `not a valid skills line
+owner/analyze-tools@analyze  many installs
+vendor/review-kit@code-review  92 installs`;
+
+    expect(parseSkillsFindOutput(output)).toEqual([
+      {
+        packageRef: "vendor/review-kit",
+        skillName: "code-review",
+        installCount: 92,
+      },
+    ]);
+  });
+
+  it("ignores URL lines that are not HTTP URLs", () => {
+    const output = `owner/analyze-tools@analyze  12 installs
+└ skills.sh/owner/analyze-tools/analyze`;
+
+    expect(parseSkillsFindOutput(output)).toEqual([
+      {
+        packageRef: "owner/analyze-tools",
+        skillName: "analyze",
+        installCount: 12,
+      },
+    ]);
+  });
 });
 
 describe("skills CLI argument builders", () => {
@@ -52,6 +103,15 @@ describe("skills CLI argument builders", () => {
       "-y",
     ]);
     expect(buildSkillsFindArgs("code review")).toEqual(["skills", "find", "code review"]);
+  });
+
+  it("omits --skill when add arguments do not include a skill name", () => {
+    expect(
+      buildSkillsAddArgs({
+        agent: "opencode",
+        packageRef: "owner/repo",
+      }),
+    ).toEqual(["skills", "add", "owner/repo", "--agent", "opencode", "-y"]);
   });
 });
 

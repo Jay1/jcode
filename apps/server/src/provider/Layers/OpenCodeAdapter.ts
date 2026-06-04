@@ -4206,6 +4206,9 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
 
       const installSkill: NonNullable<OpenCodeAdapterShape["installSkill"]> = (input) =>
         Effect.gen(function* () {
+          const beforeInstall = input.skillName
+            ? undefined
+            : yield* listSkills({ ...input, forceReload: true });
           yield* skillManagement.install({
             agent: "opencode",
             cwd: input.cwd,
@@ -4214,15 +4217,33 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             ...(input.global !== undefined ? { global: input.global } : {}),
           });
           const refreshed = yield* listSkills({ ...input, forceReload: true });
+          const installedSkills = input.skillName
+            ? []
+            : refreshed.skills.filter(
+                (candidate) =>
+                  !beforeInstall?.skills.some((existing) => existing.path === candidate.path),
+              );
           const skill = input.skillName
             ? refreshed.skills.find((candidate) => candidate.name === input.skillName)
-            : refreshed.skills[0];
+            : installedSkills[0];
           if (!skill) {
             return yield* Effect.fail(
               new ProviderAdapterRequestError({
                 provider,
                 method: "skills.add",
-                detail: "Installed skill was not returned by provider discovery.",
+                detail: input.skillName
+                  ? "Installed skill was not returned by provider discovery."
+                  : "Installed skill could not be identified unambiguously. Provide a skill name.",
+              }),
+            );
+          }
+          if (!input.skillName && installedSkills.length !== 1) {
+            return yield* Effect.fail(
+              new ProviderAdapterRequestError({
+                provider,
+                method: "skills.add",
+                detail:
+                  "Installed skill could not be identified unambiguously. Provide a skill name.",
               }),
             );
           }

@@ -24,7 +24,7 @@ export interface SkillManagementUninstallInput extends Pick<
   "cwd" | "global"
 > {
   readonly agent: SkillManagementAgent;
-  readonly skillName: string;
+  readonly skillName: ProviderUninstallSkillInput["skillPath"];
 }
 
 export interface SkillManagementServiceShape {
@@ -115,10 +115,11 @@ export function parseSkillsFindOutput(output: string): CatalogSkillEntry[] {
 
     const urlLine = lines[index + 1]?.replace(/^└\s*/, "");
     const installCount = parseInstallCount(rawInstallCount);
+    if (installCount === undefined) continue;
     entries.push({
       packageRef,
       skillName,
-      ...(installCount !== undefined ? { installCount } : {}),
+      installCount,
       ...(urlLine && /^https?:\/\//i.test(urlLine) ? { url: urlLine } : {}),
     });
   }
