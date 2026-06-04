@@ -1437,7 +1437,7 @@ export const makeGitManager = Effect.gen(function* () {
       }
 
       const created = yield* findOpenPr(cwd, headContext).pipe(
-        Effect.catchCause(() => Effect.succeed(null)),
+        Effect.catch(() => Effect.succeed(null)),
       );
       if (!created) {
         return {

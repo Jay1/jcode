@@ -464,8 +464,21 @@ function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
             "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
           ],
         }).pipe(
-          Effect.map((result) => {
-            const parsed = JSON.parse(result.stdout) as Array<Record<string, unknown>>;
+          Effect.flatMap((result) =>
+            Effect.try({
+              try: () => JSON.parse(result.stdout) as Array<Record<string, unknown>>,
+              catch: (cause) =>
+                new GitHubCliError({
+                  operation: "listOpenPullRequests",
+                  detail:
+                    cause instanceof Error
+                      ? `GitHub CLI returned invalid PR list JSON: ${cause.message}`
+                      : "GitHub CLI returned invalid PR list JSON.",
+                  cause,
+                }),
+            }),
+          ),
+          Effect.map((parsed) => {
             return parsed.map((pullRequest) => {
               const summary: MutableGitHubPullRequestSummary = {
                 number: pullRequest.number as number,
