@@ -9,7 +9,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { getProviderStartOptions, useAppSettings } from "../appSettings";
 import { useFocusedChatContext } from "../focusedChatContext";
-import { DownloadIcon, ListChecksIcon, PlusIcon, SearchIcon, Trash2, XIcon } from "../lib/icons";
+import { DownloadIcon, ListChecksIcon, PlusIcon, SearchIcon, Trash2 } from "../lib/icons";
 import { resolveProviderDiscoveryCwd } from "../lib/providerDiscovery";
 import {
   installSkillMutationOptions,
@@ -47,7 +47,6 @@ import {
 import { Button } from "./ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogHeader,
   DialogPanel,
   DialogPopup,
@@ -283,18 +282,6 @@ function InstallSkillDialog({
         <DialogHeader>
           <DialogTitle>Install skill</DialogTitle>
         </DialogHeader>
-        <DialogClose
-          render={
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="absolute right-3 top-3 size-7"
-            >
-              <XIcon className="size-4" />
-            </Button>
-          }
-        />
         <DialogPanel className="space-y-4">
           <div className="space-y-2">
             <p className="text-[12px] font-medium text-muted-foreground">Target provider</p>
