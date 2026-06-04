@@ -251,12 +251,30 @@ describe("skill management capabilities", () => {
 });
 
 describe("searchSkillsCatalogQueryOptions", () => {
-  it("keys catalog searches by query text", () => {
-    const first = searchSkillsCatalogQueryOptions({ query: "analyze" });
-    const second = searchSkillsCatalogQueryOptions({ query: "review" });
+  it("keys catalog searches by provider, cwd, and query text", () => {
+    const first = searchSkillsCatalogQueryOptions({
+      provider: "opencode",
+      cwd: "/repo",
+      query: "analyze",
+    });
+    const second = searchSkillsCatalogQueryOptions({
+      provider: "codex",
+      cwd: "/repo",
+      query: "review",
+    });
 
     expect(first.queryKey).not.toEqual(second.queryKey);
     expect(first.queryKey).toContain("catalog-search");
     expect(first.enabled).toBe(true);
+  });
+
+  it("disables catalog searches without a cwd", () => {
+    const options = searchSkillsCatalogQueryOptions({
+      provider: "opencode",
+      cwd: "",
+      query: "analyze",
+    });
+
+    expect(options.enabled).toBe(false);
   });
 });

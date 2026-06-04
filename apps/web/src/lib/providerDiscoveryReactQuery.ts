@@ -90,6 +90,12 @@ export const providerDiscoveryQueryKeys = {
     threadId: string | null,
     providerOptionsKey: string | null,
   ) => ["provider-discovery", "plugins", provider, cwd, threadId, providerOptionsKey] as const,
+  catalogSearch: (
+    provider: ProviderKind,
+    cwd: string | null,
+    query: string,
+    providerOptionsKey: string | null,
+  ) => ["provider-discovery", "catalog-search", provider, cwd, query, providerOptionsKey] as const,
   plugin: (
     provider: ProviderKind,
     marketplacePath: string,
@@ -413,9 +419,15 @@ export function setSkillEnabledMutationOptions() {
 }
 
 export function searchSkillsCatalogQueryOptions(input: ProviderSearchCatalogInput) {
+  const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
   return queryOptions({
-    queryKey: [...providerDiscoveryQueryKeys.all, "catalog-search", input.query] as const,
+    queryKey: providerDiscoveryQueryKeys.catalogSearch(
+      input.provider,
+      input.cwd,
+      input.query,
+      providerOptionsKey,
+    ),
     queryFn: () => ensureNativeApi().provider.searchSkillsCatalog(input),
-    enabled: input.query.trim().length > 0,
+    enabled: input.query.trim().length > 0 && input.cwd.trim().length > 0,
   });
 }

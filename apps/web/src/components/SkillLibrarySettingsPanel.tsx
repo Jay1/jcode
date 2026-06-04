@@ -140,7 +140,7 @@ function SkillRow({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="size-7 opacity-0 group-hover:opacity-100"
+                  className="size-7 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
                   aria-label={`Uninstall ${getSkillTitle(row)}`}
                 >
                   <Trash2 className="size-3.5 text-muted-foreground" />
@@ -234,7 +234,14 @@ function InstallSkillDialog({
   const [selectedSkill, setSelectedSkill] = useState<CatalogSkillEntry | null>(null);
   const deferredQuery = useDeferredValue(catalogQuery);
 
-  const catalogSearch = useQuery(searchSkillsCatalogQueryOptions({ query: deferredQuery }));
+  const catalogSearch = useQuery(
+    searchSkillsCatalogQueryOptions({
+      provider: selectedProvider,
+      cwd: discoveryCwd ?? "",
+      query: deferredQuery,
+      ...(providerOptions ? { providerOptions } : {}),
+    }),
+  );
 
   const installMutation = useMutation(installSkillMutationOptions());
 
