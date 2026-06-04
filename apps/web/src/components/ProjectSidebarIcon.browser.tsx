@@ -171,4 +171,38 @@ describe("ProjectSidebarIcon", () => {
     expect(imageRequests).toHaveLength(1);
     await screen.unmount();
   });
+
+  it("keeps folder icons bounded when rendered in a full project row", async () => {
+    const imageRequests: string[] = [];
+    installImageProbeRecorder(imageRequests);
+
+    const screen = await render(
+      <button type="button" className="flex h-8 w-[260px] items-center gap-2 px-2">
+        <span className={getProjectHeaderIconClassName()} data-testid="project-icon-wrapper">
+          <ProjectSidebarIcon
+            className={PROJECT_HEADER_ICON_SIZE_CLASS}
+            cwd="/workspace/plain-folder-row"
+            expanded={false}
+            iconMetadata={null}
+          />
+        </span>
+        <span>homeassist</span>
+        <span className="ml-auto inline-flex gap-2">
+          <span className="size-5" />
+          <span className="size-5" />
+        </span>
+      </button>,
+    );
+
+    const folderIconBoxElement = screen.container.querySelector("[data-project-folder-icon]");
+    const folderIconBox = folderIconBoxElement?.getBoundingClientRect();
+    const wrapperBox = screen.getByTestId("project-icon-wrapper").element().getBoundingClientRect();
+    expect(folderIconBox?.width).toBeLessThanOrEqual(18.5);
+    expect(folderIconBox?.height).toBeLessThanOrEqual(18.5);
+    expect(folderIconBox?.width).toBeGreaterThanOrEqual(17.5);
+    expect(folderIconBox?.height).toBeGreaterThanOrEqual(17.5);
+    expect(wrapperBox.width).toBeGreaterThanOrEqual(19.5);
+    expect(wrapperBox.width).toBeLessThanOrEqual(20.5);
+    await screen.unmount();
+  });
 });
