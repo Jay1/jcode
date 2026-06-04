@@ -115,11 +115,10 @@ export function parseSkillsFindOutput(output: string): CatalogSkillEntry[] {
 
     const urlLine = lines[index + 1]?.replace(/^└\s*/, "");
     const installCount = parseInstallCount(rawInstallCount);
-    if (installCount === undefined) continue;
     entries.push({
       packageRef,
       skillName,
-      installCount,
+      ...(installCount !== undefined ? { installCount } : {}),
       ...(urlLine && /^https?:\/\//i.test(urlLine) ? { url: urlLine } : {}),
     });
   }

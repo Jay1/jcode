@@ -57,12 +57,16 @@ vendor/review-kit@code-review  92 installs
     ]);
   });
 
-  it("skips malformed catalog lines and unparsable install counts", () => {
+  it("skips malformed catalog lines but keeps entries with unparsable install counts", () => {
     const output = `not a valid skills line
 owner/analyze-tools@analyze  many installs
 vendor/review-kit@code-review  92 installs`;
 
     expect(parseSkillsFindOutput(output)).toEqual([
+      {
+        packageRef: "owner/analyze-tools",
+        skillName: "analyze",
+      },
       {
         packageRef: "vendor/review-kit",
         skillName: "code-review",
