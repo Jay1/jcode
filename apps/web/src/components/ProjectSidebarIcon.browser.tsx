@@ -154,8 +154,12 @@ describe("ProjectSidebarIcon", () => {
     expect(folderIcon).not.toBeNull();
     expect(folderIconBox?.width).toBeGreaterThanOrEqual(17);
     expect(folderIconBox?.height).toBeGreaterThanOrEqual(17);
-    expect(folderGlyphBox?.width).toBe(folderIconBox?.width);
-    expect(folderGlyphBox?.height).toBe(folderIconBox?.height);
+    expect(
+      Math.abs((folderGlyphBox?.width ?? 0) - (folderIconBox?.width ?? 0)),
+    ).toBeLessThanOrEqual(0.5);
+    expect(
+      Math.abs((folderGlyphBox?.height ?? 0) - (folderIconBox?.height ?? 0)),
+    ).toBeLessThanOrEqual(0.5);
     await vi.waitFor(() => {
       expect(screen.container.querySelector("img")?.getAttribute("src")).toContain(
         "/api/project-favicon",

@@ -115,6 +115,10 @@ export function ProjectSidebarIcon({
   );
 }
 
+/**
+ * Owns the fallback folder icon box so percentage-sized glyphs and favicon
+ * badges stay constrained inside the sidebar project header.
+ */
 function ProjectFolderIcon({
   className,
   faviconSrc,
