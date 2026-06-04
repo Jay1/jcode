@@ -11,6 +11,11 @@ import {
   applyChatCodeFontOverride,
   applyUIFontOverride,
 } from "../../hooks/appearanceFontOverrides";
+import {
+  CODE_THEME_OPTIONS,
+  buildThemeCssVariables,
+  getCodeThemeSeed,
+} from "../../theme/theme.logic";
 import { ChatTranscriptPane } from "./ChatTranscriptPane";
 import { useTranscriptAssistantSelectionAction } from "./useTranscriptAssistantSelectionAction";
 import { COLLAPSED_USER_MESSAGE_MAX_CHARS } from "./userMessagePreview";
@@ -347,6 +352,195 @@ describe("ChatTranscriptPane", () => {
         "Show less",
       );
     } finally {
+      await screen.unmount();
+    }
+  });
+
+  it("renders user messages with a themed scan marker", async () => {
+    document.documentElement.style.setProperty("--app-user-message-bg", "rgba(49, 50, 68, 0.76)");
+    document.documentElement.style.setProperty(
+      "--app-user-message-bg-muted",
+      "rgba(30, 30, 46, 0.82)",
+    );
+    document.documentElement.style.setProperty(
+      "--app-user-message-border",
+      "rgba(203, 166, 247, 0.28)",
+    );
+    document.documentElement.style.setProperty("--app-user-message-accent", "#cba6f7");
+
+    const screen = await render(
+      <ChatTranscriptPane
+        activeThreadId="thread-user-message-scan-marker"
+        activeTurnInProgress={false}
+        activeTurnStartedAt={null}
+        chatFontSizePx={15}
+        completionDividerBeforeEntryId={null}
+        completionSummary={null}
+        emptyStateProjectName={undefined}
+        hasMessages
+        isRevertingCheckpoint={false}
+        isWorking={false}
+        followLiveOutput={false}
+        listRef={{ current: null }}
+        markdownCwd={undefined}
+        onExpandTimelineImage={NOOP}
+        onMessagesClickCapture={NOOP}
+        onMessagesMouseUp={NOOP}
+        onMessagesPointerCancel={NOOP}
+        onMessagesPointerDown={NOOP}
+        onMessagesPointerUp={NOOP}
+        onMessagesScroll={NOOP}
+        onMessagesTouchEnd={NOOP}
+        onMessagesTouchMove={NOOP}
+        onMessagesTouchStart={NOOP}
+        onMessagesWheel={NOOP}
+        onIsAtEndChange={NOOP}
+        onOpenTurnDiff={NOOP}
+        onOpenThread={NOOP}
+        onRevertUserMessage={NOOP}
+        onScrollToBottom={NOOP}
+        resolvedTheme="dark"
+        revertTurnCountByUserMessageId={EMPTY_REVERT_COUNTS}
+        scrollButtonVisible={false}
+        terminalWorkspaceTerminalTabActive={false}
+        timelineEntries={[
+          {
+            id: "user-message-scan-marker-entry",
+            kind: "message",
+            createdAt: "2026-03-17T19:12:28.000Z",
+            message: {
+              id: MessageId.makeUnsafe("user-message-scan-marker"),
+              role: "user",
+              text: "Find my own request while scrolling",
+              createdAt: "2026-03-17T19:12:28.000Z",
+              streaming: false,
+            },
+          },
+        ]}
+        timestampFormat="locale"
+        turnDiffSummaryByAssistantMessageId={EMPTY_TURN_DIFFS}
+        workspaceRoot={undefined}
+      />,
+    );
+    try {
+      await vi.waitFor(() => {
+        expect(page.getByText("Find my own request while scrolling")).toBeVisible();
+      });
+
+      const bubble = screen.container.querySelector<HTMLElement>(".app-user-message");
+      expect(bubble).not.toBeNull();
+      const bubbleStyle = getComputedStyle(bubble!);
+      const markerStyle = getComputedStyle(bubble!, "::after");
+      expect(bubbleStyle.backgroundImage).toContain("rgba(49, 50, 68, 0.76)");
+      expect(bubbleStyle.borderRightColor).toBe("rgb(203, 166, 247)");
+      expect(markerStyle.backgroundColor).toBe("rgb(203, 166, 247)");
+      expect(markerStyle.width).toBe("2px");
+    } finally {
+      document.documentElement.style.removeProperty("--app-user-message-bg");
+      document.documentElement.style.removeProperty("--app-user-message-bg-muted");
+      document.documentElement.style.removeProperty("--app-user-message-border");
+      document.documentElement.style.removeProperty("--app-user-message-accent");
+      await screen.unmount();
+    }
+  });
+
+  it("keeps the user-message scan marker visible across bundled themes", async () => {
+    const root = document.documentElement;
+    const rootStyle = root.style;
+    const appliedProperties = new Set<string>();
+
+    const screen = await render(
+      <ChatTranscriptPane
+        activeThreadId="thread-user-message-themed-regression"
+        activeTurnInProgress={false}
+        activeTurnStartedAt={null}
+        chatFontSizePx={15}
+        completionDividerBeforeEntryId={null}
+        completionSummary={null}
+        emptyStateProjectName={undefined}
+        hasMessages
+        isRevertingCheckpoint={false}
+        isWorking={false}
+        followLiveOutput={false}
+        listRef={{ current: null }}
+        markdownCwd={undefined}
+        onExpandTimelineImage={NOOP}
+        onMessagesClickCapture={NOOP}
+        onMessagesMouseUp={NOOP}
+        onMessagesPointerCancel={NOOP}
+        onMessagesPointerDown={NOOP}
+        onMessagesPointerUp={NOOP}
+        onMessagesScroll={NOOP}
+        onMessagesTouchEnd={NOOP}
+        onMessagesTouchMove={NOOP}
+        onMessagesTouchStart={NOOP}
+        onMessagesWheel={NOOP}
+        onIsAtEndChange={NOOP}
+        onOpenTurnDiff={NOOP}
+        onOpenThread={NOOP}
+        onRevertUserMessage={NOOP}
+        onScrollToBottom={NOOP}
+        resolvedTheme="dark"
+        revertTurnCountByUserMessageId={EMPTY_REVERT_COUNTS}
+        scrollButtonVisible={false}
+        terminalWorkspaceTerminalTabActive={false}
+        timelineEntries={[
+          {
+            id: "user-message-themed-regression-entry",
+            kind: "message",
+            createdAt: "2026-03-17T19:12:28.000Z",
+            message: {
+              id: MessageId.makeUnsafe("user-message-themed-regression"),
+              role: "user",
+              text: "This request should stay easy to find in every theme",
+              createdAt: "2026-03-17T19:12:28.000Z",
+              streaming: false,
+            },
+          },
+        ]}
+        timestampFormat="locale"
+        turnDiffSummaryByAssistantMessageId={EMPTY_TURN_DIFFS}
+        workspaceRoot={undefined}
+      />,
+    );
+
+    try {
+      await vi.waitFor(() => {
+        expect(page.getByText("stay easy to find", { exact: false })).toBeVisible();
+      });
+
+      const bubble = screen.container.querySelector<HTMLElement>(".app-user-message");
+      expect(bubble).not.toBeNull();
+
+      for (const option of CODE_THEME_OPTIONS) {
+        for (const variant of option.variants) {
+          root.classList.toggle("dark", variant === "dark");
+          const cssVariables = buildThemeCssVariables(
+            {
+              codeThemeId: option.id,
+              theme: getCodeThemeSeed(option.id, variant),
+            },
+            variant,
+          );
+          for (const [property, value] of Object.entries(cssVariables.variables)) {
+            rootStyle.setProperty(property, value);
+            appliedProperties.add(property);
+          }
+
+          const bubbleStyle = getComputedStyle(bubble!);
+          const markerStyle = getComputedStyle(bubble!, "::after");
+          const label = `${option.id}/${variant}`;
+          expect(bubbleStyle.backgroundImage, `${label} background`).toContain("linear-gradient");
+          expect(bubbleStyle.borderRightColor, `${label} border`).not.toBe("rgba(0, 0, 0, 0)");
+          expect(markerStyle.backgroundColor, `${label} marker`).toBe(bubbleStyle.borderRightColor);
+          expect(markerStyle.width, `${label} marker width`).toBe("2px");
+        }
+      }
+    } finally {
+      root.classList.remove("dark");
+      for (const property of appliedProperties) {
+        rootStyle.removeProperty(property);
+      }
       await screen.unmount();
     }
   });
