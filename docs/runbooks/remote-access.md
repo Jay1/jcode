@@ -10,7 +10,7 @@
 | Canonical path  | `docs/runbooks/remote-access.md`                                                                                                     |
 | Last reviewed   | 2026-06-04                                                                                                                           |
 | Review cadence  | Event-driven; review when server CLI flags, environment variables, package scripts, or remote access security guidance changes       |
-| Source of truth | `apps/server` CLI/config entry points and package scripts, plus security baseline                                                    |
+| Source of truth | `apps/server/src/main.ts`, `apps/server/src/config.ts`, root `package.json`, and `docs/security/baseline.md`                         |
 | Verification    | Source-check named flags and env vars against server entry points and run focused formatting with `bunx oxfmt@0.52.0 --check <file>` |
 
 Use this when you want to open JCode from another device (phone, tablet, another laptop).

@@ -17,7 +17,7 @@
 
 | If you are doing this         | Start here                                                                  | Then check                                                            |
 | ----------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Getting oriented              | [System Overview](system-overview.md)                                       | [`../../AGENTS.md`](../../AGENTS.md)                                  |
+| Getting oriented              | [System Overview](system-overview.md)                                       | [Docs Agent Guide](../AGENTS.md)                                      |
 | Checking workspace boundaries | [Runtime Boundaries](runtime-boundaries.md)                                 | [System Overview](system-overview.md)                                 |
 | Changing providers            | [Provider Runtime Architecture](provider-runtime.md)                        | [`../../apps/server/AGENTS.md`](../../apps/server/AGENTS.md)          |
 | Changing server boundaries    | [Server Architecture Migration Inventory](server-architecture-migration.md) | [Testing Strategy](../testing/strategy.md)                            |

@@ -22,6 +22,6 @@
 
 | If you are doing this                 | Start here                                        | Then check                                            |
 | ------------------------------------- | ------------------------------------------------- | ----------------------------------------------------- |
-| Reviewing branch or repo policy       | [Repo Governance](repo-governance.md)             | [`../../AGENTS.md`](../../AGENTS.md)                  |
+| Reviewing branch or repo policy       | [Repo Governance](repo-governance.md)             | [Docs Agent Guide](../AGENTS.md)                      |
 | Checking historical operating posture | [JCode Operating Model](jcode-operating-model.md) | [ADR 0001](../adr/0001-local-coding-agent-cockpit.md) |
 | Editing docs structure                | [Docs Agent Guide](../AGENTS.md)                  | [Documentation Hub](../README.md)                     |
