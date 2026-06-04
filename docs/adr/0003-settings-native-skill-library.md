@@ -149,10 +149,10 @@ After any management mutation, the client should invalidate the `providerSkills`
 
 All four management actions are gated behind new `ProviderComposerCapabilities` flags:
 
-```
-supportsSkillInstall: boolean
-supportsSkillUninstall: boolean
-supportsSkillToggle: boolean
+```typescript
+supportsSkillInstall: boolean;
+supportsSkillUninstall: boolean;
+supportsSkillToggle: boolean;
 ```
 
 These flags follow the same pattern as existing `supportsSkillDiscovery` and `supportsSkillMentions`. Install buttons, uninstall icons, and enable/disable toggles must not render when the provider does not declare the corresponding capability. The install modal's provider dropdown should only list providers with `supportsSkillInstall: true`.
@@ -174,27 +174,27 @@ Mitigation: Pin the `skills` package version and wrap all `npx skills` calls in 
 
 Four new input/result schemas in `packages/contracts/src/providerDiscovery.ts`:
 
-```
+```typescript
 ProviderInstallSkillInput   → { provider, cwd, packageRef, skillName, global?, providerOptions? }
-ProviderInstallSkillResult  → { installedSkill: ProviderSkillDescriptor }
+ProviderInstallSkillResult  → { skill: ProviderSkillDescriptor }
 
-ProviderUninstallSkillInput → { provider, cwd, skillName, global?, providerOptions? }
+ProviderUninstallSkillInput → { provider, cwd, skillPath, global?, providerOptions? }
 ProviderUninstallSkillResult → { success: boolean }
 
 ProviderSetSkillEnabledInput → { provider, cwd, skillPath, enabled, providerOptions? }
-ProviderSetSkillEnabledResult → { success: boolean }
+ProviderSetSkillEnabledResult → { skill: ProviderSkillDescriptor }
 
-ProviderSearchCatalogInput  → { query: string }
+ProviderSearchCatalogInput  → { provider, cwd, query, providerOptions? }
 ProviderSearchCatalogResult → { results: CatalogSkillEntry[] }
 ```
 
 Four new WS RPC method names in `packages/contracts/src/ws.ts`:
 
-```
-providerInstallSkill: "provider.installSkill"
-providerUninstallSkill: "provider.uninstallSkill"
-providerSetSkillEnabled: "provider.setSkillEnabled"
-providerSearchSkillsCatalog: "provider.searchSkillsCatalog"
+```typescript
+providerInstallSkill: "provider.installSkill";
+providerUninstallSkill: "provider.uninstallSkill";
+providerSetSkillEnabled: "provider.setSkillEnabled";
+providerSearchSkillsCatalog: "provider.searchSkillsCatalog";
 ```
 
 ### UI design
