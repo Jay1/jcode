@@ -1,16 +1,15 @@
-// FILE: taskCompletion.tsx
+// FILE: taskCompletionNotifications.tsx
 // Purpose: Bridges thread completion and attention-needed events to in-app toasts and OS notifications.
 // Layer: Notification runtime
-// Exports: TaskCompletionNotifications and browser permission helpers
+// Exports: TaskCompletionNotifications
 
 import { ThreadId } from "@jcode/contracts";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toastManager } from "../components/ui/toast";
 import { resolveVisibleToastThreadIds } from "../components/ui/toastRouteVisibility";
 import { useAppSettings } from "../appSettings";
 import { parseDiffRouteSearch } from "../diffRouteSearch";
-import { isElectron } from "../env";
 import { selectSplitView, useSplitViewStore } from "../splitViewStore";
 import { useStore } from "../store";
 import { createAllThreadsSelector } from "../storeSelectors";
@@ -28,40 +27,9 @@ import {
   isNotificationRuntimeFreshTimestamp,
   shouldShowThreadNotificationToast,
 } from "./taskCompletion.logic";
+import { readBrowserNotificationPermissionState } from "./taskCompletion.permissions";
 
-export type BrowserNotificationPermissionState =
-  | NotificationPermission
-  | "unsupported"
-  | "insecure";
-
-function isBrowserNotificationSupported(): boolean {
-  return typeof window !== "undefined" && "Notification" in window;
-}
-
-// Browsers require secure contexts and a user gesture before asking for permission.
-export function readBrowserNotificationPermissionState(): BrowserNotificationPermissionState {
-  if (typeof window === "undefined") {
-    return "unsupported";
-  }
-  if (!isBrowserNotificationSupported()) {
-    return "unsupported";
-  }
-  if (!window.isSecureContext) {
-    return "insecure";
-  }
-  return Notification.permission;
-}
-
-export async function requestBrowserNotificationPermission(): Promise<BrowserNotificationPermissionState> {
-  const current = readBrowserNotificationPermissionState();
-  if (current === "unsupported" || current === "insecure" || current === "denied") {
-    return current;
-  }
-  if (current === "granted") {
-    return current;
-  }
-  return Notification.requestPermission();
-}
+const selectAllThreads = createAllThreadsSelector();
 
 function isWindowForeground(): boolean {
   if (typeof document === "undefined") {
@@ -151,15 +119,12 @@ export function TaskCompletionNotifications() {
     select: (search) => parseDiffRouteSearch(search),
   });
   const splitView = useSplitViewStore(selectSplitView(routeSearch.splitViewId ?? null));
-  const threads = useStore(useRef(createAllThreadsSelector()).current);
+  const threads = useStore(selectAllThreads);
   const threadsHydrated = useStore((store) => store.threadsHydrated);
   const terminalStateByThreadId = useTerminalStateStore((store) => store.terminalStateByThreadId);
-  const visibleThreadIds = useMemo(() => {
-    return resolveVisibleToastThreadIds({ activeThreadId, splitView });
-  }, [activeThreadId, splitView]);
   const previousThreadsRef = useRef<readonly Thread[]>([]);
   const previousTerminalStateRef = useRef(terminalStateByThreadId);
-  const runtimeStartedAtMsRef = useRef(Date.now());
+  const [runtimeStartedAtMs] = useState(() => Date.now());
   const readyRef = useRef(false);
 
   useEffect(() => {
@@ -190,6 +155,8 @@ export function TaskCompletionNotifications() {
       return;
     }
 
+    const visibleThreadIds = resolveVisibleToastThreadIds({ activeThreadId, splitView });
+
     if (!readyRef.current) {
       previousThreadsRef.current = threads;
       previousTerminalStateRef.current = terminalStateByThreadId;
@@ -201,7 +168,7 @@ export function TaskCompletionNotifications() {
       previousThreadsRef.current,
       threads,
     ).filter((candidate) =>
-      isNotificationRuntimeFreshTimestamp(candidate.completedAt, runtimeStartedAtMsRef.current),
+      isNotificationRuntimeFreshTimestamp(candidate.completedAt, runtimeStartedAtMs),
     );
     const terminalCompletions = collectCompletedTerminalCandidates(
       previousTerminalStateRef.current,
@@ -211,7 +178,7 @@ export function TaskCompletionNotifications() {
       previousThreadsRef.current,
       threads,
     ).filter((candidate) =>
-      isNotificationRuntimeFreshTimestamp(candidate.createdAt, runtimeStartedAtMsRef.current),
+      isNotificationRuntimeFreshTimestamp(candidate.createdAt, runtimeStartedAtMs),
     );
     const terminalAttentionCandidates = collectTerminalAttentionCandidates(
       previousTerminalStateRef.current,
@@ -302,33 +269,15 @@ export function TaskCompletionNotifications() {
     }
   }, [
     navigate,
+    activeThreadId,
+    runtimeStartedAtMs,
     settings.enableSystemTaskCompletionNotifications,
     settings.enableTaskCompletionToasts,
+    splitView,
     terminalStateByThreadId,
     threads,
     threadsHydrated,
-    visibleThreadIds,
   ]);
 
   return null;
-}
-
-export function buildNotificationSettingsSupportText(
-  permissionState: BrowserNotificationPermissionState,
-): string {
-  if (isElectron) {
-    return "Desktop app notifications use your operating system notification center.";
-  }
-  switch (permissionState) {
-    case "granted":
-      return "Browser notifications are enabled for this app.";
-    case "denied":
-      return "Browser notifications are blocked. Re-enable them in your browser site settings.";
-    case "insecure":
-      return "Browser notifications need a secure context. Localhost works; plain HTTP does not.";
-    case "unsupported":
-      return "This browser does not support desktop notifications.";
-    case "default":
-      return "Allow browser notifications to get alerts when chats or terminal agents finish or need input in the background.";
-  }
 }
