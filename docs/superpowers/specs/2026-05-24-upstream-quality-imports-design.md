@@ -1,15 +1,15 @@
 # Lineage Reference Adaptations Design
 
-| Field           | Value                                                                                                                     |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Status          | Draft                                                                                                                     |
-| Type            | Design specification                                                                                                      |
-| Owner           | Engineering                                                                                                               |
-| Audience        | Maintainers and automation agents                                                                                         |
-| Canonical path  | `docs/superpowers/specs/2026-05-24-upstream-quality-imports-design.md`                                                    |
-| Last reviewed   | 2026-05-24                                                                                                                |
-| Review cadence  | Event-driven; review when lineage-reference candidates or JCode quality priorities change                                 |
-| Source of truth | `docs/jcode-operating-model.md`, `docs/runbooks/upstream-watch.md`, `scripts/upstream-watch.ts`, and linked upstream refs |
+| Field           | Value                                                                                                                                |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Status          | Draft                                                                                                                                |
+| Type            | Design specification                                                                                                                 |
+| Owner           | Engineering                                                                                                                          |
+| Audience        | Maintainers and automation agents                                                                                                    |
+| Canonical path  | `docs/superpowers/specs/2026-05-24-upstream-quality-imports-design.md`                                                               |
+| Last reviewed   | 2026-05-24                                                                                                                           |
+| Review cadence  | Event-driven; review when lineage-reference candidates or JCode quality priorities change                                            |
+| Source of truth | `docs/governance/jcode-operating-model.md`, `docs/runbooks/upstream-watch.md`, `scripts/upstream-watch.ts`, and linked upstream refs |
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:writing-plans before implementation. Treat DPCode and T3Code as lineage references; do not merge or cherry-pick upstream wholesale.
 
