@@ -15,6 +15,7 @@
 
 ## Documents
 
+- [Keybindings](keybindings.md)
 - [Runtime Events](runtime-events.md)
 
 ## Ownership
