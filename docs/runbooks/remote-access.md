@@ -1,5 +1,18 @@
 # Remote Access Setup
 
+| Field           | Value                                                                                                                                |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Status          | Active                                                                                                                               |
+| Type            | Operational runbook                                                                                                                  |
+| Owner           | Operations and Engineering                                                                                                           |
+| Audience        | Local operators, maintainers, and automation agents                                                                                  |
+| Scope           | Remote browser access setup, CLI and environment option mapping, token handling, and tailnet binding guidance                        |
+| Canonical path  | `docs/runbooks/remote-access.md`                                                                                                     |
+| Last reviewed   | 2026-06-04                                                                                                                           |
+| Review cadence  | Event-driven; review when server CLI flags, environment variables, package scripts, or remote access security guidance changes       |
+| Source of truth | `apps/server` CLI/config entry points and package scripts, plus security baseline                                                    |
+| Verification    | Source-check named flags and env vars against server entry points and run focused formatting with `bunx oxfmt@0.52.0 --check <file>` |
+
 Use this when you want to open JCode from another device (phone, tablet, another laptop).
 
 ## CLI ↔ Env option map
