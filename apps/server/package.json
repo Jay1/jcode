@@ -30,6 +30,7 @@
     "@earendil-works/pi-coding-agent": "^0.74.0",
     "@effect/platform-node": "catalog:",
     "@effect/sql-sqlite-bun": "catalog:",
+    "@jcode/jcode-linguist": "workspace:*",
     "@opencode-ai/sdk": "^1.14.48",
     "@pierre/diffs": "1.1.0",
     "effect": "catalog:",
