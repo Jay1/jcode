@@ -8,7 +8,6 @@ import {
   ProviderListPluginsInput,
   ProviderListSkillsInput,
   ProviderReadPluginInput,
-  type ProviderSearchCatalogResult,
   ProviderSearchCatalogInput,
   ProviderSetSkillEnabledInput,
   ProviderUninstallSkillInput,
@@ -286,19 +285,17 @@ const make = Effect.gen(function* () {
         schema: ProviderSearchCatalogInput,
         payload: input,
       });
-      const providers = yield* registry.listProviders();
-      for (const provider of providers) {
-        const adapter = yield* registry.getByProvider(provider);
-        if (adapter.searchSkillsCatalog) {
-          const result = yield* adapter
-            .searchSkillsCatalog(parsed)
-            .pipe(Effect.catch(() => Effect.succeed<ProviderSearchCatalogResult>({ results: [] })));
-          if (result.results.length > 0) {
-            return result;
-          }
-        }
+      const adapter = yield* registry.getByProvider(parsed.provider);
+      if (adapter.searchSkillsCatalog) {
+        return yield* adapter.searchSkillsCatalog(parsed);
       }
-      return { results: [] };
+      if (isSkillsCliProvider(parsed.provider)) {
+        return yield* skillManagement.searchCatalog(parsed.query);
+      }
+      return yield* new ProviderValidationError({
+        operation: "ProviderDiscoveryService.searchSkillsCatalog",
+        issue: `Skill catalog search is unavailable for provider '${parsed.provider}'.`,
+      });
     });
 
   return {
