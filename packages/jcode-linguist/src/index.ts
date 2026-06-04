@@ -384,7 +384,8 @@ function matchesAttributePattern(pattern: string, path: string): boolean {
   const normalizedPath = normalizeRepositoryPath(path);
   const normalizedPattern = normalizeRepositoryPath(pattern);
   if (normalizedPattern.endsWith("/**")) {
-    return normalizedPath.startsWith(normalizedPattern.slice(0, -3));
+    const base = normalizedPattern.slice(0, -3);
+    return normalizedPath === base || normalizedPath.startsWith(`${base}/`);
   }
   if (normalizedPattern.includes("*")) {
     const regex = new RegExp(`^${normalizedPattern.split("*").map(escapeRegExp).join("[^/]*")}$`);

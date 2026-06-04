@@ -2,6 +2,7 @@
   "name": "@jcode/jcode-linguist",
   "version": "0.0.0",
   "private": true,
+  "description": "Private workspace package; TypeScript/Bun consumers use src exports, and dist is a build artifact.",
   "files": [
     "dist"
   ],

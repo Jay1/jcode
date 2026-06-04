@@ -1,7 +1,11 @@
-import { Effect, FileSystem, Layer, Path } from "effect";
+import { Effect, FileSystem, Layer, Path, Schema } from "effect";
 import { spawnSync } from "node:child_process";
-import type { ProjectIconMetadata } from "@jcode/contracts";
-import { analyzeRepositoryLanguages, inferProjectIconMetadata } from "@jcode/jcode-linguist";
+import { ProjectIconMetadata } from "@jcode/contracts";
+import {
+  analyzeRepositoryLanguages,
+  inferProjectIconMetadata,
+  type ProjectIconMetadataLike,
+} from "@jcode/jcode-linguist";
 
 import {
   ProjectLanguageIconResolver,
@@ -55,6 +59,27 @@ function packageHasDependency(packageJson: unknown, dependencyName: string): boo
   return dependencyGroups.some(
     (group) => isRecord(group) && typeof group[dependencyName] === "string",
   );
+}
+
+function toProjectIconMetadata(
+  inferred: ProjectIconMetadataLike | null,
+): ProjectIconMetadata | null {
+  if (!inferred) {
+    return null;
+  }
+  const label = inferred.label.trim();
+  if (label.length === 0) {
+    return null;
+  }
+  const candidate = {
+    iconId: inferred.iconId,
+    label,
+  } satisfies { readonly iconId: ProjectIconMetadata["iconId"]; readonly label: string };
+  try {
+    return Schema.decodeUnknownSync(ProjectIconMetadata)(candidate) satisfies ProjectIconMetadata;
+  } catch {
+    return null;
+  }
 }
 
 export const makeProjectLanguageIconResolver = Effect.gen(function* () {
@@ -227,7 +252,7 @@ export const makeProjectLanguageIconResolver = Effect.gen(function* () {
         files,
         ...(attributesText !== undefined ? { attributesText } : {}),
       });
-      return inferProjectIconMetadata(profile) as ProjectIconMetadata | null;
+      return toProjectIconMetadata(inferProjectIconMetadata(profile));
     },
   );
 

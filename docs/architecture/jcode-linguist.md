@@ -38,6 +38,8 @@ JCode should reuse the model, not the Ruby runtime:
 
 `packages/jcode-linguist` is pure and side-effect free. It receives file samples and returns a profile.
 
+The package is private workspace tooling. Like the other private JCode packages, its ESM `exports` and `types` point at `src/index.ts` so Bun and TypeScript consume source directly inside the monorepo. The `dist` output exists for build compatibility and CommonJS consumers, not external publication.
+
 `apps/server` owns filesystem and process access. The project icon resolver:
 
 1. keeps fast explicit framework/root-marker checks for known high-confidence cases;

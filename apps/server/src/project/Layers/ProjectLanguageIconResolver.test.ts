@@ -7,6 +7,17 @@ import { Effect, FileSystem, Layer, Path } from "effect";
 import { ProjectLanguageIconResolver } from "../Services/ProjectLanguageIconResolver";
 import { ProjectLanguageIconResolverLive } from "./ProjectLanguageIconResolver";
 
+function expectGit(cwd: string, args: readonly string[]) {
+  const result = spawnSync("git", [...args], { cwd, encoding: "utf8" });
+  if (result.error) {
+    throw result.error;
+  }
+  expect(
+    result.status,
+    `git ${args.join(" ")} failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+  ).toBe(0);
+}
+
 const TestLayer = Layer.empty.pipe(
   Layer.provideMerge(ProjectLanguageIconResolverLive),
   Layer.provideMerge(NodeServices.layer),
@@ -91,8 +102,8 @@ it.layer(TestLayer)("ProjectLanguageIconResolverLive", (it) => {
         const cwd = yield* makeTempDir;
         yield* writeTextFile(cwd, "README.md", "Repository notes");
         yield* writeTextFile(cwd, "tools/redops_profile.py", "print('profile')");
-        spawnSync("git", ["init"], { cwd, stdio: "ignore" });
-        spawnSync("git", ["add", "README.md", "tools/redops_profile.py"], { cwd, stdio: "ignore" });
+        expectGit(cwd, ["init"]);
+        expectGit(cwd, ["add", "README.md", "tools/redops_profile.py"]);
 
         const resolved = yield* resolver.resolveMetadata(cwd);
 
@@ -106,11 +117,8 @@ it.layer(TestLayer)("ProjectLanguageIconResolverLive", (it) => {
         const cwd = yield* makeTempDir;
         yield* writeTextFile(cwd, ".gitattributes", "tools/*.txt linguist-language=Python\n");
         yield* writeTextFile(cwd, "tools/redops_profile.txt", "print('profile')");
-        spawnSync("git", ["init"], { cwd, stdio: "ignore" });
-        spawnSync("git", ["add", ".gitattributes", "tools/redops_profile.txt"], {
-          cwd,
-          stdio: "ignore",
-        });
+        expectGit(cwd, ["init"]);
+        expectGit(cwd, ["add", ".gitattributes", "tools/redops_profile.txt"]);
 
         const resolved = yield* resolver.resolveMetadata(cwd);
 

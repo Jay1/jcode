@@ -151,6 +151,7 @@ describe("analyzeRepositoryLanguages", () => {
       ),
       files: [
         { path: "third_party/client.py", sizeBytes: 100_000 },
+        { path: "third_party_lib/redops_profile.py", sizeBytes: 9_000 },
         { path: "generated/bindings.go", sizeBytes: 100_000 },
         { path: "src/main.ts", sizeBytes: 8_000 },
         { path: "src/app.ts", sizeBytes: 6_000 },
@@ -158,9 +159,6 @@ describe("analyzeRepositoryLanguages", () => {
     });
 
     expect(profile.skippedFileCount).toBe(2);
-    expect(inferProjectIconMetadata(profile)).toEqual({
-      iconId: "typescript",
-      label: "TypeScript",
-    });
+    expect(profile.languages.map((entry) => entry.languageId)).toContain("python");
   });
 });

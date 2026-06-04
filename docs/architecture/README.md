@@ -8,7 +8,7 @@
 | Audience        | Engineers, reviewers, and automation agents                                                               |
 | Scope           | Runtime shape, provider boundaries, app/package responsibilities, and architectural migration references  |
 | Canonical path  | `docs/architecture/README.md`                                                                             |
-| Last reviewed   | 2026-05-22                                                                                                |
+| Last reviewed   | 2026-06-04                                                                                                |
 | Review cadence  | Event-driven; review when app boundaries, provider adapters, contracts, or packaging architecture changes |
 | Source of truth | `apps/*`, `packages/*`, `scripts/*`, `turbo.json`, and linked architecture docs                           |
 | Verification    | Focused tests/builds for touched areas plus source cross-checks for architecture claims                   |
