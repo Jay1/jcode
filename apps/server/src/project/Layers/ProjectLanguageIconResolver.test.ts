@@ -1,4 +1,5 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import { spawnSync } from "node:child_process";
 import { describe, expect } from "vitest";
 import { it } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Path } from "effect";
@@ -66,6 +67,54 @@ it.layer(TestLayer)("ProjectLanguageIconResolverLive", (it) => {
         const resolved = yield* resolver.resolveMetadata(cwd);
 
         expect(resolved).toEqual({ iconId: "vue", label: "Vue" });
+      }),
+    );
+
+    it.effect("detects Python from tracked scripts and tests when root manifests are absent", () =>
+      Effect.gen(function* () {
+        const resolver = yield* ProjectLanguageIconResolver;
+        const cwd = yield* makeTempDir;
+        yield* writeTextFile(cwd, "README.md", "RedOps operating notes");
+        yield* writeTextFile(cwd, "scripts/redops_state_query.py", "print('state')");
+        yield* writeTextFile(cwd, "scripts/sync_redops_state.py", "print('sync')");
+        yield* writeTextFile(cwd, "tests/test_sync_redops_state.py", "def test_sync(): pass");
+
+        const resolved = yield* resolver.resolveMetadata(cwd);
+
+        expect(resolved).toEqual({ iconId: "python", label: "Python" });
+      }),
+    );
+
+    it.effect("prefers Git tracked files before bounded directory sampling", () =>
+      Effect.gen(function* () {
+        const resolver = yield* ProjectLanguageIconResolver;
+        const cwd = yield* makeTempDir;
+        yield* writeTextFile(cwd, "README.md", "Repository notes");
+        yield* writeTextFile(cwd, "tools/redops_profile.py", "print('profile')");
+        spawnSync("git", ["init"], { cwd, stdio: "ignore" });
+        spawnSync("git", ["add", "README.md", "tools/redops_profile.py"], { cwd, stdio: "ignore" });
+
+        const resolved = yield* resolver.resolveMetadata(cwd);
+
+        expect(resolved).toEqual({ iconId: "python", label: "Python" });
+      }),
+    );
+
+    it.effect("honors root .gitattributes language overrides during repository profiling", () =>
+      Effect.gen(function* () {
+        const resolver = yield* ProjectLanguageIconResolver;
+        const cwd = yield* makeTempDir;
+        yield* writeTextFile(cwd, ".gitattributes", "tools/*.txt linguist-language=Python\n");
+        yield* writeTextFile(cwd, "tools/redops_profile.txt", "print('profile')");
+        spawnSync("git", ["init"], { cwd, stdio: "ignore" });
+        spawnSync("git", ["add", ".gitattributes", "tools/redops_profile.txt"], {
+          cwd,
+          stdio: "ignore",
+        });
+
+        const resolved = yield* resolver.resolveMetadata(cwd);
+
+        expect(resolved).toEqual({ iconId: "python", label: "Python" });
       }),
     );
 
