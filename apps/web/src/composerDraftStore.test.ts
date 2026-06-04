@@ -886,6 +886,32 @@ describe("composerDraftStore project draft thread mapping", () => {
       envMode: "worktree",
     });
   });
+
+  it("normalizes branchless pathless worktree drafts back to local", () => {
+    const store = useComposerDraftStore.getState();
+    store.setProjectDraftThreadId(projectId, threadId, {
+      branch: null,
+      worktreePath: null,
+      envMode: "worktree",
+    });
+    const runtimeUndefinedOptions = {
+      branch: undefined,
+      worktreePath: undefined,
+      envMode: undefined,
+    } as unknown as {
+      branch?: string | null;
+      worktreePath?: string | null;
+      envMode?: "local" | "worktree";
+    };
+    store.setProjectDraftThreadId(projectId, threadId, runtimeUndefinedOptions);
+
+    expect(useComposerDraftStore.getState().getDraftThread(threadId)).toMatchObject({
+      projectId,
+      branch: null,
+      worktreePath: null,
+      envMode: "local",
+    });
+  });
 });
 
 describe("composerDraftStore modelSelection", () => {

@@ -2227,6 +2227,15 @@ export const useComposerDraftStore = create<ComposerDraftStoreState>()(
             options?.worktreePath === undefined
               ? (existingThread?.worktreePath ?? null)
               : (options.worktreePath ?? null);
+          const nextBranch =
+            options?.branch === undefined
+              ? (existingThread?.branch ?? null)
+              : (options.branch ?? null);
+          const nextEnvMode =
+            options?.envMode ??
+            (nextWorktreePath || (existingThread?.envMode === "worktree" && nextBranch)
+              ? "worktree"
+              : "local");
           const nextIsTemporary =
             options?.isTemporary === true
               ? true
@@ -2244,18 +2253,13 @@ export const useComposerDraftStore = create<ComposerDraftStoreState>()(
               existingThread?.interactionMode ??
               DEFAULT_INTERACTION_MODE,
             entryPoint,
-            branch:
-              options?.branch === undefined
-                ? (existingThread?.branch ?? null)
-                : (options.branch ?? null),
+            branch: nextBranch,
             worktreePath: nextWorktreePath,
             lastKnownPr:
               options?.lastKnownPr === undefined
                 ? (existingThread?.lastKnownPr ?? null)
                 : (options.lastKnownPr ?? null),
-            envMode:
-              options?.envMode ??
-              (nextWorktreePath ? "worktree" : (existingThread?.envMode ?? "local")),
+            envMode: nextEnvMode,
             ...(nextIsTemporary ? { isTemporary: true } : {}),
             ...(nextPromotedTo ? { promotedTo: nextPromotedTo } : {}),
           };
