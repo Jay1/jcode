@@ -187,7 +187,10 @@ export const CatalogSkillEntry = Schema.Struct({
 export type CatalogSkillEntry = typeof CatalogSkillEntry.Type;
 
 export const ProviderSearchCatalogInput = Schema.Struct({
+  provider: ProviderDiscoveryKind,
+  cwd: TrimmedNonEmptyString,
   query: TrimmedNonEmptyString,
+  providerOptions: Schema.optional(ProviderStartOptions),
 });
 export type ProviderSearchCatalogInput = typeof ProviderSearchCatalogInput.Type;
 
