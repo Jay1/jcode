@@ -81,7 +81,7 @@ it.layer(TestLayer)("ProjectLanguageIconResolverLive", (it) => {
       }),
     );
 
-    it.effect("detects Python from tracked scripts and tests when root manifests are absent", () =>
+    it.effect("detects Python from scripts and tests when root manifests are absent", () =>
       Effect.gen(function* () {
         const resolver = yield* ProjectLanguageIconResolver;
         const cwd = yield* makeTempDir;

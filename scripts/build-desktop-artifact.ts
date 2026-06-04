@@ -22,6 +22,8 @@ import { Config, Data, Effect, FileSystem, Layer, Logger, Option, Path, Schema }
 import { Command, Flag } from "effect/unstable/cli";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
+const BUNDLED_SERVER_WORKSPACE_DEPENDENCIES = new Set(["@jcode/jcode-linguist"]);
+
 const BuildPlatform = Schema.Literals(["mac", "linux", "win"]);
 const BuildArch = Schema.Literals(["arm64", "x64", "universal"]);
 
@@ -532,6 +534,19 @@ function resolveDesktopRuntimeDependencies(
   return resolveCatalogDependencies(runtimeDependencies, catalog, "apps/desktop");
 }
 
+function resolveServerRuntimeDependencies(
+  dependencies: Record<string, unknown>,
+  catalog: Record<string, unknown>,
+): Record<string, unknown> {
+  const runtimeDependencies = Object.fromEntries(
+    Object.entries(dependencies).filter(
+      ([dependencyName]) => !BUNDLED_SERVER_WORKSPACE_DEPENDENCIES.has(dependencyName),
+    ),
+  );
+
+  return resolveCatalogDependencies(runtimeDependencies, catalog, "apps/server");
+}
+
 function resolveGitHubPublishConfig():
   | {
       readonly provider: "github";
@@ -669,11 +684,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
 
   const resolvedServerDependencies = yield* Effect.try({
     try: () =>
-      resolveCatalogDependencies(
-        serverDependencies,
-        rootPackageJson.workspaces.catalog,
-        "apps/server",
-      ),
+      resolveServerRuntimeDependencies(serverDependencies, rootPackageJson.workspaces.catalog),
     catch: (cause) =>
       new BuildScriptError({
         message: "Could not resolve production dependencies from apps/server/package.json.",
