@@ -6,6 +6,7 @@ import {
   EventId,
   MessageId,
   ORCHESTRATION_WS_METHODS,
+  type GitListBranchesResult,
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
   type OrchestrationThread,
@@ -49,6 +50,9 @@ const OTHER_THREAD_ID = "thread-browser-test-other" as ThreadId;
 const THREAD_TITLE = "Browser test thread";
 const UUID_ROUTE_RE = /^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const PROJECT_ID = "project-1" as ProjectId;
+const HOMEASSIST_PROJECT_ID = "project-homeassist" as ProjectId;
+const HOME_DIR = "/home/jay/code";
+const HOMEASSIST_WORKSPACE_ROOT = `${HOME_DIR}/homeassist`;
 const NOW_ISO = "2026-03-04T12:00:00.000Z";
 const BASE_TIME_MS = Date.parse(NOW_ISO);
 const ATTACHMENT_SVG = "<svg xmlns='http://www.w3.org/2000/svg' width='120' height='300'></svg>";
@@ -65,6 +69,7 @@ interface WsRequestEnvelope {
 interface TestFixture {
   snapshot: OrchestrationReadModel;
   serverConfig: ServerConfig;
+  gitListBranchesResult?: GitListBranchesResult;
   welcome: WsWelcomePayload;
 }
 
@@ -554,6 +559,30 @@ function createDraftOnlySnapshot(): OrchestrationReadModel {
   };
 }
 
+function createHomeassistDraftOnlySnapshot(): OrchestrationReadModel {
+  const snapshot = createDraftOnlySnapshot();
+  return {
+    ...snapshot,
+    projects: [
+      ...snapshot.projects,
+      {
+        id: HOMEASSIST_PROJECT_ID,
+        kind: "project",
+        title: "homeassist",
+        workspaceRoot: HOMEASSIST_WORKSPACE_ROOT,
+        defaultModelSelection: {
+          provider: "codex",
+          model: "gpt-5",
+        },
+        scripts: [],
+        createdAt: NOW_ISO,
+        updatedAt: NOW_ISO,
+        deletedAt: null,
+      },
+    ],
+  };
+}
+
 function withProjectScripts(
   snapshot: OrchestrationReadModel,
   scripts: OrchestrationReadModel["projects"][number]["scripts"],
@@ -837,6 +866,9 @@ function resolveWsRpc(body: WsRequestEnvelope["body"]): unknown {
     return { worktrees: [] };
   }
   if (tag === WS_METHODS.gitListBranches) {
+    if (fixture.gitListBranchesResult) {
+      return fixture.gitListBranchesResult;
+    }
     return {
       isRepo: true,
       hasOriginRemote: true,
@@ -1611,7 +1643,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
         () => {
           expect(document.body.textContent).toContain(THREAD_TITLE);
         },
-        { timeout: 8_000, interval: 16 },
+        { timeout: 1_000, interval: 16 },
       );
     } finally {
       await mounted.cleanup();
@@ -2835,6 +2867,90 @@ describe("ChatView timeline estimator parity (full app)", () => {
           });
         },
         { timeout: 8_000, interval: 16 },
+      );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("starts stale branchless worktree drafts as local threads on first Enter", async () => {
+    useComposerDraftStore.setState({
+      draftThreadsByThreadId: {
+        [THREAD_ID]: {
+          projectId: HOMEASSIST_PROJECT_ID,
+          createdAt: NOW_ISO,
+          runtimeMode: "full-access",
+          interactionMode: "default",
+          entryPoint: "chat",
+          branch: null,
+          worktreePath: null,
+          envMode: "worktree",
+        },
+      },
+      projectDraftThreadIdByProjectId: {
+        [HOMEASSIST_PROJECT_ID]: THREAD_ID,
+      },
+    });
+
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createHomeassistDraftOnlySnapshot(),
+      configureFixture: (nextFixture) => {
+        nextFixture.gitListBranchesResult = {
+          branches: [],
+          isRepo: false,
+          hasOriginRemote: false,
+        };
+      },
+    });
+
+    try {
+      useComposerDraftStore.getState().setPrompt(THREAD_ID, "test");
+
+      const editor = await waitForComposerEditor();
+      editor.focus();
+      editor.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const createThreadRequest = wsRequests.find(
+            (request) =>
+              request._tag === ORCHESTRATION_WS_METHODS.dispatchCommand &&
+              typeof request.command === "object" &&
+              request.command !== null &&
+              "type" in request.command &&
+              request.command.type === "thread.create",
+          );
+          expect(createThreadRequest?.command).toMatchObject({
+            projectId: HOMEASSIST_PROJECT_ID,
+            threadId: THREAD_ID,
+            envMode: "local",
+            branch: null,
+            worktreePath: null,
+          });
+
+          const turnStartRequest = wsRequests.find(
+            (request) =>
+              request._tag === ORCHESTRATION_WS_METHODS.dispatchCommand &&
+              typeof request.command === "object" &&
+              request.command !== null &&
+              "type" in request.command &&
+              request.command.type === "thread.turn.start",
+          );
+          expect(turnStartRequest?.command).toMatchObject({
+            threadId: THREAD_ID,
+            message: {
+              text: "test",
+            },
+          });
+        },
+        { timeout: 1_000, interval: 16 },
       );
     } finally {
       await mounted.cleanup();

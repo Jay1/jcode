@@ -5504,6 +5504,22 @@ export default function ChatView({
       nextThreadWorktreePath = null;
     }
 
+    if (
+      isFirstMessage &&
+      nextThreadEnvMode === "worktree" &&
+      !nextThreadBranch &&
+      !nextThreadWorktreePath
+    ) {
+      nextThreadEnvMode = "local";
+      if (isLocalDraftThread) {
+        setDraftThreadContext(threadIdForSend, {
+          envMode: "local",
+          branch: null,
+          worktreePath: null,
+        });
+      }
+    }
+
     const baseBranchForWorktree =
       isFirstMessage && nextThreadEnvMode === "worktree" && !nextThreadWorktreePath
         ? nextThreadBranch
