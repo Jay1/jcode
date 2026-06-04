@@ -87,7 +87,7 @@ export function deriveSkillNameFromPath(skillPath: string): string {
 }
 
 function parseInstallCount(raw: string): number | undefined {
-  const normalized = raw.trim().toUpperCase();
+  const normalized = stripAnsi(raw).trim().toUpperCase();
   const match = normalized.match(/^(\d+(?:\.\d+)?)([KM]?)$/);
   if (!match) return undefined;
   const value = Number(match[1]);
@@ -97,10 +97,14 @@ function parseInstallCount(raw: string): number | undefined {
   return Math.round(value);
 }
 
+function stripAnsi(value: string): string {
+  return value.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "");
+}
+
 export function parseSkillsFindOutput(output: string): CatalogSkillEntry[] {
   const lines = output
     .split(/\r?\n/)
-    .map((line) => line.trim())
+    .map((line) => stripAnsi(line).trim())
     .filter((line) => line.length > 0);
   const entries: CatalogSkillEntry[] = [];
 
