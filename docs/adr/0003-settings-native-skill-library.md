@@ -1,17 +1,17 @@
 # ADR 0003: Skill Library Is A Settings-Native Provider-Aware Capability Surface
 
-| Field           | Value                                                                                                                                               |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Status          | Accepted                                                                                                                                            |
-| Type            | Architecture decision record                                                                                                                        |
-| Owner           | Engineering                                                                                                                                         |
-| Audience        | Maintainers, reviewers, and automation agents                                                                                                       |
-| Scope           | Skill discovery, skill inventory UI, provider skill source boundaries, and future skill management seams                                            |
-| Canonical path  | `docs/adr/0003-settings-native-skill-library.md`                                                                                                    |
-| Last reviewed   | 2026-06-01                                                                                                                                          |
-| Review cadence  | Event-driven; review if Skill Library becomes a remote marketplace, provider management actions ship, or source semantics change                    |
-| Source of truth | `CONTEXT.md`, `docs/superpowers/specs/2026-06-01-skill-library-design.md`, `apps/web/src/settingsNavigation.ts`, and provider discovery contracts   |
-| Verification    | Confirm `/settings` exposes Skill Library, provider source remains visible, and install/uninstall controls do not appear without capability support |
+| Field           | Value                                                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Status          | Accepted                                                                                                                                               |
+| Type            | Architecture decision record                                                                                                                           |
+| Owner           | Engineering                                                                                                                                            |
+| Audience        | Maintainers, reviewers, and automation agents                                                                                                          |
+| Scope           | Skill discovery, skill inventory UI, provider skill source boundaries, skill management actions (install/uninstall/enable/disable), and catalog search |
+| Canonical path  | `docs/adr/0003-settings-native-skill-library.md`                                                                                                       |
+| Last reviewed   | 2026-06-04                                                                                                                                             |
+| Review cadence  | Event-driven; review if Skill Library becomes a remote marketplace, provider management actions ship, or source semantics change                       |
+| Source of truth | `CONTEXT.md`, `docs/superpowers/specs/2026-06-01-skill-library-design.md`, `apps/web/src/settingsNavigation.ts`, and provider discovery contracts      |
+| Verification    | Confirm `/settings` exposes Skill Library, provider source remains visible, and install/uninstall controls do not appear without capability support    |
 
 ## Context
 
@@ -120,9 +120,99 @@ Keeping install and uninstall out of v1 avoids pretending all providers support 
 - `PluginLibrary` can be used as a reference, but not as the primary Settings Skill Library implementation.
 - Future install, uninstall, enable/disable, detail drawers, trust metadata, and remote catalog search must respect provider capability differences.
 
+## Skill Management Architecture (v2)
+
+v1 shipped a read-only installed-skills inventory. v2 adds four management actions: install, uninstall, disable, and enable. This section records the architecture decisions for those actions.
+
+### Management action primitives
+
+| Action         | User-facing                                                                   | RPC                             | Server implementation                                                                                         | Provider gating flag                               |
+| -------------- | ----------------------------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Install        | "Install Skill" button in header → search modal → provider dropdown → install | `provider.installSkill`         | Shell out to `npx skills add <owner/repo> --agent <provider> --skill <name> -y`                               | `supportsSkillInstall`                             |
+| Uninstall      | Trash icon per skill row → confirmation dialog                                | `provider.uninstallSkill`       | Shell out to `npx skills remove <skill> --agent <provider> -y`                                                | `supportsSkillUninstall`                           |
+| Enable         | Toggle switch per skill row (on/off)                                          | `provider.setSkillEnabled`      | Provider-specific: Pi toggles `disableModelInvocation`; others rename skill directory with `.disabled` suffix | `supportsSkillToggle`                              |
+| Disable        | Same toggle as Enable (flip to off)                                           | Same `provider.setSkillEnabled` | Same as Enable                                                                                                | `supportsSkillToggle`                              |
+| Catalog search | Embedded in install modal search input                                        | `provider.searchSkillsCatalog`  | Shell out to `npx skills find <query>` and parse structured output, or query skills.sh API                    | `supportsSkillInstall` (search is part of install) |
+
+### Hot-reload
+
+No provider restart is required after install, uninstall, enable, or disable. The existing `forceReload` mechanism is sufficient:
+
+- **Pi**: `session.reload()` or `resourceLoader.reload()` clears and rebuilds the skill list from disk.
+- **Codex**: Cache bust + `skills/list` re-request to the app server.
+- **OpenCode**: `client.app.skills({ directory })` re-queries the SDK, which reads from current disk state.
+- **Claude**: Not applicable (returns empty skill list).
+
+After any management mutation, the client should invalidate the `providerSkills` React Query cache and, if the provider supports `forceReload`, pass `forceReload: true` on the next `listSkills` call.
+
+### Capability gating
+
+All four management actions are gated behind new `ProviderComposerCapabilities` flags:
+
+```typescript
+supportsSkillInstall: boolean;
+supportsSkillUninstall: boolean;
+supportsSkillToggle: boolean;
+```
+
+These flags follow the same pattern as existing `supportsSkillDiscovery` and `supportsSkillMentions`. Install buttons, uninstall icons, and enable/disable toggles must not render when the provider does not declare the corresponding capability. The install modal's provider dropdown should only list providers with `supportsSkillInstall: true`.
+
+### Why shell out to `npx skills`
+
+The `skills` npm package (the CLI behind skills.sh) already knows each provider's skill directory conventions, handles GitHub repo resolution, symlink vs copy semantics, lockfile management, and skill name disambiguation. Reimplementing this in JCode would duplicate complex, provider-specific directory logic that the `skills` CLI already maintains.
+
+Trade-offs:
+
+- **Pro**: Correct by default for each provider. Handles edge cases like multi-skill repos and lockfiles.
+- **Pro**: Automatically supports new providers when the `skills` CLI adds them.
+- **Con**: Requires `npx` available in PATH. Adds ~2-5s latency per operation for package resolution.
+- **Con**: `npx skills find` output parsing is fragile if the CLI changes format.
+
+Mitigation: Pin the `skills` package version and wrap all `npx skills` calls in a `SkillManagementService` that returns typed results. If the CLI becomes a bottleneck, the service can be replaced with direct GitHub API calls later.
+
+### New contracts
+
+Four new input/result schemas in `packages/contracts/src/providerDiscovery.ts`:
+
+```typescript
+ProviderInstallSkillInput   → { provider, cwd, packageRef, skillName, global?, providerOptions? }
+ProviderInstallSkillResult  → { skill: ProviderSkillDescriptor }
+
+ProviderUninstallSkillInput → { provider, cwd, skillPath, global?, providerOptions? }
+ProviderUninstallSkillResult → { success: boolean }
+
+ProviderSetSkillEnabledInput → { provider, cwd, skillPath, enabled, providerOptions? }
+ProviderSetSkillEnabledResult → { skill: ProviderSkillDescriptor }
+
+ProviderSearchCatalogInput  → { provider, cwd, query, providerOptions? }
+ProviderSearchCatalogResult → { results: CatalogSkillEntry[] }
+```
+
+Four new WS RPC method names in `packages/contracts/src/ws.ts`:
+
+```typescript
+providerInstallSkill: "provider.installSkill";
+providerUninstallSkill: "provider.uninstallSkill";
+providerSetSkillEnabled: "provider.setSkillEnabled";
+providerSearchSkillsCatalog: "provider.searchSkillsCatalog";
+```
+
+### UI design
+
+1. **Install**: Header "Install Skill" button (visible when any provider supports install) → modal with search input (debounced, calls catalog search) → results list with install counts → provider dropdown (filtered to `supportsSkillInstall` providers) → "Install" action button → loading state → success/refresh.
+2. **Uninstall**: Trash icon on each skill row (visible when the row's provider supports uninstall) → confirmation dialog ("Remove [skill name] from [provider]?") → loading state → success/refresh.
+3. **Enable/Disable**: Toggle switch on each skill row (visible when the row's provider supports toggle) → immediate mutation → loading state on toggle → success/refresh.
+
 ## Action Items
 
 1. [x] Keep `CONTEXT.md` terminology aligned with this ADR.
 2. [x] Keep the design spec in `docs/superpowers/specs/2026-06-01-skill-library-design.md` linked to this decision.
 3. [x] Verify the Settings Skill Library renders with at least one provider runtime exposing skills.
-4. [ ] Gate future skill management actions behind provider capability flags.
+4. [x] Gate future skill management actions behind provider capability flags.
+5. [ ] Implement new contracts (`ProviderInstallSkillInput`, etc.) and WS RPC methods.
+6. [ ] Implement `SkillManagementService` server layer wrapping `npx skills` calls.
+7. [ ] Add capability flags to each provider adapter.
+8. [ ] Implement Install modal UI in `SkillLibrarySettingsPanel`.
+9. [ ] Implement Uninstall action (trash icon + confirmation) per row.
+10. [ ] Implement Enable/Disable toggle per row.
+11. [ ] Browser QA with Playwright verifying all four management actions.

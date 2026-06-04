@@ -2093,6 +2093,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       supportsRuntimeModelList: true,
       supportsThreadCompaction: true,
       supportsThreadImport: true,
+      supportsSkillInstall: true,
+      supportsSkillUninstall: true,
+      supportsSkillToggle: false,
     };
   }
 

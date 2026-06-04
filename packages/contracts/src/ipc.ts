@@ -118,6 +118,14 @@ import type {
   ProviderListPluginsResult,
   ProviderListSkillsInput,
   ProviderListSkillsResult,
+  ProviderInstallSkillInput,
+  ProviderInstallSkillResult,
+  ProviderUninstallSkillInput,
+  ProviderUninstallSkillResult,
+  ProviderSetSkillEnabledInput,
+  ProviderSetSkillEnabledResult,
+  ProviderSearchCatalogInput,
+  ProviderSearchCatalogResult,
   ProviderReadPluginInput,
   ProviderReadPluginResult,
   OpenCodeRuntimeHealth,
@@ -464,6 +472,14 @@ export interface NativeApi {
     compactThread: (input: ProviderCompactThreadInput) => Promise<void>;
     listCommands: (input: ProviderListCommandsInput) => Promise<ProviderListCommandsResult>;
     listSkills: (input: ProviderListSkillsInput) => Promise<ProviderListSkillsResult>;
+    installSkill: (input: ProviderInstallSkillInput) => Promise<ProviderInstallSkillResult>;
+    uninstallSkill: (input: ProviderUninstallSkillInput) => Promise<ProviderUninstallSkillResult>;
+    setSkillEnabled: (
+      input: ProviderSetSkillEnabledInput,
+    ) => Promise<ProviderSetSkillEnabledResult>;
+    searchSkillsCatalog: (
+      input: ProviderSearchCatalogInput,
+    ) => Promise<ProviderSearchCatalogResult>;
     listPlugins: (input: ProviderListPluginsInput) => Promise<ProviderListPluginsResult>;
     readPlugin: (input: ProviderReadPluginInput) => Promise<ProviderReadPluginResult>;
     listModels: (input: ProviderListModelsInput) => Promise<ProviderListModelsResult>;

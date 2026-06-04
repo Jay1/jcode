@@ -16,6 +16,7 @@ import { ProviderAdapterRegistryLive } from "./Layers/ProviderAdapterRegistry";
 import { ProviderDiscoveryServiceLive } from "./Layers/ProviderDiscoveryService";
 import { makeProviderServiceLive } from "./Layers/ProviderService";
 import { ProviderSessionDirectoryLive } from "./Layers/ProviderSessionDirectory";
+import { SkillManagementServiceLive } from "./Layers/SkillManagementService";
 import { ProviderAdapterRegistry } from "./Services/ProviderAdapterRegistry";
 import { ProviderDiscoveryService } from "./Services/ProviderDiscoveryService";
 import { ProviderService } from "./Services/ProviderService";
@@ -81,6 +82,7 @@ export function makeServerProviderLayer(): Layer.Layer<
     ).pipe(Layer.provide(adapterRegistryLayer), Layer.provide(providerSessionDirectoryLayer));
     const providerDiscoveryLayer = ProviderDiscoveryServiceLive.pipe(
       Layer.provide(adapterRegistryLayer),
+      Layer.provide(SkillManagementServiceLive),
     );
     return Layer.mergeAll(
       providerServiceLayer,
