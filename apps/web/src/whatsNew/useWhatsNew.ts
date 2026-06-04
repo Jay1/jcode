@@ -8,7 +8,7 @@
 // the popout + dialog components.
 
 import { Schema } from "effect";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { APP_VERSION } from "../branding";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -94,15 +94,15 @@ export function useWhatsNew(options?: {
   // Snapshot the decision once per mount using the initial storage value so
   // that updating localStorage (e.g. acknowledging the dialog) doesn't flip
   // the UI back and forth while animations are still running.
-  const initialStorageRef = useRef(storage);
+  const [initialStorage] = useState(storage);
   const initialState = useMemo<WhatsNewState>(
     () =>
       resolveWhatsNewState({
         entries,
         currentVersion,
-        lastSeenVersion: initialStorageRef.current.lastSeenVersion,
+        lastSeenVersion: initialStorage.lastSeenVersion,
       } satisfies WhatsNewInputs),
-    [entries, currentVersion],
+    [entries, currentVersion, initialStorage],
   );
 
   // The popout starts visible only when we actually have something to show.

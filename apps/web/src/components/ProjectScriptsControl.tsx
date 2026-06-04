@@ -273,10 +273,6 @@ export default function ProjectScriptsControl({
   // "Add action" dialog without duplicating script form logic.
   useEffect(() => {
     if (openAddActionNonce === undefined) return;
-    if (lastOpenAddActionNonceRef.current === undefined) {
-      lastOpenAddActionNonceRef.current = openAddActionNonce;
-      return;
-    }
     if (openAddActionNonce === lastOpenAddActionNonceRef.current) return;
     lastOpenAddActionNonceRef.current = openAddActionNonce;
     openAddDialog();

@@ -953,106 +953,94 @@ export default function GitActionsControl({
     normalizedCreateBranchName !== normalizedCurrentBranchName &&
     branchNames.has(normalizedCreateBranchName);
 
-  const createAndCheckoutBranch = useCallback(
-    async (branchName: string) => {
-      const api = readNativeApi();
-      if (!api || !gitCwd) return;
+  const createAndCheckoutBranch = async (branchName: string) => {
+    const api = readNativeApi();
+    if (!api || !gitCwd) return;
 
-      const trimmedName = branchName.trim();
-      if (!trimmedName) return;
+    const trimmedName = branchName.trim();
+    if (!trimmedName) return;
 
-      setIsCreateBranchDialogOpen(false);
-      setCreateBranchName("");
+    setIsCreateBranchDialogOpen(false);
+    setCreateBranchName("");
 
-      if (trimmedName.toLowerCase() === normalizedCurrentBranchName) {
-        if (activeThreadId) {
-          void api.orchestration
-            .dispatchCommand({
-              type: "thread.meta.update",
-              commandId: newCommandId(),
-              threadId: activeThreadId,
-              createBranchFlowCompleted: true,
-            })
-            .catch(() => {
-              setThreadWorkspaceAction(activeThreadId, {
-                createBranchFlowCompleted: false,
-              });
-            });
-          setThreadWorkspaceAction(activeThreadId, {
+    if (trimmedName.toLowerCase() === normalizedCurrentBranchName) {
+      if (activeThreadId) {
+        void api.orchestration
+          .dispatchCommand({
+            type: "thread.meta.update",
+            commandId: newCommandId(),
+            threadId: activeThreadId,
             createBranchFlowCompleted: true,
+          })
+          .catch(() => {
+            setThreadWorkspaceAction(activeThreadId, {
+              createBranchFlowCompleted: false,
+            });
           });
-        }
-        toastManager.add({
-          type: "success",
-          title: `Keeping ${trimmedName}`,
-          description: "Branch name confirmed.",
-          data: threadToastData,
+        setThreadWorkspaceAction(activeThreadId, {
+          createBranchFlowCompleted: true,
         });
-        return;
       }
-
-      const toastId = toastManager.add({
-        type: "loading",
-        title: "Creating branch...",
-        timeout: 0,
+      toastManager.add({
+        type: "success",
+        title: `Keeping ${trimmedName}`,
+        description: "Branch name confirmed.",
         data: threadToastData,
       });
+      return;
+    }
 
-      try {
-        await api.git.createBranch({ cwd: gitCwd, branch: trimmedName, publish: hasOriginRemote });
-        await api.git.checkout({ cwd: gitCwd, branch: trimmedName });
-        if (activeThreadId) {
-          void api.orchestration
-            .dispatchCommand({
-              type: "thread.meta.update",
-              commandId: newCommandId(),
-              threadId: activeThreadId,
-              branch: trimmedName,
-              worktreePath: activeThread?.worktreePath ?? null,
-              associatedWorktreeBranch: trimmedName,
-              associatedWorktreeRef: trimmedName,
-              createBranchFlowCompleted: true,
-            })
-            .catch(() => {
-              setThreadWorkspaceAction(activeThreadId, {
-                createBranchFlowCompleted: false,
-              });
-            });
-          setThreadWorkspaceAction(activeThreadId, {
+    const toastId = toastManager.add({
+      type: "loading",
+      title: "Creating branch...",
+      timeout: 0,
+      data: threadToastData,
+    });
+
+    try {
+      await api.git.createBranch({ cwd: gitCwd, branch: trimmedName, publish: hasOriginRemote });
+      await api.git.checkout({ cwd: gitCwd, branch: trimmedName });
+      if (activeThreadId) {
+        void api.orchestration
+          .dispatchCommand({
+            type: "thread.meta.update",
+            commandId: newCommandId(),
+            threadId: activeThreadId,
             branch: trimmedName,
+            worktreePath: activeThread?.worktreePath ?? null,
             associatedWorktreeBranch: trimmedName,
             associatedWorktreeRef: trimmedName,
             createBranchFlowCompleted: true,
+          })
+          .catch(() => {
+            setThreadWorkspaceAction(activeThreadId, {
+              createBranchFlowCompleted: false,
+            });
           });
-        }
-        await invalidateGitQueries(queryClient);
-
-        toastManager.update(toastId, {
-          type: "success",
-          title: `Switched to ${trimmedName}`,
-          description: "Branch created and checked out.",
-          data: threadToastData,
-        });
-      } catch (error) {
-        toastManager.update(toastId, {
-          type: "error",
-          title: "Failed to create branch",
-          description: error instanceof Error ? error.message : "An error occurred.",
-          data: threadToastData,
+        setThreadWorkspaceAction(activeThreadId, {
+          branch: trimmedName,
+          associatedWorktreeBranch: trimmedName,
+          associatedWorktreeRef: trimmedName,
+          createBranchFlowCompleted: true,
         });
       }
-    },
-    [
-      activeThread?.worktreePath,
-      activeThreadId,
-      gitCwd,
-      hasOriginRemote,
-      normalizedCurrentBranchName,
-      queryClient,
-      setThreadWorkspaceAction,
-      threadToastData,
-    ],
-  );
+      await invalidateGitQueries(queryClient);
+
+      toastManager.update(toastId, {
+        type: "success",
+        title: `Switched to ${trimmedName}`,
+        description: "Branch created and checked out.",
+        data: threadToastData,
+      });
+    } catch (error) {
+      toastManager.update(toastId, {
+        type: "error",
+        title: "Failed to create branch",
+        description: error instanceof Error ? error.message : "An error occurred.",
+        data: threadToastData,
+      });
+    }
+  };
 
   const openDialogForMenuItem = useCallback(
     (item: GitActionMenuItem) => {

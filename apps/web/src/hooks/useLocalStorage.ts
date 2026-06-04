@@ -95,17 +95,15 @@ export function useLocalStorage<T, E>(
   const prevKeyRef = useRef(key);
 
   // Re-sync from localStorage when key changes
-  useEffect(() => {
-    if (prevKeyRef.current !== key) {
-      prevKeyRef.current = key;
-      try {
-        const newValue = getLocalStorageItem(key, schema);
-        setStoredValue(newValue ?? initialValue);
-      } catch (error) {
-        console.error("[LOCALSTORAGE] Error:", error);
-      }
+  if (prevKeyRef.current !== key) {
+    prevKeyRef.current = key;
+    try {
+      const newValue = getLocalStorageItem(key, schema);
+      setStoredValue(newValue ?? initialValue);
+    } catch (error) {
+      console.error("[LOCALSTORAGE] Error:", error);
     }
-  }, [key, initialValue, schema]);
+  }
 
   // Listen for storage events from other tabs AND custom events from the same tab
   useEffect(() => {
