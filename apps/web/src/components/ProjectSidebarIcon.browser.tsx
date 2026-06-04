@@ -203,6 +203,8 @@ describe("ProjectSidebarIcon", () => {
     expect(folderIconBox?.height).toBeGreaterThanOrEqual(17.5);
     expect(wrapperBox.width).toBeGreaterThanOrEqual(19.5);
     expect(wrapperBox.width).toBeLessThanOrEqual(20.5);
+    expect(wrapperBox.height).toBeGreaterThanOrEqual(19.5);
+    expect(wrapperBox.height).toBeLessThanOrEqual(20.5);
     await screen.unmount();
   });
 });
