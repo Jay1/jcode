@@ -6,7 +6,7 @@
 // Notes: Pure UI; image URL building lives in `~/lib/localImageUrls`. No data
 //        fetching here so the component stays trivially testable.
 
-import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
+import { type MouseEvent, useState } from "react";
 
 import { DownloadIcon, Loader2Icon, Maximize2, TriangleAlertIcon } from "~/lib/icons";
 
@@ -14,6 +14,10 @@ import { buildLocalImageUrl, localImageFileName } from "../../lib/localImageUrls
 import type { ExpandedImagePreview } from "./ExpandedImagePreview";
 
 type GeneratedImageStatus = "loading" | "ready" | "error";
+
+function stopPropagation(event: MouseEvent<HTMLElement>) {
+  event.stopPropagation();
+}
 
 export interface GeneratedMarkdownImageProps {
   src: string;
@@ -28,13 +32,33 @@ export function GeneratedMarkdownImage(props: GeneratedMarkdownImageProps) {
   const downloadUrl = buildLocalImageUrl({ src, cwd, download: true });
   const fileName = localImageFileName(src);
   const accessibleName = alt?.trim() || "Generated image";
-  const [status, setStatus] = useState<GeneratedImageStatus>("loading");
-  const prevPreviewUrlRef = useRef(previewUrl);
 
-  if (previewUrl !== prevPreviewUrlRef.current) {
-    prevPreviewUrlRef.current = previewUrl;
-    setStatus("loading");
-  }
+  return (
+    <GeneratedMarkdownImageContent
+      key={previewUrl}
+      previewUrl={previewUrl}
+      downloadUrl={downloadUrl}
+      fileName={fileName}
+      accessibleName={accessibleName}
+      onImageExpand={onImageExpand}
+    />
+  );
+}
+
+function GeneratedMarkdownImageContent({
+  previewUrl,
+  downloadUrl,
+  fileName,
+  accessibleName,
+  onImageExpand,
+}: {
+  previewUrl: string;
+  downloadUrl: string;
+  fileName: string;
+  accessibleName: string;
+  onImageExpand: ((preview: ExpandedImagePreview) => void) | undefined;
+}) {
+  const [status, setStatus] = useState<GeneratedImageStatus>("loading");
 
   const expandImage = (event: MouseEvent<HTMLElement>) => {
     event.preventDefault();
@@ -45,10 +69,6 @@ export function GeneratedMarkdownImage(props: GeneratedMarkdownImageProps) {
       images: [{ src: previewUrl, name: fileName || accessibleName }],
       index: 0,
     });
-  };
-
-  const stopPropagation = (event: MouseEvent<HTMLElement>) => {
-    event.stopPropagation();
   };
 
   // <a download> needs a string; pass an empty string when we have no filename so

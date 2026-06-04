@@ -24,15 +24,12 @@ export function RenameThreadDialog({
   onOpenChange,
   onSave,
 }: RenameThreadDialogProps) {
-  const [value, setValue] = useState(currentTitle);
+  const [value, setValue] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!open) {
-      setIsSaving(false);
-      return;
-    }
+    if (!open) return;
     const frame = window.requestAnimationFrame(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
@@ -42,22 +39,32 @@ export function RenameThreadDialog({
     };
   }, [open]);
 
-  const trimmed = value.trim();
+  const inputValue = value ?? currentTitle;
+  const trimmed = inputValue.trim();
   const canSave = trimmed.length > 0 && !isSaving;
+
+  const closeDialog = () => {
+    setValue(null);
+    setIsSaving(false);
+    onOpenChange(false);
+  };
 
   const handleSubmit = async () => {
     if (!canSave) return;
     setIsSaving(true);
     try {
       await onSave(trimmed);
-      onOpenChange(false);
+      closeDialog();
     } catch {
       setIsSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => (nextOpen ? onOpenChange(true) : closeDialog())}
+    >
       <DialogPopup className="max-w-md">
         <DialogHeader>
           <DialogTitle>Rename chat</DialogTitle>
@@ -73,20 +80,20 @@ export function RenameThreadDialog({
             <Input
               ref={inputRef}
               size="lg"
-              value={value}
+              value={inputValue}
               disabled={isSaving}
               onChange={(event) => setValue(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Escape") {
                   event.preventDefault();
-                  onOpenChange(false);
+                  closeDialog();
                 }
               }}
             />
           </form>
         </DialogPanel>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={closeDialog} disabled={isSaving}>
             Cancel
           </Button>
           <Button onClick={() => void handleSubmit()} disabled={!canSave}>

@@ -1,5 +1,5 @@
 import type { Terminal } from "@xterm/xterm";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "~/lib/utils";
 
 interface TerminalScrollToBottomProps {
@@ -8,42 +8,34 @@ interface TerminalScrollToBottomProps {
 
 export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps) {
   const [isVisible, setIsVisible] = useState(false);
-  const visibilityRafRef = useRef<number | null>(null);
-  const prevTerminalRef = useRef(terminal);
-
-  if (!terminal && prevTerminalRef.current) {
-    setIsVisible(false);
-  }
-  prevTerminalRef.current = terminal;
-
-  const checkPosition = () => {
-    if (!terminal) return;
-    const buf = terminal.buffer.active;
-    const nextVisible = buf.viewportY < buf.baseY;
-    setIsVisible((current) => (current === nextVisible ? current : nextVisible));
-  };
-
-  const scheduleVisibilityCheck = () => {
-    if (visibilityRafRef.current !== null) {
-      return;
-    }
-    visibilityRafRef.current = window.requestAnimationFrame(() => {
-      visibilityRafRef.current = null;
-      checkPosition();
-    });
-  };
+  const isButtonVisible = terminal !== null && isVisible;
 
   useEffect(() => {
     if (!terminal) {
       return;
     }
+    let visibilityRaf: number | null = null;
+    const checkPosition = () => {
+      const buf = terminal.buffer.active;
+      const nextVisible = buf.viewportY < buf.baseY;
+      setIsVisible((current) => (current === nextVisible ? current : nextVisible));
+    };
+    const scheduleVisibilityCheck = () => {
+      if (visibilityRaf !== null) {
+        return;
+      }
+      visibilityRaf = window.requestAnimationFrame(() => {
+        visibilityRaf = null;
+        checkPosition();
+      });
+    };
     scheduleVisibilityCheck();
     const d1 = terminal.onWriteParsed(scheduleVisibilityCheck);
     const d2 = terminal.onScroll(scheduleVisibilityCheck);
     return () => {
-      if (visibilityRafRef.current !== null) {
-        window.cancelAnimationFrame(visibilityRafRef.current);
-        visibilityRafRef.current = null;
+      if (visibilityRaf !== null) {
+        window.cancelAnimationFrame(visibilityRaf);
+        visibilityRaf = null;
       }
       d1.dispose();
       d2.dispose();
@@ -56,7 +48,9 @@ export function TerminalScrollToBottom({ terminal }: TerminalScrollToBottomProps
     <div
       className={cn(
         "absolute bottom-4 left-1/2 z-10 -translate-x-1/2 transition-all duration-200",
-        isVisible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0",
+        isButtonVisible
+          ? "translate-y-0 opacity-100"
+          : "pointer-events-none translate-y-2 opacity-0",
       )}
     >
       <button

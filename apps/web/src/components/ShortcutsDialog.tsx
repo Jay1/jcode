@@ -4,7 +4,7 @@
 // Depends on: shared dialog UI, shortcut label builder, and current project script metadata.
 
 import type { ResolvedKeybindingsConfig } from "@jcode/contracts";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogDescription,
@@ -35,12 +35,13 @@ export default function ShortcutsDialog(props: {
 }) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const prevOpenRef = useRef(props.open);
 
-  if (!props.open && prevOpenRef.current) {
-    setQuery("");
-  }
-  prevOpenRef.current = props.open;
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setQuery("");
+    }
+    props.onOpenChange(open);
+  };
 
   useEffect(() => {
     if (!props.open) return;
@@ -53,24 +54,20 @@ export default function ShortcutsDialog(props: {
     };
   }, [props.open]);
 
-  const sections = useMemo(
-    () =>
-      buildShortcutSheetSections({
-        keybindings: props.keybindings,
-        projectScripts: props.projectScripts,
-        platform: props.platform,
-        context: props.context,
-        isElectron: props.isElectron,
-      }),
-    [props.keybindings, props.projectScripts, props.platform, props.context, props.isElectron],
-  );
+  const sections = buildShortcutSheetSections({
+    keybindings: props.keybindings,
+    projectScripts: props.projectScripts,
+    platform: props.platform,
+    context: props.context,
+    isElectron: props.isElectron,
+  });
 
-  const filteredSections = useMemo(() => filterSections(sections, query), [sections, query]);
+  const filteredSections = filterSections(sections, query);
 
   const hasResults = filteredSections.some((section) => section.entries.length > 0);
 
   return (
-    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+    <Dialog open={props.open} onOpenChange={handleOpenChange}>
       <DialogPopup className="max-w-xl">
         <DialogHeader className="pb-2">
           <DialogTitle className="text-base">Keyboard shortcuts</DialogTitle>
@@ -99,7 +96,7 @@ export default function ShortcutsDialog(props: {
           </div>
         </DialogHeader>
 
-        <DialogPanel className="max-h-[min(70vh,560px)] px-0 py-0">
+        <DialogPanel className="max-h-[min(70vh,560px)] p-0">
           {hasResults ? (
             <div className="flex flex-col">
               {filteredSections.map((section, index) => (
@@ -162,12 +159,14 @@ function ShortcutSection({
 function filterSections(sections: ShortcutSheetSection[], query: string): ShortcutSheetSection[] {
   const trimmed = query.trim().toLowerCase();
   if (trimmed.length === 0) return sections;
-  return sections
-    .map((section) => ({
-      ...section,
-      entries: section.entries.filter((entry) => matchesEntry(entry, trimmed)),
-    }))
-    .filter((section) => section.entries.length > 0);
+  const filteredSections: ShortcutSheetSection[] = [];
+  for (const section of sections) {
+    const entries = section.entries.filter((entry) => matchesEntry(entry, trimmed));
+    if (entries.length > 0) {
+      filteredSections.push({ ...section, entries });
+    }
+  }
+  return filteredSections;
 }
 
 function matchesEntry(entry: ShortcutSheetEntry, needle: string): boolean {
