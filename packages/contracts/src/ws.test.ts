@@ -80,6 +80,23 @@ it.effect("accepts git.preparePullRequestThread requests", () =>
   }),
 );
 
+it.effect("accepts provider install skill requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-install-skill-1",
+      body: {
+        _tag: WS_METHODS.providerInstallSkill,
+        provider: "opencode",
+        cwd: "/repo",
+        packageRef: "owner/skills",
+        skillName: "code-review",
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.providerInstallSkill);
+  }),
+);
+
 it.effect("accepts typed websocket push envelopes with sequence", () =>
   Effect.gen(function* () {
     const parsed = yield* decode(WsResponse, {
