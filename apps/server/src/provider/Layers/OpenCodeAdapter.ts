@@ -41,6 +41,8 @@ import {
 } from "../Errors.ts";
 import { KiloAdapter, type KiloAdapterShape } from "../Services/KiloAdapter.ts";
 import { OpenCodeAdapter, type OpenCodeAdapterShape } from "../Services/OpenCodeAdapter.ts";
+import { SkillManagementService } from "../Services/SkillManagementService.ts";
+import { SkillManagementServiceLive } from "./SkillManagementService.ts";
 import {
   buildOpenCodePermissionRules,
   KILO_CLI_SPEC,
@@ -1772,6 +1774,7 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
     Effect.gen(function* () {
       const serverConfig = yield* ServerConfig;
       const openCodeRuntime = yield* OpenCodeRuntime;
+      const skillManagement = yield* SkillManagementService;
       const provider = adapterConfig.provider;
       const buildEventBase = (
         input: Omit<
@@ -4197,6 +4200,58 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
           }),
         );
 
+      const searchSkillsCatalog: NonNullable<OpenCodeAdapterShape["searchSkillsCatalog"]> = (
+        input,
+      ) => skillManagement.searchCatalog(input.query);
+
+      const installSkill: NonNullable<OpenCodeAdapterShape["installSkill"]> = (input) =>
+        Effect.gen(function* () {
+          yield* skillManagement.install({
+            agent: "opencode",
+            cwd: input.cwd,
+            packageRef: input.packageRef,
+            ...(input.skillName !== undefined ? { skillName: input.skillName } : {}),
+            ...(input.global !== undefined ? { global: input.global } : {}),
+          });
+          const refreshed = yield* listSkills({ ...input, forceReload: true });
+          const skill = input.skillName
+            ? refreshed.skills.find((candidate) => candidate.name === input.skillName)
+            : refreshed.skills[0];
+          if (!skill) {
+            return yield* Effect.fail(
+              new ProviderAdapterRequestError({
+                provider,
+                method: "skills.add",
+                detail: "Installed skill was not returned by provider discovery.",
+              }),
+            );
+          }
+          return { skill };
+        });
+
+      const uninstallSkill: NonNullable<OpenCodeAdapterShape["uninstallSkill"]> = (input) =>
+        Effect.gen(function* () {
+          const current = yield* listSkills({ ...input, forceReload: true });
+          const skill = current.skills.find((candidate) => candidate.path === input.skillPath);
+          if (!skill) {
+            return yield* Effect.fail(
+              new ProviderAdapterRequestError({
+                provider,
+                method: "skills.remove",
+                detail: "Skill path is not installed for this provider.",
+              }),
+            );
+          }
+          yield* skillManagement.uninstall({
+            agent: "opencode",
+            cwd: input.cwd,
+            skillName: skill.name,
+            ...(input.global !== undefined ? { global: input.global } : {}),
+          });
+          yield* listSkills({ ...input, forceReload: true });
+          return { success: true };
+        });
+
       const listModels: NonNullable<OpenCodeAdapterShape["listModels"]> = (input) => {
         const binaryPath = input.binaryPath?.trim() || adapterConfig.defaultBinaryPath;
         const freeOnlyProviderID = adapterConfig.provider === "kilo" ? "kilo" : undefined;
@@ -4291,6 +4346,9 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
           supportsRuntimeModelList: true,
           supportsThreadCompaction: true,
           supportsThreadImport: true,
+          supportsSkillInstall: provider === "opencode",
+          supportsSkillUninstall: provider === "opencode",
+          supportsSkillToggle: false,
         } satisfies ProviderComposerCapabilities);
 
       const stopAll: OpenCodeAdapterShape["stopAll"] = () =>
@@ -4309,6 +4367,9 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
         capabilities: {
           sessionModelSwitch: "in-session",
           supportsRuntimeModelList: true,
+          supportsSkillInstall: provider === "opencode",
+          supportsSkillUninstall: provider === "opencode",
+          supportsSkillToggle: false,
         },
         startSession,
         sendTurn,
@@ -4325,6 +4386,9 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
         forkThread,
         stopAll,
         listSkills,
+        installSkill,
+        uninstallSkill,
+        searchSkillsCatalog,
         listModels,
         listAgents,
         getComposerCapabilities,
@@ -4337,6 +4401,7 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
     Layer.provide(
       options?.runtime ? Layer.succeed(OpenCodeRuntime, options.runtime) : OpenCodeRuntimeLive,
     ),
+    Layer.provide(SkillManagementServiceLive),
     Layer.provide(NodeServices.layer),
   );
 }

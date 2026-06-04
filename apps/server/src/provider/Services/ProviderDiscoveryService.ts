@@ -13,6 +13,14 @@ import type {
   ProviderListSkillsResult,
   ProviderReadPluginInput,
   ProviderReadPluginResult,
+  ProviderInstallSkillInput,
+  ProviderInstallSkillResult,
+  ProviderUninstallSkillInput,
+  ProviderUninstallSkillResult,
+  ProviderSetSkillEnabledInput,
+  ProviderSetSkillEnabledResult,
+  ProviderSearchCatalogInput,
+  ProviderSearchCatalogResult,
 } from "@jcode/contracts";
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
@@ -38,6 +46,18 @@ export interface ProviderDiscoveryServiceShape {
   readonly listSkills: (
     input: ProviderListSkillsInput,
   ) => Effect.Effect<ProviderListSkillsResult, ProviderDiscoveryError>;
+  readonly installSkill: (
+    input: ProviderInstallSkillInput,
+  ) => Effect.Effect<ProviderInstallSkillResult, ProviderDiscoveryError>;
+  readonly uninstallSkill: (
+    input: ProviderUninstallSkillInput,
+  ) => Effect.Effect<ProviderUninstallSkillResult, ProviderDiscoveryError>;
+  readonly setSkillEnabled: (
+    input: ProviderSetSkillEnabledInput,
+  ) => Effect.Effect<ProviderSetSkillEnabledResult, ProviderDiscoveryError>;
+  readonly searchSkillsCatalog: (
+    input: ProviderSearchCatalogInput,
+  ) => Effect.Effect<ProviderSearchCatalogResult, ProviderDiscoveryError>;
   readonly listPlugins: (
     input: ProviderListPluginsInput,
   ) => Effect.Effect<ProviderListPluginsResult, ProviderDiscoveryError>;
