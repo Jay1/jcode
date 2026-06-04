@@ -79,9 +79,6 @@ docs/
 
 These existing documents remain in place until they are intentionally folded into the indexed structure:
 
-- [JCode Operating Model](jcode-operating-model.md)
-- [Local Deploy Notes](local-deploy.md)
 - [Release Checklist](release.md)
-- [Server Architecture Migration](server-architecture-migration.md)
 - [Plan Mode User Input Recap](RECAP-plan-mode-user-input-submit.md)
 - [Repo Scan 2026-04-16](repo-scan-2026-04-16/README.md)
