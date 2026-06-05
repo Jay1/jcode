@@ -265,8 +265,10 @@ function InstallSkillDialog({
   );
 
   useEffect(() => {
-    setInstallFeedback(null);
-  }, [deferredQuery, open, selectedProvider]);
+    if (!open) {
+      setInstallFeedback(null);
+    }
+  }, [open]);
 
   const installMutation = useMutation(installSkillMutationOptions());
 
