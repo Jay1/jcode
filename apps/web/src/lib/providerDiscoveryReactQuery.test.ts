@@ -268,13 +268,13 @@ describe("searchSkillsCatalogQueryOptions", () => {
     expect(first.enabled).toBe(true);
   });
 
-  it("disables catalog searches without a cwd", () => {
+  it("enables catalog searches without a cwd because skills.sh search is workspace-independent", () => {
     const options = searchSkillsCatalogQueryOptions({
       provider: "opencode",
       cwd: "",
       query: "analyze",
     });
 
-    expect(options.enabled).toBe(false);
+    expect(options.enabled).toBe(true);
   });
 });

@@ -420,14 +420,21 @@ export function setSkillEnabledMutationOptions() {
 
 export function searchSkillsCatalogQueryOptions(input: ProviderSearchCatalogInput) {
   const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
+  const cwd = input.cwd?.trim();
   return queryOptions({
     queryKey: providerDiscoveryQueryKeys.catalogSearch(
       input.provider,
-      input.cwd,
+      cwd && cwd.length > 0 ? cwd : null,
       input.query,
       providerOptionsKey,
     ),
-    queryFn: () => ensureNativeApi().provider.searchSkillsCatalog(input),
-    enabled: input.query.trim().length > 0 && input.cwd.trim().length > 0,
+    queryFn: () => {
+      const { cwd: _cwd, ...payload } = input;
+      return ensureNativeApi().provider.searchSkillsCatalog({
+        ...payload,
+        ...(cwd && cwd.length > 0 ? { cwd } : {}),
+      });
+    },
+    enabled: input.query.trim().length > 0,
   });
 }

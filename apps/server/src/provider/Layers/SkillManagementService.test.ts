@@ -57,6 +57,20 @@ vendor/review-kit@code-review  92 installs
     ]);
   });
 
+  it("parses ANSI-styled skills.sh find output", () => {
+    const output = `\u001b[32mowner/analyze-tools@analyze\u001b[0m  \u001b[2m12.4K\u001b[0m installs
+└ https://skills.sh/owner/analyze-tools/analyze`;
+
+    expect(parseSkillsFindOutput(output)).toEqual([
+      {
+        packageRef: "owner/analyze-tools",
+        skillName: "analyze",
+        installCount: 12_400,
+        url: "https://skills.sh/owner/analyze-tools/analyze",
+      },
+    ]);
+  });
+
   it("skips malformed catalog lines but keeps entries with unparsable install counts", () => {
     const output = `not a valid skills line
 owner/analyze-tools@analyze  many installs

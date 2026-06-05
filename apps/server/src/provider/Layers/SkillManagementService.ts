@@ -55,7 +55,7 @@ const make = Effect.succeed<SkillManagementServiceShape>({
           timeoutMs: 60_000,
           outputMode: "truncate",
         });
-        return { results: parseSkillsFindOutput(result.stdout) };
+        return { results: parseSkillsFindOutput(`${result.stdout}\n${result.stderr}`) };
       },
       catch: (cause) => toRequestError({ provider: "skills", method: "skills.find", cause }),
     }),
