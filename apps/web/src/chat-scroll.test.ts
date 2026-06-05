@@ -4,6 +4,8 @@ import {
   AUTO_SCROLL_BOTTOM_THRESHOLD_PX,
   getScrollContainerDistanceFromBottom,
   isScrollContainerNearBottom,
+  shouldDisableTailFollowOnScroll,
+  shouldDisableTailFollowOnWheel,
 } from "./chat-scroll";
 
 describe("getScrollContainerDistanceFromBottom", () => {
@@ -32,6 +34,75 @@ describe("getScrollContainerDistanceFromBottom", () => {
         scrollHeight: 1_000,
       }),
     ).toBe(0);
+  });
+});
+
+describe("shouldDisableTailFollowOnScroll", () => {
+  it("disables tail follow for upward user scrolling outside the programmatic guard", () => {
+    expect(
+      shouldDisableTailFollowOnScroll({
+        tailFollowEnabled: true,
+        previousScrollTop: 500,
+        nextScrollTop: 420,
+        nextClientHeight: 400,
+        nextScrollHeight: 1_000,
+        nowMs: 1_000,
+        programmaticScrollUntilMs: 900,
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps tail follow for downward scrolls and programmatic guard windows", () => {
+    expect(
+      shouldDisableTailFollowOnScroll({
+        tailFollowEnabled: true,
+        previousScrollTop: 420,
+        nextScrollTop: 500,
+        nextClientHeight: 400,
+        nextScrollHeight: 1_000,
+        nowMs: 1_000,
+        programmaticScrollUntilMs: 900,
+      }),
+    ).toBe(false);
+    expect(
+      shouldDisableTailFollowOnScroll({
+        tailFollowEnabled: true,
+        previousScrollTop: 500,
+        nextScrollTop: 420,
+        nextClientHeight: 400,
+        nextScrollHeight: 1_000,
+        nowMs: 1_000,
+        programmaticScrollUntilMs: 1_100,
+      }),
+    ).toBe(false);
+  });
+
+  it("disables tail follow when the first observed scroll is already away from bottom", () => {
+    expect(
+      shouldDisableTailFollowOnScroll({
+        tailFollowEnabled: true,
+        previousScrollTop: null,
+        nextScrollTop: 0,
+        nextClientHeight: 400,
+        nextScrollHeight: 1_000,
+        nowMs: 1_000,
+        programmaticScrollUntilMs: 900,
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("shouldDisableTailFollowOnWheel", () => {
+  it("disables tail follow immediately for upward wheel intent", () => {
+    expect(shouldDisableTailFollowOnWheel({ tailFollowEnabled: true, deltaY: -240 })).toBe(true);
+  });
+
+  it("keeps tail follow for downward or inactive wheel input", () => {
+    expect(shouldDisableTailFollowOnWheel({ tailFollowEnabled: true, deltaY: 240 })).toBe(false);
+    expect(shouldDisableTailFollowOnWheel({ tailFollowEnabled: false, deltaY: -240 })).toBe(false);
+    expect(shouldDisableTailFollowOnWheel({ tailFollowEnabled: true, deltaY: Number.NaN })).toBe(
+      false,
+    );
   });
 });
 
