@@ -26,6 +26,7 @@ import {
 import {
   buildSkillLibraryRows,
   countSkillLibraryRowsByProvider,
+  filterInstallableCatalogEntries,
   filterSkillLibraryRows,
   type SkillLibraryProviderFilter,
   type SkillLibraryRow,
@@ -215,12 +216,30 @@ function formatInstallCount(count: number | undefined): string {
   return String(count);
 }
 
+type InstallFeedback = {
+  key: string;
+  status: "installing" | "installed" | "failed";
+  message: string;
+};
+
+function catalogInstallKey(provider: ProviderKind, entry: CatalogSkillEntry): string {
+  return `${provider}:${entry.packageRef}:${entry.skillName}`;
+}
+
+function formatInstallError(error: unknown): string {
+  return error instanceof Error && error.message.trim().length > 0
+    ? error.message
+    : "The provider did not return an install result.";
+}
+
 function InstallSkillDialog({
   discoveryCwd,
+  installedRows,
   providerOptions,
   providersWithInstall,
 }: {
   discoveryCwd: string | null;
+  installedRows: readonly SkillLibraryRow[];
   providerOptions: ProviderStartOptions | undefined;
   providersWithInstall: readonly ProviderKind[];
 }) {
@@ -230,7 +249,10 @@ function InstallSkillDialog({
   const [selectedProvider, setSelectedProvider] = useState<ProviderKind>(
     providersWithInstall[0] ?? "opencode",
   );
-  const [selectedSkill, setSelectedSkill] = useState<CatalogSkillEntry | null>(null);
+  const [installFeedback, setInstallFeedback] = useState<InstallFeedback | null>(null);
+  const [locallyInstalledKeys, setLocallyInstalledKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const deferredQuery = useDeferredValue(catalogQuery);
 
   const catalogSearch = useQuery(
@@ -242,31 +264,81 @@ function InstallSkillDialog({
     }),
   );
 
+  useEffect(() => {
+    if (!open) {
+      setInstallFeedback(null);
+    }
+  }, [open]);
+
   const installMutation = useMutation(installSkillMutationOptions());
 
-  const results = catalogSearch.data?.results ?? [];
+  const catalogResults = catalogSearch.data?.results ?? [];
+  const installableResults = useMemo(
+    () =>
+      filterInstallableCatalogEntries({
+        entries: catalogResults,
+        installedRows,
+        provider: selectedProvider,
+      }).filter((entry) => !locallyInstalledKeys.has(catalogInstallKey(selectedProvider, entry))),
+    [catalogResults, installedRows, locallyInstalledKeys, selectedProvider],
+  );
 
   const handleInstall = (entry: CatalogSkillEntry) => {
-    if (!discoveryCwd) return;
-    setSelectedSkill(entry);
+    const installKey = catalogInstallKey(selectedProvider, entry);
+    if (!discoveryCwd) {
+      setInstallFeedback({
+        key: installKey,
+        status: "failed",
+        message: "Open a project before installing skills.",
+      });
+      return;
+    }
+    const provider = selectedProvider;
+    setInstallFeedback({
+      key: installKey,
+      status: "installing",
+      message: `Installing ${entry.displayName ?? entry.skillName} into ${PROVIDER_DISPLAY_NAMES[provider]}...`,
+    });
     installMutation.mutate(
       {
-        provider: selectedProvider,
+        provider,
         cwd: discoveryCwd,
         packageRef: entry.packageRef,
         skillName: entry.skillName,
         ...(providerOptions ? { providerOptions } : {}),
       },
       {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ["provider-discovery", "skills"] });
-          setSelectedSkill(null);
+        onSuccess: async (result) => {
+          setLocallyInstalledKeys((previous) => new Set(previous).add(installKey));
+          setInstallFeedback({
+            key: installKey,
+            status: "installed",
+            message: `Installed ${result.skill.interface?.displayName ?? result.skill.name}. Checking installed skills...`,
+          });
+          await queryClient.invalidateQueries({ queryKey: ["provider-discovery", "skills"] });
+          await queryClient.refetchQueries({
+            queryKey: ["provider-discovery", "skills", provider],
+            type: "active",
+          });
+          setInstallFeedback({
+            key: installKey,
+            status: "installed",
+            message: `Done. ${result.skill.interface?.displayName ?? result.skill.name} is installed in ${PROVIDER_DISPLAY_NAMES[provider]}.`,
+          });
+        },
+        onError: (error) => {
+          setInstallFeedback({
+            key: installKey,
+            status: "failed",
+            message: `Install failed: ${formatInstallError(error)}`,
+          });
         },
       },
     );
   };
 
-  const isInstalling = installMutation.isPending && selectedSkill !== null;
+  const isInstalling = installMutation.isPending;
+  const hiddenInstalledCount = Math.max(0, catalogResults.length - installableResults.length);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -309,54 +381,88 @@ function InstallSkillDialog({
               className="pl-9"
             />
           </div>
-          {catalogSearch.isLoading && deferredQuery.trim().length > 0 ? (
+          {installFeedback ? (
+            <p
+              role={installFeedback.status === "failed" ? "alert" : "status"}
+              aria-live="polite"
+              className={cn(
+                "rounded-xl border px-3 py-2 text-[12px]",
+                installFeedback.status === "failed"
+                  ? "border-destructive/30 bg-destructive/10 text-destructive"
+                  : "border-border bg-background/70 text-muted-foreground",
+              )}
+            >
+              {installFeedback.message}
+            </p>
+          ) : null}
+          {hiddenInstalledCount > 0 && deferredQuery.trim().length > 0 ? (
+            <p className="text-[11px] text-muted-foreground">
+              {hiddenInstalledCount} already installed result{hiddenInstalledCount === 1 ? "" : "s"}{" "}
+              hidden for {PROVIDER_DISPLAY_NAMES[selectedProvider]}.
+            </p>
+          ) : null}
+          {catalogSearch.isError && deferredQuery.trim().length > 0 ? (
+            <p role="alert" className="py-4 text-center text-[12px] text-destructive">
+              Catalog search failed: {catalogSearch.error.message}
+            </p>
+          ) : catalogSearch.isLoading && deferredQuery.trim().length > 0 ? (
             <p className="py-4 text-center text-[12px] text-muted-foreground">
               Searching catalog...
             </p>
-          ) : results.length === 0 && deferredQuery.trim().length > 0 ? (
+          ) : installableResults.length === 0 && catalogResults.length > 0 ? (
+            <p className="py-4 text-center text-[12px] text-muted-foreground">
+              All matching skills are already installed for{" "}
+              {PROVIDER_DISPLAY_NAMES[selectedProvider]}.
+            </p>
+          ) : installableResults.length === 0 && deferredQuery.trim().length > 0 ? (
             <p className="py-4 text-center text-[12px] text-muted-foreground">
               No skills found matching &quot;{deferredQuery}&quot;.
             </p>
           ) : (
             <div className="max-h-64 divide-y divide-border overflow-y-auto rounded-xl border border-border">
-              {results.map((entry) => (
-                <div
-                  key={`${entry.packageRef}:${entry.skillName}`}
-                  className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-(--sidebar-accent)"
-                >
-                  <DownloadIcon className="size-4 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12px] font-semibold text-foreground">
-                      {entry.displayName ?? entry.skillName}
-                    </p>
-                    {entry.description ? (
-                      <p className="line-clamp-1 text-[11px] text-muted-foreground">
-                        {entry.description}
-                      </p>
-                    ) : null}
-                    <p className="mt-0.5 text-[10px] text-muted-foreground/70">
-                      {entry.packageRef}
-                      {entry.installCount !== undefined ? (
-                        <span className="ml-2">
-                          {formatInstallCount(entry.installCount)} installs
-                        </span>
-                      ) : null}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={isInstalling}
-                    onClick={() => handleInstall(entry)}
-                    className="shrink-0"
+              {installableResults.map((entry) => {
+                const entryKey = catalogInstallKey(selectedProvider, entry);
+                const entryFeedback = installFeedback?.key === entryKey ? installFeedback : null;
+                const isEntryInstalling = entryFeedback?.status === "installing";
+                const isEntryFailed = entryFeedback?.status === "failed";
+
+                return (
+                  <div
+                    key={entryKey}
+                    className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-(--sidebar-accent)"
                   >
-                    {isInstalling && selectedSkill?.packageRef === entry.packageRef
-                      ? "Installing..."
-                      : "Install"}
-                  </Button>
-                </div>
-              ))}
+                    <DownloadIcon className="size-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[12px] font-semibold text-foreground">
+                        {entry.displayName ?? entry.skillName}
+                      </p>
+                      {entry.description ? (
+                        <p className="line-clamp-1 text-[11px] text-muted-foreground">
+                          {entry.description}
+                        </p>
+                      ) : null}
+                      <p className="mt-0.5 text-[10px] text-muted-foreground/70">
+                        {entry.packageRef}
+                        {entry.installCount !== undefined ? (
+                          <span className="ml-2">
+                            {formatInstallCount(entry.installCount)} installs
+                          </span>
+                        ) : null}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={isEntryFailed ? "destructive" : "outline"}
+                      disabled={isInstalling}
+                      onClick={() => handleInstall(entry)}
+                      className="shrink-0"
+                    >
+                      {isEntryInstalling ? "Installing..." : isEntryFailed ? "Retry" : "Install"}
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </DialogPanel>
@@ -628,6 +734,7 @@ export function SkillLibrarySettingsPanel() {
               {hasAnyManagement && providerCanManage.install.length > 0 ? (
                 <InstallSkillDialog
                   discoveryCwd={discoveryCwd}
+                  installedRows={rows}
                   providerOptions={providerOptions}
                   providersWithInstall={providerCanManage.install}
                 />

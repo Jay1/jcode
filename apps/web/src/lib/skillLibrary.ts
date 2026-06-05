@@ -1,4 +1,4 @@
-import type { ProviderKind, ProviderSkillDescriptor } from "@jcode/contracts";
+import type { CatalogSkillEntry, ProviderKind, ProviderSkillDescriptor } from "@jcode/contracts";
 
 import { buildSkillSearchBlob, normalizeProviderDiscoveryText } from "./providerDiscovery";
 
@@ -54,4 +54,32 @@ export function countSkillLibraryRowsByProvider(
     counts[row.provider] = (counts[row.provider] ?? 0) + 1;
   }
   return counts;
+}
+
+function catalogSkillMatchesInstalledSkill(
+  entry: CatalogSkillEntry,
+  row: SkillLibraryRow,
+): boolean {
+  const installedNames = [row.skill.name, row.skill.interface?.displayName]
+    .map(normalizeProviderDiscoveryText)
+    .filter((value) => value.length > 0);
+  const catalogNames = [entry.skillName, entry.displayName]
+    .map(normalizeProviderDiscoveryText)
+    .filter((value) => value.length > 0);
+
+  return catalogNames.some((catalogName) => installedNames.includes(catalogName));
+}
+
+export function filterInstallableCatalogEntries(input: {
+  entries: readonly CatalogSkillEntry[];
+  installedRows: readonly SkillLibraryRow[];
+  provider: ProviderKind;
+}): CatalogSkillEntry[] {
+  const installedProviderRows = input.installedRows.filter(
+    (row) => row.provider === input.provider,
+  );
+
+  return input.entries.filter(
+    (entry) => !installedProviderRows.some((row) => catalogSkillMatchesInstalledSkill(entry, row)),
+  );
 }
