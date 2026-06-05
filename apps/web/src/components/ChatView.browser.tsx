@@ -2025,6 +2025,79 @@ describe("ChatView timeline estimator parity (full app)", () => {
     }
   });
 
+  it("does not re-arm tail follow when a detached user manually reaches the bottom", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotWithTailAssistantText("short tail response"),
+    });
+
+    try {
+      const scrollContainer = await waitForElement(
+        () => document.querySelector<HTMLElement>("[data-chat-scroll-container='true']"),
+        "Unable to find message scroll container.",
+      );
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.scrollHeightPx).toBeGreaterThan(layout.scrollClientHeightPx);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await waitForLayout();
+
+      scrollContainer.scrollTop = Math.max(0, scrollContainer.scrollTop - 240);
+      dispatchUpwardWheel(scrollContainer);
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+
+      await waitForElement(
+        () => document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+        "Unable to find scroll-to-bottom button after upward scroll.",
+      );
+
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.distanceFromBottomPx).toBeLessThanOrEqual(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+          expect(
+            document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+          ).toBeNull();
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+      const bottomLayout = await mounted.measureLayout();
+
+      useStore
+        .getState()
+        .syncServerReadModel(
+          createSnapshotWithTailAssistantText(
+            Array.from(
+              { length: 160 },
+              (_, lineIndex) => `manual-bottom detached growth line ${lineIndex + 1}`,
+            ).join("\n"),
+          ),
+        );
+
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.scrollHeightPx).toBeGreaterThan(bottomLayout.scrollHeightPx);
+          expect(layout.distanceFromBottomPx).toBeGreaterThan(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+          expect(
+            document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+          ).toBeTruthy();
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
   it.each(ATTACHMENT_VIEWPORT_MATRIX)(
     "keeps user attachment estimate close at the $name viewport",
     async (viewport) => {

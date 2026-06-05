@@ -90,6 +90,42 @@ describe("shouldDisableTailFollowOnScroll", () => {
       }),
     ).toBe(true);
   });
+
+  it("keeps tail follow when observed scroll positions are non-finite", () => {
+    expect(
+      shouldDisableTailFollowOnScroll({
+        tailFollowEnabled: true,
+        previousScrollTop: 500,
+        nextScrollTop: Number.NaN,
+        nextClientHeight: 400,
+        nextScrollHeight: 1_000,
+        nowMs: 1_000,
+        programmaticScrollUntilMs: 900,
+      }),
+    ).toBe(false);
+    expect(
+      shouldDisableTailFollowOnScroll({
+        tailFollowEnabled: true,
+        previousScrollTop: Number.NaN,
+        nextScrollTop: 420,
+        nextClientHeight: 400,
+        nextScrollHeight: 1_000,
+        nowMs: 1_000,
+        programmaticScrollUntilMs: 900,
+      }),
+    ).toBe(false);
+    expect(
+      shouldDisableTailFollowOnScroll({
+        tailFollowEnabled: true,
+        previousScrollTop: Number.POSITIVE_INFINITY,
+        nextScrollTop: 420,
+        nextClientHeight: 400,
+        nextScrollHeight: 1_000,
+        nowMs: 1_000,
+        programmaticScrollUntilMs: 900,
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("shouldDisableTailFollowOnWheel", () => {

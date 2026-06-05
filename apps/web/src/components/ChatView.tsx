@@ -3976,7 +3976,7 @@ export default function ChatView({
     if (delta <= 0.5) {
       return;
     }
-    if (!tailFollowEnabledRef.current && !isAtEndRef.current) {
+    if (!tailFollowEnabledRef.current) {
       return;
     }
 
@@ -3998,37 +3998,33 @@ export default function ChatView({
 
     return `${lastMessage.id}:${lastMessage.text.length}`;
   }, [timelineMessages]);
-  const onIsAtEndChange = useCallback(
-    (reportedIsAtEnd: boolean) => {
-      let isAtEnd = reportedIsAtEnd;
-      if (reportedIsAtEnd) {
-        const scrollContainer = legendListRef.current?.getScrollableNode?.();
-        if (scrollContainer instanceof HTMLElement) {
-          isAtEnd = isScrollContainerNearBottom({
-            scrollTop: scrollContainer.scrollTop,
-            clientHeight: scrollContainer.clientHeight,
-            scrollHeight: scrollContainer.scrollHeight,
-          });
-        }
+  const onIsAtEndChange = useCallback((reportedIsAtEnd: boolean) => {
+    let isAtEnd = reportedIsAtEnd;
+    if (reportedIsAtEnd) {
+      const scrollContainer = legendListRef.current?.getScrollableNode?.();
+      if (scrollContainer instanceof HTMLElement) {
+        isAtEnd = isScrollContainerNearBottom({
+          scrollTop: scrollContainer.scrollTop,
+          clientHeight: scrollContainer.clientHeight,
+          scrollHeight: scrollContainer.scrollHeight,
+        });
       }
+    }
 
-      if (isAtEndRef.current === isAtEnd) return;
-      if (!isAtEnd && performance.now() < programmaticScrollUntilRef.current) return;
+    if (isAtEndRef.current === isAtEnd) return;
+    if (!isAtEnd && performance.now() < programmaticScrollUntilRef.current) return;
 
-      isAtEndRef.current = isAtEnd;
-      if (isAtEnd) {
-        setTailFollowIntent(true);
-        showScrollDebouncer.current.cancel();
-        setShowScrollToBottom(false);
-      } else if (tailFollowEnabledRef.current) {
-        showScrollDebouncer.current.cancel();
-        setShowScrollToBottom(false);
-      } else {
-        showScrollDebouncer.current.maybeExecute();
-      }
-    },
-    [setTailFollowIntent],
-  );
+    isAtEndRef.current = isAtEnd;
+    if (isAtEnd) {
+      showScrollDebouncer.current.cancel();
+      setShowScrollToBottom(false);
+    } else if (tailFollowEnabledRef.current) {
+      showScrollDebouncer.current.cancel();
+      setShowScrollToBottom(false);
+    } else {
+      showScrollDebouncer.current.maybeExecute();
+    }
+  }, []);
   const cancelPendingInteractionAnchorAdjustment = useCallback(() => {
     const pendingFrame = pendingInteractionAnchorFrameRef.current;
     if (pendingFrame === null) return;
@@ -4122,12 +4118,26 @@ export default function ChatView({
     if (previousTranscriptFollowKey === null) {
       return;
     }
-    if (!tailFollowEnabledRef.current && !isAtEndRef.current) {
-      return;
-    }
     // Re-apply the bottom stick only for real transcript messages; tool/work
     // rows can arrive quickly and should not churn scroll/layout work.
     const frameId = window.requestAnimationFrame(() => {
+      if (!tailFollowEnabledRef.current) {
+        const scrollContainer = legendListRef.current?.getScrollableNode?.();
+        if (
+          scrollContainer instanceof HTMLElement &&
+          !isScrollContainerNearBottom({
+            scrollTop: scrollContainer.scrollTop,
+            clientHeight: scrollContainer.clientHeight,
+            scrollHeight: scrollContainer.scrollHeight,
+          })
+        ) {
+          isAtEndRef.current = false;
+          showScrollDebouncer.current.cancel();
+          setShowScrollToBottom(true);
+        }
+        return;
+      }
+
       scheduleTailFollowScrollToEnd(false);
     });
     return () => {
@@ -4210,7 +4220,7 @@ export default function ChatView({
       if (previousHeight > 0 && Math.abs(nextHeight - previousHeight) < 0.5) {
         return;
       }
-      if (!tailFollowEnabledRef.current && !isAtEndRef.current) {
+      if (!tailFollowEnabledRef.current) {
         return;
       }
       window.requestAnimationFrame(() => {
@@ -4228,6 +4238,7 @@ export default function ChatView({
     setPullRequestDialogState(null);
     setRenameDialogOpen(false);
     enableTailFollow();
+    scheduleTailFollowScrollToEnd(false);
     if (planSidebarOpenOnNextThreadRef.current) {
       planSidebarOpenOnNextThreadRef.current = false;
       setPlanSidebarOpen(true);
@@ -4235,7 +4246,7 @@ export default function ChatView({
       setPlanSidebarOpen(false);
     }
     planSidebarDismissedForTurnRef.current = null;
-  }, [activeThread?.id, enableTailFollow]);
+  }, [activeThread?.id, enableTailFollow, scheduleTailFollowScrollToEnd]);
 
   useEffect(() => {
     if (!composerMenuOpen) {
