@@ -2219,13 +2219,15 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
       const scheduleResumptionTimeout = Effect.fn("scheduleResumptionTimeout")(function* (
         context: OpenCodeSessionContext,
         turnId: TurnId,
+        resumptionStartedAt: number,
       ) {
         yield* Effect.gen(function* () {
           yield* Effect.sleep(RESUMPTION_TIMEOUT_MS);
           if (
             (yield* Ref.get(context.stopped)) ||
             context.activeTurnId !== turnId ||
-            !context.activeTurnWaitingForResumption
+            !context.activeTurnWaitingForResumption ||
+            context.activeTurnResumptionStartedAt !== resumptionStartedAt
           ) {
             return;
           }
@@ -2266,6 +2268,16 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
           Effect.forkIn(context.sessionScope),
           Effect.asVoid,
         );
+      });
+
+      const enterResumptionWaiting = Effect.fn("enterResumptionWaiting")(function* (
+        context: OpenCodeSessionContext,
+        turnId: TurnId,
+      ) {
+        const resumptionStartedAt = Date.now();
+        context.activeTurnWaitingForResumption = true;
+        context.activeTurnResumptionStartedAt = resumptionStartedAt;
+        yield* scheduleResumptionTimeout(context, turnId, resumptionStartedAt);
       });
 
       const recoverOpenCodeTurnFromAssistantMessage = Effect.fn(
@@ -2990,14 +3002,15 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             }
 
             if (event.properties.status.type === "idle" && turnId) {
+              if (context.activeTurnWaitingForResumption) {
+                break;
+              }
               if (
                 context.activeTurnSawToolCallFinish &&
                 context.activeTurnCompletionActivitySerial === 0 &&
                 !context.activeTurnWaitingForResumption
               ) {
-                context.activeTurnWaitingForResumption = true;
-                context.activeTurnResumptionStartedAt = Date.now();
-                yield* scheduleResumptionTimeout(context, turnId);
+                yield* enterResumptionWaiting(context, turnId);
                 yield* emit({
                   ...buildEventBase({
                     threadId: context.session.threadId,
@@ -3025,14 +3038,15 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
 
           case "session.idle": {
             if (turnId) {
+              if (context.activeTurnWaitingForResumption) {
+                break;
+              }
               if (
                 context.activeTurnSawToolCallFinish &&
                 context.activeTurnCompletionActivitySerial === 0 &&
                 !context.activeTurnWaitingForResumption
               ) {
-                context.activeTurnWaitingForResumption = true;
-                context.activeTurnResumptionStartedAt = Date.now();
-                yield* scheduleResumptionTimeout(context, turnId);
+                yield* enterResumptionWaiting(context, turnId);
                 yield* emit({
                   ...buildEventBase({
                     threadId: context.session.threadId,
@@ -3365,14 +3379,15 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
 
           case "session.idle": {
             if (turnId) {
+              if (context.activeTurnWaitingForResumption) {
+                break;
+              }
               if (
                 context.activeTurnSawToolCallFinish &&
                 context.activeTurnCompletionActivitySerial === 0 &&
                 !context.activeTurnWaitingForResumption
               ) {
-                context.activeTurnWaitingForResumption = true;
-                context.activeTurnResumptionStartedAt = Date.now();
-                yield* scheduleResumptionTimeout(context, turnId);
+                yield* enterResumptionWaiting(context, turnId);
                 yield* emit({
                   ...buildEventBase({
                     threadId: context.session.threadId,
