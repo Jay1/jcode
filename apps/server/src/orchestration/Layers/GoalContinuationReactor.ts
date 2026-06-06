@@ -94,7 +94,6 @@ const make = Effect.gen(function* () {
     const completedAt = latestTurn.completedAt ?? event.occurredAt;
     const assistantMessage = latestAssistantMessageForTurn(thread, latestTurn.turnId);
     if (hasCompletionSentinel(assistantMessage)) {
-      handledTurnIds.set(thread.id, latestTurn.turnId);
       yield* orchestrationEngine.dispatch({
         type: "thread.goal.complete",
         commandId: serverCommandId("complete", thread.id, latestTurn.turnId),
@@ -102,10 +101,10 @@ const make = Effect.gen(function* () {
         completedAt,
         createdAt: event.occurredAt,
       });
+      handledTurnIds.set(thread.id, latestTurn.turnId);
       return;
     }
 
-    handledTurnIds.set(thread.id, latestTurn.turnId);
     yield* orchestrationEngine.dispatch({
       type: "thread.turn.start",
       commandId: serverCommandId("turn", thread.id, latestTurn.turnId),
@@ -124,6 +123,7 @@ const make = Effect.gen(function* () {
       interactionMode: thread.interactionMode,
       createdAt: event.occurredAt,
     });
+    handledTurnIds.set(thread.id, latestTurn.turnId);
   });
 
   const processTriggerSafely = (event: GoalTriggerEvent) =>

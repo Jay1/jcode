@@ -142,19 +142,28 @@ function makeThread(overrides: Partial<OrchestrationThread> = {}): Orchestration
   };
 }
 
-async function createHarness(threadState: { current: Option.Option<OrchestrationThread> }) {
+async function createHarness(
+  threadState: { current: Option.Option<OrchestrationThread> },
+  options: { readonly failDispatchCount?: number } = {},
+) {
   const dispatched: OrchestrationCommand[] = [];
+  let remainingDispatchFailures = options.failDispatchCount ?? 0;
   const eventPubSub = await Effect.runPromise(PubSub.unbounded<OrchestrationEvent>());
   const layer = GoalContinuationReactorLive.pipe(
     Layer.provideMerge(
       Layer.succeed(OrchestrationEngineService, {
         getReadModel: () => Effect.die("unused"),
         readEvents: () => Stream.empty,
-        dispatch: (command) =>
-          Effect.sync(() => {
+        dispatch: (command) => {
+          if (remainingDispatchFailures > 0) {
+            remainingDispatchFailures -= 1;
+            return Effect.fail(new Error("dispatch failed"));
+          }
+          return Effect.sync(() => {
             dispatched.push(command);
             return { sequence: dispatched.length };
-          }),
+          });
+        },
         repairState: () => Effect.die("unused"),
         streamDomainEvents: Stream.fromPubSub(eventPubSub),
       }),
@@ -294,5 +303,22 @@ describe("GoalContinuationReactor", () => {
     await harness.drain();
 
     expect(harness.dispatched).toHaveLength(1);
+  });
+
+  it("retries a completed turn when dispatch failed before marking it handled", async () => {
+    harness = await createHarness({ current: Option.some(makeThread()) }, { failDispatchCount: 1 });
+
+    await harness.publish(makeTriggerEvent("evt-goal-reactor-trigger-fails"));
+    await harness.drain();
+    expect(harness.dispatched).toHaveLength(0);
+
+    await harness.publish(makeTriggerEvent("evt-goal-reactor-trigger-retries"));
+    await harness.drain();
+
+    expect(harness.dispatched).toHaveLength(1);
+    expect(harness.dispatched[0]).toMatchObject({
+      type: "thread.turn.start",
+      threadId,
+    });
   });
 });
