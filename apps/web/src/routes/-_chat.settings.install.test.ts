@@ -10,6 +10,11 @@ const defaultProviderSectionSource =
     : "";
 
 describe("settings install provider contracts", () => {
+  it("keeps the default provider section before new thread settings", () => {
+    expect(defaultProviderStart).toBeGreaterThanOrEqual(0);
+    expect(newThreadsStart).toBeGreaterThan(defaultProviderStart);
+  });
+
   it("keeps Codex launch arguments wired into install settings", () => {
     expect(settingsRouteSource).toContain('launchArgsKey?: "codexLaunchArgs"');
     expect(settingsRouteSource).toContain('launchArgsKey: "codexLaunchArgs"');

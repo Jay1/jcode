@@ -184,7 +184,7 @@ Likely implementation areas:
 
 - Secrets must stay server-authoritative and must not appear in React Query keys, URLs, logs, toasts, provider start options, persisted runtime payloads, app settings responses, or provider runtime raw-event payloads.
 - Browser local storage may keep UI-only preferences, but OpenClaw tokens, passwords, device private keys, and paired-device tokens belong to a server-owned secret file under `ServerConfig.secretsDir`.
-- The OpenClaw secret store is a new provider-secret abstraction, not an existing JCode service. It should create `secretsDir` when needed, write atomically, use owner-only permissions where the platform supports them, and expose explicit clear/rotate behavior for auth-mode changes.
+- OpenClaw secret storage should use the server secret-store abstraction under `secretsDir`. It should create `secretsDir` when needed, write atomically, use owner-only permissions where the platform supports them, and expose explicit clear/rotate behavior for auth-mode changes.
 - Settings reads should expose only redacted state such as `authMode`, `hasSecret`, and `paired`; settings writes should use write-only secret mutations such as set secret, clear secret, and rotate device identity. Do not round-trip secret values through app settings responses.
 - The main server settings JSON should keep only non-secret OpenClaw configuration such as gateway URL, auth mode, and provider enabled/visibility state.
 - The gateway URL must be user-provided and visible, because it defines the boundary JCode connects to.

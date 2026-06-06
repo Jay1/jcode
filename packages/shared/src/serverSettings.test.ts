@@ -16,6 +16,18 @@ describe("applyServerSettingsPatch", () => {
     expect(next.providers.openclaw.gatewayUrl).toBe("https://gateway.example.test/path");
   });
 
+  it("normalizes whitespace-only OpenClaw gateway URLs to empty", () => {
+    const next = applyServerSettingsPatch(DEFAULT_SERVER_SETTINGS, {
+      providers: {
+        openclaw: {
+          gatewayUrl: "   ",
+        },
+      },
+    });
+
+    expect(next.providers.openclaw.gatewayUrl).toBe("");
+  });
+
   it("scrubs credentials and query data from malformed OpenClaw gateway URLs", () => {
     const next = applyServerSettingsPatch(DEFAULT_SERVER_SETTINGS, {
       providers: {
