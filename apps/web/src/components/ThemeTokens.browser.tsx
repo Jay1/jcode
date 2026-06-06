@@ -119,10 +119,10 @@ describe("theme app-depth browser tokens", () => {
         ["nord", "dark", "#2e3440", "#3b4252", "#434c5e", "#8fbcbb", "#ebcb8b"],
         ["raycast", "dark", "#07080a", "#101111", "#252829", "#55b3ff", "#ffbc33"],
         ["raycast", "light", "#ffffff", "#f7f7f7", "#ffe7e7", "#55b3ff", "#ffbc33"],
-        ["sentry", "dark", "#1d1127", "#2b1d38", "#362d59", "#33bf9e", "#ffc227"],
+        ["sentry", "dark", "#1B1821", "#24202B", "#393442", "#3DDC97", "#FFB938"],
         ["gruvbox", "dark", "#1d2021", "#282828", "#504945", "#689d6a", "#fabd2f"],
         ["gruvbox", "light", "#fbf1c7", "#f9f5d7", "#d5c4a1", "#689d6a", "#b57614"],
-        ["tokyo-night", "dark", "#0C0E14", "#16161e", "#292e42", "#1abc9c", "#e0af68"],
+        ["tokyo-night", "dark", "#1a1b26", "#16161e", "#202330", "#73daca", "#e0af68"],
       ] as const;
 
       for (const [
