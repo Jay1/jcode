@@ -5,6 +5,7 @@
 import type {
   ModelSelection,
   OrchestrationMessageSource,
+  OrchestrationGoal,
   TurnDispatchMode,
   OrchestrationLatestTurn,
   OrchestrationThreadPullRequest,
@@ -192,6 +193,7 @@ export interface Thread extends ThreadWorkspaceState {
   hasActionableProposedPlan?: boolean;
   turnDiffSummaries: TurnDiffSummary[];
   activities: OrchestrationThreadActivity[];
+  goal?: OrchestrationGoal | null;
 }
 
 export interface ThreadShell extends ThreadWorkspaceState {
@@ -220,6 +222,7 @@ export interface ThreadShell extends ThreadWorkspaceState {
   hasPendingUserInput?: boolean;
   hasActionableProposedPlan?: boolean;
   lastVisitedAt?: string | undefined;
+  goal?: OrchestrationGoal | null;
 }
 
 export interface ThreadTurnState {

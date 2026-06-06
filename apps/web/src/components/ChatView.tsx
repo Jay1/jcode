@@ -329,6 +329,7 @@ import { ProjectPicker } from "./chat/ProjectPicker";
 import { ProviderHealthBanner } from "./chat/ProviderHealthBanner";
 import { ThreadErrorBanner } from "./chat/ThreadErrorBanner";
 import { RateLimitBanner } from "./chat/RateLimitBanner";
+import { GoalIndicator } from "./chat/GoalIndicator";
 import { deriveLatestRateLimitStatus, type RateLimitStatus } from "./chat/RateLimitBanner.logic";
 import {
   ACTIVE_TURN_LAYOUT_SETTLE_DELAY_MS,
@@ -8305,6 +8306,7 @@ export default function ChatView({
         onDismiss={dismissActiveProviderHealthBanner}
       />
       <ThreadErrorBanner error={activeThread.error} onDismiss={dismissActiveThreadError} />
+      <GoalIndicator goal={activeThread.goal} />
       <RateLimitBanner
         rateLimitStatus={visibleActiveRateLimitStatus}
         onDismiss={dismissActiveRateLimitBanner}
