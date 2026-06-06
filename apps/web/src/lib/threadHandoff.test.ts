@@ -13,6 +13,7 @@ describe("threadHandoff", () => {
       "gemini",
       "kilo",
       "opencode",
+      "openclaw",
       "pi",
     ]);
     expect(resolveAvailableHandoffTargetProviders("claudeAgent")).toEqual([
@@ -21,6 +22,7 @@ describe("threadHandoff", () => {
       "gemini",
       "kilo",
       "opencode",
+      "openclaw",
       "pi",
     ]);
     expect(resolveAvailableHandoffTargetProviders("cursor")).toEqual([
@@ -29,6 +31,7 @@ describe("threadHandoff", () => {
       "gemini",
       "kilo",
       "opencode",
+      "openclaw",
       "pi",
     ]);
     expect(resolveAvailableHandoffTargetProviders("gemini")).toEqual([
@@ -37,6 +40,7 @@ describe("threadHandoff", () => {
       "cursor",
       "kilo",
       "opencode",
+      "openclaw",
       "pi",
     ]);
     expect(resolveAvailableHandoffTargetProviders("kilo")).toEqual([
@@ -45,6 +49,7 @@ describe("threadHandoff", () => {
       "cursor",
       "gemini",
       "opencode",
+      "openclaw",
       "pi",
     ]);
     expect(resolveAvailableHandoffTargetProviders("opencode")).toEqual([
@@ -53,6 +58,16 @@ describe("threadHandoff", () => {
       "cursor",
       "gemini",
       "kilo",
+      "openclaw",
+      "pi",
+    ]);
+    expect(resolveAvailableHandoffTargetProviders("openclaw")).toEqual([
+      "codex",
+      "claudeAgent",
+      "cursor",
+      "gemini",
+      "kilo",
+      "opencode",
       "pi",
     ]);
     expect(resolveAvailableHandoffTargetProviders("pi")).toEqual([
@@ -62,6 +77,7 @@ describe("threadHandoff", () => {
       "gemini",
       "kilo",
       "opencode",
+      "openclaw",
     ]);
   });
 
@@ -107,6 +123,25 @@ describe("threadHandoff", () => {
     ).toEqual({
       provider: "codex",
       model: "gpt-5.5",
+    });
+  });
+
+  it("falls back to the fixed OpenClaw gateway model for handoff targets", () => {
+    expect(
+      resolveThreadHandoffModelSelection({
+        sourceThread: {
+          modelSelection: {
+            provider: "gemini",
+            model: "gemini-2.5-pro",
+          },
+        },
+        targetProvider: "openclaw",
+        projectDefaultModelSelection: null,
+        stickyModelSelectionByProvider: {},
+      }),
+    ).toEqual({
+      provider: "openclaw",
+      model: "gateway",
     });
   });
 });

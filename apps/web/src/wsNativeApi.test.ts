@@ -307,6 +307,13 @@ describe("wsNativeApi", () => {
             runtimeProfiles: [],
             activeRuntimeProfileId: "",
           },
+          openclaw: {
+            enabled: true,
+            gatewayUrl: "",
+            authMode: "none",
+            hasSecret: false,
+            paired: false,
+          },
           pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
         },
       },

@@ -128,13 +128,19 @@ function resetComposerDraftStore() {
 function modelSelection(
   provider: ModelSelection["provider"],
   model: string,
-  options?: ModelSelection["options"],
+  options?: ProviderModelOptions[keyof ProviderModelOptions],
 ): ModelSelection {
   return {
     provider,
     model,
     ...(options ? { options } : {}),
   } as ModelSelection;
+}
+
+function modelSelectionOptions(selection: ModelSelection | null | undefined) {
+  return selection !== null && selection !== undefined && "options" in selection
+    ? selection.options
+    : undefined;
 }
 
 function providerModelOptions(options: ProviderModelOptions): ProviderModelOptions {
@@ -161,6 +167,21 @@ describe("resolvePreferredComposerModelSelection", () => {
         effort: "max",
       }),
     );
+  });
+
+  it("preserves persisted OpenClaw gateway selections", () => {
+    expect(
+      resolvePreferredComposerModelSelection({
+        draft: {
+          modelSelectionByProvider: {
+            openclaw: modelSelection("openclaw", "gateway"),
+          },
+          activeProvider: "openclaw",
+        },
+        threadModelSelection: modelSelection("codex", "gpt-5"),
+        projectModelSelection: null,
+      }),
+    ).toEqual(modelSelection("openclaw", "gateway"));
   });
 });
 
@@ -1054,8 +1075,12 @@ describe("composerDraftStore modelSelection", () => {
     store.setModelOptions(threadId, providerModelOptions({ codex: { reasoningEffort: "xhigh" } }));
 
     const draft = useComposerDraftStore.getState().draftsByThreadId[threadId];
-    expect(draft?.modelSelectionByProvider.codex?.options).toEqual({ reasoningEffort: "xhigh" });
-    expect(draft?.modelSelectionByProvider.claudeAgent?.options).toEqual({ effort: "max" });
+    expect(modelSelectionOptions(draft?.modelSelectionByProvider.codex)).toEqual({
+      reasoningEffort: "xhigh",
+    });
+    expect(modelSelectionOptions(draft?.modelSelectionByProvider.claudeAgent)).toEqual({
+      effort: "max",
+    });
   });
 
   it("preserves other provider options when switching the active model selection", () => {
@@ -1075,7 +1100,9 @@ describe("composerDraftStore modelSelection", () => {
     expect(draft?.modelSelectionByProvider.claudeAgent).toEqual(
       modelSelection("claudeAgent", "claude-opus-4-6", { effort: "max" }),
     );
-    expect(draft?.modelSelectionByProvider.codex?.options).toEqual({ fastMode: true });
+    expect(modelSelectionOptions(draft?.modelSelectionByProvider.codex)).toEqual({
+      fastMode: true,
+    });
     expect(draft?.activeProvider).toBe("claudeAgent");
   });
 
@@ -1118,6 +1145,7 @@ describe("composerDraftStore modelSelection", () => {
         gemini: [],
         kilo: [],
         opencode: [],
+        openclaw: [],
         pi: [],
       },
       availableModelOptionsByProvider: {
@@ -1144,6 +1172,7 @@ describe("composerDraftStore modelSelection", () => {
         gemini: [],
         kilo: [],
         opencode: [],
+        openclaw: [],
         pi: [],
       },
       availableModelOptionsByProvider: {
@@ -1175,6 +1204,7 @@ describe("composerDraftStore modelSelection", () => {
         gemini: [],
         kilo: [],
         opencode: [],
+        openclaw: [],
         pi: [],
       },
       availableModelOptionsByProvider: {
@@ -1206,6 +1236,7 @@ describe("composerDraftStore modelSelection", () => {
         gemini: [],
         kilo: [],
         opencode: [],
+        openclaw: [],
         pi: [],
       },
       availableModelOptionsByProvider: {
@@ -1457,7 +1488,9 @@ describe("composerDraftStore provider-scoped option updates", () => {
     expect(draft?.modelSelectionByProvider.codex).toEqual(
       modelSelection("codex", "gpt-5.3-codex", { reasoningEffort: "medium" }),
     );
-    expect(draft?.modelSelectionByProvider.claudeAgent?.options).toEqual({ effort: "max" });
+    expect(modelSelectionOptions(draft?.modelSelectionByProvider.claudeAgent)).toEqual({
+      effort: "max",
+    });
     expect(draft?.activeProvider).toBe("codex");
   });
 

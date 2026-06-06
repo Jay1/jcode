@@ -2556,6 +2556,7 @@ describe("PROVIDER_OPTIONS", () => {
     const gemini = PROVIDER_OPTIONS.find((option) => option.value === "gemini");
     const kilo = PROVIDER_OPTIONS.find((option) => option.value === "kilo");
     const opencode = PROVIDER_OPTIONS.find((option) => option.value === "opencode");
+    const openclaw = PROVIDER_OPTIONS.find((option) => option.value === "openclaw");
     const pi = PROVIDER_OPTIONS.find((option) => option.value === "pi");
     expect(PROVIDER_OPTIONS).toEqual([
       { value: "codex", label: "Codex", available: true },
@@ -2564,6 +2565,7 @@ describe("PROVIDER_OPTIONS", () => {
       { value: "gemini", label: "Gemini", available: true },
       { value: "kilo", label: "Kilo", available: true },
       { value: "opencode", label: "OpenCode", available: true },
+      { value: "openclaw", label: "OpenClaw", available: true },
       { value: "pi", label: "Pi", available: true },
     ]);
     expect(claude).toEqual({
@@ -2589,6 +2591,11 @@ describe("PROVIDER_OPTIONS", () => {
     expect(opencode).toEqual({
       value: "opencode",
       label: "OpenCode",
+      available: true,
+    });
+    expect(openclaw).toEqual({
+      value: "openclaw",
+      label: "OpenClaw",
       available: true,
     });
     expect(pi).toEqual({

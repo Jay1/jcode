@@ -8,6 +8,7 @@ import {
   type ThreadHandoffImportedMessage,
 } from "@jcode/contracts";
 import { getDefaultModel } from "@jcode/shared/model";
+import { buildModelSelection } from "../providerModelOptions";
 import { type Thread } from "../types";
 import { stripEmbeddedAssistantSelections } from "./assistantSelections";
 import { randomUUID } from "./utils";
@@ -19,6 +20,7 @@ const HANDOFF_PROVIDER_ORDER: ReadonlyArray<ProviderKind> = [
   "gemini",
   "kilo",
   "opencode",
+  "openclaw",
   "pi",
 ];
 const IMPORTABLE_THREAD_ACTIVITY_KINDS = new Set([
@@ -163,10 +165,10 @@ export function resolveThreadHandoffModelSelection(input: {
   }
   const defaultModel = getDefaultModel(input.targetProvider);
   if (!defaultModel) {
+    if (input.targetProvider === "openclaw") {
+      return buildModelSelection("openclaw", "gateway");
+    }
     throw new Error("Select a Pi model before handing off to Pi.");
   }
-  return {
-    provider: input.targetProvider,
-    model: defaultModel,
-  };
+  return buildModelSelection(input.targetProvider, defaultModel);
 }

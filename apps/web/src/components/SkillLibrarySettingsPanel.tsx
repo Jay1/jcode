@@ -25,7 +25,23 @@ import { createFirstProjectSelector } from "../storeSelectors";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
-const PROVIDERS: readonly ProviderKind[] = [
+type SkillLibraryDiscoveryProvider = Exclude<ProviderKind, "openclaw">;
+
+type SkillLibraryDiscoveryProviderMap<T> = Record<SkillLibraryDiscoveryProvider, T>;
+
+export function buildSkillLibraryProviderQueryMap<T>(
+  queries: SkillLibraryDiscoveryProviderMap<T>,
+): SkillLibraryDiscoveryProviderMap<T> {
+  return queries;
+}
+
+export function buildSkillLibraryProviderStatusMap<T>(
+  statuses: SkillLibraryDiscoveryProviderMap<T>,
+): SkillLibraryDiscoveryProviderMap<T> {
+  return statuses;
+}
+
+const PROVIDERS: readonly SkillLibraryDiscoveryProvider[] = [
   "codex",
   "claudeAgent",
   "cursor",
@@ -34,6 +50,12 @@ const PROVIDERS: readonly ProviderKind[] = [
   "opencode",
   "pi",
 ];
+
+function isSkillLibraryDiscoveryProvider(
+  provider: SkillLibraryProviderFilter,
+): provider is SkillLibraryDiscoveryProvider {
+  return provider !== "all" && provider !== "openclaw";
+}
 
 const MAX_COLLAPSED_PROVIDER_ROWS = 48;
 
@@ -120,6 +142,7 @@ export function SkillLibrarySettingsPanel() {
       gemini: supportsSkillDiscovery(geminiCapabilitiesQuery.data),
       kilo: supportsSkillDiscovery(kiloCapabilitiesQuery.data),
       opencode: supportsSkillDiscovery(openCodeCapabilitiesQuery.data),
+      openclaw: false,
       pi: supportsSkillDiscovery(piCapabilitiesQuery.data),
     }),
     [
@@ -193,15 +216,16 @@ export function SkillLibrarySettingsPanel() {
   );
 
   const skillQueries = useMemo(
-    () => ({
-      codex: codexSkillsQuery,
-      claudeAgent: claudeSkillsQuery,
-      cursor: cursorSkillsQuery,
-      gemini: geminiSkillsQuery,
-      kilo: kiloSkillsQuery,
-      opencode: openCodeSkillsQuery,
-      pi: piSkillsQuery,
-    }),
+    () =>
+      buildSkillLibraryProviderQueryMap({
+        codex: codexSkillsQuery,
+        claudeAgent: claudeSkillsQuery,
+        cursor: cursorSkillsQuery,
+        gemini: geminiSkillsQuery,
+        kilo: kiloSkillsQuery,
+        opencode: openCodeSkillsQuery,
+        pi: piSkillsQuery,
+      }),
     [
       claudeSkillsQuery,
       codexSkillsQuery,
@@ -236,7 +260,12 @@ export function SkillLibrarySettingsPanel() {
   );
   const groupedFilteredRows = useMemo(
     () =>
-      (providerFilter === "all" ? PROVIDERS : [providerFilter]).map((provider) => ({
+      (providerFilter === "all"
+        ? PROVIDERS
+        : isSkillLibraryDiscoveryProvider(providerFilter)
+          ? [providerFilter]
+          : []
+      ).map((provider) => ({
         provider,
         rows: filteredRows.filter((row) => row.provider === provider),
       })),
@@ -261,15 +290,16 @@ export function SkillLibrarySettingsPanel() {
   const isSkillLoading = activeProviders.some((provider) => skillQueries[provider].isLoading);
 
   const providerStatus = useMemo(
-    () => ({
-      codex: { capability: codexCapabilitiesQuery, skills: codexSkillsQuery },
-      claudeAgent: { capability: claudeCapabilitiesQuery, skills: claudeSkillsQuery },
-      cursor: { capability: cursorCapabilitiesQuery, skills: cursorSkillsQuery },
-      gemini: { capability: geminiCapabilitiesQuery, skills: geminiSkillsQuery },
-      kilo: { capability: kiloCapabilitiesQuery, skills: kiloSkillsQuery },
-      opencode: { capability: openCodeCapabilitiesQuery, skills: openCodeSkillsQuery },
-      pi: { capability: piCapabilitiesQuery, skills: piSkillsQuery },
-    }),
+    () =>
+      buildSkillLibraryProviderStatusMap({
+        codex: { capability: codexCapabilitiesQuery, skills: codexSkillsQuery },
+        claudeAgent: { capability: claudeCapabilitiesQuery, skills: claudeSkillsQuery },
+        cursor: { capability: cursorCapabilitiesQuery, skills: cursorSkillsQuery },
+        gemini: { capability: geminiCapabilitiesQuery, skills: geminiSkillsQuery },
+        kilo: { capability: kiloCapabilitiesQuery, skills: kiloSkillsQuery },
+        opencode: { capability: openCodeCapabilitiesQuery, skills: openCodeSkillsQuery },
+        pi: { capability: piCapabilitiesQuery, skills: piSkillsQuery },
+      }),
     [
       claudeCapabilitiesQuery,
       claudeSkillsQuery,

@@ -371,6 +371,7 @@ import {
   buildNextProviderOptions,
   formatProviderModelOptionName,
   type ProviderModelOption,
+  type ProviderOptions,
 } from "../providerModelOptions";
 import {
   isDuplicateProjectCreateError,
@@ -465,6 +466,8 @@ function getProviderStartOptionsCustomBinaryPath(
       return normalizeCustomBinaryPath(providerOptions?.cursor?.binaryPath);
     case "pi":
       return normalizeCustomBinaryPath(providerOptions?.pi?.binaryPath);
+    case "openclaw":
+      return null;
   }
 }
 
@@ -479,6 +482,14 @@ function getProviderHealthBannerDismissalKey(status: ServerProviderStatus | null
     status.authStatus,
     status.message?.trim() ?? "",
   ].join("\u001f");
+}
+
+function getModelSelectionOptions(
+  selection: ModelSelection | null | undefined,
+): ProviderOptions | undefined {
+  return selection !== null && selection !== undefined && "options" in selection
+    ? (selection.options as ProviderOptions | undefined)
+    : undefined;
 }
 
 function getRateLimitBannerDismissalKey(
@@ -1434,6 +1445,7 @@ export default function ChatView({
       gemini: resolveHint("gemini"),
       kilo: resolveHint("kilo"),
       opencode: resolveHint("opencode"),
+      openclaw: resolveHint("openclaw"),
       pi: resolveHint("pi"),
     };
   }, [
@@ -1569,6 +1581,7 @@ export default function ChatView({
         customModelsByProvider.opencode,
         composerModelHintByProvider.opencode,
       ),
+      openclaw: getAppModelOptions("openclaw", [], composerModelHintByProvider.openclaw),
       pi: getAppModelOptions("pi", customModelsByProvider.pi, composerModelHintByProvider.pi),
     };
     const result: Record<
@@ -1586,6 +1599,7 @@ export default function ChatView({
       gemini: geminiModelsQuery.data,
       kilo: kiloDynamicModelsQuery.data,
       opencode: openCodeDynamicModelsQuery.data,
+      openclaw: undefined,
       pi: piDynamicModelsQuery.data,
     };
 
@@ -1646,6 +1660,7 @@ export default function ChatView({
       gemini: geminiModelsQuery.data?.models ?? [],
       kilo: kiloDynamicModelsQuery.data?.models ?? [],
       opencode: openCodeDynamicModelsQuery.data?.models ?? [],
+      openclaw: [],
       pi: piDynamicModelsQuery.data?.models ?? [],
     }),
     [
@@ -1665,6 +1680,7 @@ export default function ChatView({
     gemini: geminiModelsQuery,
     kilo: kiloDynamicModelsQuery,
     opencode: openCodeDynamicModelsQuery,
+    openclaw: undefined,
     pi: piDynamicModelsQuery,
   } as const;
   const selectedRuntimeModel = useMemo(
@@ -2520,7 +2536,8 @@ export default function ChatView({
     [selectedModel, selectedProvider],
   );
   const supportsFastSlashCommand = selectedModelCaps.supportsFastMode;
-  const currentProviderModelOptions = composerModelOptions?.[selectedProvider];
+  const currentProviderModelOptions =
+    selectedProvider === "openclaw" ? undefined : composerModelOptions?.[selectedProvider];
   const fastModeEnabled =
     supportsFastSlashCommand &&
     (currentProviderModelOptions as { fastMode?: boolean } | undefined)?.fastMode === true;
@@ -3856,8 +3873,8 @@ export default function ChatView({
         input.modelSelection !== undefined &&
         (input.modelSelection.model !== serverThread.modelSelection.model ||
           input.modelSelection.provider !== serverThread.modelSelection.provider ||
-          JSON.stringify(input.modelSelection.options ?? null) !==
-            JSON.stringify(serverThread.modelSelection.options ?? null))
+          JSON.stringify(getModelSelectionOptions(input.modelSelection) ?? null) !==
+            JSON.stringify(getModelSelectionOptions(serverThread.modelSelection) ?? null))
       ) {
         await api.orchestration.dispatchCommand({
           type: "thread.meta.update",
@@ -5681,7 +5698,7 @@ export default function ChatView({
           : selectedModelForSend ||
               targetProjectDefaultModelSelectionForSend?.model ||
               DEFAULT_MODEL_BY_PROVIDER.codex,
-        selectedModelSelectionForSend.options,
+        getModelSelectionOptions(selectedModelSelectionForSend),
       );
 
       if (isLocalDraftThread) {
@@ -6494,10 +6511,7 @@ export default function ChatView({
         return;
       }
       const resolvedModel = resolveAppModelSelection(provider, customModelsByProvider, model);
-      const nextModelSelection: ModelSelection = {
-        provider,
-        model: resolvedModel,
-      };
+      const nextModelSelection: ModelSelection = buildModelSelection(provider, resolvedModel);
       setComposerDraftModelSelection(activeThread.id, nextModelSelection);
       if (provider === "cursor" && !showExpandedCursorModelVariants) {
         setComposerDraftProviderModelOptions(activeThread.id, provider, undefined, {
@@ -6535,7 +6549,8 @@ export default function ChatView({
     },
     [scheduleComposerFocus, setPrompt],
   );
-  const selectedProviderModelOptions = composerModelOptions?.[selectedProvider];
+  const selectedProviderModelOptions =
+    selectedProvider === "openclaw" ? undefined : composerModelOptions?.[selectedProvider];
   const composerTraitSelection = getComposerTraitSelection(
     selectedProvider,
     selectedModel,
