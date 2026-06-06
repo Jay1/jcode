@@ -80,6 +80,26 @@ it.effect("accepts git.preparePullRequestThread requests", () =>
   }),
 );
 
+it.effect("accepts server.updateOpenClawSecrets requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-openclaw-secrets-1",
+      body: {
+        _tag: WS_METHODS.serverUpdateOpenClawSecrets,
+        token: "token-secret",
+        password: "password-secret",
+        rotateDeviceKey: true,
+        deviceToken: "paired-token",
+      },
+    });
+    assert.strictEqual(parsed.body._tag, WS_METHODS.serverUpdateOpenClawSecrets);
+    if (parsed.body._tag === WS_METHODS.serverUpdateOpenClawSecrets) {
+      assert.strictEqual(parsed.body.token, "token-secret");
+      assert.strictEqual(parsed.body.rotateDeviceKey, true);
+    }
+  }),
+);
+
 it.effect("accepts provider install skill requests", () =>
   Effect.gen(function* () {
     const parsed = yield* decode(WebSocketRequest, {

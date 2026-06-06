@@ -143,6 +143,18 @@ describe("getGitTextGenerationModelOptions", () => {
       isCustom: true,
     });
   });
+
+  it("does not add OpenClaw gateway to git-writing model options", () => {
+    const options = getGitTextGenerationModelOptions({
+      customCodexModels: [],
+      customKiloModels: [],
+      customOpenCodeModels: [],
+      textGenerationModel: "gateway",
+      textGenerationProvider: "openclaw",
+    });
+
+    expect(options.some((option) => option.provider === "openclaw")).toBe(false);
+  });
 });
 
 describe("resolveAppModelSelection", () => {
@@ -157,6 +169,7 @@ describe("resolveAppModelSelection", () => {
           gemini: [],
           kilo: [],
           opencode: [],
+          openclaw: [],
           pi: [],
         },
         "galapagos-alpha",
@@ -168,7 +181,16 @@ describe("resolveAppModelSelection", () => {
     expect(
       resolveAppModelSelection(
         "codex",
-        { codex: [], claudeAgent: [], cursor: [], gemini: [], kilo: [], opencode: [], pi: [] },
+        {
+          codex: [],
+          claudeAgent: [],
+          cursor: [],
+          gemini: [],
+          kilo: [],
+          opencode: [],
+          openclaw: [],
+          pi: [],
+        },
         "",
       ),
     ).toBe("gpt-5.5");
@@ -178,7 +200,16 @@ describe("resolveAppModelSelection", () => {
     expect(
       resolveAppModelSelection(
         "codex",
-        { codex: [], claudeAgent: [], cursor: [], gemini: [], kilo: [], opencode: [], pi: [] },
+        {
+          codex: [],
+          claudeAgent: [],
+          cursor: [],
+          gemini: [],
+          kilo: [],
+          opencode: [],
+          openclaw: [],
+          pi: [],
+        },
         "GPT-5.3 Codex",
       ),
     ).toBe("gpt-5.3-codex");
@@ -188,7 +219,16 @@ describe("resolveAppModelSelection", () => {
     expect(
       resolveAppModelSelection(
         "claudeAgent",
-        { codex: [], claudeAgent: [], cursor: [], gemini: [], kilo: [], opencode: [], pi: [] },
+        {
+          codex: [],
+          claudeAgent: [],
+          cursor: [],
+          gemini: [],
+          kilo: [],
+          opencode: [],
+          openclaw: [],
+          pi: [],
+        },
         "sonnet",
       ),
     ).toBe("claude-sonnet-4-6");
@@ -198,7 +238,16 @@ describe("resolveAppModelSelection", () => {
     expect(
       resolveAppModelSelection(
         "codex",
-        { codex: [], claudeAgent: [], cursor: [], gemini: [], kilo: [], opencode: [], pi: [] },
+        {
+          codex: [],
+          claudeAgent: [],
+          cursor: [],
+          gemini: [],
+          kilo: [],
+          opencode: [],
+          openclaw: [],
+          pi: [],
+        },
         "custom/selected-model",
       ),
     ).toBe("custom/selected-model");
@@ -298,6 +347,13 @@ describe("server-backed app settings", () => {
               activeRuntimeProfileId: "",
               customModels: [],
             },
+            openclaw: {
+              enabled: true,
+              gatewayUrl: "ws://127.0.0.1:18789",
+              authMode: "device",
+              hasSecret: true,
+              paired: false,
+            },
             pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
           },
           textGenerationModelSelection: { provider: "codex", model: "gpt-5.4" },
@@ -305,6 +361,10 @@ describe("server-backed app settings", () => {
       ),
     ).toMatchObject({
       addProjectBaseDirectory: "/home/jay/code",
+      openClawAuthMode: "device",
+      openClawGatewayUrl: "ws://127.0.0.1:18789",
+      openClawHasSecret: true,
+      openClawPaired: false,
     });
   });
 
@@ -341,6 +401,13 @@ describe("server-backed app settings", () => {
               activeRuntimeProfileId: "",
               customModels: [],
             },
+            openclaw: {
+              enabled: true,
+              gatewayUrl: "",
+              authMode: "none",
+              hasSecret: false,
+              paired: false,
+            },
             pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
           },
           textGenerationModelSelection: { provider: "codex", model: "gpt-5.4" },
@@ -353,6 +420,24 @@ describe("server-backed app settings", () => {
     expect(
       appSettingsPatchToServerSettingsPatch({ addProjectBaseDirectory: "/home/jay/code" }),
     ).toEqual({ addProjectBaseDirectory: "/home/jay/code" });
+  });
+
+  it("does not map OpenClaw server-derived metadata to server settings patches", () => {
+    expect(
+      appSettingsPatchToServerSettingsPatch({
+        openClawGatewayUrl: "https://gateway.example.test",
+        openClawAuthMode: "token",
+        openClawHasSecret: true,
+        openClawPaired: false,
+      }),
+    ).toEqual({
+      providers: {
+        openclaw: {
+          gatewayUrl: "https://gateway.example.test",
+          authMode: "token",
+        },
+      },
+    });
   });
 });
 
@@ -381,6 +466,7 @@ describe("getProviderStartOptions", () => {
         openCodeBinaryPath: "",
         openCodeServerPassword: "",
         openCodeServerUrl: "",
+        openClawGatewayUrl: "ws://127.0.0.1:18789",
         piAgentDir: "",
         piBinaryPath: "",
       }),
@@ -402,6 +488,29 @@ describe("getProviderStartOptions", () => {
     });
   });
 
+  it("does not include only OpenClaw gateway URLs in provider start options", () => {
+    expect(
+      getProviderStartOptions({
+        claudeBinaryPath: "",
+        codexBinaryPath: "",
+        codexHomePath: "",
+        codexLaunchArgs: "",
+        cursorApiEndpoint: "",
+        cursorBinaryPath: "",
+        geminiBinaryPath: "",
+        kiloBinaryPath: "",
+        kiloServerPassword: "",
+        kiloServerUrl: "",
+        openCodeBinaryPath: "",
+        openCodeServerPassword: "",
+        openCodeServerUrl: "",
+        openClawGatewayUrl: "https://gateway.example.test",
+        piAgentDir: "",
+        piBinaryPath: "",
+      }),
+    ).toBeUndefined();
+  });
+
   it("returns undefined when no provider overrides are configured", () => {
     expect(
       getProviderStartOptions({
@@ -418,6 +527,7 @@ describe("getProviderStartOptions", () => {
         openCodeBinaryPath: "",
         openCodeServerPassword: "",
         openCodeServerUrl: "",
+        openClawGatewayUrl: "",
         piAgentDir: "",
         piBinaryPath: "",
       }),
@@ -436,7 +546,7 @@ describe("provider-indexed custom model settings", () => {
     customPiModels: ["anthropic/custom-pi"],
   } as const;
 
-  it("exports one provider config per provider", () => {
+  it("exports custom model configs only for providers that support custom models", () => {
     expect(MODEL_PROVIDER_SETTINGS.map((config) => config.provider)).toEqual([
       "codex",
       "claudeAgent",
@@ -446,6 +556,9 @@ describe("provider-indexed custom model settings", () => {
       "opencode",
       "pi",
     ]);
+    expect(MODEL_PROVIDER_SETTINGS.map((config) => config.provider as string)).not.toContain(
+      "openclaw",
+    );
   });
 
   it("reads custom models for each provider", () => {
@@ -530,6 +643,7 @@ describe("provider-indexed custom model settings", () => {
       gemini: ["gemini/custom-flash"],
       kilo: ["kilo/kilo-auto/free"],
       opencode: ["openrouter/gpt-oss-120b"],
+      openclaw: [],
       pi: ["anthropic/custom-pi"],
     });
   });
@@ -604,6 +718,7 @@ describe("provider-indexed custom model settings", () => {
     expect(
       modelOptionsByProvider.opencode.filter((option) => option.slug === "openrouter/gpt-oss-120b"),
     ).toHaveLength(1);
+    expect(modelOptionsByProvider.openclaw).toEqual([]);
     expect(
       modelOptionsByProvider.pi.filter((option) => option.slug === "anthropic/custom-pi"),
     ).toHaveLength(1);
@@ -642,6 +757,10 @@ describe("AppSettingsSchema", () => {
       customKiloModels: [],
       customOpenCodeModels: [],
       customPiModels: [],
+      openClawAuthMode: "none",
+      openClawGatewayUrl: "",
+      openClawHasSecret: false,
+      openClawPaired: false,
       addProjectBaseDirectory: "",
     });
   });
