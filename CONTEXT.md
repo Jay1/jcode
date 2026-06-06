@@ -14,6 +14,12 @@ A cockpit is the user-facing control surface for coding-agent work. In JCode thi
 
 The cockpit coordinates local tools and provider runtimes; it should not leak raw provider protocol details directly into ordinary user-facing concepts.
 
+### OpenClaw Gateway Provider
+
+The OpenClaw Gateway Provider is a first-class JCode Provider that connects to a user-configured OpenClaw Gateway URL and presents OpenClaw chat inside normal JCode Threads.
+
+Its first version should treat the OpenClaw Gateway as a provider runtime rather than a separate external chat launcher. JCode owns the Settings configuration, provider health, thread-to-session mapping, and runtime-event translation while keeping OpenClaw protocol details behind the Provider boundary.
+
 ### Skill Library
 
 The Skill Library is the settings-native surface for discovering and managing coding-agent skills across providers such as OpenCode and Codex.

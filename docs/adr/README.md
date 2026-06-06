@@ -21,6 +21,7 @@
 | [0002](0002-release-notes-and-latest-package-retention.md) | Accepted | Release notes and latest-package retention   |
 | [0003](0003-settings-native-skill-library.md)              | Accepted | Settings-native provider-aware Skill Library |
 | [0004](0004-project-language-icons.md)                     | Proposed | Project language icons as metadata           |
+| [0005](0005-openclaw-gateway-provider.md)                  | Proposed | OpenClaw Gateway as a first-class Provider   |
 
 ## When To Add An ADR
 
