@@ -1539,14 +1539,6 @@ export const makeCheckOpenClawProviderStatus = (
       })
       .pipe(Effect.result);
     if (Result.isFailure(probe)) {
-      const cause = probe.cause;
-      const detail =
-        cause !== null &&
-        typeof cause === "object" &&
-        "message" in cause &&
-        typeof cause.message === "string"
-          ? `: ${cause.message}`
-          : "";
       return {
         provider: OPENCLAW_PROVIDER,
         status: "error" as const,
@@ -1554,7 +1546,7 @@ export const makeCheckOpenClawProviderStatus = (
         authStatus: "unknown" as const,
         ...(authType !== "none" ? { authType } : {}),
         checkedAt,
-        message: `OpenClaw gateway is unreachable at ${normalized.redactedUrl}${detail}.`,
+        message: `OpenClaw gateway is unreachable at ${normalized.redactedUrl}.`,
       } satisfies ServerProviderStatus;
     }
 
