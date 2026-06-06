@@ -764,7 +764,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
           dispatchMode,
           turnId: null,
           streaming: false,
-          source: "native",
+          source: command.message.source,
           createdAt: command.createdAt,
           updatedAt: command.createdAt,
         },

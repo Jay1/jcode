@@ -874,6 +874,9 @@ export const ThreadTurnStartCommand = Schema.Struct({
     role: Schema.Literal("user"),
     text: Schema.String,
     attachments: Schema.Array(ChatAttachment),
+    source: Schema.optional(OrchestrationMessageSource).pipe(
+      Schema.withDecodingDefault(() => "native"),
+    ),
     skills: Schema.optional(Schema.Array(ProviderSkillReference)),
     mentions: Schema.optional(Schema.Array(ProviderMentionReference)),
   }),
@@ -901,6 +904,9 @@ const ClientThreadTurnStartCommand = Schema.Struct({
     role: Schema.Literal("user"),
     text: Schema.String,
     attachments: Schema.Array(UploadChatAttachment),
+    source: Schema.optional(OrchestrationMessageSource).pipe(
+      Schema.withDecodingDefault(() => "native"),
+    ),
     skills: Schema.optional(Schema.Array(ProviderSkillReference)),
     mentions: Schema.optional(Schema.Array(ProviderMentionReference)),
   }),

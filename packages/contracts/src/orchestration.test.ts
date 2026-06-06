@@ -522,6 +522,26 @@ it.effect("decodes thread.turn.start defaults for provider, runtime mode, and di
   }),
 );
 
+it.effect("decodes thread.turn.start goal-continuation message source", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decodeThreadTurnStartCommand({
+      type: "thread.turn.start",
+      commandId: "cmd-turn-goal-continuation",
+      threadId: "thread-1",
+      message: {
+        messageId: "msg-goal-continuation",
+        role: "user",
+        text: "continue goal",
+        attachments: [],
+        source: "goal-continuation",
+      },
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    assert.strictEqual(parsed.message.source, "goal-continuation");
+  }),
+);
+
 it.effect("preserves explicit provider and runtime mode in thread.turn.start", () =>
   Effect.gen(function* () {
     const parsed = yield* decodeThreadTurnStartCommand({
