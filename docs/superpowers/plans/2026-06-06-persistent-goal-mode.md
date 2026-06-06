@@ -56,11 +56,11 @@
 
 ### 1. Contract Model and Failing Tests
 
-- [ ] Read the relevant sections of `packages/contracts/src/orchestration.ts`: message source, thread schemas, command schemas, event payloads, `OrchestrationCommand`, `OrchestrationEventType`, and `OrchestrationEvent`.
-- [ ] Add failing contract tests for decoding a thread shell/detail with `goal` and a `goal-continuation` message source.
-- [ ] Add `ORCHESTRATION_GOAL_COMPLETION_SENTINEL`, e.g. `JCODE_GOAL_COMPLETE`, as an exported contract constant.
-- [ ] Add `OrchestrationGoalStatus` literals: `active`, `paused`, `complete`, `cleared`, `blocked` if needed by tests.
-- [ ] Add `OrchestrationGoal` fields for v1:
+- [x] Read the relevant sections of `packages/contracts/src/orchestration.ts`: message source, thread schemas, command schemas, event payloads, `OrchestrationCommand`, `OrchestrationEventType`, and `OrchestrationEvent`.
+- [x] Add failing contract tests for decoding a thread shell/detail with `goal` and a `goal-continuation` message source.
+- [x] Add `ORCHESTRATION_GOAL_COMPLETION_SENTINEL`, e.g. `JCODE_GOAL_COMPLETE`, as an exported contract constant.
+- [x] Add `OrchestrationGoalStatus` literals: `active`, `paused`, `complete`, `cleared`, `blocked` if needed by tests.
+- [x] Add `OrchestrationGoal` fields for v1:
   - `objective: TrimmedNonEmptyString`
   - `status`
   - `createdAt`, `updatedAt`
@@ -69,118 +69,118 @@
   - `lastContinuationTurnId: TurnId | null`
   - `turnCount: NonNegativeInt`
   - `blockedReason: string | null`
-- [ ] Add optional `goal` to `OrchestrationThread` and `OrchestrationThreadShell` with decoding default `null`.
-- [ ] Extend `OrchestrationMessageSource` with `goal-continuation`.
-- [ ] Add goal commands:
+- [x] Add optional `goal` to `OrchestrationThread` and `OrchestrationThreadShell` with decoding default `null`.
+- [x] Extend `OrchestrationMessageSource` with `goal-continuation`.
+- [x] Add goal commands:
   - `thread.goal.set`
   - `thread.goal.pause`
   - `thread.goal.resume`
   - `thread.goal.complete`
   - `thread.goal.clear`
-- [ ] Add goal event types and payload schemas:
+- [x] Add goal event types and payload schemas:
   - `thread.goal-set`
   - `thread.goal-paused`
   - `thread.goal-resumed`
   - `thread.goal-completed`
   - `thread.goal-cleared`
   - optional `thread.goal-blocked` only if reactor tests require durable blocked state in v1.
-- [ ] Run focused contract tests and verify the new tests fail for missing schemas.
-- [ ] Implement the contract schemas minimally.
-- [ ] Run the focused contract tests again.
-- [ ] Commit contracts as `feat(goal): add orchestration goal contracts`.
+- [x] Run focused contract tests and verify the new tests fail for missing schemas.
+- [x] Implement the contract schemas minimally.
+- [x] Run the focused contract tests again.
+- [x] Commit contracts as `feat(goal): add orchestration goal contracts`.
 
 ### 2. Decider Lifecycle Events
 
-- [ ] Add failing tests in `apps/server/src/orchestration/decider*.test.ts` for `thread.goal.set` on an existing thread.
-- [ ] Add failing tests for pausing/resuming/completing/clearing when a goal exists.
-- [ ] Add failing tests for invalid transitions:
+- [x] Add failing tests in `apps/server/src/orchestration/decider*.test.ts` for `thread.goal.set` on an existing thread.
+- [x] Add failing tests for pausing/resuming/completing/clearing when a goal exists.
+- [x] Add failing tests for invalid transitions:
   - pause without active goal rejects.
   - resume without paused goal rejects.
   - complete without active/paused goal rejects.
   - set with empty objective rejects through schema or invariant.
-- [ ] Implement decider cases that emit goal events with `updatedAt`/`occurredAt` from `nowIso()`.
-- [ ] Ensure `thread.turn.start` accepts a `message.source` of `goal-continuation`; do not special-case provider dispatch in the decider.
-- [ ] Run focused decider tests and fix only the minimal code needed.
-- [ ] Commit as `feat(goal): add goal lifecycle decisions`.
+- [x] Implement decider cases that emit goal events with `updatedAt`/`occurredAt` from `nowIso()`.
+- [x] Ensure `thread.turn.start` accepts a `message.source` of `goal-continuation`; do not special-case provider dispatch in the decider.
+- [x] Run focused decider tests and fix only the minimal code needed.
+- [x] Commit as `feat(goal): add goal lifecycle decisions`.
 
 ### 3. In-Memory Projector Goal Folding
 
-- [ ] Add failing tests in `apps/server/src/orchestration/projector.test.ts` proving goal events update `thread.goal` in the read model.
-- [ ] Implement goal folding in `apps/server/src/orchestration/projector.ts`.
-- [ ] Ensure clear either sets `status: "cleared"` or removes/hides goal consistently with contract and UI expectations. Prefer retaining a cleared goal in events but projecting `goal: null` if the UI should hide it.
-- [ ] Run focused projector tests.
-- [ ] Commit as `feat(goal): project goal state in memory`.
+- [x] Add failing tests in `apps/server/src/orchestration/projector.test.ts` proving goal events update `thread.goal` in the read model.
+- [x] Implement goal folding in `apps/server/src/orchestration/projector.ts`.
+- [x] Ensure clear either sets `status: "cleared"` or removes/hides goal consistently with contract and UI expectations. Prefer retaining a cleared goal in events but projecting `goal: null` if the UI should hide it.
+- [x] Run focused projector tests.
+- [x] Commit as `feat(goal): project goal state in memory`.
 
 ### 4. SQLite Projection Persistence and Hydration
 
-- [ ] Add migration test for nullable `goal_json` on `projection_threads`.
-- [ ] Add `apps/server/src/persistence/Migrations/040_ProjectionThreadsGoal.ts`.
-- [ ] Register migration 40 in `apps/server/src/persistence/Migrations.ts`.
-- [ ] Add `goal` to `ProjectionThread` schema.
-- [ ] Map `goal_json` in `apps/server/src/persistence/Layers/ProjectionThreads.ts` insert/update/get/list.
-- [ ] Extend `ProjectionRepositories.test.ts` with a goal JSON round-trip test.
-- [ ] Add failing `ProjectionSnapshotQuery.test.ts` assertions for shell/detail goal hydration.
-- [ ] Add projection pipeline folding for goal events in `ProjectionPipeline.ts`.
-- [ ] Run focused migration/repository/projection snapshot tests where the local environment allows; record existing dependency blockers exactly if they persist.
-- [ ] Commit as `feat(goal): persist projected goal state`.
+- [x] Add migration test for nullable `goal_json` on `projection_threads`.
+- [x] Add `apps/server/src/persistence/Migrations/040_ProjectionThreadsGoal.ts`.
+- [x] Register migration 40 in `apps/server/src/persistence/Migrations.ts`.
+- [x] Add `goal` to `ProjectionThread` schema.
+- [x] Map `goal_json` in `apps/server/src/persistence/Layers/ProjectionThreads.ts` insert/update/get/list.
+- [x] Extend `ProjectionRepositories.test.ts` with a goal JSON round-trip test.
+- [x] Add failing `ProjectionSnapshotQuery.test.ts` assertions for shell/detail goal hydration.
+- [x] Add projection pipeline folding for goal events in `ProjectionPipeline.ts`.
+- [x] Run focused migration/repository/projection snapshot tests where the local environment allows; record existing dependency blockers exactly if they persist.
+- [x] Commit as `feat(goal): persist projected goal state`.
 
 ### 5. Continuation Prompt Renderer
 
-- [ ] Add `apps/server/src/orchestration/goalContinuationPrompt.test.ts`.
-- [ ] Test that the renderer:
+- [x] Add `apps/server/src/orchestration/goalContinuationPrompt.test.ts`.
+- [x] Test that the renderer:
   - Escapes objective text as untrusted data.
   - Includes current recap text when available.
   - Includes the completion audit checklist.
   - Includes the exact sentinel and says nothing should follow it.
-- [ ] Port Synara's `renderGoalContinuationPrompt()` into `apps/server/src/orchestration/goalContinuationPrompt.ts` with JCode names.
-- [ ] Include Thread Recap context as a `Current thread recap:` section if `thread.recap?.text` exists.
-- [ ] Run focused prompt tests.
-- [ ] Commit as `feat(goal): add continuation prompt renderer`.
+- [x] Port Synara's `renderGoalContinuationPrompt()` into `apps/server/src/orchestration/goalContinuationPrompt.ts` with JCode names.
+- [x] Include Thread Recap context as a `Current thread recap:` section if `thread.recap?.text` exists.
+- [x] Run focused prompt tests.
+- [x] Commit as `feat(goal): add continuation prompt renderer`.
 
 ### 6. Goal Continuation Reactor
 
-- [ ] Add `apps/server/src/orchestration/Services/GoalContinuationReactor.ts` with a `start` effect interface matching existing reactor service patterns.
-- [ ] Add `apps/server/src/orchestration/Layers/GoalContinuationReactor.test.ts` with service fakes for `OrchestrationEngineService` and `ProjectionSnapshotQuery`.
-- [ ] Test no-op cases first:
+- [x] Add `apps/server/src/orchestration/Services/GoalContinuationReactor.ts` with a `start` effect interface matching existing reactor service patterns.
+- [x] Add `apps/server/src/orchestration/Layers/GoalContinuationReactor.test.ts` with service fakes for `OrchestrationEngineService` and `ProjectionSnapshotQuery`.
+- [x] Test no-op cases first:
   - no thread detail.
   - no goal.
   - goal not active.
   - latest turn not completed.
   - session still running.
   - pending approval or user input exists.
-- [ ] Test completion sentinel handling:
+- [x] Test completion sentinel handling:
   - latest assistant message for the completed turn ends with sentinel.
   - reactor dispatches `thread.goal.complete` once for that turn.
-- [ ] Test continuation handling:
+- [x] Test continuation handling:
   - active goal, completed turn, no sentinel, no pending blockers.
   - reactor dispatches `thread.turn.start` with a generated user message, `source: "goal-continuation"`, and text from `renderGoalContinuationPrompt()`.
-- [ ] Test idempotency: repeated trigger events for the same completed turn do not dispatch duplicate continuation turns.
-- [ ] Implement `GoalContinuationReactorLive`, adapting Synara's event trigger set:
+- [x] Test idempotency: repeated trigger events for the same completed turn do not dispatch duplicate continuation turns.
+- [x] Implement `GoalContinuationReactorLive`, adapting Synara's event trigger set:
   - React to `thread.turn-diff-completed` and `thread.session-set`.
   - Re-read `getThreadDetailById(threadId)` every time.
   - Use an in-memory `lastHandledTurnId` map for v1.
   - Generate server command IDs with a `server:goal-continuation:` prefix.
   - Generate continuation message IDs with a `goal-continuation:` prefix.
-- [ ] Wire `GoalContinuationReactorLive` into `OrchestrationReactorLive` and `serverLayers.ts`.
-- [ ] Run focused reactor tests and LSP diagnostics.
-- [ ] Commit as `feat(goal): continue active goals after completed turns`.
+- [x] Wire `GoalContinuationReactorLive` into `OrchestrationReactorLive` and `serverLayers.ts`.
+- [x] Run focused reactor tests and LSP diagnostics.
+- [x] Commit as `feat(goal): continue active goals after completed turns`.
 
 ### 7. Web Slash Commands and Goal Indicator
 
-- [ ] Add `/goal` to `BUILT_IN_COMPOSER_SLASH_COMMANDS` and command definitions in `apps/web/src/composerSlashCommands.ts`.
-- [ ] Add parser tests for:
+- [x] Add `/goal` to `BUILT_IN_COMPOSER_SLASH_COMMANDS` and command definitions in `apps/web/src/composerSlashCommands.ts`.
+- [x] Add parser tests for:
   - `/goal Build the thing` -> set.
   - `/goal pause` -> pause.
   - `/goal resume` -> resume.
   - `/goal clear` -> clear.
   - `/goal status` -> status UI/no dispatch.
-- [ ] Implement slash handling in `apps/web/src/hooks/useComposerSlashCommands.ts` or `ChatView.tsx`, following the existing `/fast`, `/fork`, and `/status` command patterns.
-- [ ] Dispatch goal commands through `api.orchestration.dispatchCommand` with `newCommandId()`.
-- [ ] Add `apps/web/src/components/chat/GoalIndicator.tsx`, adapted from Synara but using text-accessible UI rather than relying on emoji.
-- [ ] Mount `GoalIndicator` near the composer controls or header where active thread status chips already live.
-- [ ] Ensure `/goal status` displays current status via toast or existing status surface without sending a provider turn.
-- [ ] Run focused web logic tests where dependencies allow; otherwise capture `vitest` blocker exactly.
-- [ ] Commit as `feat(goal): add goal slash command UI`.
+- [x] Implement slash handling in `apps/web/src/hooks/useComposerSlashCommands.ts` or `ChatView.tsx`, following the existing `/fast`, `/fork`, and `/status` command patterns.
+- [x] Dispatch goal commands through `api.orchestration.dispatchCommand` with `newCommandId()`.
+- [x] Add `apps/web/src/components/chat/GoalIndicator.tsx`, adapted from Synara but using text-accessible UI rather than relying on emoji.
+- [x] Mount `GoalIndicator` near the composer controls or header where active thread status chips already live.
+- [x] Ensure `/goal status` displays current status via toast or existing status surface without sending a provider turn.
+- [x] Run focused web logic tests where dependencies allow; otherwise capture `vitest` blocker exactly.
+- [x] Commit as `feat(goal): add goal slash command UI`.
 
 ### 8. Verification and Review
 
