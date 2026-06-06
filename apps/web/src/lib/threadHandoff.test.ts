@@ -144,4 +144,31 @@ describe("threadHandoff", () => {
       model: "gateway",
     });
   });
+
+  it("ignores non-gateway sticky and project defaults for OpenClaw handoff", () => {
+    expect(
+      resolveThreadHandoffModelSelection({
+        sourceThread: {
+          modelSelection: {
+            provider: "gemini",
+            model: "gemini-2.5-pro",
+          },
+        },
+        targetProvider: "openclaw",
+        projectDefaultModelSelection: {
+          provider: "openclaw",
+          model: "custom-model",
+        },
+        stickyModelSelectionByProvider: {
+          openclaw: {
+            provider: "openclaw",
+            model: "another-model",
+          },
+        },
+      }),
+    ).toEqual({
+      provider: "openclaw",
+      model: "gateway",
+    });
+  });
 });

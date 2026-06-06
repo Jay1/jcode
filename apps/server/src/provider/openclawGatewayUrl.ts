@@ -25,7 +25,7 @@ function isLoopbackHostname(hostname: string): boolean {
   if (Net.isIP(normalized) !== 4) {
     return false;
   }
-  const firstOctet = Number(normalized.split(".")[0]);
+  const firstOctet = Number(normalized.split(".")[0] ?? "0");
   return firstOctet === 127;
 }
 

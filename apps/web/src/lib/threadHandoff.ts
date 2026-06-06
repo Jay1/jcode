@@ -156,6 +156,10 @@ export function resolveThreadHandoffModelSelection(input: {
     return input.targetProvider !== "kilo" || selection.model.startsWith("kilo/");
   };
 
+  if (input.targetProvider === "openclaw") {
+    return buildModelSelection("openclaw", "gateway");
+  }
+
   const stickySelection = input.stickyModelSelectionByProvider[input.targetProvider];
   if (isCompatibleSelection(stickySelection)) {
     return stickySelection;
@@ -165,9 +169,6 @@ export function resolveThreadHandoffModelSelection(input: {
   }
   const defaultModel = getDefaultModel(input.targetProvider);
   if (!defaultModel) {
-    if (input.targetProvider === "openclaw") {
-      return buildModelSelection("openclaw", "gateway");
-    }
     throw new Error("Select a Pi model before handing off to Pi.");
   }
   return buildModelSelection(input.targetProvider, defaultModel);

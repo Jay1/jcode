@@ -467,6 +467,13 @@ export const makeOpenClawAdapterLive = (options: OpenClawAdapterLiveOptions = {}
                 activeRunIdsByTurn,
               });
             });
+            if (gatewayEvents.length === 0 && runId !== undefined) {
+              yield* emit({
+                ...buildEventBase({ threadId: input.threadId, turnId, raw: { runId } }),
+                type: "turn.completed",
+                payload: { state: "completed", stopReason: null },
+              });
+            }
             for (const event of gatewayEvents) {
               switch (event.type) {
                 case "assistant.delta": {

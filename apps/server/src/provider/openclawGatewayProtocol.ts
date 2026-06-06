@@ -170,7 +170,7 @@ function challengeSigningPayload(input: OpenClawChallengeResponseInput): string 
     input.deviceId,
     input.challenge.nonce,
     input.challenge.timestamp,
-  ].join("\\n");
+  ].join("\n");
 }
 
 export function buildOpenClawChallengeResponse(

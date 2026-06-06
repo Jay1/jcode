@@ -2,10 +2,12 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const settingsRouteSource = readFileSync(new URL("./_chat.settings.tsx", import.meta.url), "utf8");
-const defaultProviderSectionSource = settingsRouteSource.slice(
-  settingsRouteSource.indexOf('title="Default provider"'),
-  settingsRouteSource.indexOf('title="New threads"'),
-);
+const defaultProviderStart = settingsRouteSource.indexOf('title="Default provider"');
+const newThreadsStart = settingsRouteSource.indexOf('title="New threads"');
+const defaultProviderSectionSource =
+  defaultProviderStart >= 0 && newThreadsStart >= 0
+    ? settingsRouteSource.slice(defaultProviderStart, newThreadsStart)
+    : "";
 
 describe("settings install provider contracts", () => {
   it("keeps Codex launch arguments wired into install settings", () => {

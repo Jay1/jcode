@@ -1,6 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { DEFAULT_MODEL_BY_PROVIDER, type ServerSettingsPatch } from "@jcode/contracts";
 import { Effect, FileSystem, Layer } from "effect";
+import { dirname } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore";
 import { ServerSecretStore } from "./auth/Services/ServerSecretStore";
@@ -187,7 +188,7 @@ describe("ServerSettingsService", () => {
         const service = yield* ServerSettingsService;
         const { settingsPath } = yield* ServerConfig;
         const fs = yield* FileSystem.FileSystem;
-        yield* fs.makeDirectory(settingsPath.slice(0, settingsPath.lastIndexOf("/")), {
+        yield* fs.makeDirectory(dirname(settingsPath), {
           recursive: true,
         });
         yield* fs.writeFileString(

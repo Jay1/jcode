@@ -20,7 +20,7 @@ function providerHasDefaultModel(provider: ProviderKind): provider is ProviderWi
 
 function sanitizeOpenClawGatewayUrl(value: string | undefined): string | undefined {
   if (value === undefined || value.trim().length === 0) {
-    return value;
+    return undefined;
   }
   const trimmed = value.trim();
   try {

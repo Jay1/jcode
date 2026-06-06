@@ -347,7 +347,10 @@ async function requestOverSocket(
 
   const firstFrame = await receiveFrame(socket, REQUEST_TIMEOUT_MS, redactedGatewayUrl);
   const firstResult = normalizeRequestResult(firstFrame);
-  if ("events" in firstResult || "runId" in firstResult) {
+  if ("events" in firstResult) {
+    return firstResult;
+  }
+  if ("runId" in firstResult && !isGatewayEvent(firstFrame)) {
     return firstResult;
   }
   if (!isGatewayEvent(firstFrame)) {
