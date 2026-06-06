@@ -152,6 +152,8 @@ interface OpenCodeSessionContext {
   activeTurnSawToolCallFinish: boolean;
   activeTurnSawFinalAssistant: boolean;
   activeTurnToolCallIdleWatchdogStarted: boolean;
+  activeTurnWaitingForResumption: boolean;
+  activeTurnResumptionStartedAt: number | undefined;
   activeInteractionMode: "default" | "plan" | undefined;
   activeAgent: string | undefined;
   activeVariant: string | undefined;
@@ -685,6 +687,8 @@ function clearActiveTurnState(context: OpenCodeSessionContext): void {
   context.activeTurnSawToolCallFinish = false;
   context.activeTurnSawFinalAssistant = false;
   context.activeTurnToolCallIdleWatchdogStarted = false;
+  context.activeTurnWaitingForResumption = false;
+  context.activeTurnResumptionStartedAt = undefined;
   context.activeInteractionMode = undefined;
   context.activeAgent = undefined;
   context.activeVariant = undefined;
@@ -882,6 +886,10 @@ function shouldHandleSubscribedEvent(
   const sessionId = subscribedEventSessionId(event);
   if (sessionId !== undefined) {
     return sessionId === context.openCodeSessionId;
+  }
+
+  if (context.activeTurnWaitingForResumption && event.type === "session.status") {
+    return true;
   }
 
   return (
@@ -2206,6 +2214,60 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
         return true;
       });
 
+      const RESUMPTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+      const scheduleResumptionTimeout = Effect.fn("scheduleResumptionTimeout")(function* (
+        context: OpenCodeSessionContext,
+        turnId: TurnId,
+      ) {
+        yield* Effect.gen(function* () {
+          yield* Effect.sleep(RESUMPTION_TIMEOUT_MS);
+          if (
+            (yield* Ref.get(context.stopped)) ||
+            context.activeTurnId !== turnId ||
+            !context.activeTurnWaitingForResumption
+          ) {
+            return;
+          }
+          const message = `Provider did not resume within ${RESUMPTION_TIMEOUT_MS / 1000}s after going idle with pending background tasks.`;
+          yield* completeOpenCodeTurn(context, {
+            turnId,
+            raw: { source: "jcode.opencode.resumption-timeout" },
+            errorMessage: message,
+          });
+          updateProviderSession(
+            context,
+            { status: "error", lastError: message },
+            { clearActiveTurnId: true },
+          );
+          yield* emit({
+            ...buildEventBase({
+              threadId: context.session.threadId,
+              turnId,
+              raw: { source: "jcode.opencode.resumption-timeout" },
+            }),
+            type: "runtime.warning",
+            payload: { message, detail: { timeoutMs: RESUMPTION_TIMEOUT_MS } },
+          });
+        }).pipe(
+          Effect.catchCause((cause) =>
+            writeNativeEventBestEffort(context.session.threadId, {
+              observedAt: nowIso(),
+              event: {
+                provider,
+                threadId: context.session.threadId,
+                providerThreadId: context.openCodeSessionId,
+                type: "turn.resumption-timeout-watchdog.error",
+                turnId,
+                detail: openCodeRuntimeErrorDetail(Cause.squash(cause)),
+              },
+            }),
+          ),
+          Effect.forkIn(context.sessionScope),
+          Effect.asVoid,
+        );
+      });
+
       const recoverOpenCodeTurnFromAssistantMessage = Effect.fn(
         "recoverOpenCodeTurnFromAssistantMessage",
       )(function* (
@@ -2902,6 +2964,13 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
                 status: "running",
                 activeTurnId: turnId,
               });
+              if (context.activeTurnWaitingForResumption) {
+                context.activeTurnWaitingForResumption = false;
+                context.activeTurnResumptionStartedAt = undefined;
+                context.activeTurnSawToolCallFinish = false;
+                context.activeTurnSawFinalAssistant = false;
+                context.activeTurnToolCallIdleWatchdogStarted = false;
+              }
             }
 
             if (event.properties.status.type === "retry") {
@@ -2921,6 +2990,27 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             }
 
             if (event.properties.status.type === "idle" && turnId) {
+              if (
+                context.activeTurnSawToolCallFinish &&
+                context.activeTurnCompletionActivitySerial === 0 &&
+                !context.activeTurnWaitingForResumption
+              ) {
+                context.activeTurnWaitingForResumption = true;
+                context.activeTurnResumptionStartedAt = Date.now();
+                yield* scheduleResumptionTimeout(context, turnId);
+                yield* emit({
+                  ...buildEventBase({
+                    threadId: context.session.threadId,
+                    turnId,
+                    raw: event,
+                  }),
+                  type: "runtime.warning",
+                  payload: {
+                    message: `Provider went idle after tool calls; waiting for background tasks to complete.`,
+                  },
+                });
+                break;
+              }
               if (yield* deferPrematureIdleCompletion(context, turnId, event)) {
                 break;
               }
@@ -2935,6 +3025,27 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
 
           case "session.idle": {
             if (turnId) {
+              if (
+                context.activeTurnSawToolCallFinish &&
+                context.activeTurnCompletionActivitySerial === 0 &&
+                !context.activeTurnWaitingForResumption
+              ) {
+                context.activeTurnWaitingForResumption = true;
+                context.activeTurnResumptionStartedAt = Date.now();
+                yield* scheduleResumptionTimeout(context, turnId);
+                yield* emit({
+                  ...buildEventBase({
+                    threadId: context.session.threadId,
+                    turnId,
+                    raw: event,
+                  }),
+                  type: "runtime.warning",
+                  payload: {
+                    message: `Provider went idle after tool calls; waiting for background tasks to complete.`,
+                  },
+                });
+                break;
+              }
               if (yield* deferPrematureIdleCompletion(context, turnId, event)) {
                 break;
               }
@@ -3254,6 +3365,27 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
 
           case "session.idle": {
             if (turnId) {
+              if (
+                context.activeTurnSawToolCallFinish &&
+                context.activeTurnCompletionActivitySerial === 0 &&
+                !context.activeTurnWaitingForResumption
+              ) {
+                context.activeTurnWaitingForResumption = true;
+                context.activeTurnResumptionStartedAt = Date.now();
+                yield* scheduleResumptionTimeout(context, turnId);
+                yield* emit({
+                  ...buildEventBase({
+                    threadId: context.session.threadId,
+                    turnId,
+                    raw: event,
+                  }),
+                  type: "runtime.warning",
+                  payload: {
+                    message: `Provider went idle after tool calls; waiting for background tasks to complete.`,
+                  },
+                });
+                break;
+              }
               if (yield* deferPrematureIdleCompletion(context, turnId, event)) {
                 break;
               }
@@ -3682,6 +3814,8 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             activeTurnSawToolCallFinish: false,
             activeTurnSawFinalAssistant: false,
             activeTurnToolCallIdleWatchdogStarted: false,
+            activeTurnWaitingForResumption: false,
+            activeTurnResumptionStartedAt: undefined,
             activeInteractionMode: undefined,
             activeAgent: undefined,
             activeVariant: undefined,
@@ -3764,6 +3898,8 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
         context.activeTurnSawToolCallFinish = false;
         context.activeTurnSawFinalAssistant = false;
         context.activeTurnToolCallIdleWatchdogStarted = false;
+        context.activeTurnWaitingForResumption = false;
+        context.activeTurnResumptionStartedAt = undefined;
         context.activeInteractionMode = input.interactionMode === "plan" ? "plan" : "default";
         // Always pin JCode's interaction mode to OpenCode's primary agent.
         // Otherwise a user config with default agent=plan can trap default turns in plan mode.
