@@ -1,7 +1,9 @@
 import type {
   OrchestrationCommand,
   OrchestrationEvent,
+  OrchestrationGoalStatus,
   OrchestrationReadModel,
+  OrchestrationThread,
 } from "@jcode/contracts";
 import {
   deriveAssociatedWorktreeMetadata,
@@ -67,6 +69,23 @@ function omitNullUserInputAnswers(
 ) {
   return Object.fromEntries(
     Object.entries(command.answers).filter(([, answer]) => answer !== null && answer !== undefined),
+  );
+}
+
+function requireGoalStatus(input: {
+  readonly command: OrchestrationCommand;
+  readonly thread: OrchestrationThread;
+  readonly statuses: ReadonlyArray<OrchestrationGoalStatus>;
+  readonly detail: string;
+}): Effect.Effect<void, OrchestrationCommandInvariantError> {
+  if (input.thread.goal && input.statuses.includes(input.thread.goal.status)) {
+    return Effect.void;
+  }
+  return Effect.fail(
+    new OrchestrationCommandInvariantError({
+      commandType: input.command.type,
+      detail: input.detail,
+    }),
   );
 }
 
@@ -1315,7 +1334,13 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     }
 
     case "thread.goal.pause": {
-      yield* requireThread({ readModel, command, threadId: command.threadId });
+      const thread = yield* requireThread({ readModel, command, threadId: command.threadId });
+      yield* requireGoalStatus({
+        command,
+        thread,
+        statuses: ["active"],
+        detail: "Goal can only be paused when it is active.",
+      });
       return {
         ...withEventBase({
           aggregateKind: "thread",
@@ -1333,7 +1358,13 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     }
 
     case "thread.goal.resume": {
-      yield* requireThread({ readModel, command, threadId: command.threadId });
+      const thread = yield* requireThread({ readModel, command, threadId: command.threadId });
+      yield* requireGoalStatus({
+        command,
+        thread,
+        statuses: ["paused"],
+        detail: "Goal can only be resumed when it is paused.",
+      });
       return {
         ...withEventBase({
           aggregateKind: "thread",
@@ -1350,7 +1381,13 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     }
 
     case "thread.goal.complete": {
-      yield* requireThread({ readModel, command, threadId: command.threadId });
+      const thread = yield* requireThread({ readModel, command, threadId: command.threadId });
+      yield* requireGoalStatus({
+        command,
+        thread,
+        statuses: ["active", "paused"],
+        detail: "Goal can only be completed when it is active or paused.",
+      });
       return {
         ...withEventBase({
           aggregateKind: "thread",
@@ -1368,7 +1405,13 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     }
 
     case "thread.goal.clear": {
-      yield* requireThread({ readModel, command, threadId: command.threadId });
+      const thread = yield* requireThread({ readModel, command, threadId: command.threadId });
+      yield* requireGoalStatus({
+        command,
+        thread,
+        statuses: ["active", "paused", "completed"],
+        detail: "Goal can only be cleared when one exists.",
+      });
       return {
         ...withEventBase({
           aggregateKind: "thread",
