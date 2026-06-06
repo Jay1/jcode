@@ -90,9 +90,10 @@ export function filterSidechatTranscriptMessages(
   messages: readonly ChatMessage[],
   isSidechat: boolean,
 ): ChatMessage[] {
+  const visibleMessages = messages.filter((message) => message.source !== "goal-continuation");
   return isSidechat
-    ? messages.filter((message) => message.source !== "fork-import")
-    : [...messages];
+    ? visibleMessages.filter((message) => message.source !== "fork-import")
+    : visibleMessages;
 }
 
 export function revokeBlobPreviewUrl(previewUrl: string | undefined): void {

@@ -1,6 +1,7 @@
 import { type ModelSelection } from "@jcode/contracts";
 import { describe, expect, it } from "vitest";
 import {
+  buildThreadHandoffImportedMessages,
   resolveAvailableHandoffTargetProviders,
   resolveThreadHandoffModelSelection,
 } from "./threadHandoff";
@@ -170,5 +171,36 @@ describe("threadHandoff", () => {
       provider: "openclaw",
       model: "gateway",
     });
+  });
+
+  it("excludes internal goal-continuation prompts from imported handoff messages", () => {
+    const imported = buildThreadHandoffImportedMessages({
+      messages: [
+        {
+          id: "message-native" as never,
+          role: "user",
+          text: "Visible user prompt",
+          turnId: null,
+          streaming: false,
+          source: "native",
+          attachments: [],
+          createdAt: "2026-06-06T00:00:00.000Z",
+          completedAt: "2026-06-06T00:00:00.000Z",
+        },
+        {
+          id: "message-goal-continuation" as never,
+          role: "user",
+          text: "Hidden goal continuation prompt",
+          turnId: null,
+          streaming: false,
+          source: "goal-continuation",
+          attachments: [],
+          createdAt: "2026-06-06T00:01:00.000Z",
+          completedAt: "2026-06-06T00:01:00.000Z",
+        },
+      ],
+    });
+
+    expect(imported.map((message) => message.text)).toEqual(["Visible user prompt"]);
   });
 });
