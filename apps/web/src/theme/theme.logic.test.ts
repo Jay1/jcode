@@ -108,6 +108,11 @@ const REQUIRED_APP_DEPTH_TOKENS = [
   "--app-assistant-message-bg",
   "--app-assistant-message-border",
   "--app-assistant-message-accent",
+  "--app-user-message-bg",
+  "--app-user-message-bg-muted",
+  "--app-user-message-border",
+  "--app-user-message-accent",
+  "--app-user-message-shadow",
   "--app-diff-card-bg",
   "--app-diff-card-header-bg",
   "--app-diff-title",
@@ -597,6 +602,13 @@ describe("buildThemeCssVariables", () => {
     expect(cssVariables.variables["--app-assistant-message-border"]).toBe("rgba(69, 71, 90, 0.36)");
     expect(cssVariables.variables["--app-assistant-message-accent"]).toBe(
       "rgba(203, 166, 247, 0.42)",
+    );
+    expect(cssVariables.variables["--app-user-message-bg"]).toBe("rgba(49, 50, 68, 0.76)");
+    expect(cssVariables.variables["--app-user-message-bg-muted"]).toBe("rgba(30, 30, 46, 0.82)");
+    expect(cssVariables.variables["--app-user-message-border"]).toBe("rgba(203, 166, 247, 0.28)");
+    expect(cssVariables.variables["--app-user-message-accent"]).toBe("#cba6f7");
+    expect(cssVariables.variables["--app-user-message-shadow"]).toBe(
+      "0 10px 28px rgba(203, 166, 247, 0.12)",
     );
     expect(cssVariables.variables["--app-sidebar-row-bg"]).toBe("rgba(30, 30, 46, 0.42)");
     expect(cssVariables.variables["--app-sidebar-row-hover-bg"]).toBe("rgba(49, 50, 68, 0.68)");

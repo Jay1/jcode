@@ -1,5 +1,5 @@
 import { type ThreadId } from "@jcode/contracts";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useTemporaryThreadStore } from "../temporaryThreadStore";
 
@@ -10,7 +10,9 @@ export function useIsDisposableThread(threadId: ThreadId | null | undefined): bo
   const hasTemporaryDraftMetadata = useComposerDraftStore((store) =>
     threadId ? store.draftThreadsByThreadId[threadId]?.isTemporary === true : false,
   );
-  const seenDisposableThreadIdsRef = useRef<Set<ThreadId>>(new Set());
+  const [seenDisposableThreadIds, setSeenDisposableThreadIds] = useState<ReadonlySet<ThreadId>>(
+    () => new Set(),
+  );
 
   useEffect(() => {
     if (!threadId) {
@@ -18,7 +20,10 @@ export function useIsDisposableThread(threadId: ThreadId | null | undefined): bo
     }
     // Latch positives to avoid transient UI flicker during draft/server promotion.
     if (hasTemporaryThreadMarker || hasTemporaryDraftMetadata) {
-      seenDisposableThreadIdsRef.current.add(threadId);
+      setSeenDisposableThreadIds((current) => {
+        if (current.has(threadId)) return current;
+        return new Set(current).add(threadId);
+      });
     }
   }, [threadId, hasTemporaryDraftMetadata, hasTemporaryThreadMarker]);
 
@@ -26,8 +31,6 @@ export function useIsDisposableThread(threadId: ThreadId | null | undefined): bo
     return false;
   }
   return (
-    hasTemporaryThreadMarker ||
-    hasTemporaryDraftMetadata ||
-    seenDisposableThreadIdsRef.current.has(threadId)
+    hasTemporaryThreadMarker || hasTemporaryDraftMetadata || seenDisposableThreadIds.has(threadId)
   );
 }

@@ -464,8 +464,21 @@ function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
             "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
           ],
         }).pipe(
-          Effect.map((result) => {
-            const parsed = JSON.parse(result.stdout) as Array<Record<string, unknown>>;
+          Effect.flatMap((result) =>
+            Effect.try({
+              try: () => JSON.parse(result.stdout) as Array<Record<string, unknown>>,
+              catch: (cause) =>
+                new GitHubCliError({
+                  operation: "listOpenPullRequests",
+                  detail:
+                    cause instanceof Error
+                      ? `GitHub CLI returned invalid PR list JSON: ${cause.message}`
+                      : "GitHub CLI returned invalid PR list JSON.",
+                  cause,
+                }),
+            }),
+          ),
+          Effect.map((parsed) => {
             return parsed.map((pullRequest) => {
               const summary: MutableGitHubPullRequestSummary = {
                 number: pullRequest.number as number,
@@ -1877,6 +1890,45 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
         ghCalls.some((call) => call.includes("pr create --base main --head feature-create-pr")),
       ).toBe(true);
       expect(ghCalls.some((call) => call.startsWith("pr view "))).toBe(false);
+    }),
+  );
+
+  it.effect("keeps PR creation successful when post-create lookup fails", () =>
+    Effect.gen(function* () {
+      const repoDir = yield* makeTempDir("jcode-git-manager-");
+      yield* initRepo(repoDir);
+      yield* runGit(repoDir, ["checkout", "-b", "feature-create-pr-lookup-fails"]);
+      const remoteDir = yield* createBareRemote();
+      yield* runGit(repoDir, ["remote", "add", "origin", remoteDir]);
+      fs.writeFileSync(path.join(repoDir, "changes.txt"), "change\n");
+      yield* runGit(repoDir, ["add", "changes.txt"]);
+      yield* runGit(repoDir, ["commit", "-m", "Feature commit"]);
+      yield* runGit(repoDir, ["push", "-u", "origin", "feature-create-pr-lookup-fails"]);
+      yield* runGit(repoDir, [
+        "config",
+        "branch.feature-create-pr-lookup-fails.gh-merge-base",
+        "main",
+      ]);
+
+      const { manager, ghCalls } = yield* makeManager({
+        ghScenario: {
+          prListSequence: ["[]", "[]", "[]", "not-json"],
+        },
+      });
+      const result = yield* runStackedAction(manager, {
+        cwd: repoDir,
+        action: "commit_push_pr",
+      });
+
+      expect(result.pr.status).toBe("created");
+      expect(result.pr.number).toBeUndefined();
+      expect(result.pr.baseBranch).toBe("main");
+      expect(result.pr.headBranch).toBe("feature-create-pr-lookup-fails");
+      expect(
+        ghCalls.some((call) =>
+          call.includes("pr create --base main --head feature-create-pr-lookup-fails"),
+        ),
+      ).toBe(true);
     }),
   );
 

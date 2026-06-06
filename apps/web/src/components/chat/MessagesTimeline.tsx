@@ -581,7 +581,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                 ) : showUserText ? (
                   <div
                     className={cn(
-                      "w-max max-w-full min-w-0 self-end rounded-lg bg-secondary px-3.5",
+                      "app-user-message w-max max-w-full min-w-0 self-end rounded-lg px-3.5",
                       bubbleIsChipOnly ? "py-1" : "pt-[5.5px] pb-[7px]",
                     )}
                   >
@@ -1345,7 +1345,7 @@ const UserMessageEditForm = memo(function UserMessageEditForm(props: {
 
   return (
     <form
-      className="w-full rounded-lg bg-secondary px-3.5 pt-[5.5px] pb-[7px]"
+      className="app-user-message w-full rounded-lg px-3.5 pt-[5.5px] pb-[7px]"
       onSubmit={(event) => {
         event.preventDefault();
         if (canSubmit) {

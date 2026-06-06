@@ -80,6 +80,92 @@ it.effect("accepts git.preparePullRequestThread requests", () =>
   }),
 );
 
+it.effect("accepts server.updateOpenClawSecrets requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-openclaw-secrets-1",
+      body: {
+        _tag: WS_METHODS.serverUpdateOpenClawSecrets,
+        token: "token-secret",
+        password: "password-secret",
+        rotateDeviceKey: true,
+        deviceToken: "paired-token",
+      },
+    });
+    assert.strictEqual(parsed.body._tag, WS_METHODS.serverUpdateOpenClawSecrets);
+    if (parsed.body._tag === WS_METHODS.serverUpdateOpenClawSecrets) {
+      assert.strictEqual(parsed.body.token, "token-secret");
+      assert.strictEqual(parsed.body.rotateDeviceKey, true);
+    }
+  }),
+);
+
+it.effect("accepts provider install skill requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-install-skill-1",
+      body: {
+        _tag: WS_METHODS.providerInstallSkill,
+        provider: "opencode",
+        cwd: "/repo",
+        packageRef: "owner/skills",
+        skillName: "code-review",
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.providerInstallSkill);
+  }),
+);
+
+it.effect("accepts provider uninstall skill requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-uninstall-skill-1",
+      body: {
+        _tag: WS_METHODS.providerUninstallSkill,
+        provider: "opencode",
+        cwd: "/repo",
+        skillPath: "/repo/.opencode/skill/code-review/SKILL.md",
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.providerUninstallSkill);
+  }),
+);
+
+it.effect("accepts provider set skill enabled requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-set-skill-enabled-1",
+      body: {
+        _tag: WS_METHODS.providerSetSkillEnabled,
+        provider: "opencode",
+        cwd: "/repo",
+        skillPath: "/repo/.opencode/skill/code-review/SKILL.md",
+        enabled: false,
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.providerSetSkillEnabled);
+  }),
+);
+
+it.effect("accepts provider search skills catalog requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-search-skills-catalog-1",
+      body: {
+        _tag: WS_METHODS.providerSearchSkillsCatalog,
+        provider: "opencode",
+        cwd: "/repo",
+        query: "code review",
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.providerSearchSkillsCatalog);
+  }),
+);
+
 it.effect("accepts typed websocket push envelopes with sequence", () =>
   Effect.gen(function* () {
     const parsed = yield* decode(WsResponse, {

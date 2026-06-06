@@ -12,6 +12,7 @@ import {
   OrchestrationGetTurnDiffInput,
   OrchestrationLatestTurn,
   OrchestrationReadModel,
+  ProviderKind,
   ProjectIconMetadata,
   ProjectCreatedPayload,
   ProjectMetaUpdatedPayload,
@@ -40,10 +41,28 @@ const decodeOrchestrationProposedPlan = Schema.decodeUnknownEffect(Orchestration
 const decodeOrchestrationSession = Schema.decodeUnknownEffect(OrchestrationSession);
 const decodeThreadCreatedPayload = Schema.decodeUnknownEffect(ThreadCreatedPayload);
 const decodeThreadMetaUpdatedPayload = Schema.decodeUnknownEffect(ThreadMetaUpdatedPayload);
+const decodeProviderKind = Schema.decodeUnknownEffect(ProviderKind);
 const decodeModelSelection = Schema.decodeUnknownEffect(ModelSelection);
 const decodeClientOrchestrationCommand = Schema.decodeUnknownEffect(ClientOrchestrationCommand);
 const decodeOrchestrationCommand = Schema.decodeUnknownEffect(OrchestrationCommand);
 const decodeOrchestrationEvent = Schema.decodeUnknownEffect(OrchestrationEvent);
+
+it.effect("accepts OpenClaw as a provider kind", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decodeProviderKind("openclaw");
+
+    assert.equal(parsed, "openclaw");
+  }),
+);
+
+it.effect("accepts the OpenClaw gateway model-selection sentinel", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decodeModelSelection({ provider: "openclaw", model: "gateway" });
+
+    assert.equal(parsed.provider, "openclaw");
+    assert.equal(parsed.model, "gateway");
+  }),
+);
 
 it.effect("preserves thread activity payloads through the RPC JSON codec", () =>
   Effect.gen(function* () {

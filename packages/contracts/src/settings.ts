@@ -72,6 +72,18 @@ export const PiServerProviderSettings = Schema.Struct({
 });
 export type PiServerProviderSettings = typeof PiServerProviderSettings.Type;
 
+export const OpenClawAuthMode = Schema.Literals(["none", "token", "password", "device"]);
+export type OpenClawAuthMode = typeof OpenClawAuthMode.Type;
+
+export const OpenClawServerProviderSettings = Schema.Struct({
+  enabled: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
+  gatewayUrl: StringSetting.pipe(Schema.withDecodingDefault(() => "")),
+  authMode: OpenClawAuthMode.pipe(Schema.withDecodingDefault(() => "none")),
+  hasSecret: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
+  paired: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
+});
+export type OpenClawServerProviderSettings = typeof OpenClawServerProviderSettings.Type;
+
 export const ServerSettings = Schema.Struct({
   enableAssistantStreaming: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
   defaultThreadEnvMode: ThreadEnvironmentMode.pipe(Schema.withDecodingDefault(() => "local")),
@@ -89,6 +101,7 @@ export const ServerSettings = Schema.Struct({
     gemini: GeminiServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     kilo: KiloServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     opencode: OpenCodeServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
+    openclaw: OpenClawServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     pi: PiServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   }).pipe(Schema.withDecodingDefault(() => ({}))),
 });
@@ -149,6 +162,13 @@ export const ServerSettingsPatch = Schema.Struct({
           serverPassword: Schema.optionalKey(StringSetting),
           runtimeProfiles: Schema.optionalKey(Schema.Array(OpenCodeRuntimeProfile)),
           activeRuntimeProfileId: Schema.optionalKey(StringSetting),
+        }),
+      ),
+      openclaw: Schema.optionalKey(
+        Schema.Struct({
+          enabled: Schema.optionalKey(Schema.Boolean),
+          gatewayUrl: Schema.optionalKey(StringSetting),
+          authMode: Schema.optionalKey(OpenClawAuthMode),
         }),
       ),
       pi: Schema.optionalKey(

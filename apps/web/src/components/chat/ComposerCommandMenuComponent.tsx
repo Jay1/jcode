@@ -7,7 +7,7 @@ import {
   type ProviderPluginDescriptor,
   type ProviderSkillDescriptor,
 } from "@jcode/contracts";
-import { memo, useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { RiRobot3Line } from "react-icons/ri";
 import { type ComposerTriggerKind } from "../../composer-logic";
 import { type ComposerSlashCommand } from "../../composerSlashCommands";
@@ -238,7 +238,7 @@ type ComposerCommandGroupModel = {
 const COMPOSER_COMMAND_GROUP_LABEL_CLASSNAME =
   "px-2 pt-1.5 pb-1 text-[11px] font-normal text-muted-foreground/60";
 
-export function groupCommandItems(
+function groupCommandItems(
   items: ComposerCommandItem[],
   triggerKind: ComposerTriggerKind | null,
   groupSlashCommandSections: boolean,
@@ -294,7 +294,7 @@ export function groupCommandItems(
   return groups;
 }
 
-export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
+export function ComposerCommandMenu(props: {
   items: ComposerCommandItem[];
   resolvedTheme: "light" | "dark";
   isLoading: boolean;
@@ -306,10 +306,10 @@ export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
   onSelect: (item: ComposerCommandItem) => void;
 }) {
   const itemRefs = useRef<Record<string, HTMLElement | null>>({});
-  const groups = useMemo(
-    () =>
-      groupCommandItems(props.items, props.triggerKind, props.groupSlashCommandSections ?? true),
-    [props.groupSlashCommandSections, props.items, props.triggerKind],
+  const groups = groupCommandItems(
+    props.items,
+    props.triggerKind,
+    props.groupSlashCommandSections ?? true,
   );
 
   useEffect(() => {
@@ -398,9 +398,9 @@ export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
       </div>
     </Command>
   );
-});
+}
 
-const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
+function ComposerCommandMenuItem(props: {
   item: ComposerCommandItem;
   resolvedTheme: "light" | "dark";
   isActive: boolean;
@@ -529,4 +529,4 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
       </div>
     </CommandItem>
   );
-});
+}

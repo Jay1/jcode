@@ -26,6 +26,14 @@ import type {
   ProviderReadPluginResult,
   ProviderListSkillsResult,
   ProviderListSkillsInput,
+  ProviderInstallSkillInput,
+  ProviderInstallSkillResult,
+  ProviderUninstallSkillInput,
+  ProviderUninstallSkillResult,
+  ProviderSetSkillEnabledInput,
+  ProviderSetSkillEnabledResult,
+  ProviderSearchCatalogInput,
+  ProviderSearchCatalogResult,
   ProviderStartReviewInput,
   ProviderUserInputAnswers,
   ProviderRuntimeEvent,
@@ -56,6 +64,9 @@ export interface ProviderAdapterCapabilities {
   readonly supportsPluginDiscovery?: boolean;
   readonly supportsRuntimeModelList?: boolean;
   readonly supportsTurnSteering?: boolean;
+  readonly supportsSkillInstall?: boolean;
+  readonly supportsSkillUninstall?: boolean;
+  readonly supportsSkillToggle?: boolean;
 }
 
 export interface ProviderThreadTurnSnapshot {
@@ -203,6 +214,34 @@ export interface ProviderAdapterShape<TError> {
   readonly listSkills?: (
     input: ProviderListSkillsInput,
   ) => Effect.Effect<ProviderListSkillsResult, TError>;
+
+  /**
+   * Install a provider skill from a catalog/package reference when supported.
+   */
+  readonly installSkill?: (
+    input: ProviderInstallSkillInput,
+  ) => Effect.Effect<ProviderInstallSkillResult, TError>;
+
+  /**
+   * Remove an installed provider skill when supported.
+   */
+  readonly uninstallSkill?: (
+    input: ProviderUninstallSkillInput,
+  ) => Effect.Effect<ProviderUninstallSkillResult, TError>;
+
+  /**
+   * Enable or disable an installed provider skill when supported.
+   */
+  readonly setSkillEnabled?: (
+    input: ProviderSetSkillEnabledInput,
+  ) => Effect.Effect<ProviderSetSkillEnabledResult, TError>;
+
+  /**
+   * Search the provider-compatible remote skill catalog when supported.
+   */
+  readonly searchSkillsCatalog?: (
+    input: ProviderSearchCatalogInput,
+  ) => Effect.Effect<ProviderSearchCatalogResult, TError>;
 
   /**
    * List provider-native slash commands available for a given cwd.

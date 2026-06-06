@@ -5,6 +5,7 @@ import {
   CursorModelOptions,
   GeminiModelOptions,
   OpenCodeModelOptions,
+  OpenClawModelOptions,
   PiModelOptions,
 } from "./model";
 import {
@@ -57,6 +58,7 @@ export const ProviderKind = Schema.Literals([
   "gemini",
   "kilo",
   "opencode",
+  "openclaw",
   "pi",
 ]);
 export type ProviderKind = typeof ProviderKind.Type;
@@ -124,6 +126,13 @@ export const PiModelSelection = Schema.Struct({
 });
 export type PiModelSelection = typeof PiModelSelection.Type;
 
+export const OpenClawModelSelection = Schema.Struct({
+  provider: Schema.Literal("openclaw"),
+  model: Schema.Literal("gateway"),
+  options: Schema.optional(OpenClawModelOptions),
+});
+export type OpenClawModelSelection = typeof OpenClawModelSelection.Type;
+
 export const ModelSelection = Schema.Union([
   CodexModelSelection,
   ClaudeModelSelection,
@@ -131,6 +140,7 @@ export const ModelSelection = Schema.Union([
   GeminiModelSelection,
   KiloModelSelection,
   OpenCodeModelSelection,
+  OpenClawModelSelection,
   PiModelSelection,
 ]);
 export type ModelSelection = typeof ModelSelection.Type;

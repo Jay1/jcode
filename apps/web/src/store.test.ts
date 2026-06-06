@@ -1905,6 +1905,44 @@ describe("store read model sync", () => {
     expect(next.projects[0]?.defaultModelSelection?.model).toBe("openai/gpt-5.4");
   });
 
+  it("preserves OpenClaw thread gateway model selections from the read model", () => {
+    const initialState = makeState(makeThread());
+    const readModel = makeReadModel(
+      makeReadModelThread({
+        modelSelection: {
+          provider: "openclaw",
+          model: "gateway",
+        },
+      }),
+    );
+
+    const next = syncServerReadModel(initialState, readModel);
+
+    expect(next.threads[0]?.modelSelection).toEqual({ provider: "openclaw", model: "gateway" });
+  });
+
+  it("preserves OpenClaw project default gateway model selections from the read model", () => {
+    const initialState = makeState(makeThread());
+    const readModel = {
+      ...makeReadModel(makeReadModelThread({})),
+      projects: [
+        makeReadModelProject({
+          defaultModelSelection: {
+            provider: "openclaw",
+            model: "gateway",
+          },
+        }),
+      ],
+    };
+
+    const next = syncServerReadModel(initialState, readModel);
+
+    expect(next.projects[0]?.defaultModelSelection).toEqual({
+      provider: "openclaw",
+      model: "gateway",
+    });
+  });
+
   it("preserves project and thread updatedAt timestamps from the read model", () => {
     const initialState = makeState(makeThread());
     const readModel = makeReadModel(

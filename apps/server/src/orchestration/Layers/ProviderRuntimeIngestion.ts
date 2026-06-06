@@ -1715,9 +1715,11 @@ const make = Effect.gen(function* () {
             (entry) => entry.id === childThreadId,
           );
           const resolvedModelSelection =
-            identity?.model && identity.modelIsRequestedHint !== true
+            identity?.model &&
+            identity.modelIsRequestedHint !== true &&
+            parentThread.modelSelection.provider !== "openclaw"
               ? {
-                  provider: parentThread.modelSelection.provider,
+                  ...parentThread.modelSelection,
                   model: identity.model,
                 }
               : undefined;

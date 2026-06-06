@@ -882,7 +882,7 @@ const make = Effect.gen(function* () {
       input.modelSelection ?? threadModelSelections.get(input.threadId) ?? thread.modelSelection;
     const modelForTurn =
       sessionModelSwitch === "unsupported"
-        ? activeSession?.model !== undefined
+        ? activeSession?.model !== undefined && requestedModelSelection.provider !== "openclaw"
           ? {
               ...requestedModelSelection,
               model: activeSession.model,

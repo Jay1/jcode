@@ -1,9 +1,10 @@
-import type { ProviderKind, ProviderSkillDescriptor } from "@jcode/contracts";
+import type { CatalogSkillEntry, ProviderKind, ProviderSkillDescriptor } from "@jcode/contracts";
 import { describe, expect, it } from "vitest";
 
 import {
   buildSkillLibraryRows,
   countSkillLibraryRowsByProvider,
+  filterInstallableCatalogEntries,
   filterSkillLibraryRows,
 } from "./skillLibrary";
 
@@ -15,6 +16,15 @@ function skill(
     name,
     path: `/skills/${name}`,
     enabled: true,
+    ...overrides,
+  };
+}
+
+function catalogEntry(overrides: Partial<CatalogSkillEntry> = {}): CatalogSkillEntry {
+  return {
+    packageRef: "owner/skills",
+    skillName: "analyze",
+    displayName: "Analyze",
     ...overrides,
   };
 }
@@ -92,5 +102,34 @@ describe("skill library helpers", () => {
     ]);
 
     expect(new Set(rows.map((row) => row.key)).size).toBe(rows.length);
+  });
+
+  it("hides catalog entries already installed for the selected provider only", () => {
+    const installedRows = buildSkillLibraryRows([
+      {
+        provider: "opencode",
+        providerLabel: "OpenCode",
+        skills: [skill("analyze", { interface: { displayName: "Analyze" } })],
+      },
+    ]);
+    const catalogEntries = [
+      catalogEntry(),
+      catalogEntry({ skillName: "code-review", displayName: "Code Review" }),
+    ];
+
+    expect(
+      filterInstallableCatalogEntries({
+        entries: catalogEntries,
+        installedRows,
+        provider: "opencode",
+      }).map((entry) => entry.skillName),
+    ).toEqual(["code-review"]);
+    expect(
+      filterInstallableCatalogEntries({
+        entries: catalogEntries,
+        installedRows,
+        provider: "codex",
+      }).map((entry) => entry.skillName),
+    ).toEqual(["analyze", "code-review"]);
   });
 });

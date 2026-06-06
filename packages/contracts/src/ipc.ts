@@ -70,6 +70,8 @@ import type {
   ServerRefreshProvidersResult,
   ServerResetKeybindingInput,
   ServerResetKeybindingsResult,
+  ServerUpdateOpenClawSecretsInput,
+  ServerUpdateOpenClawSecretsResult,
   ServerUpdateSettingsInput,
   ServerUpdateSettingsResult,
   ServerUpsertKeybindingInput,
@@ -118,6 +120,14 @@ import type {
   ProviderListPluginsResult,
   ProviderListSkillsInput,
   ProviderListSkillsResult,
+  ProviderInstallSkillInput,
+  ProviderInstallSkillResult,
+  ProviderUninstallSkillInput,
+  ProviderUninstallSkillResult,
+  ProviderSetSkillEnabledInput,
+  ProviderSetSkillEnabledResult,
+  ProviderSearchCatalogInput,
+  ProviderSearchCatalogResult,
   ProviderReadPluginInput,
   ProviderReadPluginResult,
   OpenCodeRuntimeHealth,
@@ -429,6 +439,9 @@ export interface NativeApi {
     getEnvironment: () => Promise<ServerGetEnvironmentResult>;
     getSettings: () => Promise<ServerGetSettingsResult>;
     updateSettings: (input: ServerUpdateSettingsInput) => Promise<ServerUpdateSettingsResult>;
+    updateOpenClawSecrets: (
+      input: ServerUpdateOpenClawSecretsInput,
+    ) => Promise<ServerUpdateOpenClawSecretsResult>;
     getAuthSession: () => Promise<AuthSessionState>;
     bootstrapAuth: (input: AuthBootstrapInput) => Promise<AuthBootstrapResult>;
     bootstrapBearerAuth: (input: AuthBootstrapInput) => Promise<AuthBearerBootstrapResult>;
@@ -464,6 +477,14 @@ export interface NativeApi {
     compactThread: (input: ProviderCompactThreadInput) => Promise<void>;
     listCommands: (input: ProviderListCommandsInput) => Promise<ProviderListCommandsResult>;
     listSkills: (input: ProviderListSkillsInput) => Promise<ProviderListSkillsResult>;
+    installSkill: (input: ProviderInstallSkillInput) => Promise<ProviderInstallSkillResult>;
+    uninstallSkill: (input: ProviderUninstallSkillInput) => Promise<ProviderUninstallSkillResult>;
+    setSkillEnabled: (
+      input: ProviderSetSkillEnabledInput,
+    ) => Promise<ProviderSetSkillEnabledResult>;
+    searchSkillsCatalog: (
+      input: ProviderSearchCatalogInput,
+    ) => Promise<ProviderSearchCatalogResult>;
     listPlugins: (input: ProviderListPluginsInput) => Promise<ProviderListPluginsResult>;
     readPlugin: (input: ProviderReadPluginInput) => Promise<ProviderReadPluginResult>;
     listModels: (input: ProviderListModelsInput) => Promise<ProviderListModelsResult>;

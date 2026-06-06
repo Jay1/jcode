@@ -3,6 +3,7 @@ import { getDefaultModel } from "@jcode/shared/model";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { useAppSettings } from "../appSettings";
+import { buildModelSelection } from "../providerModelOptions";
 import {
   type ComposerThreadDraftState,
   type DraftThreadState,
@@ -47,10 +48,7 @@ export function useHandleNewThread() {
         if (!defaultModel) {
           return;
         }
-        setModelSelection(threadId, {
-          provider: options.provider,
-          model: defaultModel,
-        });
+        setModelSelection(threadId, buildModelSelection(options.provider, defaultModel));
       };
       const restoreComposerDraft = (
         threadId: ThreadId,

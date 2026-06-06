@@ -86,22 +86,55 @@ export function ProjectSidebarIcon({
   className = "size-4",
 }: ProjectSidebarIconProps) {
   const faviconSrc = resolveProjectFaviconUrl(cwd);
-  const shouldUseFavicon = iconMetadata === null;
-  const [hasFavicon, setHasFavicon] = useState<boolean>(
-    () => shouldUseFavicon && projectFaviconPresence.get(faviconSrc) === true,
-  );
   const FolderGlyph = expanded ? HiOutlineFolderOpen : FolderClosed;
+
+  if (iconMetadata) {
+    const artwork = PROJECT_ICON_ARTWORK[iconMetadata.iconId];
+    const Icon = artwork.icon;
+
+    return (
+      <span
+        aria-label={`${iconMetadata.label} project icon`}
+        className={`${className} inline-flex shrink-0 items-center justify-center`}
+        data-project-icon-id={iconMetadata.iconId}
+        style={{ color: artwork.color }}
+        title={iconMetadata.label}
+      >
+        <Icon aria-hidden="true" className="size-[94%]" focusable="false" />
+      </span>
+    );
+  }
+
+  return (
+    <ProjectFolderIcon
+      key={faviconSrc}
+      className={className}
+      faviconSrc={faviconSrc}
+      FolderGlyph={FolderGlyph}
+    />
+  );
+}
+
+/**
+ * Owns the fallback folder icon box so percentage-sized glyphs and favicon
+ * badges stay constrained inside the sidebar project header.
+ */
+function ProjectFolderIcon({
+  className,
+  faviconSrc,
+  FolderGlyph,
+}: {
+  className: string;
+  faviconSrc: string;
+  FolderGlyph: typeof HiOutlineFolderOpen;
+}) {
+  const [hasFavicon, setHasFavicon] = useState<boolean>(
+    () => projectFaviconPresence.get(faviconSrc) === true,
+  );
 
   // Probe with Image() so Electron/file-origin behaves like the actual visible <img>.
   useEffect(() => {
-    if (!shouldUseFavicon) {
-      setHasFavicon(false);
-      return;
-    }
-
-    const cached = projectFaviconPresence.get(faviconSrc);
-    if (cached !== undefined) {
-      setHasFavicon(cached);
+    if (projectFaviconPresence.has(faviconSrc)) {
       return;
     }
 
@@ -130,29 +163,14 @@ export function ProjectSidebarIcon({
       image.removeEventListener("load", handleLoad);
       image.removeEventListener("error", handleError);
     };
-  }, [faviconSrc, shouldUseFavicon]);
-
-  if (iconMetadata) {
-    const artwork = PROJECT_ICON_ARTWORK[iconMetadata.iconId];
-    const Icon = artwork.icon;
-
-    return (
-      <span
-        aria-label={`${iconMetadata.label} project icon`}
-        className={`${className} inline-flex shrink-0 items-center justify-center`}
-        data-project-icon-id={iconMetadata.iconId}
-        role="img"
-        style={{ color: artwork.color }}
-        title={iconMetadata.label}
-      >
-        <Icon aria-hidden="true" className="size-[94%]" focusable="false" />
-      </span>
-    );
-  }
+  }, [faviconSrc]);
 
   return (
-    <>
-      <FolderGlyph aria-hidden="true" focusable="false" className={className} />
+    <span
+      className={`${className} relative inline-flex shrink-0 items-center justify-center`}
+      data-project-folder-icon="true"
+    >
+      <FolderGlyph aria-hidden="true" focusable="false" className="size-full" />
       {hasFavicon ? (
         <img
           src={faviconSrc}
@@ -165,6 +183,6 @@ export function ProjectSidebarIcon({
           }}
         />
       ) : null}
-    </>
+    </span>
   );
 }

@@ -118,10 +118,15 @@ import { dispatchThreadRename } from "../lib/threadRename";
 import { quotePosixShellArgument } from "../lib/shellQuote";
 import { DEFAULT_THREAD_TERMINAL_ID, type SidebarThreadSummary, type Thread } from "../types";
 import { shouldRenderTerminalWorkspace } from "./ChatView.logic";
+import { buildModelSelection } from "../providerModelOptions";
 import { ClaudeAI, CursorIcon, Gemini, KiloIcon, OpenAI, OpenCodeIcon, PiIcon } from "./Icons";
 import { AppNavigationButtons } from "./AppNavigationButtons";
 import { SidebarHeaderNavigationControls } from "./SidebarHeaderNavigationControls";
 import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
+import {
+  PROJECT_HEADER_ICON_SIZE_CLASS,
+  getProjectHeaderIconClassName,
+} from "./projectSidebarIconPresentation";
 import { ThreadPinToggleButton } from "./ThreadPinToggleButton";
 import { ThreadRunningSpinner } from "./ThreadRunningSpinner";
 import { RenameThreadDialog } from "./RenameThreadDialog";
@@ -2178,10 +2183,7 @@ export default function Sidebar() {
         activeProject.defaultModelSelection?.provider === provider
           ? activeProject.defaultModelSelection
           : providerDefaultModel
-            ? {
-                provider,
-                model: providerDefaultModel,
-              }
+            ? buildModelSelection(provider, providerDefaultModel)
             : null;
       if (!modelSelection) {
         throw new Error("Select a Pi model before importing a Pi thread.");
@@ -4613,8 +4615,9 @@ export default function Sidebar() {
               });
             }}
           >
-            <span className="sidebar-project-header-icon relative inline-flex size-5 shrink-0 items-center justify-center rounded-md border border-[color:var(--app-chat-chip-border,var(--border))] bg-[var(--app-chat-chip-bg,var(--muted))] text-[var(--app-chat-heading,var(--color-text-foreground-secondary))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <span className={getProjectHeaderIconClassName()}>
               <ProjectSidebarIcon
+                className={PROJECT_HEADER_ICON_SIZE_CLASS}
                 cwd={project.cwd}
                 expanded={project.expanded}
                 iconMetadata={project.iconMetadata}
@@ -6101,6 +6104,7 @@ export default function Sidebar() {
       </SidebarFooter>
 
       <RenameThreadDialog
+        key={renameDialogThreadId ?? undefined}
         open={renameDialogThreadId !== null}
         currentTitle={
           renameDialogThreadId ? (sidebarThreadSummaryById[renameDialogThreadId]?.title ?? "") : ""

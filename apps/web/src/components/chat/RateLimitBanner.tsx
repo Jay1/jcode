@@ -1,4 +1,3 @@
-import { memo } from "react";
 import { Alert, AlertAction, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { CircleAlertIcon, XIcon } from "~/lib/icons";
@@ -13,7 +12,7 @@ function formatResetsAt(resetsAt: string): string {
   return ` Resets in ${minutesLeft}m.`;
 }
 
-export const RateLimitBanner = memo(function RateLimitBanner({
+export function RateLimitBanner({
   onDismiss,
   rateLimitStatus,
 }: {
@@ -50,4 +49,4 @@ export const RateLimitBanner = memo(function RateLimitBanner({
       </Alert>
     </div>
   );
-});
+}

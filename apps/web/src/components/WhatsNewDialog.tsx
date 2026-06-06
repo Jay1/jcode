@@ -6,7 +6,7 @@
 // by `useWhatsNew`; this component is pure presentation.
 // Layer: Chat shell overlay (mounted once from the root route).
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 
 import { ArrowLeftIcon, ArrowRightIcon } from "~/lib/icons";
 
@@ -49,15 +49,12 @@ export default function WhatsNewDialog({
   currentVersion,
 }: WhatsNewDialogProps) {
   const [view, setView] = useState<View>("current");
+  const prevOpenRef = useRef(open);
 
-  // Reset back to the primary view whenever the dialog re-opens so the next
-  // release doesn't boot into the secondary "Complete changelog" screen just
-  // because the user left it there on a previous open.
-  useEffect(() => {
-    if (open) {
-      setView("current");
-    }
-  }, [open]);
+  if (open && !prevOpenRef.current) {
+    setView("current");
+  }
+  prevOpenRef.current = open;
 
   // Guard against a race where the hook has already reset but base-ui is
   // still transitioning — rendering an empty card would briefly flash a

@@ -1,15 +1,15 @@
 # Upstream Delta Ledger Design
 
-| Field           | Value                                                                                               |
-| --------------- | --------------------------------------------------------------------------------------------------- |
-| Status          | Implemented                                                                                         |
-| Type            | Design specification                                                                                |
-| Owner           | Engineering                                                                                         |
-| Audience        | Maintainers and automation agents                                                                   |
-| Canonical path  | `docs/superpowers/specs/2026-05-24-upstream-delta-ledger-design.md`                                 |
-| Last reviewed   | 2026-05-24                                                                                          |
-| Review cadence  | Event-driven; review when lineage reference strategy or the upstream watch script changes           |
-| Source of truth | `scripts/upstream-watch.ts`, `docs/runbooks/upstream-watch.md`, and `docs/jcode-operating-model.md` |
+| Field           | Value                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------- |
+| Status          | Implemented                                                                                                    |
+| Type            | Design specification                                                                                           |
+| Owner           | Engineering                                                                                                    |
+| Audience        | Maintainers and automation agents                                                                              |
+| Canonical path  | `docs/superpowers/specs/2026-05-24-upstream-delta-ledger-design.md`                                            |
+| Last reviewed   | 2026-05-24                                                                                                     |
+| Review cadence  | Event-driven; review when lineage reference strategy or the upstream watch script changes                      |
+| Source of truth | `scripts/upstream-watch.ts`, `docs/runbooks/upstream-watch.md`, and `docs/governance/jcode-operating-model.md` |
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:writing-plans before implementation. Keep the workflow ledger-only; do not add branch automation.
 
@@ -17,7 +17,7 @@
 
 ## Context
 
-JCode treats DPCode and T3Code as historical lineage references, not product philosophy or automatic merge targets. `docs/jcode-operating-model.md` says external ideas should be reviewed on short-lived feature branches and adapted only when they fit JCode's direction. This tool supports that review workflow by making lineage-project discovery incremental, not by automating imports.
+JCode treats DPCode and T3Code as historical lineage references, not product philosophy or automatic merge targets. `docs/governance/jcode-operating-model.md` says external ideas should be reviewed on short-lived feature branches and adapted only when they fit JCode's direction. This tool supports that review workflow by making lineage-project discovery incremental, not by automating imports.
 
 Existing repo automation lives in `scripts/`, is deterministic/non-interactive by default, and is exposed through root `package.json` scripts when useful. Personal state must stay out of committed defaults.
 

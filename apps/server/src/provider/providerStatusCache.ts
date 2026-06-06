@@ -16,6 +16,7 @@ const PROVIDER_STATUS_CACHE_IDS = [
   "gemini",
   "kilo",
   "opencode",
+  "openclaw",
   "pi",
 ] as const satisfies ReadonlyArray<ServerProviderStatus["provider"]>;
 

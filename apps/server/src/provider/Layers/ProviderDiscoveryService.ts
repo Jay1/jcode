@@ -1,12 +1,16 @@
 import {
   type ProviderComposerCapabilities,
   ProviderGetComposerCapabilitiesInput,
+  ProviderInstallSkillInput,
   ProviderListAgentsInput,
   ProviderListCommandsInput,
   ProviderListModelsInput,
   ProviderListPluginsInput,
   ProviderListSkillsInput,
   ProviderReadPluginInput,
+  ProviderSearchCatalogInput,
+  ProviderSetSkillEnabledInput,
+  ProviderUninstallSkillInput,
 } from "@jcode/contracts";
 import { Effect, Layer, Schema, SchemaIssue } from "effect";
 
@@ -16,6 +20,14 @@ import {
   ProviderDiscoveryService,
   type ProviderDiscoveryServiceShape,
 } from "../Services/ProviderDiscoveryService.ts";
+import {
+  SkillManagementService,
+  type SkillManagementAgent,
+} from "../Services/SkillManagementService.ts";
+
+function isSkillsCliProvider(provider: string): provider is SkillManagementAgent {
+  return provider === "codex" || provider === "opencode";
+}
 
 const decodeInputOrValidationError = <S extends Schema.Top>(input: {
   readonly operation: string;
@@ -49,6 +61,7 @@ const disabledCapabilitiesForProvider = (
 
 const make = Effect.gen(function* () {
   const registry = yield* ProviderAdapterRegistry;
+  const skillManagement = yield* SkillManagementService;
 
   const getComposerCapabilities: ProviderDiscoveryServiceShape["getComposerCapabilities"] = (
     input,
@@ -176,10 +189,123 @@ const make = Effect.gen(function* () {
       return yield* adapter.listAgents(parsed);
     });
 
+  const installSkill: ProviderDiscoveryServiceShape["installSkill"] = (input) =>
+    Effect.gen(function* () {
+      const parsed = yield* decodeInputOrValidationError({
+        operation: "ProviderDiscoveryService.installSkill",
+        schema: ProviderInstallSkillInput,
+        payload: input,
+      });
+      const adapter = yield* registry.getByProvider(parsed.provider);
+      if (adapter.installSkill) {
+        return yield* adapter.installSkill(parsed);
+      }
+      if (!isSkillsCliProvider(parsed.provider) || !adapter.listSkills) {
+        return yield* new ProviderValidationError({
+          operation: "ProviderDiscoveryService.installSkill",
+          issue: `Skill install is unavailable for provider '${parsed.provider}'.`,
+        });
+      }
+      yield* skillManagement.install({
+        agent: parsed.provider,
+        cwd: parsed.cwd,
+        packageRef: parsed.packageRef,
+        ...(parsed.skillName !== undefined ? { skillName: parsed.skillName } : {}),
+        ...(parsed.global !== undefined ? { global: parsed.global } : {}),
+      });
+      const refreshed = yield* adapter.listSkills({ ...parsed, forceReload: true });
+      const skill = parsed.skillName
+        ? refreshed.skills.find((candidate) => candidate.name === parsed.skillName)
+        : refreshed.skills[0];
+      if (!skill) {
+        return yield* new ProviderValidationError({
+          operation: "ProviderDiscoveryService.installSkill",
+          issue: "Installed skill was not returned by provider discovery.",
+        });
+      }
+      return { skill };
+    });
+
+  const uninstallSkill: ProviderDiscoveryServiceShape["uninstallSkill"] = (input) =>
+    Effect.gen(function* () {
+      const parsed = yield* decodeInputOrValidationError({
+        operation: "ProviderDiscoveryService.uninstallSkill",
+        schema: ProviderUninstallSkillInput,
+        payload: input,
+      });
+      const adapter = yield* registry.getByProvider(parsed.provider);
+      if (adapter.uninstallSkill) {
+        return yield* adapter.uninstallSkill(parsed);
+      }
+      if (!isSkillsCliProvider(parsed.provider) || !adapter.listSkills) {
+        return yield* new ProviderValidationError({
+          operation: "ProviderDiscoveryService.uninstallSkill",
+          issue: `Skill uninstall is unavailable for provider '${parsed.provider}'.`,
+        });
+      }
+      const current = yield* adapter.listSkills({ ...parsed, forceReload: true });
+      const skill = current.skills.find((candidate) => candidate.path === parsed.skillPath);
+      if (!skill) {
+        return yield* new ProviderValidationError({
+          operation: "ProviderDiscoveryService.uninstallSkill",
+          issue: "Skill path is not installed for this provider.",
+        });
+      }
+      yield* skillManagement.uninstall({
+        agent: parsed.provider,
+        cwd: parsed.cwd,
+        skillName: skill.name,
+        ...(parsed.global !== undefined ? { global: parsed.global } : {}),
+      });
+      yield* adapter.listSkills({ ...parsed, forceReload: true });
+      return { success: true };
+    });
+
+  const setSkillEnabled: ProviderDiscoveryServiceShape["setSkillEnabled"] = (input) =>
+    Effect.gen(function* () {
+      const parsed = yield* decodeInputOrValidationError({
+        operation: "ProviderDiscoveryService.setSkillEnabled",
+        schema: ProviderSetSkillEnabledInput,
+        payload: input,
+      });
+      const adapter = yield* registry.getByProvider(parsed.provider);
+      if (!adapter.setSkillEnabled) {
+        return yield* new ProviderValidationError({
+          operation: "ProviderDiscoveryService.setSkillEnabled",
+          issue: `Skill enable/disable is unavailable for provider '${parsed.provider}'.`,
+        });
+      }
+      return yield* adapter.setSkillEnabled(parsed);
+    });
+
+  const searchSkillsCatalog: ProviderDiscoveryServiceShape["searchSkillsCatalog"] = (input) =>
+    Effect.gen(function* () {
+      const parsed = yield* decodeInputOrValidationError({
+        operation: "ProviderDiscoveryService.searchSkillsCatalog",
+        schema: ProviderSearchCatalogInput,
+        payload: input,
+      });
+      const adapter = yield* registry.getByProvider(parsed.provider);
+      if (adapter.searchSkillsCatalog) {
+        return yield* adapter.searchSkillsCatalog(parsed);
+      }
+      if (isSkillsCliProvider(parsed.provider)) {
+        return yield* skillManagement.searchCatalog(parsed.query);
+      }
+      return yield* new ProviderValidationError({
+        operation: "ProviderDiscoveryService.searchSkillsCatalog",
+        issue: `Skill catalog search is unavailable for provider '${parsed.provider}'.`,
+      });
+    });
+
   return {
     getComposerCapabilities,
     listCommands,
     listSkills,
+    installSkill,
+    uninstallSkill,
+    setSkillEnabled,
+    searchSkillsCatalog,
     listPlugins,
     readPlugin,
     listModels,

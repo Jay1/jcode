@@ -21,6 +21,7 @@ import { CursorAdapter } from "../Services/CursorAdapter.ts";
 import { GeminiAdapter } from "../Services/GeminiAdapter.ts";
 import { KiloAdapter } from "../Services/KiloAdapter.ts";
 import { OpenCodeAdapter } from "../Services/OpenCodeAdapter.ts";
+import { OpenClawAdapter } from "../Services/OpenClawAdapter.ts";
 import { PiAdapter } from "../Services/PiAdapter.ts";
 
 export interface ProviderAdapterRegistryLiveOptions {
@@ -39,6 +40,7 @@ const makeProviderAdapterRegistry = (options?: ProviderAdapterRegistryLiveOption
             yield* GeminiAdapter,
             yield* KiloAdapter,
             yield* OpenCodeAdapter,
+            yield* OpenClawAdapter,
             yield* PiAdapter,
           ];
     const byProvider = new Map(adapters.map((adapter) => [adapter.provider, adapter]));

@@ -605,6 +605,8 @@ export function createWsNativeApi(): NativeApi {
       getEnvironment: () => transport.request(WS_METHODS.serverGetEnvironment),
       getSettings: () => transport.request(WS_METHODS.serverGetSettings),
       updateSettings: (input) => transport.request(WS_METHODS.serverUpdateSettings, input),
+      updateOpenClawSecrets: (input) =>
+        transport.request(WS_METHODS.serverUpdateOpenClawSecrets, input),
       getAuthSession: () =>
         requestAuthJson<AuthSessionState>(AuthHttpRoutes.session.pathname, {
           method: AuthHttpRoutes.session.method,
@@ -674,6 +676,11 @@ export function createWsNativeApi(): NativeApi {
       compactThread: (input) => transport.request(WS_METHODS.providerCompactThread, input),
       listCommands: (input) => transport.request(WS_METHODS.providerListCommands, input),
       listSkills: (input) => transport.request(WS_METHODS.providerListSkills, input),
+      installSkill: (input) => transport.request(WS_METHODS.providerInstallSkill, input),
+      uninstallSkill: (input) => transport.request(WS_METHODS.providerUninstallSkill, input),
+      setSkillEnabled: (input) => transport.request(WS_METHODS.providerSetSkillEnabled, input),
+      searchSkillsCatalog: (input) =>
+        transport.request(WS_METHODS.providerSearchSkillsCatalog, input),
       listPlugins: (input) => transport.request(WS_METHODS.providerListPlugins, input),
       readPlugin: (input) => transport.request(WS_METHODS.providerReadPlugin, input),
       listModels: (input) => transport.request(WS_METHODS.providerListModels, input),

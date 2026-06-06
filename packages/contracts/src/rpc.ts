@@ -64,6 +64,14 @@ import {
   ProviderListPluginsResult,
   ProviderListSkillsInput,
   ProviderListSkillsResult,
+  ProviderInstallSkillInput,
+  ProviderInstallSkillResult,
+  ProviderUninstallSkillInput,
+  ProviderUninstallSkillResult,
+  ProviderSetSkillEnabledInput,
+  ProviderSetSkillEnabledResult,
+  ProviderSearchCatalogInput,
+  ProviderSearchCatalogResult,
   ProviderReadPluginInput,
   ProviderReadPluginResult,
   OpenCodeRuntimeHealth,
@@ -94,6 +102,8 @@ import {
   ServerRefreshProvidersResult,
   ServerResetKeybindingInput,
   ServerResetKeybindingsResult,
+  ServerUpdateOpenClawSecretsInput,
+  ServerUpdateOpenClawSecretsResult,
   ServerUpdateSettingsInput,
   ServerUpdateSettingsResult,
   ServerUpsertKeybindingResult,
@@ -439,6 +449,12 @@ export const WsServerUpdateSettingsRpc = Rpc.make(WS_METHODS.serverUpdateSetting
   error: WsRpcError,
 });
 
+export const WsServerUpdateOpenClawSecretsRpc = Rpc.make(WS_METHODS.serverUpdateOpenClawSecrets, {
+  payload: ServerUpdateOpenClawSecretsInput,
+  success: ServerUpdateOpenClawSecretsResult,
+  error: WsRpcError,
+});
+
 export const WsServerRefreshProvidersRpc = Rpc.make(WS_METHODS.serverRefreshProviders, {
   payload: Schema.Struct({}),
   success: ServerRefreshProvidersResult,
@@ -567,6 +583,30 @@ export const WsProviderListSkillsRpc = Rpc.make(WS_METHODS.providerListSkills, {
   error: WsRpcError,
 });
 
+export const WsProviderInstallSkillRpc = Rpc.make(WS_METHODS.providerInstallSkill, {
+  payload: ProviderInstallSkillInput,
+  success: ProviderInstallSkillResult,
+  error: WsRpcError,
+});
+
+export const WsProviderUninstallSkillRpc = Rpc.make(WS_METHODS.providerUninstallSkill, {
+  payload: ProviderUninstallSkillInput,
+  success: ProviderUninstallSkillResult,
+  error: WsRpcError,
+});
+
+export const WsProviderSetSkillEnabledRpc = Rpc.make(WS_METHODS.providerSetSkillEnabled, {
+  payload: ProviderSetSkillEnabledInput,
+  success: ProviderSetSkillEnabledResult,
+  error: WsRpcError,
+});
+
+export const WsProviderSearchSkillsCatalogRpc = Rpc.make(WS_METHODS.providerSearchSkillsCatalog, {
+  payload: ProviderSearchCatalogInput,
+  success: ProviderSearchCatalogResult,
+  error: WsRpcError,
+});
+
 export const WsProviderListPluginsRpc = Rpc.make(WS_METHODS.providerListPlugins, {
   payload: ProviderListPluginsInput,
   success: ProviderListPluginsResult,
@@ -641,6 +681,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerGetEnvironmentRpc,
   WsServerGetSettingsRpc,
   WsServerUpdateSettingsRpc,
+  WsServerUpdateOpenClawSecretsRpc,
   WsServerRefreshProvidersRpc,
   WsServerUpdateProviderRpc,
   WsServerListWorktreesRpc,
@@ -660,6 +701,10 @@ export const WsRpcGroup = RpcGroup.make(
   WsProviderCompactThreadRpc,
   WsProviderListCommandsRpc,
   WsProviderListSkillsRpc,
+  WsProviderInstallSkillRpc,
+  WsProviderUninstallSkillRpc,
+  WsProviderSetSkillEnabledRpc,
+  WsProviderSearchSkillsCatalogRpc,
   WsProviderListPluginsRpc,
   WsProviderReadPluginRpc,
   WsProviderListModelsRpc,

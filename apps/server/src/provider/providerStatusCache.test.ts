@@ -106,6 +106,13 @@ describe("providerStatusCache", () => {
     expect(
       orderProviderStatuses([
         {
+          provider: "openclaw",
+          status: "ready",
+          available: true,
+          authStatus: "authenticated",
+          checkedAt: "2026-04-15T10:05:00.000Z",
+        },
+        {
           provider: "gemini",
           status: "ready",
           available: true,
@@ -150,6 +157,13 @@ describe("providerStatusCache", () => {
         available: true,
         authStatus: "authenticated",
         checkedAt: "2026-04-15T10:02:00.000Z",
+      },
+      {
+        provider: "openclaw",
+        status: "ready",
+        available: true,
+        authStatus: "authenticated",
+        checkedAt: "2026-04-15T10:05:00.000Z",
       },
     ]);
   });
