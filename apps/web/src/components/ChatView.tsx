@@ -295,6 +295,7 @@ import {
 import { ComposerPromptEditor, type ComposerPromptEditorHandle } from "./ComposerPromptEditor";
 import { PullRequestThreadDialog } from "./PullRequestThreadDialog";
 import { ChatHeader } from "./chat/ChatHeader";
+import { ThreadRecapPanel } from "./ThreadRecapPanel";
 import { SidebarHeaderNavigationControls } from "./SidebarHeaderNavigationControls";
 import { SidebarHeaderTrigger } from "./ui/sidebar";
 import { ChatTranscriptPane } from "./chat/ChatTranscriptPane";
@@ -8366,52 +8367,57 @@ export default function ChatView({
                 </div>
               </div>
             ) : (
-              <ChatTranscriptPane
-                activeThreadId={activeThread.id}
-                activeTurnId={activeThread.session?.activeTurnId ?? null}
-                hasMessages={timelineEntries.length > 0}
-                isWorking={isWorking}
-                activeTurnInProgress={activeTurnInProgress}
-                activeTurnStartedAt={activeWorkStartedAt}
-                listRef={legendListRef}
-                timelineEntries={timelineEntries}
-                completionDividerBeforeEntryId={completionDividerBeforeEntryId}
-                completionSummary={completionSummary}
-                turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
-                onOpenTurnDiff={onOpenTurnDiff}
-                onOpenThread={onNavigateToThread}
-                revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
-                onRevertUserMessage={onRevertUserMessage}
-                onEditUserMessage={onEditUserMessage}
-                isRevertingCheckpoint={isRevertingCheckpoint}
-                onExpandTimelineImage={onExpandTimelineImage}
-                followLiveOutput={hasStreamingAssistantText}
-                onIsAtEndChange={onIsAtEndChange}
-                markdownCwd={threadWorkspaceCwd ?? undefined}
-                resolvedTheme={resolvedTheme}
-                chatFontSizePx={settings.chatFontSizePx}
-                timestampFormat={timestampFormat}
-                workspaceRoot={activeProject?.cwd ?? undefined}
-                emptyStateProjectName={activeProjectDisplayName}
-                terminalWorkspaceTerminalTabActive={terminalWorkspaceTerminalTabActive}
-                onMessagesScroll={onMessagesScroll}
-                onMessagesClickCapture={onMessagesClickCapture}
-                onMessagesMouseUp={onMessagesMouseUp}
-                onMessagesWheel={onMessagesWheel}
-                onMessagesPointerDown={onMessagesPointerDown}
-                onMessagesPointerUp={onMessagesPointerUp}
-                onMessagesPointerCancel={onMessagesPointerCancel}
-                onMessagesTouchStart={onMessagesTouchStart}
-                onMessagesTouchMove={onMessagesTouchMove}
-                onMessagesTouchEnd={onMessagesTouchEnd}
-                scrollButtonVisible={showScrollToBottom}
-                onScrollToBottom={onScrollToBottom}
-                bottomContentInsetPx={
-                  activeTaskList && !planSidebarOpen && activeTaskListCardHeight > 0
-                    ? activeTaskListCardHeight + 8
-                    : undefined
-                }
-              />
+              <>
+                <div className="mx-auto w-full max-w-3xl px-3 py-2 sm:px-5">
+                  <ThreadRecapPanel thread={activeThread} />
+                </div>
+                <ChatTranscriptPane
+                  activeThreadId={activeThread.id}
+                  activeTurnId={activeThread.session?.activeTurnId ?? null}
+                  hasMessages={timelineEntries.length > 0}
+                  isWorking={isWorking}
+                  activeTurnInProgress={activeTurnInProgress}
+                  activeTurnStartedAt={activeWorkStartedAt}
+                  listRef={legendListRef}
+                  timelineEntries={timelineEntries}
+                  completionDividerBeforeEntryId={completionDividerBeforeEntryId}
+                  completionSummary={completionSummary}
+                  turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
+                  onOpenTurnDiff={onOpenTurnDiff}
+                  onOpenThread={onNavigateToThread}
+                  revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
+                  onRevertUserMessage={onRevertUserMessage}
+                  onEditUserMessage={onEditUserMessage}
+                  isRevertingCheckpoint={isRevertingCheckpoint}
+                  onExpandTimelineImage={onExpandTimelineImage}
+                  followLiveOutput={hasStreamingAssistantText}
+                  onIsAtEndChange={onIsAtEndChange}
+                  markdownCwd={threadWorkspaceCwd ?? undefined}
+                  resolvedTheme={resolvedTheme}
+                  chatFontSizePx={settings.chatFontSizePx}
+                  timestampFormat={timestampFormat}
+                  workspaceRoot={activeProject?.cwd ?? undefined}
+                  emptyStateProjectName={activeProjectDisplayName}
+                  terminalWorkspaceTerminalTabActive={terminalWorkspaceTerminalTabActive}
+                  onMessagesScroll={onMessagesScroll}
+                  onMessagesClickCapture={onMessagesClickCapture}
+                  onMessagesMouseUp={onMessagesMouseUp}
+                  onMessagesWheel={onMessagesWheel}
+                  onMessagesPointerDown={onMessagesPointerDown}
+                  onMessagesPointerUp={onMessagesPointerUp}
+                  onMessagesPointerCancel={onMessagesPointerCancel}
+                  onMessagesTouchStart={onMessagesTouchStart}
+                  onMessagesTouchMove={onMessagesTouchMove}
+                  onMessagesTouchEnd={onMessagesTouchEnd}
+                  scrollButtonVisible={showScrollToBottom}
+                  onScrollToBottom={onScrollToBottom}
+                  bottomContentInsetPx={
+                    activeTaskList && !planSidebarOpen && activeTaskListCardHeight > 0
+                      ? activeTaskListCardHeight + 8
+                      : undefined
+                  }
+                />
+              </>
             )}
 
             {/* Input bar */}
