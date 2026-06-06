@@ -886,6 +886,7 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
         assert.strictEqual(status.available, false);
         assert.strictEqual(status.authStatus, "unknown");
         assert.match(status.message ?? "", /unreachable/);
+        assert.match(status.message ?? "", /connection refused/);
         assert.strictEqual(/must-not-leak|user:pass/.test(status.message ?? ""), false);
       }).pipe(Effect.provide(openClawSecretLayer)),
     );

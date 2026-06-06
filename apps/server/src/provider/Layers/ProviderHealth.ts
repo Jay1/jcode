@@ -242,6 +242,16 @@ function detailFromResult(
   return undefined;
 }
 
+function detailFromUnknown(error: unknown): string | undefined {
+  const raw =
+    error instanceof Error ? error.message : typeof error === "string" ? error : undefined;
+  const detail = nonEmptyTrimmed(raw);
+  if (!detail) return undefined;
+  return detail
+    .replace(/\/\/[^/@\s]+@/g, "//")
+    .replace(/\b(token|password|client_secret|secret)=([^\s&]+)/gi, "$1=[redacted]");
+}
+
 function extractAuthBoolean(value: unknown): boolean | undefined {
   if (Array.isArray(value)) {
     for (const entry of value) {
@@ -1539,6 +1549,7 @@ export const makeCheckOpenClawProviderStatus = (
       })
       .pipe(Effect.result);
     if (Result.isFailure(probe)) {
+      const detail = detailFromUnknown(probe.failure);
       return {
         provider: OPENCLAW_PROVIDER,
         status: "error" as const,
@@ -1546,7 +1557,7 @@ export const makeCheckOpenClawProviderStatus = (
         authStatus: "unknown" as const,
         ...(authType !== "none" ? { authType } : {}),
         checkedAt,
-        message: `OpenClaw gateway is unreachable at ${normalized.redactedUrl}.`,
+        message: `OpenClaw gateway is unreachable at ${normalized.redactedUrl}${detail ? `: ${detail}` : ""}.`,
       } satisfies ServerProviderStatus;
     }
 

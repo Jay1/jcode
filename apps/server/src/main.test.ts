@@ -16,6 +16,7 @@ import { ProjectionSnapshotQuery } from "./orchestration/Services/ProjectionSnap
 import { AnalyticsService } from "./telemetry/Services/AnalyticsService";
 import { Server, type ServerShape } from "./effectServer";
 import { ServerSettingsService } from "./serverSettings";
+import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore";
 
 vi.mock("./threadRetention", async () => {
   const Effect = await import("effect/Effect");
@@ -38,6 +39,14 @@ const serverStart = Effect.acquireRelease(
   () => Effect.sync(() => stop()),
 );
 const findAvailablePort = vi.fn((preferred: number) => Effect.succeed(preferred));
+const serverSecretStoreLayer = ServerSecretStoreLive.pipe(
+  Layer.provide(
+    ServerConfig.layerTest(process.cwd(), {
+      prefix: "jcode-main-test-",
+    }),
+  ),
+  Layer.provide(NodeServices.layer),
+);
 
 // Shared service layer used by this CLI test suite.
 const testLayer = Layer.mergeAll(
@@ -64,6 +73,7 @@ const testLayer = Layer.mergeAll(
   FetchHttpClient.layer,
   NodeServices.layer,
   ServerSettingsService.layerTest(),
+  serverSecretStoreLayer,
 );
 
 const runCli = (
