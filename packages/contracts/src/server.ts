@@ -8,7 +8,7 @@ import {
 } from "./baseSchemas";
 import { KeybindingCommand, KeybindingRule, ResolvedKeybindingsConfig } from "./keybindings";
 import { EditorId } from "./editor";
-import { ProviderKind } from "./orchestration";
+import { ModelSelection, ProviderKind } from "./orchestration";
 import { ServerSettings, ServerSettingsPatch } from "./settings";
 import { ExecutionEnvironmentDescriptor } from "./environment";
 
@@ -202,6 +202,19 @@ export const ServerVoiceTranscriptionErrorDetail = Schema.Struct({
   code: ServerVoiceTranscriptionErrorCode,
 });
 export type ServerVoiceTranscriptionErrorDetail = typeof ServerVoiceTranscriptionErrorDetail.Type;
+
+export const ServerGenerateThreadRecapInput = Schema.Struct({
+  threadId: ThreadId,
+  previousRecap: Schema.optional(Schema.String.check(Schema.isMaxLength(1_000))),
+  newMaterial: Schema.String.check(Schema.isMaxLength(16_000)),
+  currentState: Schema.optional(Schema.String.check(Schema.isMaxLength(4_000))),
+});
+export type ServerGenerateThreadRecapInput = typeof ServerGenerateThreadRecapInput.Type;
+
+export const ServerGenerateThreadRecapResult = Schema.Struct({
+  recap: TrimmedNonEmptyString,
+});
+export type ServerGenerateThreadRecapResult = typeof ServerGenerateThreadRecapResult.Type;
 
 export const ServerUpsertKeybindingInput = KeybindingRule;
 export type ServerUpsertKeybindingInput = typeof ServerUpsertKeybindingInput.Type;

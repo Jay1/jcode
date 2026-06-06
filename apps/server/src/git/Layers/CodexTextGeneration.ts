@@ -19,6 +19,7 @@ import {
   type CommitMessageGenerationResult,
   type DiffSummaryGenerationResult,
   type PrContentGenerationResult,
+  type ThreadRecapGenerationResult,
   type ThreadTitleGenerationResult,
   type TextGenerationShape,
   TextGeneration,
@@ -28,12 +29,14 @@ import {
   buildCommitMessagePrompt,
   buildDiffSummaryPrompt,
   buildPrContentPrompt,
+  buildThreadRecapPrompt,
   buildThreadTitlePrompt,
   sanitizeCommitSubject,
   sanitizeDiffSummary,
   sanitizePrTitle,
   toJsonSchemaObject,
 } from "../textGenerationShared.ts";
+import { sanitizeThreadRecap } from "@jcode/shared/threadRecapSource";
 
 const CODEX_REASONING_EFFORT = "low";
 const CODEX_TIMEOUT_MS = 180_000;
@@ -169,7 +172,8 @@ const makeCodexTextGeneration = Effect.gen(function* () {
       | "generatePrContent"
       | "generateDiffSummary"
       | "generateBranchName"
-      | "generateThreadTitle",
+      | "generateThreadTitle"
+      | "generateThreadRecap",
     sourceHomePath?: string,
   ): Effect.Effect<{ readonly homePath: string }, TextGenerationError> =>
     Effect.gen(function* () {
@@ -238,7 +242,8 @@ const makeCodexTextGeneration = Effect.gen(function* () {
       | "generatePrContent"
       | "generateDiffSummary"
       | "generateBranchName"
-      | "generateThreadTitle",
+      | "generateThreadTitle"
+      | "generateThreadRecap",
     attachments: BranchNameGenerationInput["attachments"],
   ): Effect.Effect<MaterializedImageAttachments, TextGenerationError> =>
     Effect.gen(function* () {
@@ -287,7 +292,8 @@ const makeCodexTextGeneration = Effect.gen(function* () {
       | "generatePrContent"
       | "generateDiffSummary"
       | "generateBranchName"
-      | "generateThreadTitle";
+      | "generateThreadTitle"
+      | "generateThreadRecap";
     cwd: string;
     prompt: string;
     outputSchemaJson: S;
@@ -578,12 +584,37 @@ const makeCodexTextGeneration = Effect.gen(function* () {
     });
   };
 
+  const generateThreadRecap: TextGenerationShape["generateThreadRecap"] = (input) => {
+    return Effect.gen(function* () {
+      const { prompt, outputSchemaJson } = buildThreadRecapPrompt({
+        ...(input.previousRecap ? { previousRecap: input.previousRecap } : {}),
+        newMaterial: input.newMaterial,
+        ...(input.currentState ? { currentState: input.currentState } : {}),
+      });
+
+      const generated = yield* runCodexJson({
+        operation: "generateThreadRecap",
+        cwd: input.cwd,
+        prompt,
+        outputSchemaJson,
+        ...(input.model ? { model: input.model } : {}),
+        ...(input.modelSelection ? { modelSelection: input.modelSelection } : {}),
+        ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
+      });
+
+      return {
+        recap: sanitizeThreadRecap(generated.recap, input.previousRecap),
+      } satisfies ThreadRecapGenerationResult;
+    });
+  };
+
   return {
     generateCommitMessage,
     generatePrContent,
     generateDiffSummary,
     generateBranchName,
     generateThreadTitle,
+    generateThreadRecap,
   } satisfies TextGenerationShape;
 });
 

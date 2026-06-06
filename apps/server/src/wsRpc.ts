@@ -45,6 +45,7 @@ import { CheckpointDiffQuery } from "./checkpointing/Services/CheckpointDiffQuer
 import { ServerConfig } from "./config";
 import { GitCore } from "./git/Services/GitCore";
 import { GitManager } from "./git/Services/GitManager";
+import { TextGeneration } from "./git/Services/TextGeneration";
 import { GitStatusBroadcaster } from "./git/Services/GitStatusBroadcaster";
 import { Keybindings } from "./keybindings";
 import { Open, resolveAvailableEditors } from "./open";
@@ -242,6 +243,7 @@ export const makeWsRpcLayer = () =>
       const fileSystem = yield* FileSystem.FileSystem;
       const git = yield* GitCore;
       const gitManager = yield* GitManager;
+      const textGeneration = yield* TextGeneration;
       const gitStatusBroadcaster = yield* GitStatusBroadcaster;
       const keybindings = yield* Keybindings;
       const open = yield* Open;
@@ -754,6 +756,21 @@ export const makeWsRpcLayer = () =>
                 Effect.map((keybindingsConfig) => ({ keybindings: keybindingsConfig, issues: [] })),
               ),
             "Failed to reset keybindings",
+          ),
+        [WS_METHODS.serverGenerateThreadRecap]: (input) =>
+          rpcEffect(
+            Effect.gen(function* () {
+              const settings = yield* serverSettings.getSettings;
+              const generated = yield* textGeneration.generateThreadRecap({
+                cwd: config.cwd,
+                previousRecap: input.previousRecap,
+                newMaterial: input.newMaterial,
+                currentState: input.currentState,
+                modelSelection: settings.textGenerationModelSelection,
+              });
+              return { recap: generated.recap };
+            }),
+            "Failed to generate thread recap",
           ),
         [WS_METHODS.subscribeServerLifecycle]: () =>
           Stream.concat(

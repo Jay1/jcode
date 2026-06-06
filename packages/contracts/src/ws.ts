@@ -71,6 +71,7 @@ import {
   ServerProviderStatusesUpdatedPayload,
   ServerSettingsUpdatedPayload,
   ServerResetKeybindingInput,
+  ServerGenerateThreadRecapInput,
   ServerVoiceTranscriptionInput,
 } from "./server";
 import {
@@ -148,6 +149,7 @@ export const WS_METHODS = {
   serverGetProviderUsageSnapshot: "server.getProviderUsageSnapshot",
   serverGetDiagnostics: "server.getDiagnostics",
   serverTranscribeVoice: "server.transcribeVoice",
+  serverGenerateThreadRecap: "server.generateThreadRecap",
   serverUpsertKeybinding: "server.upsertKeybinding",
   serverResetKeybinding: "server.resetKeybinding",
   serverResetAllKeybindings: "server.resetAllKeybindings",
@@ -274,6 +276,7 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(WS_METHODS.serverGetProviderUsageSnapshot, ServerGetProviderUsageSnapshotInput),
   tagRequestBody(WS_METHODS.serverGetDiagnostics, Schema.Struct({})),
   tagRequestBody(WS_METHODS.serverTranscribeVoice, ServerVoiceTranscriptionInput),
+  tagRequestBody(WS_METHODS.serverGenerateThreadRecap, ServerGenerateThreadRecapInput),
   tagRequestBody(WS_METHODS.serverUpsertKeybinding, KeybindingRule),
   tagRequestBody(WS_METHODS.serverResetKeybinding, ServerResetKeybindingInput),
   tagRequestBody(WS_METHODS.serverResetAllKeybindings, Schema.Struct({})),

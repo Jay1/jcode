@@ -60,6 +60,8 @@ import type { FilesystemBrowseInput, FilesystemBrowseResult } from "./filesystem
 import type {
   ServerConfig,
   ServerDiagnosticsResult,
+  ServerGenerateThreadRecapInput,
+  ServerGenerateThreadRecapResult,
   ServerGetEnvironmentResult,
   ServerGetProviderUsageSnapshotInput,
   ServerGetProviderUsageSnapshotResult,
@@ -78,6 +80,8 @@ import type {
   ServerUpsertKeybindingResult,
   ServerVoiceTranscriptionInput,
   ServerVoiceTranscriptionResult,
+  ServerGenerateThreadRecapInput,
+  ServerGenerateThreadRecapResult,
 } from "./server";
 import type {
   TerminalClearInput,
@@ -468,6 +472,9 @@ export interface NativeApi {
     upsertKeybinding: (input: ServerUpsertKeybindingInput) => Promise<ServerUpsertKeybindingResult>;
     resetKeybinding: (input: ServerResetKeybindingInput) => Promise<ServerResetKeybindingsResult>;
     resetAllKeybindings: () => Promise<ServerResetKeybindingsResult>;
+    generateThreadRecap: (
+      input: ServerGenerateThreadRecapInput,
+    ) => Promise<ServerGenerateThreadRecapResult>;
   };
   provider: {
     getComposerCapabilities: (

@@ -464,6 +464,14 @@ export const OrchestrationThreadPullRequest = Schema.Struct({
 });
 export type OrchestrationThreadPullRequest = typeof OrchestrationThreadPullRequest.Type;
 
+export const ThreadRecap = Schema.Struct({
+  text: TrimmedNonEmptyString,
+  coveredMessageId: Schema.NullOr(MessageId),
+  sourceSignature: Schema.String,
+  generatedAt: IsoDateTime,
+});
+export type ThreadRecap = typeof ThreadRecap.Type;
+
 export const OrchestrationThread = Schema.Struct({
   id: ThreadId,
   projectId: ProjectId,
@@ -525,6 +533,7 @@ export const OrchestrationThread = Schema.Struct({
   activities: Schema.Array(OrchestrationThreadActivity),
   checkpoints: Schema.Array(OrchestrationCheckpointSummary),
   session: Schema.NullOr(OrchestrationSession),
+  recap: Schema.optional(Schema.NullOr(ThreadRecap)).pipe(Schema.withDecodingDefault(() => null)),
 });
 export type OrchestrationThread = typeof OrchestrationThread.Type;
 
@@ -584,6 +593,7 @@ export const OrchestrationThreadShell = Schema.Struct({
   ),
   handoff: Schema.NullOr(ThreadHandoff).pipe(Schema.withDecodingDefault(() => null)),
   session: Schema.NullOr(OrchestrationSession),
+  recap: Schema.optional(Schema.NullOr(ThreadRecap)).pipe(Schema.withDecodingDefault(() => null)),
 });
 export type OrchestrationThreadShell = typeof OrchestrationThreadShell.Type;
 
