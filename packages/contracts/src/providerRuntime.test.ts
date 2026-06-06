@@ -32,6 +32,29 @@ describe("ProviderRuntimeEvent", () => {
     expect(parsed.payload.tasks[1]?.status).toBe("inProgress");
   });
 
+  it("decodes redacted OpenClaw raw gateway events", () => {
+    const parsed = decodeRuntimeEvent({
+      type: "runtime.warning",
+      eventId: "event-openclaw-raw",
+      provider: "openclaw",
+      createdAt: "2026-06-05T00:00:00.000Z",
+      threadId: "thread-openclaw",
+      payload: { message: "OpenClaw gateway event captured" },
+      raw: {
+        source: "openclaw.gateway.event",
+        method: "chat.send",
+        payload: { redacted: true },
+      },
+    });
+
+    expect(parsed.provider).toBe("openclaw");
+    expect(parsed.type).toBe("runtime.warning");
+    if (parsed.type !== "runtime.warning") {
+      throw new Error("expected runtime warning event");
+    }
+    expect(parsed.raw?.source).toBe("openclaw.gateway.event");
+  });
+
   it("decodes proposed-plan completion events", () => {
     const parsed = decodeRuntimeEvent({
       type: "turn.proposed.completed",

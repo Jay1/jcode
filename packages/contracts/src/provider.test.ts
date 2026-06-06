@@ -7,6 +7,24 @@ const decodeProviderSessionStartInput = Schema.decodeUnknownSync(ProviderSession
 const decodeProviderSendTurnInput = Schema.decodeUnknownSync(ProviderSendTurnInput);
 
 describe("ProviderSessionStartInput", () => {
+  it("accepts OpenClaw starts without secret provider options", () => {
+    const parsed = decodeProviderSessionStartInput({
+      threadId: "thread-openclaw",
+      provider: "openclaw",
+      cwd: "/tmp/workspace",
+      modelSelection: { provider: "openclaw", model: "gateway" },
+      runtimeMode: "full-access",
+      providerOptions: { openclaw: {} },
+    });
+
+    expect(parsed.provider).toBe("openclaw");
+    expect(parsed.modelSelection?.provider).toBe("openclaw");
+    expect(parsed.modelSelection?.model).toBe("gateway");
+    expect(parsed.providerOptions?.openclaw).toEqual({});
+    expect("token" in (parsed.providerOptions?.openclaw ?? {})).toBe(false);
+    expect("password" in (parsed.providerOptions?.openclaw ?? {})).toBe(false);
+  });
+
   it("accepts codex-compatible payloads", () => {
     const parsed = decodeProviderSessionStartInput({
       threadId: "thread-1",

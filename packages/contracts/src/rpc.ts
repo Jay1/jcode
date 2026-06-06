@@ -94,6 +94,8 @@ import {
   ServerRefreshProvidersResult,
   ServerResetKeybindingInput,
   ServerResetKeybindingsResult,
+  ServerUpdateOpenClawSecretsInput,
+  ServerUpdateOpenClawSecretsResult,
   ServerUpdateSettingsInput,
   ServerUpdateSettingsResult,
   ServerUpsertKeybindingResult,
@@ -439,6 +441,12 @@ export const WsServerUpdateSettingsRpc = Rpc.make(WS_METHODS.serverUpdateSetting
   error: WsRpcError,
 });
 
+export const WsServerUpdateOpenClawSecretsRpc = Rpc.make(WS_METHODS.serverUpdateOpenClawSecrets, {
+  payload: ServerUpdateOpenClawSecretsInput,
+  success: ServerUpdateOpenClawSecretsResult,
+  error: WsRpcError,
+});
+
 export const WsServerRefreshProvidersRpc = Rpc.make(WS_METHODS.serverRefreshProviders, {
   payload: Schema.Struct({}),
   success: ServerRefreshProvidersResult,
@@ -641,6 +649,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerGetEnvironmentRpc,
   WsServerGetSettingsRpc,
   WsServerUpdateSettingsRpc,
+  WsServerUpdateOpenClawSecretsRpc,
   WsServerRefreshProvidersRpc,
   WsServerUpdateProviderRpc,
   WsServerListWorktreesRpc,

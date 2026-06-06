@@ -118,6 +118,9 @@ export const CursorModelOptions = Schema.Struct({
 });
 export type CursorModelOptions = typeof CursorModelOptions.Type;
 
+export const OpenClawModelOptions = Schema.Struct({});
+export type OpenClawModelOptions = typeof OpenClawModelOptions.Type;
+
 export const ProviderModelOptions = Schema.Struct({
   codex: Schema.optional(CodexModelOptions),
   claudeAgent: Schema.optional(ClaudeModelOptions),
@@ -125,6 +128,7 @@ export const ProviderModelOptions = Schema.Struct({
   gemini: Schema.optional(GeminiModelOptions),
   kilo: Schema.optional(OpenCodeModelOptions),
   opencode: Schema.optional(OpenCodeModelOptions),
+  openclaw: Schema.optional(OpenClawModelOptions),
   pi: Schema.optional(PiModelOptions),
 });
 export type ProviderModelOptions = typeof ProviderModelOptions.Type;
@@ -439,6 +443,19 @@ export const MODEL_OPTIONS_BY_PROVIDER = {
       },
     },
   ],
+  openclaw: [
+    {
+      slug: "gateway",
+      name: "OpenClaw Gateway",
+      capabilities: {
+        reasoningEffortLevels: [],
+        supportsFastMode: false,
+        supportsThinkingToggle: false,
+        promptInjectedEffortLevels: [],
+        contextWindowOptions: [],
+      },
+    },
+  ],
   kilo: [
     {
       slug: "kilo/kilo-auto/free",
@@ -515,7 +532,7 @@ export type ModelOptionsByProvider = typeof MODEL_OPTIONS_BY_PROVIDER;
 type BuiltInModelSlug = (typeof MODEL_OPTIONS_BY_PROVIDER)[ProviderKind][number]["slug"];
 export type ModelSlug = BuiltInModelSlug | (string & {});
 
-export type ProviderWithDefaultModel = Exclude<ProviderKind, "pi">;
+export type ProviderWithDefaultModel = Exclude<ProviderKind, "openclaw" | "pi">;
 
 export const DEFAULT_MODEL_BY_PROVIDER: Record<ProviderWithDefaultModel, ModelSlug> = {
   codex: "gpt-5.5",
@@ -589,6 +606,7 @@ export const MODEL_SLUG_ALIASES_BY_PROVIDER: Record<ProviderKind, Record<string,
   },
   kilo: {},
   opencode: {},
+  openclaw: {},
   pi: {},
 };
 
@@ -623,5 +641,6 @@ export const PROVIDER_DISPLAY_NAMES: Record<ProviderKind, string> = {
   gemini: "Gemini",
   kilo: "Kilo",
   opencode: "OpenCode",
+  openclaw: "OpenClaw",
   pi: "Pi",
 };

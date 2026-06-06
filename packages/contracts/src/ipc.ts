@@ -70,6 +70,8 @@ import type {
   ServerRefreshProvidersResult,
   ServerResetKeybindingInput,
   ServerResetKeybindingsResult,
+  ServerUpdateOpenClawSecretsInput,
+  ServerUpdateOpenClawSecretsResult,
   ServerUpdateSettingsInput,
   ServerUpdateSettingsResult,
   ServerUpsertKeybindingInput,
@@ -429,6 +431,9 @@ export interface NativeApi {
     getEnvironment: () => Promise<ServerGetEnvironmentResult>;
     getSettings: () => Promise<ServerGetSettingsResult>;
     updateSettings: (input: ServerUpdateSettingsInput) => Promise<ServerUpdateSettingsResult>;
+    updateOpenClawSecrets: (
+      input: ServerUpdateOpenClawSecretsInput,
+    ) => Promise<ServerUpdateOpenClawSecretsResult>;
     getAuthSession: () => Promise<AuthSessionState>;
     bootstrapAuth: (input: AuthBootstrapInput) => Promise<AuthBootstrapResult>;
     bootstrapBearerAuth: (input: AuthBootstrapInput) => Promise<AuthBearerBootstrapResult>;
