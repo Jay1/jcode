@@ -39,6 +39,7 @@ import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
 import { authErrorResponse, makeEffectAuthRequest } from "./auth/http";
 import { BootstrapCredentialService } from "./auth/Services/BootstrapCredentialService";
 import { ServerAuth } from "./auth/Services/ServerAuth";
+import { ServerSecretStore } from "./auth/Services/ServerSecretStore";
 import { SessionCredentialService } from "./auth/Services/SessionCredentialService";
 import { CheckpointDiffQuery } from "./checkpointing/Services/CheckpointDiffQuery";
 import { ServerConfig } from "./config";
@@ -61,6 +62,7 @@ import {
   OpenCodeRuntimeLive,
 } from "./provider/opencodeRuntime";
 import { checkOpenCodeRuntimeHealth } from "./provider/openCodeRuntimeHealth";
+import { applyOpenClawSecretUpdate } from "./provider/openclawSecretUpdate";
 import { getProviderUsageSnapshot } from "./providerUsageSnapshot";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment";
 import { ServerLifecycleEvents } from "./serverLifecycleEvents";
@@ -254,6 +256,7 @@ export const makeWsRpcLayer = () =>
       const runtimeStartup = yield* ServerRuntimeStartup;
       const serverEnvironment = yield* ServerEnvironment;
       const serverSettings = yield* ServerSettingsService;
+      const serverSecretStore = yield* ServerSecretStore;
       const sessionCredentials = yield* SessionCredentialService;
       const terminalManager = yield* TerminalManager;
       const workspaceEntries = yield* WorkspaceEntries;
@@ -649,6 +652,20 @@ export const makeWsRpcLayer = () =>
           rpcEffect(serverSettings.getSettings, "Failed to load server settings"),
         [WS_METHODS.serverUpdateSettings]: (input) =>
           rpcEffect(serverSettings.updateSettings(input), "Failed to update server settings"),
+        [WS_METHODS.serverUpdateOpenClawSecrets]: (input) =>
+          rpcEffect(
+            Effect.gen(function* () {
+              const metadata = yield* applyOpenClawSecretUpdate(input).pipe(
+                Effect.provideService(ServerSecretStore, serverSecretStore),
+              );
+              yield* serverSettings.updateOpenClawSecretMetadata({
+                hasSecret: metadata.hasToken || metadata.hasPassword,
+                paired: metadata.paired,
+              });
+              return metadata;
+            }),
+            "Failed to update OpenClaw secrets",
+          ),
         [WS_METHODS.serverRefreshProviders]: () =>
           rpcEffect(
             providerHealth.refresh.pipe(Effect.map((providers) => ({ providers }))),

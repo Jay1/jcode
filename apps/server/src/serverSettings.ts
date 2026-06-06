@@ -31,7 +31,13 @@ import {
   Stream,
 } from "effect";
 import * as Semaphore from "effect/Semaphore";
+import { ServerSecretStore } from "./auth/Services/ServerSecretStore";
 import { ServerConfig } from "./config";
+import {
+  clearOpenClawAuthSecrets,
+  clearOpenClawDeviceIdentity,
+  readOpenClawSecretMetadata,
+} from "./provider/openclawSecrets";
 
 export interface ServerSettingsShape {
   readonly start: Effect.Effect<void, ServerSettingsError>;
@@ -40,6 +46,10 @@ export interface ServerSettingsShape {
   readonly updateSettings: (
     patch: ServerSettingsPatch,
   ) => Effect.Effect<ServerSettings, ServerSettingsError>;
+  readonly updateOpenClawSecretMetadata: (metadata: {
+    readonly hasSecret: boolean;
+    readonly paired: boolean;
+  }) => Effect.Effect<ServerSettings, ServerSettingsError>;
   readonly streamChanges: Stream.Stream<ServerSettings>;
 }
 
@@ -66,6 +76,15 @@ export class ServerSettingsService extends ServiceMap.Service<
             Ref.get(currentSettingsRef).pipe(
               Effect.flatMap((currentSettings) =>
                 normalizeSettings("<memory>", currentSettings, patch),
+              ),
+              Effect.tap((nextSettings) => Ref.set(currentSettingsRef, nextSettings)),
+              Effect.tap(emitChange),
+              Effect.map(resolveTextGenerationProvider),
+            ),
+          updateOpenClawSecretMetadata: (metadata) =>
+            Ref.get(currentSettingsRef).pipe(
+              Effect.map((currentSettings) =>
+                withOpenClawSecretMetadata(currentSettings, metadata),
               ),
               Effect.tap((nextSettings) => Ref.set(currentSettingsRef, nextSettings)),
               Effect.tap(emitChange),
@@ -107,6 +126,22 @@ function resolveTextGenerationProvider(settings: ServerSettings): ServerSettings
   };
 }
 
+function withOpenClawSecretMetadata(
+  settings: ServerSettings,
+  metadata: { readonly hasSecret: boolean; readonly paired: boolean },
+): ServerSettings {
+  return {
+    ...settings,
+    providers: {
+      ...settings.providers,
+      openclaw: {
+        ...settings.providers.openclaw,
+        ...metadata,
+      },
+    },
+  };
+}
+
 function normalizeSettings(
   settingsPath: string,
   current: ServerSettings,
@@ -143,6 +178,7 @@ function decodeSettingsFromJson(settingsPath: string, raw: string) {
 
 const makeServerSettings = Effect.gen(function* () {
   const { settingsPath } = yield* ServerConfig;
+  const secretStore = yield* ServerSecretStore;
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const writeSemaphore = yield* Semaphore.make(1);
@@ -187,7 +223,7 @@ const makeServerSettings = Effect.gen(function* () {
       });
       return DEFAULT_SERVER_SETTINGS;
     }
-    return decoded.value;
+    return applyServerSettingsPatch(DEFAULT_SERVER_SETTINGS, decoded.value as ServerSettingsPatch);
   });
 
   const writeSettingsAtomically = (settings: ServerSettings) => {
@@ -208,6 +244,27 @@ const makeServerSettings = Effect.gen(function* () {
     );
   };
 
+  const clearOpenClawSecretsIfGatewayChanged = (
+    current: ServerSettings,
+    next: ServerSettings,
+  ): Effect.Effect<
+    {
+      readonly hasSecret: boolean;
+      readonly paired: boolean;
+    } | null,
+    unknown
+  > => {
+    if (current.providers.openclaw.gatewayUrl === next.providers.openclaw.gatewayUrl) {
+      return Effect.succeed(null);
+    }
+    return Effect.all([clearOpenClawAuthSecrets, clearOpenClawDeviceIdentity], {
+      discard: true,
+    }).pipe(
+      Effect.as({ hasSecret: false, paired: false }),
+      Effect.provideService(ServerSecretStore, secretStore),
+    );
+  };
+
   const start = Effect.gen(function* () {
     const shouldStart = yield* Ref.modify(startedRef, (started) => [!started, true]);
     if (!shouldStart) {
@@ -225,7 +282,22 @@ const makeServerSettings = Effect.gen(function* () {
             }),
         ),
       );
-      const settings = yield* loadSettingsFromDisk;
+      const loadedSettings = yield* loadSettingsFromDisk;
+      const metadata = yield* readOpenClawSecretMetadata.pipe(
+        Effect.provideService(ServerSecretStore, secretStore),
+        Effect.mapError(
+          (cause) =>
+            new ServerSettingsError({
+              settingsPath,
+              detail: "failed to read OpenClaw secret metadata",
+              cause,
+            }),
+        ),
+      );
+      const settings = withOpenClawSecretMetadata(loadedSettings, {
+        hasSecret: metadata.hasToken || metadata.hasPassword,
+        paired: metadata.paired,
+      });
       yield* Ref.set(settingsRef, settings);
     });
 
@@ -247,6 +319,29 @@ const makeServerSettings = Effect.gen(function* () {
         Effect.gen(function* () {
           const current = yield* Ref.get(settingsRef);
           const next = yield* normalizeSettings(settingsPath, current, patch);
+          const metadata = yield* clearOpenClawSecretsIfGatewayChanged(current, next).pipe(
+            Effect.mapError(
+              (cause) =>
+                new ServerSettingsError({
+                  settingsPath,
+                  detail: "failed to clear OpenClaw secrets after gateway URL change",
+                  cause,
+                }),
+            ),
+          );
+          const nextWithMetadata =
+            metadata !== null ? withOpenClawSecretMetadata(next, metadata) : next;
+          yield* writeSettingsAtomically(nextWithMetadata);
+          yield* Ref.set(settingsRef, nextWithMetadata);
+          yield* emitChange(nextWithMetadata);
+          return resolveTextGenerationProvider(nextWithMetadata);
+        }),
+      ),
+    updateOpenClawSecretMetadata: (metadata) =>
+      writeSemaphore.withPermits(1)(
+        Effect.gen(function* () {
+          const current = yield* Ref.get(settingsRef);
+          const next = withOpenClawSecretMetadata(current, metadata);
           yield* writeSettingsAtomically(next);
           yield* Ref.set(settingsRef, next);
           yield* emitChange(next);
