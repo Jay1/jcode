@@ -3,6 +3,8 @@ import { ChildProcessSpawner } from "effect/unstable/process";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { ServerConfig } from "../config";
+import { ServerSecretStore } from "../auth/Services/ServerSecretStore";
+import { ServerSettingsService } from "../serverSettings";
 import { AnalyticsService } from "../telemetry/Services/AnalyticsService";
 import { ProviderUnsupportedError } from "./Errors";
 import { makeClaudeAdapterLive } from "./Layers/ClaudeAdapter";
@@ -11,6 +13,7 @@ import { makeCursorAdapterLive } from "./Layers/CursorAdapter";
 import { makeEventNdjsonLogger } from "./Layers/EventNdjsonLogger";
 import { makeGeminiAdapterLive } from "./Layers/GeminiAdapter";
 import { makeKiloAdapterLive, makeOpenCodeAdapterLive } from "./Layers/OpenCodeAdapter";
+import { makeOpenClawAdapterLive } from "./Layers/OpenClawAdapter";
 import { makePiAdapterLive } from "./Layers/PiAdapter";
 import { ProviderAdapterRegistryLive } from "./Layers/ProviderAdapterRegistry";
 import { ProviderDiscoveryServiceLive } from "./Layers/ProviderDiscoveryService";
@@ -29,6 +32,8 @@ export function makeServerProviderLayer(): Layer.Layer<
   | ServerConfig
   | FileSystem.FileSystem
   | AnalyticsService
+  | ServerSecretStore
+  | ServerSettingsService
   | ChildProcessSpawner.ChildProcessSpawner
 > {
   return Effect.gen(function* () {
@@ -55,6 +60,7 @@ export function makeServerProviderLayer(): Layer.Layer<
     const openCodeAdapterLayer = makeOpenCodeAdapterLive(
       nativeEventLogger ? { nativeEventLogger } : undefined,
     );
+    const openClawAdapterLayer = makeOpenClawAdapterLive();
     const kiloAdapterLayer = makeKiloAdapterLive(
       nativeEventLogger ? { nativeEventLogger } : undefined,
     );
@@ -73,6 +79,7 @@ export function makeServerProviderLayer(): Layer.Layer<
       Layer.provide(geminiAdapterLayer),
       Layer.provide(kiloAdapterLayer),
       Layer.provide(openCodeAdapterLayer),
+      Layer.provide(openClawAdapterLayer),
       Layer.provide(piAdapterLayer),
       Layer.provideMerge(providerSessionDirectoryLayer),
     );
