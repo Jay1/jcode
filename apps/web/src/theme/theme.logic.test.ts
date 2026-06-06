@@ -705,19 +705,23 @@ describe("buildThemeCssVariables", () => {
       "dark",
     );
 
-    expect(cssVariables.variables["--app-surface-canvas"]).toBe("#0C0E14");
+    expect(cssVariables.variables["--app-surface-canvas"]).toBe("#1a1b26");
     expect(cssVariables.variables["--app-surface-sidebar"]).toBe("#16161e");
     expect(cssVariables.variables["--app-surface-topbar"]).toBe("#16161e");
-    expect(cssVariables.variables["--app-surface-card"]).toBe("#1a1b26");
-    expect(cssVariables.variables["--app-surface-card-header"]).toBe("#292e42");
+    expect(cssVariables.variables["--app-surface-card"]).toBe("#1f2335");
+    expect(cssVariables.variables["--app-surface-card-header"]).toBe("#202330");
+    expect(cssVariables.variables["--app-surface-composer"]).toBe("#14141b");
+    expect(cssVariables.variables["--app-chat-code-copy-bg"]).toBe("#14141b");
+    expect(cssVariables.variables["--app-surface-toolbar-active"]).toBe("#3b4261");
+    expect(cssVariables.variables["--app-surface-toolbar-border"]).toBe("#292e42");
     expect(cssVariables.variables["--app-chat-heading"]).toBe("#bb9af7");
     expect(cssVariables.variables["--app-chat-link"]).toBe("#7aa2f7");
-    expect(cssVariables.variables["--app-chat-token"]).toBe("#1abc9c");
+    expect(cssVariables.variables["--app-chat-token"]).toBe("#73daca");
     expect(cssVariables.variables["--app-chat-warning"]).toBe("#e0af68");
     expect(cssVariables.variables["--app-chat-error"]).toBe("#f7768e");
-    expect(cssVariables.variables["--app-state-focus"]).toBe("#27a1b9");
-    expect(cssVariables.variables["--app-terminal-search-match-bg"]).toBe("#292e42");
-    expect(cssVariables.variables["--app-terminal-search-active-match-bg"]).toBe("#283457");
+    expect(cssVariables.variables["--app-state-focus"]).toBe("#7aa2f7");
+    expect(cssVariables.variables["--app-terminal-search-match-bg"]).toBe("#202330");
+    expect(cssVariables.variables["--app-terminal-search-active-match-bg"]).toBe("#3b4261");
   });
 
   it("lets Tokyo Night theme edits drive accent and semantic depth tokens", () => {
@@ -762,6 +766,26 @@ describe("buildThemeCssVariables", () => {
     expect(getCodeThemeSeed("solarized", "dark").accent).toBe("#268bd2");
     expect(getCodeThemeSeed("solarized", "light").accent).toBe("#268bd2");
     expect(getCodeThemeSeed("night-owl", "dark").accent).toBe("#82aaff");
+    expect(getCodeThemeSeed("tokyo-night", "dark")).toMatchObject({
+      accent: "#7aa2f7",
+      ink: "#c0caf5",
+      semanticColors: {
+        diffAdded: "#73daca",
+        diffRemoved: "#f7768e",
+        skill: "#bb9af7",
+      },
+      surface: "#1a1b26",
+    });
+    expect(getCodeThemeSeed("sentry", "dark")).toMatchObject({
+      accent: "#7553ff",
+      ink: "#f8f7fa",
+      semanticColors: {
+        diffAdded: "#3ddc97",
+        diffRemoved: "#ff6363",
+        skill: "#7553ff",
+      },
+      surface: "#2e2936",
+    });
   });
 
   it("locks requested hand-authored official-palette depth roles", () => {
@@ -770,10 +794,10 @@ describe("buildThemeCssVariables", () => {
       ["nord", "dark", "#2e3440", "#3b4252", "#434c5e", "#434c5e", "#8fbcbb", "#ebcb8b"],
       ["raycast", "dark", "#07080a", "#101111", "#1b1c1e", "#252829", "#55b3ff", "#ffbc33"],
       ["raycast", "light", "#ffffff", "#f7f7f7", "#e6e6e6", "#ffe7e7", "#55b3ff", "#ffbc33"],
-      ["sentry", "dark", "#1d1127", "#2b1d38", "#362d59", "#362d59", "#33bf9e", "#ffc227"],
+      ["sentry", "dark", "#1B1821", "#24202B", "#393442", "#393442", "#3DDC97", "#FFB938"],
       ["gruvbox", "dark", "#1d2021", "#282828", "#3c3836", "#504945", "#689d6a", "#fabd2f"],
       ["gruvbox", "light", "#fbf1c7", "#f9f5d7", "#ebdbb2", "#d5c4a1", "#689d6a", "#b57614"],
-      ["tokyo-night", "dark", "#0C0E14", "#16161e", "#292e42", "#292e42", "#1abc9c", "#e0af68"],
+      ["tokyo-night", "dark", "#1a1b26", "#16161e", "#202330", "#202330", "#73daca", "#e0af68"],
     ] as const;
 
     for (const [
@@ -908,15 +932,7 @@ describe("buildThemeCssVariables", () => {
         "rgba(234, 154, 151, 0.14)",
         "#f6c177",
       ],
-      [
-        "tokyo-night",
-        "dark",
-        "#0C0E14",
-        "#16161e",
-        "#292e42",
-        "rgba(122, 162, 247, 0.18)",
-        "#e0af68",
-      ],
+      ["tokyo-night", "dark", "#1a1b26", "#16161e", "#202330", "#3b4261", "#e0af68"],
       ["vercel", "light", "#f7f7f7", "#f0f0f0", "#f1f1f1", "rgba(0, 106, 255, 0.09)", "#d97706"],
       ["vercel", "dark", "#000000", "#090909", "#1e1e1e", "rgba(0, 110, 254, 0.12)", "#f5b44a"],
       [
