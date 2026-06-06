@@ -4,9 +4,8 @@ import { cn } from "~/lib/utils";
 const STATUS_LABELS: Record<OrchestrationGoal["status"], string> = {
   active: "Active",
   paused: "Paused",
-  complete: "Complete",
+  completed: "Complete",
   cleared: "Cleared",
-  blocked: "Blocked",
 };
 
 const STATUS_CLASS_NAMES: Record<OrchestrationGoal["status"], string> = {
@@ -14,12 +13,10 @@ const STATUS_CLASS_NAMES: Record<OrchestrationGoal["status"], string> = {
     "border-[var(--app-status-working-border)] bg-[var(--app-status-working-bg)] text-[var(--app-status-working-fg)]",
   paused:
     "border-[var(--app-status-warning-border)] bg-[var(--app-status-warning-bg)] text-[var(--app-status-warning-fg)]",
-  complete:
+  completed:
     "border-[var(--app-status-success-border)] bg-[var(--app-status-success-bg)] text-[var(--app-status-success-fg)]",
   cleared:
     "border-[var(--app-status-muted-border)] bg-[var(--app-status-muted-bg)] text-[var(--app-status-muted-fg)]",
-  blocked:
-    "border-[var(--app-status-error-border)] bg-[var(--app-status-error-bg)] text-[var(--app-status-error-fg)]",
 };
 
 export function GoalIndicator({
