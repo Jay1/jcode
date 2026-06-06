@@ -17,6 +17,7 @@ export interface ThreadRecapSource {
   readonly latestMessageId: string | null;
   readonly newMaterial: string;
   readonly currentState: string;
+  readonly sourceSignature: string;
 }
 
 export interface DeriveThreadRecapSourceInput {
@@ -43,6 +44,15 @@ function truncate(value: string, max: number): string {
     return value;
   }
   return value.slice(0, max - 1) + "…";
+}
+
+function hashSource(value: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
 export function deriveThreadRecapSource(input: DeriveThreadRecapSourceInput): ThreadRecapSource {
@@ -83,6 +93,7 @@ export function deriveThreadRecapSource(input: DeriveThreadRecapSourceInput): Th
     latestMessageId,
     newMaterial,
     currentState,
+    sourceSignature: hashSource(`${latestMessageId ?? ""}\n${newMaterial}\n${currentState}`),
   };
 }
 

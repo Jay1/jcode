@@ -99,6 +99,27 @@ describe("deriveThreadRecapSource", () => {
     expect(result.currentState).toContain("Approval requested for command");
   });
 
+  it("returns a stable signature for the covered source material", () => {
+    const first = deriveThreadRecapSource({
+      messages: [...FIXTURE_MESSAGES],
+      activities: FIXTURE_ACTIVITIES,
+      title: "Test",
+    });
+    const second = deriveThreadRecapSource({
+      messages: [...FIXTURE_MESSAGES],
+      activities: FIXTURE_ACTIVITIES,
+      title: "Test",
+    });
+    const changed = deriveThreadRecapSource({
+      messages: [...FIXTURE_MESSAGES, { id: "m8", role: "user", text: "new request" }],
+      activities: FIXTURE_ACTIVITIES,
+      title: "Test",
+    });
+
+    expect(first.sourceSignature).toBe(second.sourceSignature);
+    expect(first.sourceSignature).not.toBe(changed.sourceSignature);
+  });
+
   describe("delta material", () => {
     it("uses only messages after previousCoveredMessageId", () => {
       const result = deriveThreadRecapSource({
