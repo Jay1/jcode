@@ -17,6 +17,11 @@ import {
   ThreadActivityAppendedPayload,
   ThreadCreatedPayload,
   ThreadDeletedPayload,
+  ThreadGoalClearedPayload,
+  ThreadGoalCompletedPayload,
+  ThreadGoalPausedPayload,
+  ThreadGoalResumedPayload,
+  ThreadGoalSetPayload,
   ThreadInteractionModeSetPayload,
   ThreadMetaUpdatedPayload,
   ThreadProposedPlanUpsertedPayload,
@@ -859,6 +864,101 @@ export function projectEvent(
             }),
           };
         }),
+      );
+
+    case "thread.goal-set":
+      return decodeForEvent(ThreadGoalSetPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          threads: updateThread(nextBase.threads, payload.threadId, {
+            updatedAt: payload.updatedAt,
+            goal: {
+              objective: payload.objective,
+              status: "active",
+              createdAt: payload.createdAt,
+              updatedAt: payload.updatedAt,
+              createdByMessageId: payload.createdByMessageId,
+              completedAt: null,
+              lastContinuationTurnId: null,
+              turnCount: 0,
+              blockedReason: null,
+            },
+          }),
+        })),
+      );
+
+    case "thread.goal-paused":
+      return decodeForEvent(ThreadGoalPausedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          threads: nextBase.threads.map((thread) =>
+            thread.id === payload.threadId && thread.goal
+              ? {
+                  ...thread,
+                  updatedAt: payload.updatedAt,
+                  goal: {
+                    ...thread.goal,
+                    status: "paused",
+                    updatedAt: payload.updatedAt,
+                    blockedReason: payload.reason,
+                  },
+                }
+              : thread,
+          ),
+        })),
+      );
+
+    case "thread.goal-resumed":
+      return decodeForEvent(ThreadGoalResumedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          threads: nextBase.threads.map((thread) =>
+            thread.id === payload.threadId && thread.goal
+              ? {
+                  ...thread,
+                  updatedAt: payload.updatedAt,
+                  goal: {
+                    ...thread.goal,
+                    status: "active",
+                    updatedAt: payload.updatedAt,
+                    blockedReason: null,
+                  },
+                }
+              : thread,
+          ),
+        })),
+      );
+
+    case "thread.goal-completed":
+      return decodeForEvent(ThreadGoalCompletedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          threads: nextBase.threads.map((thread) =>
+            thread.id === payload.threadId && thread.goal
+              ? {
+                  ...thread,
+                  updatedAt: payload.updatedAt,
+                  goal: {
+                    ...thread.goal,
+                    status: "completed",
+                    completedAt: payload.completedAt,
+                    updatedAt: payload.updatedAt,
+                  },
+                }
+              : thread,
+          ),
+        })),
+      );
+
+    case "thread.goal-cleared":
+      return decodeForEvent(ThreadGoalClearedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          threads: updateThread(nextBase.threads, payload.threadId, {
+            updatedAt: payload.updatedAt,
+            goal: null,
+          }),
+        })),
       );
 
     default:

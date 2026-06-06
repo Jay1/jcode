@@ -102,8 +102,156 @@ describe("orchestration projector", () => {
         activities: [],
         checkpoints: [],
         session: null,
+        recap: null,
+        goal: null,
       },
     ]);
+  });
+
+  it("folds goal lifecycle events into thread goal state", async () => {
+    const now = "2026-06-06T00:00:00.000Z";
+    const model = createEmptyReadModel(now);
+    const afterCreate = await Effect.runPromise(
+      projectEvent(
+        model,
+        makeEvent({
+          sequence: 1,
+          type: "thread.created",
+          aggregateKind: "thread",
+          aggregateId: "thread-1",
+          occurredAt: now,
+          commandId: "cmd-thread-create",
+          payload: {
+            threadId: "thread-1",
+            projectId: "project-1",
+            title: "goal thread",
+            modelSelection: {
+              provider: "codex",
+              model: "gpt-5-codex",
+            },
+            runtimeMode: "full-access",
+            branch: null,
+            worktreePath: null,
+            createdAt: now,
+            updatedAt: now,
+          },
+        }),
+      ),
+    );
+
+    const afterSet = await Effect.runPromise(
+      projectEvent(
+        afterCreate,
+        makeEvent({
+          sequence: 2,
+          type: "thread.goal-set",
+          aggregateKind: "thread",
+          aggregateId: "thread-1",
+          occurredAt: now,
+          commandId: "cmd-goal-set",
+          payload: {
+            threadId: "thread-1",
+            objective: "Ship persistent goal mode",
+            createdByMessageId: null,
+            createdAt: now,
+            updatedAt: now,
+          },
+        }),
+      ),
+    );
+
+    expect(afterSet.threads[0]?.goal).toEqual({
+      objective: "Ship persistent goal mode",
+      status: "active",
+      createdAt: now,
+      updatedAt: now,
+      createdByMessageId: null,
+      completedAt: null,
+      lastContinuationTurnId: null,
+      turnCount: 0,
+      blockedReason: null,
+    });
+
+    const afterPause = await Effect.runPromise(
+      projectEvent(
+        afterSet,
+        makeEvent({
+          sequence: 3,
+          type: "thread.goal-paused",
+          aggregateKind: "thread",
+          aggregateId: "thread-1",
+          occurredAt: now,
+          commandId: "cmd-goal-pause",
+          payload: {
+            threadId: "thread-1",
+            reason: "Waiting for approval",
+            updatedAt: now,
+          },
+        }),
+      ),
+    );
+    expect(afterPause.threads[0]?.goal?.status).toBe("paused");
+    expect(afterPause.threads[0]?.goal?.blockedReason).toBe("Waiting for approval");
+
+    const afterResume = await Effect.runPromise(
+      projectEvent(
+        afterPause,
+        makeEvent({
+          sequence: 4,
+          type: "thread.goal-resumed",
+          aggregateKind: "thread",
+          aggregateId: "thread-1",
+          occurredAt: now,
+          commandId: "cmd-goal-resume",
+          payload: {
+            threadId: "thread-1",
+            updatedAt: now,
+          },
+        }),
+      ),
+    );
+    expect(afterResume.threads[0]?.goal?.status).toBe("active");
+    expect(afterResume.threads[0]?.goal?.blockedReason).toBeNull();
+
+    const afterComplete = await Effect.runPromise(
+      projectEvent(
+        afterResume,
+        makeEvent({
+          sequence: 5,
+          type: "thread.goal-completed",
+          aggregateKind: "thread",
+          aggregateId: "thread-1",
+          occurredAt: now,
+          commandId: "cmd-goal-complete",
+          payload: {
+            threadId: "thread-1",
+            completedAt: now,
+            updatedAt: now,
+          },
+        }),
+      ),
+    );
+    expect(afterComplete.threads[0]?.goal?.status).toBe("completed");
+    expect(afterComplete.threads[0]?.goal?.completedAt).toBe(now);
+
+    const afterClear = await Effect.runPromise(
+      projectEvent(
+        afterComplete,
+        makeEvent({
+          sequence: 6,
+          type: "thread.goal-cleared",
+          aggregateKind: "thread",
+          aggregateId: "thread-1",
+          occurredAt: now,
+          commandId: "cmd-goal-clear",
+          payload: {
+            threadId: "thread-1",
+            updatedAt: now,
+          },
+        }),
+      ),
+    );
+    expect(afterClear.threads[0]?.goal).toBeNull();
   });
 
   it("updates thread settings from turn start events", async () => {
