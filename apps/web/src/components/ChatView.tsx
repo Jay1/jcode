@@ -4015,33 +4015,35 @@ export default function ChatView({
 
     return `${lastMessage.id}:${lastMessage.text.length}`;
   }, [timelineMessages]);
-  const onIsAtEndChange = useCallback((reportedIsAtEnd: boolean) => {
-    let isAtEnd = reportedIsAtEnd;
-    if (reportedIsAtEnd) {
-      const scrollContainer = legendListRef.current?.getScrollableNode?.();
-      if (scrollContainer instanceof HTMLElement) {
-        isAtEnd = isScrollContainerNearBottom({
-          scrollTop: scrollContainer.scrollTop,
-          clientHeight: scrollContainer.clientHeight,
-          scrollHeight: scrollContainer.scrollHeight,
-        });
+  const onIsAtEndChange = useCallback(
+    (reportedIsAtEnd: boolean) => {
+      let isAtEnd = reportedIsAtEnd;
+      if (reportedIsAtEnd) {
+        const scrollContainer = legendListRef.current?.getScrollableNode?.();
+        if (scrollContainer instanceof HTMLElement) {
+          isAtEnd = isScrollContainerNearBottom({
+            scrollTop: scrollContainer.scrollTop,
+            clientHeight: scrollContainer.clientHeight,
+            scrollHeight: scrollContainer.scrollHeight,
+          });
+        }
       }
-    }
 
-    if (isAtEndRef.current === isAtEnd) return;
-    if (!isAtEnd && performance.now() < programmaticScrollUntilRef.current) return;
+      if (isAtEndRef.current === isAtEnd) return;
+      if (!isAtEnd && performance.now() < programmaticScrollUntilRef.current) return;
 
-    isAtEndRef.current = isAtEnd;
-    if (isAtEnd) {
-      showScrollDebouncer.current.cancel();
-      setShowScrollToBottom(false);
-    } else if (tailFollowEnabledRef.current) {
-      showScrollDebouncer.current.cancel();
-      setShowScrollToBottom(false);
-    } else {
-      showScrollDebouncer.current.maybeExecute();
-    }
-  }, []);
+      isAtEndRef.current = isAtEnd;
+      if (isAtEnd) {
+        enableTailFollow();
+      } else if (tailFollowEnabledRef.current) {
+        showScrollDebouncer.current.cancel();
+        setShowScrollToBottom(false);
+      } else {
+        showScrollDebouncer.current.maybeExecute();
+      }
+    },
+    [enableTailFollow],
+  );
   const cancelPendingInteractionAnchorAdjustment = useCallback(() => {
     const pendingFrame = pendingInteractionAnchorFrameRef.current;
     if (pendingFrame === null) return;
@@ -5663,22 +5665,6 @@ export default function ChatView({
       nextThreadEnvMode = "local";
       nextThreadBranch = null;
       nextThreadWorktreePath = null;
-    }
-
-    if (
-      isFirstMessage &&
-      nextThreadEnvMode === "worktree" &&
-      !nextThreadBranch &&
-      !nextThreadWorktreePath
-    ) {
-      nextThreadEnvMode = "local";
-      if (isLocalDraftThread) {
-        setDraftThreadContext(threadIdForSend, {
-          envMode: "local",
-          branch: null,
-          worktreePath: null,
-        });
-      }
     }
 
     const baseBranchForWorktree =

@@ -158,12 +158,12 @@ describe("threadHandoff", () => {
         projectDefaultModelSelection: {
           provider: "openclaw",
           model: "custom-model",
-        },
+        } as unknown as ModelSelection,
         stickyModelSelectionByProvider: {
           openclaw: {
             provider: "openclaw",
             model: "another-model",
-          },
+          } as unknown as ModelSelection,
         },
       }),
     ).toEqual({
