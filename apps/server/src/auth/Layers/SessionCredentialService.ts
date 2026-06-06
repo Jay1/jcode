@@ -1,4 +1,10 @@
-import { AuthSessionId, type AuthClientMetadata, type AuthClientSession } from "@jcode/contracts";
+import {
+  AuthSessionId,
+  type AuthCapabilityScope,
+  type AuthClientMetadata,
+  type AuthClientSession,
+  type CapabilityResource,
+} from "@jcode/contracts";
 import * as Crypto from "node:crypto";
 import {
   Clock,
@@ -44,6 +50,11 @@ const SessionClaims = Schema.Struct({
   sub: Schema.String,
   role: Schema.Literals(["owner", "client"]),
   method: Schema.Literals(["browser-session-cookie", "bearer-session-token"]),
+  scopes: Schema.optionalWith(Schema.Array(Schema.String), { exact: true }),
+  resources: Schema.optionalWith(
+    Schema.Array(Schema.Struct({ type: Schema.String, id: Schema.String })),
+    { exact: true },
+  ),
   iat: Schema.Number,
   exp: Schema.Number,
 });
@@ -186,6 +197,8 @@ export const makeSessionCredentialService = Effect.gen(function* () {
         sub: input?.subject ?? "browser",
         role: input?.role ?? "client",
         method: input?.method ?? "browser-session-cookie",
+        ...(input?.scopes ? { scopes: input.scopes } : {}),
+        ...(input?.resources ? { resources: input.resources } : {}),
         iat: DateTime.toEpochMillis(issuedAt),
         exp: DateTime.toEpochMillis(expiresAt),
       };
@@ -264,6 +277,10 @@ export const makeSessionCredentialService = Effect.gen(function* () {
         expiresAt: DateTime.makeUnsafe(claims.exp),
         subject: claims.sub,
         role: claims.role,
+        ...(claims.scopes ? { scopes: claims.scopes as ReadonlyArray<AuthCapabilityScope> } : {}),
+        ...(claims.resources
+          ? { resources: claims.resources as ReadonlyArray<CapabilityResource> }
+          : {}),
       } satisfies VerifiedSession;
     }).pipe(
       Effect.mapError((cause) =>
