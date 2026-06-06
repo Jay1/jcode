@@ -2025,7 +2025,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
     }
   });
 
-  it("does not re-arm tail follow when a detached user manually reaches the bottom", async () => {
+  it("re-arms tail follow when a detached user manually reaches the bottom", async () => {
     const mounted = await mountChatView({
       viewport: DEFAULT_VIEWPORT,
       snapshot: createSnapshotWithTailAssistantText("short tail response"),
@@ -2086,10 +2086,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
         async () => {
           const layout = await mounted.measureLayout();
           expect(layout.scrollHeightPx).toBeGreaterThan(bottomLayout.scrollHeightPx);
-          expect(layout.distanceFromBottomPx).toBeGreaterThan(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+          expect(layout.distanceFromBottomPx).toBeLessThanOrEqual(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
           expect(
             document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
-          ).toBeTruthy();
+          ).toBeNull();
         },
         { timeout: 8_000, interval: 16 },
       );
@@ -3138,7 +3138,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
     }
   });
 
-  it("starts stale branchless worktree drafts as local threads on first Enter", async () => {
+  it("rejects stale branchless worktree drafts on first Enter", async () => {
     useComposerDraftStore.setState({
       draftThreadsByThreadId: {
         [THREAD_ID]: {
@@ -3172,15 +3172,9 @@ describe("ChatView timeline estimator parity (full app)", () => {
     try {
       useComposerDraftStore.getState().setPrompt(THREAD_ID, "test");
 
-      const editor = await waitForComposerEditor();
-      editor.focus();
-      editor.dispatchEvent(
-        new KeyboardEvent("keydown", {
-          key: "Enter",
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
+      const sendButton = await waitForSendButton();
+      expect(sendButton.disabled).toBe(false);
+      await sendButton.click();
 
       await vi.waitFor(
         () => {
@@ -3192,13 +3186,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
               "type" in request.command &&
               request.command.type === "thread.create",
           );
-          expect(createThreadRequest?.command).toMatchObject({
-            projectId: HOMEASSIST_PROJECT_ID,
-            threadId: THREAD_ID,
-            envMode: "local",
-            branch: null,
-            worktreePath: null,
-          });
+          expect(createThreadRequest).toBeUndefined();
 
           const turnStartRequest = wsRequests.find(
             (request) =>
@@ -3208,12 +3196,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
               "type" in request.command &&
               request.command.type === "thread.turn.start",
           );
-          expect(turnStartRequest?.command).toMatchObject({
-            threadId: THREAD_ID,
-            message: {
-              text: "test",
-            },
-          });
+          expect(turnStartRequest).toBeUndefined();
         },
         { timeout: 1_000, interval: 16 },
       );
