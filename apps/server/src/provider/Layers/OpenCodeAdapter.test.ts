@@ -2997,4 +2997,251 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
       }),
     );
   });
+
+  it("waits for provider resumption when background subagents cause premature idle then completes on real idle", async () => {
+    const eventQueue = createSubscribedEventQueue();
+    const runtime = createMockOpenCodeRuntime();
+    const client = runtime.runtime.createOpenCodeSdkClient({
+      baseUrl: "http://127.0.0.1:4099",
+      directory: process.cwd(),
+    }) as unknown as {
+      event: {
+        subscribe: () => Promise<{ stream: AsyncIterable<unknown> }>;
+      };
+    };
+    client.event.subscribe = async () => ({ stream: eventQueue.stream });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 5)).pipe(
+          Effect.forkChild,
+        );
+
+        yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-resumption-test"),
+          runtimeMode: "full-access",
+        });
+
+        yield* adapter.sendTurn({
+          threadId: asThreadId("thread-resumption-test"),
+          input: "dispatch subagents",
+          attachments: [],
+          modelSelection: {
+            provider: "opencode",
+            model: "openai/gpt-5.4",
+          },
+        });
+
+        // Given: tool-calls finish sets activeTurnSawToolCallFinish, serial stays 0
+        eventQueue.push({
+          type: "message.updated",
+          properties: {
+            sessionID: "opencode-session-1",
+            info: {
+              id: "msg-tool-dispatch",
+              role: "assistant",
+              finish: "tool-calls",
+            },
+          },
+        });
+
+        // When: premature idle fires resumption guard (serial 0 + saw tool call finish)
+        // Then: emits runtime.warning, enters waiting state
+        eventQueue.push({
+          type: "session.idle",
+          properties: {
+            sessionID: "opencode-session-1",
+          },
+        });
+
+        // When: provider resumes with busy status
+        // Then: clears waiting state and resets tracking flags
+        eventQueue.push({
+          type: "session.status",
+          properties: {
+            sessionID: "opencode-session-1",
+            status: { type: "busy" },
+          },
+        });
+
+        // When: final assistant message arrives with terminal finish
+        // Then: increments completion serial
+        eventQueue.push({
+          type: "message.updated",
+          properties: {
+            sessionID: "opencode-session-1",
+            info: {
+              id: "msg-final",
+              role: "assistant",
+              finish: "end_turn",
+              time: { completed: Date.now() },
+            },
+          },
+        });
+
+        // When: real idle arrives (serial > 0)
+        // Then: turn completes normally
+        eventQueue.push({
+          type: "session.idle",
+          properties: {
+            sessionID: "opencode-session-1",
+          },
+        });
+
+        const events = Array.from(yield* Fiber.join(eventsFiber));
+        eventQueue.close();
+        return events;
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    const eventTypes = result.map((event) => event.type);
+    expect(eventTypes).toEqual([
+      "session.started",
+      "thread.started",
+      "turn.started",
+      "runtime.warning",
+      "turn.completed",
+    ]);
+
+    const warnings = result.filter((e) => e.type === "runtime.warning");
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]?.payload).toMatchObject({
+      message: expect.stringContaining("waiting for background tasks"),
+    });
+  });
+
+  it("handles repeated OpenCode idle and resume windows on the same turn", async () => {
+    const eventQueue = createSubscribedEventQueue();
+    const runtime = createMockOpenCodeRuntime();
+    const client = runtime.runtime.createOpenCodeSdkClient({
+      baseUrl: "http://127.0.0.1:4099",
+      directory: process.cwd(),
+    }) as unknown as {
+      event: {
+        subscribe: () => Promise<{ stream: AsyncIterable<unknown> }>;
+      };
+    };
+    client.event.subscribe = async () => ({ stream: eventQueue.stream });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 6)).pipe(
+          Effect.forkChild,
+        );
+
+        yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-repeated-resumption-test"),
+          runtimeMode: "full-access",
+        });
+
+        yield* adapter.sendTurn({
+          threadId: asThreadId("thread-repeated-resumption-test"),
+          input: "dispatch repeated subagents",
+          attachments: [],
+          modelSelection: {
+            provider: "opencode",
+            model: "openai/gpt-5.4",
+          },
+        });
+
+        const pushToolCallFinish = (id: string) =>
+          eventQueue.push({
+            type: "message.updated",
+            properties: {
+              sessionID: "opencode-session-1",
+              info: {
+                id,
+                role: "assistant",
+                finish: "tool-calls",
+              },
+            },
+          });
+        const pushIdle = () =>
+          eventQueue.push({
+            type: "session.idle",
+            properties: {
+              sessionID: "opencode-session-1",
+            },
+          });
+        const pushBusy = () =>
+          eventQueue.push({
+            type: "session.status",
+            properties: {
+              sessionID: "opencode-session-1",
+              status: { type: "busy" },
+            },
+          });
+
+        pushToolCallFinish("msg-tool-dispatch-1");
+        pushIdle();
+        pushIdle();
+        pushBusy();
+        pushToolCallFinish("msg-tool-dispatch-2");
+        pushIdle();
+        pushBusy();
+        eventQueue.push({
+          type: "message.updated",
+          properties: {
+            sessionID: "opencode-session-1",
+            info: {
+              id: "msg-final",
+              role: "assistant",
+              finish: "end_turn",
+              time: { completed: Date.now() },
+            },
+          },
+        });
+        pushIdle();
+
+        const events = Array.from(yield* Fiber.join(eventsFiber));
+        eventQueue.close();
+        return events;
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    const eventTypes = result.map((event) => event.type);
+    expect(eventTypes).toEqual([
+      "session.started",
+      "thread.started",
+      "turn.started",
+      "runtime.warning",
+      "runtime.warning",
+      "turn.completed",
+    ]);
+
+    const warnings = result.filter((e) => e.type === "runtime.warning");
+    expect(warnings).toHaveLength(2);
+    expect(warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            message: expect.stringContaining("waiting for background tasks"),
+          }),
+        }),
+      ]),
+    );
+    expect(result).not.toContainEqual(expect.objectContaining({ type: "runtime.error" }));
+  });
 });
