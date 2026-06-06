@@ -2429,8 +2429,9 @@ describe("ChatView timeline estimator parity (full app)", () => {
 
     try {
       const composerEditor = await waitForComposerEditor();
-      const dispatchComposerKey = (key: "ArrowDown" | "ArrowUp") => {
-        composerEditor.dispatchEvent(
+      const dispatchComposerKey = async (key: "ArrowDown" | "ArrowUp") => {
+        const currentComposerEditor = await waitForComposerEditor();
+        currentComposerEditor.dispatchEvent(
           new KeyboardEvent("keydown", {
             key,
             bubbles: true,
@@ -2442,7 +2443,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
       composerEditor.focus();
       expect(composerEditor.textContent).toBe("");
 
-      dispatchComposerKey("ArrowUp");
+      await dispatchComposerKey("ArrowUp");
       await vi.waitFor(
         () => {
           expect(composerEditor.textContent).toBe("filler user message 21");
@@ -2450,7 +2451,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
         { timeout: 8_000, interval: 16 },
       );
 
-      dispatchComposerKey("ArrowUp");
+      await dispatchComposerKey("ArrowUp");
       await vi.waitFor(
         () => {
           expect(composerEditor.textContent).toBe("filler user message 20");
@@ -2458,7 +2459,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
         { timeout: 8_000, interval: 16 },
       );
 
-      dispatchComposerKey("ArrowDown");
+      await dispatchComposerKey("ArrowDown");
       await vi.waitFor(
         () => {
           expect(composerEditor.textContent).toBe("filler user message 21");
@@ -2466,7 +2467,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
         { timeout: 8_000, interval: 16 },
       );
 
-      dispatchComposerKey("ArrowDown");
+      await dispatchComposerKey("ArrowDown");
       await vi.waitFor(
         () => {
           expect(composerEditor.textContent).toBe("");
