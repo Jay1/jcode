@@ -22,6 +22,7 @@
 | [0003](0003-settings-native-skill-library.md)              | Accepted | Settings-native provider-aware Skill Library |
 | [0004](0004-project-language-icons.md)                     | Proposed | Project language icons as metadata           |
 | [0005](0005-openclaw-gateway-provider.md)                  | Proposed | OpenClaw Gateway as a first-class Provider   |
+| [0005](0005-scoped-remote-client-capability-tokens.md)     | Proposed | Scoped remote client capability tokens       |
 
 ## When To Add An ADR
 
