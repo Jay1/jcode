@@ -1294,6 +1294,96 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
       };
     }
 
+    case "thread.goal.set": {
+      yield* requireThread({ readModel, command, threadId: command.threadId });
+      return {
+        ...withEventBase({
+          aggregateKind: "thread",
+          aggregateId: command.threadId,
+          occurredAt: command.createdAt,
+          commandId: command.commandId,
+        }),
+        type: "thread.goal-set",
+        payload: {
+          threadId: command.threadId,
+          objective: command.objective,
+          createdByMessageId: command.createdByMessageId,
+          createdAt: command.createdAt,
+          updatedAt: command.createdAt,
+        },
+      };
+    }
+
+    case "thread.goal.pause": {
+      yield* requireThread({ readModel, command, threadId: command.threadId });
+      return {
+        ...withEventBase({
+          aggregateKind: "thread",
+          aggregateId: command.threadId,
+          occurredAt: command.createdAt,
+          commandId: command.commandId,
+        }),
+        type: "thread.goal-paused",
+        payload: {
+          threadId: command.threadId,
+          reason: command.reason ?? null,
+          updatedAt: command.createdAt,
+        },
+      };
+    }
+
+    case "thread.goal.resume": {
+      yield* requireThread({ readModel, command, threadId: command.threadId });
+      return {
+        ...withEventBase({
+          aggregateKind: "thread",
+          aggregateId: command.threadId,
+          occurredAt: command.createdAt,
+          commandId: command.commandId,
+        }),
+        type: "thread.goal-resumed",
+        payload: {
+          threadId: command.threadId,
+          updatedAt: command.createdAt,
+        },
+      };
+    }
+
+    case "thread.goal.complete": {
+      yield* requireThread({ readModel, command, threadId: command.threadId });
+      return {
+        ...withEventBase({
+          aggregateKind: "thread",
+          aggregateId: command.threadId,
+          occurredAt: command.createdAt,
+          commandId: command.commandId,
+        }),
+        type: "thread.goal-completed",
+        payload: {
+          threadId: command.threadId,
+          completedAt: command.completedAt,
+          updatedAt: command.createdAt,
+        },
+      };
+    }
+
+    case "thread.goal.clear": {
+      yield* requireThread({ readModel, command, threadId: command.threadId });
+      return {
+        ...withEventBase({
+          aggregateKind: "thread",
+          aggregateId: command.threadId,
+          occurredAt: command.createdAt,
+          commandId: command.commandId,
+        }),
+        type: "thread.goal-cleared",
+        payload: {
+          threadId: command.threadId,
+          updatedAt: command.createdAt,
+        },
+      };
+    }
+
     default: {
       command satisfies never;
       const fallback = command as never as { type: string };
