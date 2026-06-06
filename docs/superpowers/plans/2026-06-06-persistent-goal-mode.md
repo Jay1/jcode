@@ -59,7 +59,7 @@
 - [x] Read the relevant sections of `packages/contracts/src/orchestration.ts`: message source, thread schemas, command schemas, event payloads, `OrchestrationCommand`, `OrchestrationEventType`, and `OrchestrationEvent`.
 - [x] Add failing contract tests for decoding a thread shell/detail with `goal` and a `goal-continuation` message source.
 - [x] Add `ORCHESTRATION_GOAL_COMPLETION_SENTINEL`, e.g. `JCODE_GOAL_COMPLETE`, as an exported contract constant.
-- [x] Add `OrchestrationGoalStatus` literals: `active`, `paused`, `complete`, `cleared`, `blocked` if needed by tests.
+- [x] Add `OrchestrationGoalStatus` literals: `active`, `paused`, `completed`, `cleared`.
 - [x] Add `OrchestrationGoal` fields for v1:
   - `objective: TrimmedNonEmptyString`
   - `status`
@@ -184,18 +184,26 @@
 
 ### 8. Verification and Review
 
-- [ ] Run focused shared/contracts tests touched by goal schemas.
-- [ ] Run focused server tests:
+- [x] Attempt focused shared/contracts tests touched by goal schemas and record local blockers instead of claiming pass.
+- [x] Attempt focused server tests and record local blockers instead of claiming pass:
   - decider goal tests.
   - projector goal tests.
   - projection repository/snapshot tests.
   - goal prompt tests.
   - goal reactor tests.
-- [ ] Run focused web tests for slash command parsing and indicator logic.
-- [ ] Run `bunx oxfmt@0.52.0 --check <touched files>`.
-- [ ] Run LSP diagnostics on touched files.
-- [ ] If local dependency blockers persist, record exact errors and rely on LSP plus runnable focused tests only; do not claim blocked suites pass.
-- [ ] Use `requesting-code-review` or `/review-work` after implementation because this feature spans contracts, event sourcing, server reactors, and UI.
+- [x] Attempt focused web tests for slash command parsing, transcript filtering, handoff filtering, and indicator logic; record local blockers instead of claiming pass.
+- [x] Run `bunx oxfmt@0.52.0 --check <touched files>`.
+- [x] Run LSP diagnostics on touched files.
+- [x] If local dependency blockers persist, record exact errors and rely on LSP plus runnable focused tests only; do not claim blocked suites pass.
+- [x] Use `requesting-code-review` or `/review-work` after implementation because this feature spans contracts, event sourcing, server reactors, and UI.
+
+Post-review notes, 2026-06-06:
+
+- Fixed verified findings from review: goal lifecycle invariants, `completed` UI status key, retry after failed continuation dispatch, and hiding `goal-continuation` prompts from visible transcript/handoff import paths.
+- LSP diagnostics reported no issues for touched server/web files after fixes.
+- Formatting passed with `snip bunx oxfmt@0.52.0 --check` on touched files.
+- Focused contract/server test commands are blocked locally by module resolution for `@effect/vitest` or `@jcode/contracts`.
+- Focused web test command is blocked locally by missing `vitest` executable.
 
 ## Risks and Guardrails
 
