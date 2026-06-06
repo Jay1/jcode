@@ -6,6 +6,7 @@
 import {
   type EditorId,
   type ProjectScript,
+  type OrchestrationGoal,
   PROVIDER_DISPLAY_NAMES,
   type ProviderKind,
   type ResolvedKeybindingsConfig,
@@ -39,6 +40,7 @@ import { gitWorkingTreeDiffQueryOptions } from "~/lib/gitReactQuery";
 import { summarizePatchStats } from "~/lib/diffRendering";
 import { useRepoDiffScopeStore } from "~/repoDiffScopeStore";
 import { resolveChatHeaderThreadIconKind } from "./ChatHeader.logic";
+import { GoalIndicator } from "./GoalIndicator";
 
 /** Width (px) below which collapsible header controls fold into the ellipsis menu. */
 const HEADER_COMPACT_BREAKPOINT = 480;
@@ -71,6 +73,7 @@ interface ChatHeaderProps {
   handoffActionTargetProviders: ReadonlyArray<ProviderKind>;
   handoffBadgeSourceProvider: ProviderKind | null;
   handoffBadgeTargetProvider: ProviderKind | null;
+  goal?: OrchestrationGoal | null;
   browserOpen: boolean;
   gitCwd: string | null;
   showGitActions?: boolean;
@@ -126,6 +129,7 @@ export const ChatHeader = memo(function ChatHeader({
   handoffActionTargetProviders,
   handoffBadgeSourceProvider,
   handoffBadgeTargetProvider,
+  goal,
   browserOpen,
   gitCwd,
   showGitActions = true,
@@ -306,6 +310,7 @@ export const ChatHeader = memo(function ChatHeader({
                   <TooltipPopup side="bottom">{handoffBadgeLabel}</TooltipPopup>
                 </Tooltip>
               ) : null}
+              <GoalIndicator goal={goal} className="max-sm:max-w-[9rem]" />
             </div>
           </div>
         </div>

@@ -227,7 +227,7 @@ describe("composerSlashCommands", () => {
     expect(shouldHideProviderNativeCommandFromComposerMenu("codex", "status")).toBe(false);
   });
 
-  it("only exposes the app-level /side command for claude", () => {
+  it("keeps app-level /goal and /side commands available for claude", () => {
     expect(
       getAvailableComposerSlashCommands({
         provider: "claudeAgent",
@@ -237,7 +237,7 @@ describe("composerSlashCommands", () => {
         canOfferForkCommand: true,
         canOfferSideCommand: true,
       }),
-    ).toEqual(["side"]);
+    ).toEqual(["goal", "side"]);
   });
 
   it("only offers /compact when Codex compaction is available", () => {
