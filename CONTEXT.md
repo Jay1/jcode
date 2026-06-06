@@ -30,6 +30,8 @@ The first remote client runtime capability set should be observe-and-approve: vi
 
 Remote clients should authenticate through owner-issued capability tokens with explicit scopes, such as reading selected thread state, responding to approvals, or answering user-input requests. Remote client runtime work must not reuse the dev automation access grant, which is limited to trusted loopback browser automation.
 
+ADR 0005 (Accepted) defines the scope model: four v1 capability scopes (`thread:read`, `approval:respond`, `user_input:respond`, `provider_status:read`), optional resource scoping by project or thread ID, scopes stored directly on `AuthClientSession` and `AuthPairingLink` (not a separate table or JWT claims), owner sessions implicitly hold all scopes, and scope checks use the `requireScope` guard function. The first guarded route is `/api/auth/clients` (requires `provider_status:read`).
+
 The scoped remote client auth model changes the Server Auth Boundary and should be captured in an ADR before implementation begins.
 
 ### Upstream Adaptation

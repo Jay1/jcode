@@ -2,7 +2,7 @@
 
 | Field           | Value                                                                                                                                                               |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Status          | Proposed                                                                                                                                                            |
+| Status          | Accepted                                                                                                                                                            |
 | Type            | Architecture decision record                                                                                                                                        |
 | Owner           | Engineering                                                                                                                                                         |
 | Audience        | Maintainers, reviewers, and automation agents                                                                                                                       |
