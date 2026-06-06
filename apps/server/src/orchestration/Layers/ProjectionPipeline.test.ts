@@ -279,6 +279,168 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
       assert.equal(rows[0]!.updatedAt, turnRequestedAt);
     }),
   );
+
+  it.effect("folds thread goal lifecycle events into projected thread rows", () =>
+    Effect.gen(function* () {
+      const projectionPipeline = yield* OrchestrationProjectionPipeline;
+      const eventStore = yield* OrchestrationEventStore;
+      const sql = yield* SqlClient.SqlClient;
+      const threadId = ThreadId.makeUnsafe("thread-goal-projection");
+      const messageId = MessageId.makeUnsafe("message-goal-projection");
+      const createdAt = "2026-06-06T00:00:00.000Z";
+      const pausedAt = "2026-06-06T00:00:01.000Z";
+      const resumedAt = "2026-06-06T00:00:02.000Z";
+      const completedAt = "2026-06-06T00:00:03.000Z";
+      const clearedAt = "2026-06-06T00:00:04.000Z";
+
+      yield* eventStore.append({
+        type: "thread.created",
+        eventId: EventId.makeUnsafe("evt-goal-thread-created"),
+        aggregateKind: "thread",
+        aggregateId: threadId,
+        occurredAt: createdAt,
+        commandId: CommandId.makeUnsafe("cmd-goal-thread-created"),
+        causationEventId: null,
+        correlationId: CommandId.makeUnsafe("cmd-goal-thread-created"),
+        metadata: {},
+        payload: {
+          threadId,
+          projectId: ProjectId.makeUnsafe("project-goal-projection"),
+          title: "Goal projection thread",
+          modelSelection: {
+            provider: "codex",
+            model: "gpt-5-codex",
+          },
+          runtimeMode: "full-access",
+          branch: null,
+          worktreePath: null,
+          createdAt,
+          updatedAt: createdAt,
+        },
+      });
+
+      yield* eventStore.append({
+        type: "thread.goal-set",
+        eventId: EventId.makeUnsafe("evt-goal-set-projection"),
+        aggregateKind: "thread",
+        aggregateId: threadId,
+        occurredAt: createdAt,
+        commandId: CommandId.makeUnsafe("cmd-goal-set-projection"),
+        causationEventId: null,
+        correlationId: CommandId.makeUnsafe("cmd-goal-set-projection"),
+        metadata: {},
+        payload: {
+          threadId,
+          objective: "Ship projected goal rows",
+          createdByMessageId: messageId,
+          createdAt,
+          updatedAt: createdAt,
+        },
+      });
+
+      yield* eventStore.append({
+        type: "thread.goal-paused",
+        eventId: EventId.makeUnsafe("evt-goal-paused-projection"),
+        aggregateKind: "thread",
+        aggregateId: threadId,
+        occurredAt: pausedAt,
+        commandId: CommandId.makeUnsafe("cmd-goal-paused-projection"),
+        causationEventId: null,
+        correlationId: CommandId.makeUnsafe("cmd-goal-paused-projection"),
+        metadata: {},
+        payload: {
+          threadId,
+          reason: "Waiting for review",
+          updatedAt: pausedAt,
+        },
+      });
+
+      yield* eventStore.append({
+        type: "thread.goal-resumed",
+        eventId: EventId.makeUnsafe("evt-goal-resumed-projection"),
+        aggregateKind: "thread",
+        aggregateId: threadId,
+        occurredAt: resumedAt,
+        commandId: CommandId.makeUnsafe("cmd-goal-resumed-projection"),
+        causationEventId: null,
+        correlationId: CommandId.makeUnsafe("cmd-goal-resumed-projection"),
+        metadata: {},
+        payload: {
+          threadId,
+          updatedAt: resumedAt,
+        },
+      });
+
+      yield* eventStore.append({
+        type: "thread.goal-completed",
+        eventId: EventId.makeUnsafe("evt-goal-completed-projection"),
+        aggregateKind: "thread",
+        aggregateId: threadId,
+        occurredAt: completedAt,
+        commandId: CommandId.makeUnsafe("cmd-goal-completed-projection"),
+        causationEventId: null,
+        correlationId: CommandId.makeUnsafe("cmd-goal-completed-projection"),
+        metadata: {},
+        payload: {
+          threadId,
+          completedAt,
+          updatedAt: completedAt,
+        },
+      });
+
+      yield* projectionPipeline.bootstrap;
+
+      const rowsAfterComplete = yield* sql<{
+        readonly goalJson: string | null;
+        readonly updatedAt: string;
+      }>`
+        SELECT goal_json AS "goalJson", updated_at AS "updatedAt"
+        FROM projection_threads
+        WHERE thread_id = ${threadId}
+      `;
+      assert.equal(rowsAfterComplete.length, 1);
+      assert.deepEqual(JSON.parse(rowsAfterComplete[0]!.goalJson ?? "null"), {
+        objective: "Ship projected goal rows",
+        status: "completed",
+        createdByMessageId: messageId,
+        createdAt,
+        updatedAt: completedAt,
+        completedAt,
+        lastContinuationTurnId: null,
+        turnCount: 0,
+        blockedReason: null,
+      });
+      assert.equal(rowsAfterComplete[0]!.updatedAt, completedAt);
+
+      yield* eventStore.append({
+        type: "thread.goal-cleared",
+        eventId: EventId.makeUnsafe("evt-goal-cleared-projection"),
+        aggregateKind: "thread",
+        aggregateId: threadId,
+        occurredAt: clearedAt,
+        commandId: CommandId.makeUnsafe("cmd-goal-cleared-projection"),
+        causationEventId: null,
+        correlationId: CommandId.makeUnsafe("cmd-goal-cleared-projection"),
+        metadata: {},
+        payload: {
+          threadId,
+          updatedAt: clearedAt,
+        },
+      });
+
+      yield* projectionPipeline.bootstrap;
+
+      const rowsAfterClear = yield* sql<{
+        readonly goalJson: string | null;
+        readonly updatedAt: string;
+      }>`
+        SELECT goal_json AS "goalJson", updated_at AS "updatedAt"
+        FROM projection_threads
+        WHERE thread_id = ${threadId}
+      `;
+      assert.deepEqual(rowsAfterClear, [{ goalJson: null, updatedAt: clearedAt }]);
+    }),
+  );
 });
 
 it.layer(Layer.fresh(makeProjectionPipelinePrefixedTestLayer("t3-base-")))(

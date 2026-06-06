@@ -11,6 +11,7 @@ import {
   ModelSelection,
   NonNegativeInt,
   OrchestrationThreadPullRequest,
+  OrchestrationGoal,
   ThreadRecap,
   ThreadHandoff,
   ProjectId,
@@ -47,6 +48,9 @@ export const ProjectionThread = Schema.Struct({
   forkSourceThreadId: Schema.optional(Schema.NullOr(ThreadId)),
   sidechatSourceThreadId: Schema.optional(Schema.NullOr(ThreadId)),
   recap: Schema.optional(Schema.NullOr(ThreadRecap)).pipe(Schema.withDecodingDefault(() => null)),
+  goal: Schema.optional(Schema.NullOr(OrchestrationGoal)).pipe(
+    Schema.withDecodingDefault(() => null),
+  ),
   lastKnownPr: Schema.NullOr(OrchestrationThreadPullRequest),
   latestTurnId: Schema.NullOr(TurnId),
   handoff: Schema.NullOr(ThreadHandoff),

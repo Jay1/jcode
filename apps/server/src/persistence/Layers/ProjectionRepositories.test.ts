@@ -189,4 +189,68 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
       assert.deepStrictEqual(Option.getOrNull(persisted)?.recap, recap);
     }),
   );
+
+  it.effect("stores JSON for projected thread goal state", () =>
+    Effect.gen(function* () {
+      const threads = yield* ProjectionThreadRepository;
+      const sql = yield* SqlClient.SqlClient;
+
+      const goal = {
+        objective: "Ship projected goal persistence",
+        status: "active" as const,
+        createdByMessageId: "message-goal-created",
+        createdAt: "2026-06-06T00:00:00.000Z",
+        updatedAt: "2026-06-06T00:00:01.000Z",
+        completedAt: null,
+        lastContinuationTurnId: null,
+        turnCount: 2,
+        blockedReason: null,
+      };
+
+      yield* threads.upsert({
+        threadId: ThreadId.makeUnsafe("thread-goal-json"),
+        projectId: ProjectId.makeUnsafe("project-goal-json"),
+        title: "Goal thread",
+        modelSelection: {
+          provider: "codex",
+          model: "gpt-5-codex",
+        },
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        envMode: "local",
+        branch: null,
+        worktreePath: null,
+        associatedWorktreePath: null,
+        associatedWorktreeBranch: null,
+        associatedWorktreeRef: null,
+        createBranchFlowCompleted: false,
+        lastKnownPr: null,
+        latestTurnId: null,
+        handoff: null,
+        latestUserMessageAt: null,
+        pendingApprovalCount: 0,
+        pendingUserInputCount: 0,
+        hasActionableProposedPlan: 0,
+        recap: null,
+        goal,
+        createdAt: "2026-06-06T00:00:00.000Z",
+        updatedAt: "2026-06-06T00:00:01.000Z",
+        deletedAt: null,
+      });
+
+      const rows = yield* sql<{
+        readonly goalJson: string | null;
+      }>`
+        SELECT goal_json AS "goalJson"
+        FROM projection_threads
+        WHERE thread_id = 'thread-goal-json'
+      `;
+      assert.strictEqual(rows[0]?.goalJson, JSON.stringify(goal));
+
+      const persisted = yield* threads.getById({
+        threadId: ThreadId.makeUnsafe("thread-goal-json"),
+      });
+      assert.deepStrictEqual(Option.getOrNull(persisted)?.goal, goal);
+    }),
+  );
 });

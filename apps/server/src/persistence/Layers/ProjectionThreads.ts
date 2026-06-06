@@ -14,6 +14,7 @@ import {
 } from "../Services/ProjectionThreads.ts";
 import {
   ModelSelection,
+  OrchestrationGoal,
   OrchestrationThreadPullRequest,
   ThreadHandoff,
   ThreadRecap,
@@ -34,6 +35,7 @@ const ProjectionThreadDbRow = ProjectionThread.mapFields(
     lastKnownPr: Schema.NullOr(Schema.fromJsonString(OrchestrationThreadPullRequest)),
     modelSelection: Schema.fromJsonString(ModelSelection),
     recap: Schema.NullOr(Schema.fromJsonString(ThreadRecap)),
+    goal: Schema.NullOr(Schema.fromJsonString(OrchestrationGoal)),
   }),
 );
 type ProjectionThreadDbRow = typeof ProjectionThreadDbRow.Type;
@@ -67,6 +69,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           fork_source_thread_id,
           sidechat_source_thread_id,
           recap_json,
+          goal_json,
           last_known_pr_json,
           latest_turn_id,
           handoff_json,
@@ -101,6 +104,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           ${row.forkSourceThreadId ?? null},
           ${row.sidechatSourceThreadId ?? null},
           ${row.recap === null ? null : JSON.stringify(row.recap)},
+          ${row.goal === null ? null : JSON.stringify(row.goal)},
           ${row.lastKnownPr === null ? null : JSON.stringify(row.lastKnownPr)},
           ${row.latestTurnId},
           ${row.handoff === null ? null : JSON.stringify(row.handoff)},
@@ -135,6 +139,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           fork_source_thread_id = excluded.fork_source_thread_id,
           sidechat_source_thread_id = excluded.sidechat_source_thread_id,
           recap_json = excluded.recap_json,
+          goal_json = excluded.goal_json,
           last_known_pr_json = excluded.last_known_pr_json,
           latest_turn_id = excluded.latest_turn_id,
           handoff_json = excluded.handoff_json,
@@ -176,6 +181,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           fork_source_thread_id AS "forkSourceThreadId",
           sidechat_source_thread_id AS "sidechatSourceThreadId",
           recap_json AS "recap",
+          goal_json AS "goal",
           last_known_pr_json AS "lastKnownPr",
           latest_turn_id AS "latestTurnId",
           handoff_json AS "handoff",
@@ -219,6 +225,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           fork_source_thread_id AS "forkSourceThreadId",
           sidechat_source_thread_id AS "sidechatSourceThreadId",
           recap_json AS "recap",
+          goal_json AS "goal",
           last_known_pr_json AS "lastKnownPr",
           latest_turn_id AS "latestTurnId",
           handoff_json AS "handoff",

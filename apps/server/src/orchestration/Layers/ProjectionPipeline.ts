@@ -740,6 +740,106 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
           return;
         }
 
+        case "thread.goal-set": {
+          const existingRow = yield* projectionThreadRepository.getById({
+            threadId: event.payload.threadId,
+          });
+          if (Option.isNone(existingRow)) {
+            return;
+          }
+          yield* projectionThreadRepository.upsert({
+            ...existingRow.value,
+            goal: {
+              objective: event.payload.objective,
+              status: "active",
+              createdAt: event.payload.createdAt,
+              updatedAt: event.payload.updatedAt,
+              createdByMessageId: event.payload.createdByMessageId,
+              completedAt: null,
+              lastContinuationTurnId: null,
+              turnCount: 0,
+              blockedReason: null,
+            },
+            updatedAt: event.payload.updatedAt,
+          });
+          return;
+        }
+
+        case "thread.goal-paused": {
+          const existingRow = yield* projectionThreadRepository.getById({
+            threadId: event.payload.threadId,
+          });
+          if (Option.isNone(existingRow) || existingRow.value.goal === null) {
+            return;
+          }
+          yield* projectionThreadRepository.upsert({
+            ...existingRow.value,
+            goal: {
+              ...existingRow.value.goal,
+              status: "paused",
+              updatedAt: event.payload.updatedAt,
+              blockedReason: event.payload.reason,
+            },
+            updatedAt: event.payload.updatedAt,
+          });
+          return;
+        }
+
+        case "thread.goal-resumed": {
+          const existingRow = yield* projectionThreadRepository.getById({
+            threadId: event.payload.threadId,
+          });
+          if (Option.isNone(existingRow) || existingRow.value.goal === null) {
+            return;
+          }
+          yield* projectionThreadRepository.upsert({
+            ...existingRow.value,
+            goal: {
+              ...existingRow.value.goal,
+              status: "active",
+              updatedAt: event.payload.updatedAt,
+              blockedReason: null,
+            },
+            updatedAt: event.payload.updatedAt,
+          });
+          return;
+        }
+
+        case "thread.goal-completed": {
+          const existingRow = yield* projectionThreadRepository.getById({
+            threadId: event.payload.threadId,
+          });
+          if (Option.isNone(existingRow) || existingRow.value.goal === null) {
+            return;
+          }
+          yield* projectionThreadRepository.upsert({
+            ...existingRow.value,
+            goal: {
+              ...existingRow.value.goal,
+              status: "completed",
+              completedAt: event.payload.completedAt,
+              updatedAt: event.payload.updatedAt,
+            },
+            updatedAt: event.payload.updatedAt,
+          });
+          return;
+        }
+
+        case "thread.goal-cleared": {
+          const existingRow = yield* projectionThreadRepository.getById({
+            threadId: event.payload.threadId,
+          });
+          if (Option.isNone(existingRow)) {
+            return;
+          }
+          yield* projectionThreadRepository.upsert({
+            ...existingRow.value,
+            goal: null,
+            updatedAt: event.payload.updatedAt,
+          });
+          return;
+        }
+
         case "thread.deleted": {
           attachmentSideEffects.deletedThreadIds.add(event.payload.threadId);
           const existingRow = yield* projectionThreadRepository.getById({
