@@ -10,7 +10,7 @@
 | Canonical path  | `docs/governance/repo-governance.md`                                                                           |
 | Last reviewed   | 2026-05-28                                                                                                     |
 | Review cadence  | Event-driven; review when branch policy, external reference usage, contribution policy, or attribution changes |
-| Source of truth | `docs/jcode-operating-model.md`, `CONTRIBUTING.md`, `LICENSE`, `CREDITS.md`, `README.md`                       |
+| Source of truth | `docs/governance/jcode-operating-model.md`, `CONTRIBUTING.md`, `LICENSE`, `CREDITS.md`, `README.md`            |
 | Verification    | Cross-check local/remote branch policy, attribution docs, and public repo defaults                             |
 
 ## Current Policy

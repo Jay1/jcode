@@ -2,6 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const sidebarSource = readFileSync(new URL("./Sidebar.tsx", import.meta.url), "utf8");
+const projectSidebarIconPresentationSource = readFileSync(
+  new URL("./projectSidebarIconPresentation.ts", import.meta.url),
+  "utf8",
+);
 
 describe("Sidebar structure", () => {
   it("routes major section labels through the section identity header", () => {
@@ -30,8 +34,13 @@ describe("Sidebar structure", () => {
     expect(sidebarSource).toContain('className="sidebar-section-header-elevated"');
   });
 
-  it("renders project headers with accent icon chips and semibold labels", () => {
-    expect(sidebarSource).toContain("sidebar-project-header-icon");
+  it("renders project headers with flat shared icon presentation and semibold labels", () => {
+    expect(sidebarSource).toContain("getProjectHeaderIconClassName()");
+    expect(sidebarSource).toContain("PROJECT_HEADER_ICON_SIZE_CLASS");
+    expect(projectSidebarIconPresentationSource).toContain("sidebar-project-header-icon");
+    expect(projectSidebarIconPresentationSource).not.toContain("rounded-md");
+    expect(projectSidebarIconPresentationSource).not.toContain("bg-[");
+    expect(projectSidebarIconPresentationSource).not.toContain("border ");
     expect(sidebarSource).toContain("sidebar-project-header-label");
   });
 

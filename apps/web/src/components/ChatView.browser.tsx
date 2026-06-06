@@ -6,6 +6,7 @@ import {
   EventId,
   MessageId,
   ORCHESTRATION_WS_METHODS,
+  type GitListBranchesResult,
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
   type OrchestrationThread,
@@ -49,6 +50,9 @@ const OTHER_THREAD_ID = "thread-browser-test-other" as ThreadId;
 const THREAD_TITLE = "Browser test thread";
 const UUID_ROUTE_RE = /^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const PROJECT_ID = "project-1" as ProjectId;
+const HOMEASSIST_PROJECT_ID = "project-homeassist" as ProjectId;
+const HOME_DIR = "/home/jay/code";
+const HOMEASSIST_WORKSPACE_ROOT = `${HOME_DIR}/homeassist`;
 const NOW_ISO = "2026-03-04T12:00:00.000Z";
 const BASE_TIME_MS = Date.parse(NOW_ISO);
 const ATTACHMENT_SVG = "<svg xmlns='http://www.w3.org/2000/svg' width='120' height='300'></svg>";
@@ -65,6 +69,7 @@ interface WsRequestEnvelope {
 interface TestFixture {
   snapshot: OrchestrationReadModel;
   serverConfig: ServerConfig;
+  gitListBranchesResult?: GitListBranchesResult;
   welcome: WsWelcomePayload;
 }
 
@@ -380,6 +385,46 @@ function createSnapshotWithLongAssistantResponse(): OrchestrationReadModel {
   };
 }
 
+function createSnapshotWithTailAssistantText(text: string): OrchestrationReadModel {
+  const snapshot = createSnapshotForTargetUser({
+    targetMessageId: "msg-user-tail-follow-target" as MessageId,
+    targetText: "tail follow target",
+  });
+
+  const threads = [...snapshot.threads];
+  const threadIndex = threads.findIndex((thread) => thread.id === THREAD_ID);
+  if (threadIndex < 0) {
+    return snapshot;
+  }
+
+  const thread = threads[threadIndex]!;
+  const messages = [...thread.messages];
+  const messageIndex = messages.findLastIndex((message) => message.role === "assistant");
+  if (messageIndex < 0) {
+    return snapshot;
+  }
+
+  const message = messages[messageIndex]!;
+  messages[messageIndex] = {
+    ...message,
+    text,
+    updatedAt: isoAt(500),
+  };
+
+  threads[threadIndex] = {
+    ...thread,
+    messages,
+    updatedAt: isoAt(500),
+  };
+
+  return {
+    ...snapshot,
+    snapshotSequence: snapshot.snapshotSequence + 1,
+    threads,
+    updatedAt: isoAt(500),
+  };
+}
+
 function createSnapshotWithBottomAttachments(): OrchestrationReadModel {
   const snapshot = createSnapshotForTargetUser({
     targetMessageId: "msg-user-bottom-attachments" as MessageId,
@@ -551,6 +596,30 @@ function createDraftOnlySnapshot(): OrchestrationReadModel {
   return {
     ...snapshot,
     threads: [],
+  };
+}
+
+function createHomeassistDraftOnlySnapshot(): OrchestrationReadModel {
+  const snapshot = createDraftOnlySnapshot();
+  return {
+    ...snapshot,
+    projects: [
+      ...snapshot.projects,
+      {
+        id: HOMEASSIST_PROJECT_ID,
+        kind: "project",
+        title: "homeassist",
+        workspaceRoot: HOMEASSIST_WORKSPACE_ROOT,
+        defaultModelSelection: {
+          provider: "codex",
+          model: "gpt-5",
+        },
+        scripts: [],
+        createdAt: NOW_ISO,
+        updatedAt: NOW_ISO,
+        deletedAt: null,
+      },
+    ],
   };
 }
 
@@ -837,6 +906,9 @@ function resolveWsRpc(body: WsRequestEnvelope["body"]): unknown {
     return { worktrees: [] };
   }
   if (tag === WS_METHODS.gitListBranches) {
+    if (fixture.gitListBranchesResult) {
+      return fixture.gitListBranchesResult;
+    }
     return {
       isRepo: true,
       hasOriginRemote: true,
@@ -1019,6 +1091,17 @@ async function waitForLayout(): Promise<void> {
   await nextFrame();
   await nextFrame();
   await nextFrame();
+}
+
+function dispatchUpwardWheel(element: HTMLElement): void {
+  element.dispatchEvent(
+    new WheelEvent("wheel", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      deltaY: -240,
+    }),
+  );
 }
 
 async function setViewport(viewport: ViewportSpec): Promise<void> {
@@ -1611,7 +1694,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
         () => {
           expect(document.body.textContent).toContain(THREAD_TITLE);
         },
-        { timeout: 8_000, interval: 16 },
+        { timeout: 1_000, interval: 16 },
       );
     } finally {
       await mounted.cleanup();
@@ -1793,6 +1876,220 @@ describe("ChatView timeline estimator parity (full app)", () => {
           const layout = await mounted.measureLayout();
           expect(layout.scrollHeightPx).toBeGreaterThan(layout.scrollClientHeightPx);
           expect(layout.distanceFromBottomPx).toBeLessThanOrEqual(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("keeps following the bottom after the scroll button is clicked and tail content grows", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotWithTailAssistantText("short tail response"),
+    });
+
+    try {
+      const scrollContainer = await waitForElement(
+        () => document.querySelector<HTMLElement>("[data-chat-scroll-container='true']"),
+        "Unable to find message scroll container.",
+      );
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.scrollHeightPx).toBeGreaterThan(layout.scrollClientHeightPx);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await waitForLayout();
+
+      scrollContainer.scrollTop = 0;
+      dispatchUpwardWheel(scrollContainer);
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+
+      const scrollButton = await waitForElement(
+        () => document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+        "Unable to find scroll-to-bottom button.",
+      );
+      scrollButton.click();
+
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.distanceFromBottomPx).toBeLessThanOrEqual(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      useStore
+        .getState()
+        .syncServerReadModel(
+          createSnapshotWithTailAssistantText(
+            Array.from(
+              { length: 160 },
+              (_, lineIndex) => `tail-follow expanded line ${lineIndex + 1}`,
+            ).join("\n"),
+          ),
+        );
+
+      await vi.waitFor(
+        async () => {
+          expect(document.body.textContent).toContain("tail-follow expanded line 160");
+          const layout = await mounted.measureLayout();
+          expect(layout.distanceFromBottomPx).toBeLessThanOrEqual(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("stops following the bottom after an intentional upward scroll", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotWithTailAssistantText("short tail response"),
+    });
+
+    try {
+      const scrollContainer = await waitForElement(
+        () => document.querySelector<HTMLElement>("[data-chat-scroll-container='true']"),
+        "Unable to find message scroll container.",
+      );
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.scrollHeightPx).toBeGreaterThan(layout.scrollClientHeightPx);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await waitForLayout();
+
+      scrollContainer.scrollTop = 0;
+      dispatchUpwardWheel(scrollContainer);
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+
+      const scrollButton = await waitForElement(
+        () => document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+        "Unable to find scroll-to-bottom button.",
+      );
+      scrollButton.click();
+
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.distanceFromBottomPx).toBeLessThanOrEqual(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      scrollContainer.scrollTop = Math.max(0, scrollContainer.scrollTop - 240);
+      dispatchUpwardWheel(scrollContainer);
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+
+      await waitForElement(
+        () => document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+        "Unable to find scroll-to-bottom button after upward scroll.",
+      );
+
+      useStore
+        .getState()
+        .syncServerReadModel(
+          createSnapshotWithTailAssistantText(
+            Array.from(
+              { length: 160 },
+              (_, lineIndex) => `detached tail growth line ${lineIndex + 1}`,
+            ).join("\n"),
+          ),
+        );
+
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.distanceFromBottomPx).toBeGreaterThan(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+          expect(
+            document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+          ).toBeTruthy();
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("does not re-arm tail follow when a detached user manually reaches the bottom", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotWithTailAssistantText("short tail response"),
+    });
+
+    try {
+      const scrollContainer = await waitForElement(
+        () => document.querySelector<HTMLElement>("[data-chat-scroll-container='true']"),
+        "Unable to find message scroll container.",
+      );
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.scrollHeightPx).toBeGreaterThan(layout.scrollClientHeightPx);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await waitForLayout();
+
+      scrollContainer.scrollTop = Math.max(0, scrollContainer.scrollTop - 240);
+      dispatchUpwardWheel(scrollContainer);
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+
+      await waitForElement(
+        () => document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+        "Unable to find scroll-to-bottom button after upward scroll.",
+      );
+
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.distanceFromBottomPx).toBeLessThanOrEqual(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+          expect(
+            document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+          ).toBeNull();
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+      const bottomLayout = await mounted.measureLayout();
+
+      useStore
+        .getState()
+        .syncServerReadModel(
+          createSnapshotWithTailAssistantText(
+            Array.from(
+              { length: 160 },
+              (_, lineIndex) => `manual-bottom detached growth line ${lineIndex + 1}`,
+            ).join("\n"),
+          ),
+        );
+
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.scrollHeightPx).toBeGreaterThan(bottomLayout.scrollHeightPx);
+          expect(layout.distanceFromBottomPx).toBeGreaterThan(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+          expect(
+            document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+          ).toBeTruthy();
         },
         { timeout: 8_000, interval: 16 },
       );
@@ -2835,6 +3132,90 @@ describe("ChatView timeline estimator parity (full app)", () => {
           });
         },
         { timeout: 8_000, interval: 16 },
+      );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("starts stale branchless worktree drafts as local threads on first Enter", async () => {
+    useComposerDraftStore.setState({
+      draftThreadsByThreadId: {
+        [THREAD_ID]: {
+          projectId: HOMEASSIST_PROJECT_ID,
+          createdAt: NOW_ISO,
+          runtimeMode: "full-access",
+          interactionMode: "default",
+          entryPoint: "chat",
+          branch: null,
+          worktreePath: null,
+          envMode: "worktree",
+        },
+      },
+      projectDraftThreadIdByProjectId: {
+        [HOMEASSIST_PROJECT_ID]: THREAD_ID,
+      },
+    });
+
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createHomeassistDraftOnlySnapshot(),
+      configureFixture: (nextFixture) => {
+        nextFixture.gitListBranchesResult = {
+          branches: [],
+          isRepo: false,
+          hasOriginRemote: false,
+        };
+      },
+    });
+
+    try {
+      useComposerDraftStore.getState().setPrompt(THREAD_ID, "test");
+
+      const editor = await waitForComposerEditor();
+      editor.focus();
+      editor.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const createThreadRequest = wsRequests.find(
+            (request) =>
+              request._tag === ORCHESTRATION_WS_METHODS.dispatchCommand &&
+              typeof request.command === "object" &&
+              request.command !== null &&
+              "type" in request.command &&
+              request.command.type === "thread.create",
+          );
+          expect(createThreadRequest?.command).toMatchObject({
+            projectId: HOMEASSIST_PROJECT_ID,
+            threadId: THREAD_ID,
+            envMode: "local",
+            branch: null,
+            worktreePath: null,
+          });
+
+          const turnStartRequest = wsRequests.find(
+            (request) =>
+              request._tag === ORCHESTRATION_WS_METHODS.dispatchCommand &&
+              typeof request.command === "object" &&
+              request.command !== null &&
+              "type" in request.command &&
+              request.command.type === "thread.turn.start",
+          );
+          expect(turnStartRequest?.command).toMatchObject({
+            threadId: THREAD_ID,
+            message: {
+              text: "test",
+            },
+          });
+        },
+        { timeout: 1_000, interval: 16 },
       );
     } finally {
       await mounted.cleanup();

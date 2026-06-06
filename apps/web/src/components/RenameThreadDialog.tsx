@@ -24,16 +24,12 @@ export function RenameThreadDialog({
   onOpenChange,
   onSave,
 }: RenameThreadDialogProps) {
-  const [value, setValue] = useState(currentTitle);
+  const [value, setValue] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!open) {
-      setIsSaving(false);
-      return;
-    }
-    setValue(currentTitle);
+    if (!open) return;
     const frame = window.requestAnimationFrame(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
@@ -41,24 +37,39 @@ export function RenameThreadDialog({
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [open, currentTitle]);
+  }, [open]);
 
-  const trimmed = value.trim();
+  const inputValue = value ?? currentTitle;
+  const trimmed = inputValue.trim();
   const canSave = trimmed.length > 0 && !isSaving;
+
+  const closeDialog = () => {
+    setValue(null);
+    setIsSaving(false);
+    onOpenChange(false);
+  };
+
+  const requestCloseDialog = () => {
+    if (isSaving) return;
+    closeDialog();
+  };
 
   const handleSubmit = async () => {
     if (!canSave) return;
     setIsSaving(true);
     try {
       await onSave(trimmed);
-      onOpenChange(false);
+      closeDialog();
     } catch {
       setIsSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => (nextOpen ? onOpenChange(true) : requestCloseDialog())}
+    >
       <DialogPopup className="max-w-md">
         <DialogHeader>
           <DialogTitle>Rename chat</DialogTitle>
@@ -74,20 +85,20 @@ export function RenameThreadDialog({
             <Input
               ref={inputRef}
               size="lg"
-              value={value}
+              value={inputValue}
               disabled={isSaving}
               onChange={(event) => setValue(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Escape") {
                   event.preventDefault();
-                  onOpenChange(false);
+                  requestCloseDialog();
                 }
               }}
             />
           </form>
         </DialogPanel>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={requestCloseDialog} disabled={isSaving}>
             Cancel
           </Button>
           <Button onClick={() => void handleSubmit()} disabled={!canSave}>

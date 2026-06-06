@@ -345,10 +345,10 @@ function ColorPill({
   const textColor = useReadableTextColor(previewColor);
   const ringColor = useReadableTextColor(previewColor, 0.32);
 
-  useEffect(() => {
+  if (color !== colorRef.current) {
     colorRef.current = color;
     setDraftHex((current) => (current === color ? null : current));
-  }, [color]);
+  }
 
   const clearCommitTimer = useCallback(() => {
     if (commitTimerRef.current === null) {

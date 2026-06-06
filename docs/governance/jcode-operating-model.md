@@ -1,5 +1,18 @@
 # JCode Operating Model
 
+| Field           | Value                                                                                                                |
+| --------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Status          | Active                                                                                                               |
+| Type            | Governance reference                                                                                                 |
+| Owner           | Engineering                                                                                                          |
+| Audience        | Maintainers, contributors, release owners, and automation agents                                                     |
+| Scope           | Project direction, branch strategy, external reference workflow, and public repo hygiene                             |
+| Canonical path  | `docs/governance/jcode-operating-model.md`                                                                           |
+| Last reviewed   | 2026-06-04                                                                                                           |
+| Review cadence  | Event-driven; review when project direction, branch policy, attribution, contribution rules, or accepted ADRs change |
+| Source of truth | `README.md`, `AGENTS.md`, `CREDITS.md`, `CONTRIBUTING.md`, and accepted ADRs                                         |
+| Verification    | Cross-check repo policy docs and run focused formatting with `bunx oxfmt@0.52.0 --check <file>`                      |
+
 ## Intent
 
 JCode is an independent OpenCode cockpit. It should optimize for daily utility,

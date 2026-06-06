@@ -906,6 +906,17 @@ export const makeWsRpcLayer = () =>
           rpcEffect(providerDiscoveryService.listCommands(input), "Failed to list commands"),
         [WS_METHODS.providerListSkills]: (input) =>
           rpcEffect(providerDiscoveryService.listSkills(input), "Failed to list skills"),
+        [WS_METHODS.providerInstallSkill]: (input) =>
+          rpcEffect(providerDiscoveryService.installSkill(input), "Failed to install skill"),
+        [WS_METHODS.providerUninstallSkill]: (input) =>
+          rpcEffect(providerDiscoveryService.uninstallSkill(input), "Failed to uninstall skill"),
+        [WS_METHODS.providerSetSkillEnabled]: (input) =>
+          rpcEffect(providerDiscoveryService.setSkillEnabled(input), "Failed to set skill enabled"),
+        [WS_METHODS.providerSearchSkillsCatalog]: (input) =>
+          rpcEffect(
+            providerDiscoveryService.searchSkillsCatalog(input),
+            "Failed to search skills catalog",
+          ),
         [WS_METHODS.providerListPlugins]: (input) =>
           rpcEffect(providerDiscoveryService.listPlugins(input), "Failed to list plugins"),
         [WS_METHODS.providerReadPlugin]: (input) =>

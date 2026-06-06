@@ -1,7 +1,7 @@
 import type { GitResolvePullRequestResult } from "@jcode/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import {
   gitPreparePullRequestThreadMutationOptions,
@@ -55,13 +55,6 @@ export function PullRequestThreadDialog({
 
   useEffect(() => {
     if (!open) return;
-    setReference(initialReference ?? "");
-    setReferenceDirty(false);
-    setPreparingMode(null);
-  }, [initialReference, open]);
-
-  useEffect(() => {
-    if (!open) return;
     const frame = window.requestAnimationFrame(() => {
       referenceInputRef.current?.focus();
       referenceInputRef.current?.select();
@@ -79,7 +72,7 @@ export function PullRequestThreadDialog({
       reference: open ? parsedDebouncedReference : null,
     }),
   );
-  const cachedPullRequest = useMemo(() => {
+  const cachedPullRequest = (() => {
     if (!cwd || !parsedReference) {
       return null;
     }
@@ -90,7 +83,7 @@ export function PullRequestThreadDialog({
       parsedReference,
     ]);
     return cached?.pullRequest ?? null;
-  }, [cwd, parsedReference, queryClient]);
+  })();
   const preparePullRequestThreadMutation = useMutation(
     gitPreparePullRequestThreadMutationOptions({ cwd, queryClient }),
   );
@@ -108,7 +101,7 @@ export function PullRequestThreadDialog({
       parsedReference !== parsedDebouncedReference ||
       resolvePullRequestQuery.isPending ||
       resolvePullRequestQuery.isFetching);
-  const statusTone = useMemo(() => {
+  const statusTone = (() => {
     switch (resolvedPullRequest?.state) {
       case "merged":
         return "text-[var(--app-status-plan-fg)]";
@@ -119,42 +112,33 @@ export function PullRequestThreadDialog({
       default:
         return "text-muted-foreground";
     }
-  }, [resolvedPullRequest?.state]);
+  })();
 
-  const handleConfirm = useCallback(
-    async (mode: "local" | "worktree") => {
-      if (!parsedReference) {
-        setReferenceDirty(true);
-        return;
-      }
-      if (!parsedReference || !resolvedPullRequest || !cwd) {
-        return;
-      }
-      setPreparingMode(mode);
-      try {
-        const result = await preparePullRequestThreadMutation.mutateAsync({
-          reference: parsedReference,
-          mode,
-        });
-        await onPrepared({
-          branch: result.branch,
-          worktreePath: result.worktreePath,
-          pullRequest: resolvedPullRequest,
-        });
-        onOpenChange(false);
-      } finally {
-        setPreparingMode(null);
-      }
-    },
-    [
-      cwd,
-      onOpenChange,
-      onPrepared,
-      parsedReference,
-      preparePullRequestThreadMutation,
-      resolvedPullRequest,
-    ],
-  );
+  const handleConfirm = async (mode: "local" | "worktree") => {
+    if (!parsedReference) {
+      setReferenceDirty(true);
+      return;
+    }
+    if (!parsedReference || !resolvedPullRequest || !cwd) {
+      return;
+    }
+    setPreparingMode(mode);
+    try {
+      const result = await preparePullRequestThreadMutation.mutateAsync({
+        reference: parsedReference,
+        mode,
+      });
+      await onPrepared({
+        branch: result.branch,
+        worktreePath: result.worktreePath,
+        pullRequest: resolvedPullRequest,
+      });
+      onOpenChange(false);
+      setPreparingMode(null);
+    } catch {
+      setPreparingMode(null);
+    }
+  };
 
   const validationMessage = !referenceDirty
     ? null

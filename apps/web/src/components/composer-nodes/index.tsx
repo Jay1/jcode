@@ -39,7 +39,7 @@ import {
   formatComposerSkillChipLabel,
 } from "../composerInlineChip";
 import { ComposerPendingTerminalContextChip } from "../chat/ComposerPendingTerminalContexts";
-import { createMentionChipIconElement, type MentionChipKind } from "../chat/MentionChipIcon";
+import { createMentionChipIconElement, type MentionChipKind } from "../chat/MentionChipIcon.dom";
 
 // ── Serialized Types ──────────────────────────────────────────────────
 

@@ -57,6 +57,9 @@ export const ProviderComposerCapabilities = Schema.Struct({
   supportsRuntimeModelList: Schema.Boolean,
   supportsThreadCompaction: Schema.optional(Schema.Boolean),
   supportsThreadImport: Schema.optional(Schema.Boolean),
+  supportsSkillInstall: Schema.optional(Schema.Boolean),
+  supportsSkillUninstall: Schema.optional(Schema.Boolean),
+  supportsSkillToggle: Schema.optional(Schema.Boolean),
 });
 export type ProviderComposerCapabilities = typeof ProviderComposerCapabilities.Type;
 
@@ -133,6 +136,72 @@ export const ProviderListSkillsResult = Schema.Struct({
   cached: Schema.optional(Schema.Boolean),
 });
 export type ProviderListSkillsResult = typeof ProviderListSkillsResult.Type;
+
+export const ProviderInstallSkillInput = Schema.Struct({
+  provider: ProviderDiscoveryKind,
+  cwd: TrimmedNonEmptyString,
+  packageRef: TrimmedNonEmptyString,
+  skillName: Schema.optional(TrimmedNonEmptyString),
+  global: Schema.optional(Schema.Boolean),
+  providerOptions: Schema.optional(ProviderStartOptions),
+});
+export type ProviderInstallSkillInput = typeof ProviderInstallSkillInput.Type;
+
+export const ProviderInstallSkillResult = Schema.Struct({
+  skill: ProviderSkillDescriptor,
+});
+export type ProviderInstallSkillResult = typeof ProviderInstallSkillResult.Type;
+
+export const ProviderUninstallSkillInput = Schema.Struct({
+  provider: ProviderDiscoveryKind,
+  cwd: TrimmedNonEmptyString,
+  skillPath: TrimmedNonEmptyString,
+  global: Schema.optional(Schema.Boolean),
+  providerOptions: Schema.optional(ProviderStartOptions),
+});
+export type ProviderUninstallSkillInput = typeof ProviderUninstallSkillInput.Type;
+
+export const ProviderUninstallSkillResult = Schema.Struct({
+  success: Schema.Boolean,
+});
+export type ProviderUninstallSkillResult = typeof ProviderUninstallSkillResult.Type;
+
+export const ProviderSetSkillEnabledInput = Schema.Struct({
+  provider: ProviderDiscoveryKind,
+  cwd: TrimmedNonEmptyString,
+  skillPath: TrimmedNonEmptyString,
+  enabled: Schema.Boolean,
+  providerOptions: Schema.optional(ProviderStartOptions),
+});
+export type ProviderSetSkillEnabledInput = typeof ProviderSetSkillEnabledInput.Type;
+
+export const ProviderSetSkillEnabledResult = Schema.Struct({
+  skill: ProviderSkillDescriptor,
+});
+export type ProviderSetSkillEnabledResult = typeof ProviderSetSkillEnabledResult.Type;
+
+export const CatalogSkillEntry = Schema.Struct({
+  packageRef: TrimmedNonEmptyString,
+  skillName: TrimmedNonEmptyString,
+  displayName: Schema.optional(TrimmedNonEmptyString),
+  description: Schema.optional(TrimmedNonEmptyString),
+  installCount: Schema.optional(Schema.Number),
+  url: Schema.optional(TrimmedNonEmptyString),
+});
+export type CatalogSkillEntry = typeof CatalogSkillEntry.Type;
+
+export const ProviderSearchCatalogInput = Schema.Struct({
+  provider: ProviderDiscoveryKind,
+  cwd: Schema.optional(TrimmedNonEmptyString),
+  query: TrimmedNonEmptyString,
+  providerOptions: Schema.optional(ProviderStartOptions),
+});
+export type ProviderSearchCatalogInput = typeof ProviderSearchCatalogInput.Type;
+
+export const ProviderSearchCatalogResult = Schema.Struct({
+  results: Schema.Array(CatalogSkillEntry),
+});
+export type ProviderSearchCatalogResult = typeof ProviderSearchCatalogResult.Type;
 
 export const ProviderNativeCommandDescriptor = Schema.Struct({
   name: TrimmedNonEmptyString,

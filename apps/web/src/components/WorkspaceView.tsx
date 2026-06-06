@@ -91,12 +91,13 @@ export default function WorkspaceView({ workspaceId }: { workspaceId: string }) 
     setWorkspaceHomeDir(serverConfigQuery.data.homeDir);
   }, [serverConfigQuery.data?.homeDir, setWorkspaceHomeDir]);
 
-  useEffect(() => {
-    if (!workspace) {
-      return;
+  const prevWorkspaceTitleRef = useRef(workspace?.title);
+  if (workspace?.title !== prevWorkspaceTitleRef.current) {
+    prevWorkspaceTitleRef.current = workspace?.title;
+    if (workspace) {
+      setDraftTitle(workspace.title);
     }
-    setDraftTitle(workspace.title);
-  }, [workspace]);
+  }
 
   useEffect(() => {
     if (!renaming) {
