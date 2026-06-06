@@ -832,7 +832,7 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
         assert.strictEqual(status.provider, "openclaw");
         assert.strictEqual(status.status, "error");
         assert.strictEqual(status.available, false);
-        assert.match(status.message ?? "", /gateway is unreachable/);
+        assert.match(status.message ?? "", /gateway probe failed/);
         assert.strictEqual(/probing is not configured/.test(status.message ?? ""), false);
         assert.strictEqual(/must-not-leak/.test(status.message ?? ""), false);
       }).pipe(Effect.provide(openClawSecretLayer)),
@@ -885,10 +885,31 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
         assert.strictEqual(status.status, "error");
         assert.strictEqual(status.available, false);
         assert.strictEqual(status.authStatus, "unknown");
-        assert.match(status.message ?? "", /unreachable/);
+        assert.match(status.message ?? "", /probe failed/);
         assert.match(status.message ?? "", /connection refused/);
         assert.strictEqual(/must-not-leak|user:pass/.test(status.message ?? ""), false);
       }).pipe(Effect.provide(openClawSecretLayer)),
+    );
+
+    it.effect("reports unauthenticated when the gateway probe rejects auth", () =>
+      Effect.gen(function* () {
+        const status = yield* makeCheckOpenClawProviderStatus(
+          {
+            enabled: true,
+            gatewayUrl: "https://gateway.example.test/path?token=must-not-leak",
+            authMode: "token",
+            hasSecret: true,
+            paired: false,
+          },
+          { probe: () => Effect.fail(new Error("authentication failed token=must-not-leak")) },
+        );
+        assert.strictEqual(status.status, "error");
+        assert.strictEqual(status.available, false);
+        assert.strictEqual(status.authStatus, "unauthenticated");
+        assert.strictEqual(status.authType, "token");
+        assert.match(status.message ?? "", /authentication failed/);
+        assert.strictEqual(/must-not-leak/.test(status.message ?? ""), false);
+      }).pipe(Effect.provide(openClawTokenSecretLayer)),
     );
 
     it.effect("reports unsupported when required chat methods are missing", () =>

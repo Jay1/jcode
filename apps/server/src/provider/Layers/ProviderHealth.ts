@@ -252,6 +252,15 @@ function detailFromUnknown(error: unknown): string | undefined {
     .replace(/\b(token|password|client_secret|secret)=([^\s&]+)/gi, "$1=[redacted]");
 }
 
+function isAuthLikeProbeFailure(detail: string | undefined): boolean {
+  return (
+    detail !== undefined &&
+    /auth|unauth|forbid|credential|invalid token|token rejected|invalid password|password rejected/i.test(
+      detail,
+    )
+  );
+}
+
 function extractAuthBoolean(value: unknown): boolean | undefined {
   if (Array.isArray(value)) {
     for (const entry of value) {
@@ -1550,14 +1559,17 @@ export const makeCheckOpenClawProviderStatus = (
       .pipe(Effect.result);
     if (Result.isFailure(probe)) {
       const detail = detailFromUnknown(probe.failure);
+      const authLike = isAuthLikeProbeFailure(detail);
       return {
         provider: OPENCLAW_PROVIDER,
         status: "error" as const,
         available: false,
-        authStatus: "unknown" as const,
+        authStatus: authLike ? ("unauthenticated" as const) : ("unknown" as const),
         ...(authType !== "none" ? { authType } : {}),
         checkedAt,
-        message: `OpenClaw gateway is unreachable at ${normalized.redactedUrl}${detail ? `: ${detail}` : ""}.`,
+        message: authLike
+          ? `OpenClaw gateway authentication failed at ${normalized.redactedUrl}${detail ? `: ${detail}` : ""}.`
+          : `OpenClaw gateway probe failed at ${normalized.redactedUrl}${detail ? `: ${detail}` : ""}.`,
       } satisfies ServerProviderStatus;
     }
 
