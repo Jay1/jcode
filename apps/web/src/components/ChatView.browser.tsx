@@ -2184,6 +2184,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
         },
         { timeout: 8_000, interval: 16 },
       );
+      await nextFrame();
 
       dispatchComposerKey("ArrowUp");
       await vi.waitFor(
@@ -2192,6 +2193,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
         },
         { timeout: 8_000, interval: 16 },
       );
+      await nextFrame();
 
       dispatchComposerKey("ArrowDown");
       await vi.waitFor(
@@ -2200,6 +2202,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
         },
         { timeout: 8_000, interval: 16 },
       );
+      await nextFrame();
 
       dispatchComposerKey("ArrowDown");
       await vi.waitFor(
