@@ -1,6 +1,7 @@
 import type {
   AuthBearerBootstrapResult,
   AuthBootstrapResult,
+  AuthCapabilityScope,
   AuthClientMetadata,
   AuthClientSession,
   AuthCreatePairingCredentialInput,
@@ -9,6 +10,7 @@ import type {
   AuthSessionId,
   AuthSessionState,
   AuthWebSocketTokenResult,
+  CapabilityResource,
   ServerAuthDescriptor,
   ServerAuthSessionMethod,
 } from "@jcode/contracts";
@@ -29,6 +31,8 @@ export interface AuthenticatedSession {
   readonly method: ServerAuthSessionMethod;
   readonly role: SessionRole;
   readonly expiresAt?: DateTime.DateTime;
+  readonly scopes?: ReadonlyArray<AuthCapabilityScope>;
+  readonly resources?: ReadonlyArray<CapabilityResource>;
 }
 
 export class AuthError extends Data.TaggedError("AuthError")<{
