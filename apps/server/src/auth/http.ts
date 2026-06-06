@@ -18,6 +18,7 @@ import {
 } from "../startupAccess";
 import { AuthError, type AuthRequest, type ServerAuthShape } from "./Services/ServerAuth";
 import type { SessionCredentialServiceShape } from "./Services/SessionCredentialService";
+import { requireScope } from "./Services/scopeGuard";
 import { deriveAuthClientMetadata } from "./utils";
 
 type Respond = (
@@ -389,10 +390,9 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
       method === AuthHttpRoutes.clients.method &&
       input.url.pathname === AuthHttpRoutes.clients.pathname
     ) {
-      const session = yield* authenticateOwnerSession({
-        serverAuth: input.serverAuth,
-        authRequest,
-      });
+      const session = yield* input.serverAuth
+        .authenticateHttpRequest(authRequest)
+        .pipe(Effect.flatMap(requireScope(_, "provider_status:read")));
       const clients = yield* input.serverAuth.listClientSessions(session.sessionId);
       respondJson(input.respond, 200, clients);
       return;
