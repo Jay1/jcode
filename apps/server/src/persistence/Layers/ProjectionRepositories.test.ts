@@ -131,4 +131,62 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
       });
     }),
   );
+
+  it.effect("stores JSON for thread recap state", () =>
+    Effect.gen(function* () {
+      const threads = yield* ProjectionThreadRepository;
+      const sql = yield* SqlClient.SqlClient;
+
+      const recap = {
+        text: "Working on the recap persistence slice.",
+        coveredMessageId: "message-2",
+        sourceSignature: "sig-123",
+        generatedAt: "2026-06-06T00:00:00.000Z",
+      };
+
+      yield* threads.upsert({
+        threadId: ThreadId.makeUnsafe("thread-recap-json"),
+        projectId: ProjectId.makeUnsafe("project-recap-json"),
+        title: "Recap thread",
+        modelSelection: {
+          provider: "codex",
+          model: "gpt-5-codex",
+        },
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        envMode: "local",
+        branch: null,
+        worktreePath: null,
+        associatedWorktreePath: null,
+        associatedWorktreeBranch: null,
+        associatedWorktreeRef: null,
+        createBranchFlowCompleted: false,
+        lastKnownPr: null,
+        latestTurnId: null,
+        handoff: null,
+        latestUserMessageAt: null,
+        pendingApprovalCount: 0,
+        pendingUserInputCount: 0,
+        hasActionableProposedPlan: 0,
+        recap,
+        createdAt: "2026-06-06T00:00:00.000Z",
+        updatedAt: "2026-06-06T00:00:00.000Z",
+        deletedAt: null,
+      });
+
+      const rows = yield* sql<{
+        readonly recapJson: string | null;
+      }>`
+        SELECT recap_json AS "recapJson"
+        FROM projection_threads
+        WHERE thread_id = 'thread-recap-json'
+      `;
+      assert.strictEqual(rows[0]?.recapJson, JSON.stringify(recap));
+
+      const persisted = yield* threads.getById({
+        threadId: ThreadId.makeUnsafe("thread-recap-json"),
+      });
+      assert.deepStrictEqual(Option.getOrNull(persisted)?.recap, recap);
+    }),
+  );
 });

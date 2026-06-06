@@ -12,7 +12,12 @@ import {
   ProjectionThreadRepository,
   type ProjectionThreadRepositoryShape,
 } from "../Services/ProjectionThreads.ts";
-import { ModelSelection, OrchestrationThreadPullRequest, ThreadHandoff } from "@jcode/contracts";
+import {
+  ModelSelection,
+  OrchestrationThreadPullRequest,
+  ThreadHandoff,
+  ThreadRecap,
+} from "@jcode/contracts";
 
 const SqliteBoolean = Schema.Number.pipe(
   Schema.decodeTo(Schema.Boolean, {
@@ -28,6 +33,7 @@ const ProjectionThreadDbRow = ProjectionThread.mapFields(
     handoff: Schema.NullOr(Schema.fromJsonString(ThreadHandoff)),
     lastKnownPr: Schema.NullOr(Schema.fromJsonString(OrchestrationThreadPullRequest)),
     modelSelection: Schema.fromJsonString(ModelSelection),
+    recap: Schema.NullOr(Schema.fromJsonString(ThreadRecap)),
   }),
 );
 type ProjectionThreadDbRow = typeof ProjectionThreadDbRow.Type;
@@ -60,6 +66,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           subagent_role,
           fork_source_thread_id,
           sidechat_source_thread_id,
+          recap_json,
           last_known_pr_json,
           latest_turn_id,
           handoff_json,
@@ -93,6 +100,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           ${row.subagentRole ?? null},
           ${row.forkSourceThreadId ?? null},
           ${row.sidechatSourceThreadId ?? null},
+          ${row.recap === null ? null : JSON.stringify(row.recap)},
           ${row.lastKnownPr === null ? null : JSON.stringify(row.lastKnownPr)},
           ${row.latestTurnId},
           ${row.handoff === null ? null : JSON.stringify(row.handoff)},
@@ -126,6 +134,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           subagent_role = excluded.subagent_role,
           fork_source_thread_id = excluded.fork_source_thread_id,
           sidechat_source_thread_id = excluded.sidechat_source_thread_id,
+          recap_json = excluded.recap_json,
           last_known_pr_json = excluded.last_known_pr_json,
           latest_turn_id = excluded.latest_turn_id,
           handoff_json = excluded.handoff_json,
@@ -166,6 +175,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           subagent_role AS "subagentRole",
           fork_source_thread_id AS "forkSourceThreadId",
           sidechat_source_thread_id AS "sidechatSourceThreadId",
+          recap_json AS "recap",
           last_known_pr_json AS "lastKnownPr",
           latest_turn_id AS "latestTurnId",
           handoff_json AS "handoff",
@@ -208,6 +218,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           subagent_role AS "subagentRole",
           fork_source_thread_id AS "forkSourceThreadId",
           sidechat_source_thread_id AS "sidechatSourceThreadId",
+          recap_json AS "recap",
           last_known_pr_json AS "lastKnownPr",
           latest_turn_id AS "latestTurnId",
           handoff_json AS "handoff",
