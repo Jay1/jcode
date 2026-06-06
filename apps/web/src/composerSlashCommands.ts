@@ -10,6 +10,7 @@ export const BUILT_IN_COMPOSER_SLASH_COMMANDS = [
   "fork",
   "side",
   "status",
+  "goal",
   "subagents",
   "fast",
 ] as const;
@@ -30,6 +31,13 @@ export interface ComposerSlashInvocation {
 
 export type FastSlashCommandAction = "toggle" | "on" | "off" | "status" | "invalid";
 export type ForkSlashCommandTarget = "local" | "worktree";
+export type GoalSlashCommandAction =
+  | { type: "set"; objective: string }
+  | { type: "pause" }
+  | { type: "resume" }
+  | { type: "clear" }
+  | { type: "status" }
+  | { type: "invalid" };
 
 function normalizeSlashCommandName(value: string): string {
   return value.trim().replace(/^\/+/, "").toLowerCase();
@@ -156,6 +164,12 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
     command: "status",
     label: "/status",
     description: "Show context usage and rate-limit status",
+    source: "app",
+  },
+  goal: {
+    command: "goal",
+    label: "/goal",
+    description: "Set, pause, resume, clear, or inspect a persistent goal",
     source: "app",
   },
   subagents: {
@@ -320,6 +334,31 @@ export function parseFastSlashCommandAction(text: string): FastSlashCommandActio
   return "invalid";
 }
 
+export function parseGoalSlashCommandAction(text: string): GoalSlashCommandAction | null {
+  const invocation = parseComposerSlashInvocation(text);
+  if (!invocation || invocation.command !== "goal") {
+    return null;
+  }
+  const args = invocation.args.trim();
+  const normalizedArgs = args.toLowerCase();
+  if (normalizedArgs === "pause") {
+    return { type: "pause" };
+  }
+  if (normalizedArgs === "resume") {
+    return { type: "resume" };
+  }
+  if (normalizedArgs === "clear") {
+    return { type: "clear" };
+  }
+  if (normalizedArgs === "status") {
+    return { type: "status" };
+  }
+  if (args.length > 0) {
+    return { type: "set", objective: args };
+  }
+  return { type: "invalid" };
+}
+
 export function resolveComposerSlashRootBranch(input: {
   branches: ReadonlyArray<GitBranch> | null | undefined;
   activeProjectCwd: string | null | undefined;
@@ -368,17 +407,15 @@ export function getAvailableComposerSlashCommands(input: {
           ...(input.supportsFastSlashCommand ? (["fast"] as const) : []),
           "plan",
           "default",
+          "goal",
           ...(input.canOfferReviewCommand ? (["review"] as const) : []),
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
           ...(input.canOfferSideCommand ? (["side"] as const) : []),
           "status",
           "subagents",
         ]
-      : // Claude owns most slash-command UX natively; sidechat remains app-level because it
-        // creates a JCode split/context clone before the provider sees the first turn.
-        input.canOfferSideCommand
-        ? ["side"]
-        : [];
+      : // Claude owns most slash-command UX natively; goal and sidechat remain app-level.
+        ["goal", ...(input.canOfferSideCommand ? (["side"] as const) : [])];
   return availableCommands.filter((command) => !collidingNativeCommandNames.has(command));
 }
 
