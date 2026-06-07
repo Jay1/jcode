@@ -121,10 +121,14 @@ export type CursorModelOptions = typeof CursorModelOptions.Type;
 export const OpenClawModelOptions = Schema.Struct({});
 export type OpenClawModelOptions = typeof OpenClawModelOptions.Type;
 
+export const DevinModelOptions = Schema.Struct({});
+export type DevinModelOptions = typeof DevinModelOptions.Type;
+
 export const ProviderModelOptions = Schema.Struct({
   codex: Schema.optional(CodexModelOptions),
   claudeAgent: Schema.optional(ClaudeModelOptions),
   cursor: Schema.optional(CursorModelOptions),
+  devin: Schema.optional(DevinModelOptions),
   gemini: Schema.optional(GeminiModelOptions),
   kilo: Schema.optional(OpenCodeModelOptions),
   opencode: Schema.optional(OpenCodeModelOptions),

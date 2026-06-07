@@ -172,9 +172,13 @@ ACP integration is JCode's Agent Client Protocol support layer for providers tha
 
 Treat generated ACP schema bindings as protocol-bound artifacts. Domain decisions should live in provider adapters and contracts; generated schema files should only change through the generator or with a documented reason.
 
-Devin ACP is a future provider-expansion candidate, but it should follow the thread recap and persistent goal-mode foundation. Provider expansion should not outrun the continuity model that long-running and asynchronous provider sessions need.
+Devin ACP is a provider-expansion candidate now scaffolded as a skeleton. Provider expansion should not outrun the continuity model that long-running and asynchronous provider sessions need.
 
-The first Devin ACP slice should adapt the upstream provider runtime skeleton before UI polish: spawn and auth support, session lifecycle, resume cursor handling, status mapping, cancellation behavior, and cached model alias listing.
+The Devin ACP skeleton adds `ProviderKind: "devin"`, `DevinModelSelection`, `DevinAcpSupport` (spawn config for `devin acp`), `DevinAdapter` service tag, skeleton adapter layer with `dieMessage` stubs for all `ProviderAdapterShape` methods, and registry wiring in `runtimeLayer.ts` and `ProviderAdapterRegistry.ts`.
+
+Devin CLI spawns as `devin acp` over stdio ACP. Auth method ID: `"devin_api_key"`. Auth sources: `WINDSURF_API_KEY` env var, `devin auth login` credentials, or ACP `authenticate` request. No special client capabilities (empty object). Capabilities: `sessionModelSwitch: "restart-session"`, `supportsTurnSteering: false`, `supportsRuntimeModelList: true`.
+
+The next Devin slice should fill in the adapter layer with real session lifecycle: ACP session init, prompt handling, event mapping via `AcpCoreRuntimeEvents`, permission/elicitation delegation, and model listing from ACP initialize response.
 
 ### Runtime Mode
 
