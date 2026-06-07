@@ -447,6 +447,7 @@ export const MODEL_OPTIONS_BY_PROVIDER = {
       },
     },
   ],
+  devin: [],
   openclaw: [
     {
       slug: "gateway",
@@ -536,7 +537,7 @@ export type ModelOptionsByProvider = typeof MODEL_OPTIONS_BY_PROVIDER;
 type BuiltInModelSlug = (typeof MODEL_OPTIONS_BY_PROVIDER)[ProviderKind][number]["slug"];
 export type ModelSlug = BuiltInModelSlug | (string & {});
 
-export type ProviderWithDefaultModel = Exclude<ProviderKind, "openclaw" | "pi">;
+export type ProviderWithDefaultModel = Exclude<ProviderKind, "devin" | "openclaw" | "pi">;
 
 export const DEFAULT_MODEL_BY_PROVIDER: Record<ProviderWithDefaultModel, ModelSlug> = {
   codex: "gpt-5.5",
@@ -611,6 +612,7 @@ export const MODEL_SLUG_ALIASES_BY_PROVIDER: Record<ProviderKind, Record<string,
   kilo: {},
   opencode: {},
   openclaw: {},
+  devin: {},
   pi: {},
 };
 
@@ -642,6 +644,7 @@ export const PROVIDER_DISPLAY_NAMES: Record<ProviderKind, string> = {
   codex: "Codex",
   claudeAgent: "Claude",
   cursor: "Cursor",
+  devin: "Devin",
   gemini: "Gemini",
   kilo: "Kilo",
   opencode: "OpenCode",
