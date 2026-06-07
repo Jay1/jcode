@@ -1,3 +1,5 @@
+import type { MessageId } from "@jcode/contracts";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,14 +8,16 @@ import {
   sanitizeThreadRecap,
 } from "./threadRecapSource";
 
+const mid = (id: string) => id as MessageId;
+
 const FIXTURE_MESSAGES = [
-  { id: "m1", role: "system" as const, text: "system prompt" },
-  { id: "m2", role: "user" as const, text: "hello" },
-  { id: "m3", role: "assistant" as const, text: "hi there" },
-  { id: "m4", role: "user" as const, text: "build a feature" },
-  { id: "m5", role: "assistant" as const, text: "sure, here's the plan" },
-  { id: "m6", role: "user" as const, text: "looks good" },
-  { id: "m7", role: "assistant" as const, text: "implementing now" },
+  { id: mid("m1"), role: "system" as const, text: "system prompt" },
+  { id: mid("m2"), role: "user" as const, text: "hello" },
+  { id: mid("m3"), role: "assistant" as const, text: "hi there" },
+  { id: mid("m4"), role: "user" as const, text: "build a feature" },
+  { id: mid("m5"), role: "assistant" as const, text: "sure, here's the plan" },
+  { id: mid("m6"), role: "user" as const, text: "looks good" },
+  { id: mid("m7"), role: "assistant" as const, text: "implementing now" },
 ] as const;
 
 const FIXTURE_ACTIVITIES = [
@@ -51,8 +55,8 @@ describe("deriveThreadRecapSource", () => {
   it("skips system messages", () => {
     const result = deriveThreadRecapSource({
       messages: [
-        { id: "s1", role: "system", text: "sys" },
-        { id: "u1", role: "user", text: "hi" },
+        { id: mid("s1"), role: "system", text: "sys" },
+        { id: mid("u1"), role: "user", text: "hi" },
       ],
       activities: [],
       title: "Test",
@@ -65,7 +69,7 @@ describe("deriveThreadRecapSource", () => {
   it("truncates long messages", () => {
     const longText = "a".repeat(800);
     const result = deriveThreadRecapSource({
-      messages: [{ id: "u1", role: "user", text: longText }],
+      messages: [{ id: mid("u1"), role: "user", text: longText }],
       activities: [],
       title: "Test",
     });
@@ -77,7 +81,7 @@ describe("deriveThreadRecapSource", () => {
 
   it("returns empty material when no user-facing messages exist", () => {
     const result = deriveThreadRecapSource({
-      messages: [{ id: "s1", role: "system", text: "sys" }],
+      messages: [{ id: mid("s1"), role: "system", text: "sys" }],
       activities: [],
       title: "Test",
     });
@@ -89,7 +93,7 @@ describe("deriveThreadRecapSource", () => {
 
   it("builds currentState from activity summaries", () => {
     const result = deriveThreadRecapSource({
-      messages: [{ id: "u1", role: "user", text: "hi" }],
+      messages: [{ id: mid("u1"), role: "user", text: "hi" }],
       activities: FIXTURE_ACTIVITIES,
       title: "Test",
     });
@@ -111,7 +115,7 @@ describe("deriveThreadRecapSource", () => {
       title: "Test",
     });
     const changed = deriveThreadRecapSource({
-      messages: [...FIXTURE_MESSAGES, { id: "m8", role: "user", text: "new request" }],
+      messages: [...FIXTURE_MESSAGES, { id: mid("m8"), role: "user", text: "new request" }],
       activities: FIXTURE_ACTIVITIES,
       title: "Test",
     });
@@ -155,7 +159,7 @@ describe("deriveThreadRecapSource", () => {
 
     it("respects MAX_DELTA_MESSAGES limit", () => {
       const manyMessages = Array.from({ length: 20 }, (_, i) => ({
-        id: `u${i}`,
+        id: mid(`u${i}`),
         role: (i % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
         text: `msg ${i}`,
       }));
@@ -174,7 +178,7 @@ describe("deriveThreadRecapSource", () => {
 
   it("limits initial recap to MAX_RECAP_MESSAGES (6)", () => {
     const manyMessages = Array.from({ length: 20 }, (_, i) => ({
-      id: `u${i}`,
+      id: mid(`u${i}`),
       role: (i % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
       text: `msg ${i}`,
     }));
