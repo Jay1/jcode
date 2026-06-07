@@ -21,6 +21,8 @@
 | [0002](0002-release-notes-and-latest-package-retention.md) | Accepted | Release notes and latest-package retention   |
 | [0003](0003-settings-native-skill-library.md)              | Accepted | Settings-native provider-aware Skill Library |
 | [0004](0004-project-language-icons.md)                     | Proposed | Project language icons as metadata           |
+| [0005](0005-backend-owned-managed-runtime-sidecar.md)     | Accepted | Backend-owned managed runtime sidecar        |
+| [0006](0006-provider-agnostic-first-run-wizard.md)        | Accepted | Provider-agnostic first-run wizard           |
 
 ## When To Add An ADR
 

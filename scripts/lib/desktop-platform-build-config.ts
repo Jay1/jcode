@@ -79,6 +79,14 @@ export function createDesktopPlatformBuildConfig(
       target: [input.target],
       icon: "icon.ico",
       ...(input.windowsAzureSignOptions ? { azureSignOptions: input.windowsAzureSignOptions } : {}),
+      nsis: {
+        oneClick: false,
+        perMachine: false,
+        allowToChangeInstallationDirectory: false,
+        runAfterFinish: true,
+        shortcutName: "JCode",
+        deleteAppDataOnUninstall: true,
+      },
     },
   };
 }
