@@ -65,6 +65,9 @@ it.effect("accepts the OpenClaw gateway model-selection sentinel", () =>
 
     assert.equal(parsed.provider, "openclaw");
     assert.equal(parsed.model, "gateway");
+  }),
+);
+
 it.effect("decodes persistent thread goal state", () =>
   Effect.gen(function* () {
     const goal = yield* decodeOrchestrationGoal({
