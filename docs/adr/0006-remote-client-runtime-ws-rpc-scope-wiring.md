@@ -1,8 +1,8 @@
 # ADR 0006: Remote Client Runtime — WS RPC Scope Wiring
 
-| Status   | Decided     |
-|----------|-------------|
-| Date     | 2026-06-06  |
+| Status | Decided    |
+| ------ | ---------- |
+| Date   | 2026-06-06 |
 
 ## Context
 
@@ -32,12 +32,12 @@ Wire scope guards into the WS RPC layer using a hybrid approach:
 
 ## Scope Mapping Reference
 
-| Scope | Methods | Notes |
-|-------|---------|-------|
-| `thread:read` | subscribeThread, unsubscribeThread, getSnapshot, getShellSnapshot, getTurnDiff, getFullThreadDiff, replayEvents, subscribeShell, unsubscribeShell | All read-only thread observation |
-| `approval:respond` | dispatchCommand (type=thread.approval.respond) | Approve/deny pending provider actions |
-| `user_input:respond` | dispatchCommand (type=thread.user-input.respond) | Answer pending provider user-input requests |
-| `provider_status:read` | serverGetConfig, subscribeServerProviderStatuses | Provider health, rate-limit, config |
+| Scope                  | Methods                                                                                                                                           | Notes                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `thread:read`          | subscribeThread, unsubscribeThread, getSnapshot, getShellSnapshot, getTurnDiff, getFullThreadDiff, replayEvents, subscribeShell, unsubscribeShell | All read-only thread observation            |
+| `approval:respond`     | dispatchCommand (type=thread.approval.respond)                                                                                                    | Approve/deny pending provider actions       |
+| `user_input:respond`   | dispatchCommand (type=thread.user-input.respond)                                                                                                  | Answer pending provider user-input requests |
+| `provider_status:read` | serverGetConfig, subscribeServerProviderStatuses                                                                                                  | Provider health, rate-limit, config         |
 
 ## Consequences
 
@@ -45,4 +45,4 @@ Wire scope guards into the WS RPC layer using a hybrid approach:
 - Owner sessions are completely unaffected — all guards bypass when `scopes` is undefined.
 - Client sessions without the required scope get `WsRpcError` with a clear message.
 - Unguarded methods (git, terminal, project write, etc.) remain available to any authenticated session but are effectively owner-only because clients can only be created with scopes by an owner.
-- Resource scoping (project/thread ID filtering) is deferred to a later slice.
+- Resource scoping (project/thread ID filtering) is deferred to a later slice; see [ADR 0005](0005-scoped-remote-client-capability-tokens.md) for the scoped token design.

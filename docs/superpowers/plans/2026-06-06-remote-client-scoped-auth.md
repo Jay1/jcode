@@ -22,9 +22,9 @@
 
 ```
 AuthCapabilityScope =
-  | "thread:read"         // read selected thread/project state
-  | "approval:respond"    // approve/deny pending provider actions
-  | "user_input:respond"  // answer pending provider user-input requests
+  | "thread:read"          // read selected thread/project state
+  | "approval:respond"     // approve/deny pending provider actions
+  | "user_input:respond"   // answer pending provider user-input requests
   | "provider_status:read" // health, rate-limit, active-session status
 ```
 
@@ -121,5 +121,5 @@ Resources are optional. If absent, the scope applies to all resources.
 - [x] Server typecheck: only pre-existing errors
 - [x] LSP diagnostics clean on all touched files
 - [x] Formatting clean on all touched files
-- [ ] Scope guard unit tests pass (deferred — no existing test infrastructure for this module)
+- [ ] Scope guard unit tests pass (deferred — no existing test infrastructure for this module; WS scope wiring in [ADR 0006](../../adr/0006-remote-client-runtime-ws-rpc-scope-wiring.md) also depends on these)
 - [x] `git diff --check` clean

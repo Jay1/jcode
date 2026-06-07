@@ -201,7 +201,7 @@ Post-review notes, 2026-06-06:
 
 - Fixed verified findings from review: goal lifecycle invariants, `completed` UI status key, retry after failed continuation dispatch, and hiding `goal-continuation` prompts from visible transcript/handoff import paths.
 - LSP diagnostics reported no issues for touched server/web files after fixes.
-- Formatting passed with `snip bunx oxfmt@0.52.0 --check` on touched files.
+- Formatting passed with `bunx oxfmt@0.52.0 --check` on touched files.
 - Focused contract/server test commands are blocked locally by module resolution for `@effect/vitest` or `@jcode/contracts`.
 - Focused web test command is blocked locally by missing `vitest` executable.
 

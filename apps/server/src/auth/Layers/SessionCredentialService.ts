@@ -277,9 +277,21 @@ export const makeSessionCredentialService = Effect.gen(function* () {
         expiresAt: DateTime.makeUnsafe(claims.exp),
         subject: claims.sub,
         role: claims.role,
-        ...(claims.scopes ? { scopes: claims.scopes as ReadonlyArray<AuthCapabilityScope> } : {}),
-        ...(claims.resources
-          ? { resources: claims.resources as ReadonlyArray<CapabilityResource> }
+        ...(Array.isArray(claims.scopes)
+          ? {
+              scopes: claims.scopes.filter((s): s is AuthCapabilityScope => typeof s === "string"),
+            }
+          : {}),
+        ...(Array.isArray(claims.resources)
+          ? {
+              resources: claims.resources.filter(
+                (r): r is CapabilityResource =>
+                  typeof r === "object" &&
+                  r !== null &&
+                  typeof r.type === "string" &&
+                  typeof r.id === "string",
+              ),
+            }
           : {}),
       } satisfies VerifiedSession;
     }).pipe(

@@ -59,20 +59,6 @@ const MANIFEST_CANDIDATES = [
 
 const MANIFEST_MAX_BYTES = 128 * 1024;
 
-// Bounded list of web app manifest candidates — no recursive scanning.
-const MANIFEST_CANDIDATES = [
-  "manifest.json",
-  "manifest.webmanifest",
-  "public/manifest.json",
-  "public/manifest.webmanifest",
-  "app/manifest.json",
-  "app/manifest.webmanifest",
-  "src/manifest.json",
-  "static/manifest.json",
-];
-
-const MANIFEST_MAX_BYTES = 128 * 1024;
-
 // Matches <link ...> tags or object-like icon metadata where rel/href can appear in any order.
 const LINK_ICON_HTML_RE =
   /<link\b(?=[^>]*\brel=["'](?:icon|shortcut icon)["'])(?=[^>]*\bhref=["']([^"'?]+))[^>]*>/i;
@@ -129,10 +115,6 @@ function extractManifestIconSrcs(manifestText: string): string[] {
   }
   icons.sort((a, b) => b.score - a.score);
   return icons.map((icon) => icon.src);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function resolveIconHref(projectCwd: string, href: string): string[] {

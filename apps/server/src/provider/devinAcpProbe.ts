@@ -30,7 +30,11 @@ export function probeDevinCli(binaryPath?: string): Effect.Effect<DevinProbeResu
       stderr += chunk.toString();
     });
 
+    let settled = false;
+
     child.on("close", (code) => {
+      if (settled) return;
+      settled = true;
       if (code === 0) {
         resume(
           Effect.succeed({
@@ -43,13 +47,15 @@ export function probeDevinCli(binaryPath?: string): Effect.Effect<DevinProbeResu
           Effect.succeed({
             status: "error" as const,
             auth: { status: "unauthenticated" as const },
-            message: `devin CLI exited with code ${code}: ${(stderr || stdout).trim()}`,
+            message: `devin CLI exited with code ${code ?? "null (killed by timeout or signal)"}: ${(stderr || stdout).trim()}`,
           }),
         );
       }
     });
 
     child.on("error", (err) => {
+      if (settled) return;
+      settled = true;
       resume(
         Effect.succeed({
           status: "error" as const,

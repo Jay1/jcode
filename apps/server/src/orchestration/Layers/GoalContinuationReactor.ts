@@ -65,6 +65,7 @@ const continuationMessageId = (threadId: ThreadId, turnId: TurnId): MessageId =>
 const make = Effect.gen(function* () {
   const orchestrationEngine = yield* OrchestrationEngineService;
   const snapshotQuery = yield* ProjectionSnapshotQuery;
+  const MAX_HANDLED_ENTRIES = 2048;
   const handledTurnIds = new Map<string, TurnId>();
 
   const processTrigger = Effect.fn(function* (event: GoalTriggerEvent) {
@@ -102,6 +103,12 @@ const make = Effect.gen(function* () {
         createdAt: event.occurredAt,
       });
       handledTurnIds.set(thread.id, latestTurn.turnId);
+      if (handledTurnIds.size > MAX_HANDLED_ENTRIES) {
+        const keys = [...handledTurnIds.keys()];
+        for (let i = 0; i < keys.length - MAX_HANDLED_ENTRIES / 2; i++) {
+          handledTurnIds.delete(keys[i]!);
+        }
+      }
       return;
     }
 
@@ -124,6 +131,12 @@ const make = Effect.gen(function* () {
       createdAt: event.occurredAt,
     });
     handledTurnIds.set(thread.id, latestTurn.turnId);
+    if (handledTurnIds.size > MAX_HANDLED_ENTRIES) {
+      const keys = [...handledTurnIds.keys()];
+      for (let i = 0; i < keys.length - MAX_HANDLED_ENTRIES / 2; i++) {
+        handledTurnIds.delete(keys[i]!);
+      }
+    }
   });
 
   const processTriggerSafely = (event: GoalTriggerEvent) =>

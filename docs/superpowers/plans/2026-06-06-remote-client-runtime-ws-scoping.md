@@ -15,6 +15,7 @@
 **Approach: Hybrid (Option C) — full session in context + `withScope` wrapper**
 
 Rationale:
+
 - The WS RPC layer already has a `rpcEffect` wrapper (line 424-425) that maps handler errors. A `withScope` wrapper fits naturally alongside it.
 - `CurrentRpcAuthSession` currently only stores `sessionId`. Replace it with the full `AuthenticatedSession` (including `scopes`/`resources`).
 - Each guarded handler wraps with `withScope("thread:read", handler)` — explicit at registration site, composable, impossible to silently bypass.
@@ -24,6 +25,7 @@ Rationale:
 ## Scope → Method Mapping
 
 ### thread:read
+
 - `ORCHESTRATION_WS_METHODS.subscribeThread` — stream thread events
 - `ORCHESTRATION_WS_METHODS.unsubscribeThread` — stop thread stream
 - `ORCHESTRATION_WS_METHODS.getSnapshot` — full orchestration snapshot
@@ -35,21 +37,26 @@ Rationale:
 - `ORCHESTRATION_WS_METHODS.unsubscribeShell` — stop shell stream
 
 ### approval:respond
+
 - `ORCHESTRATION_WS_METHODS.dispatchCommand` — BUT ONLY for `thread.approval.respond` command type. Other dispatch commands require owner role.
 
 ### user_input:respond
+
 - `ORCHESTRATION_WS_METHODS.dispatchCommand` — BUT ONLY for `thread.user-input.respond` command type.
 
 ### provider_status:read
+
 - `WS_METHODS.subscribeServerProviderStatuses` — stream provider status
 - `WS_METHODS.serverGetConfig` — server config (includes provider info)
 
 ### Unguarded (available to all authenticated sessions)
+
 - `ORCHESTRATION_WS_METHODS.importThread` — thread import (owner-level action, but doesn't expose sensitive data)
 - `WS_METHODS.serverGetProviderUsageSnapshot` — usage data (not sensitive for observe clients)
-- `WS_METHODS.serverDiagnostics` — diagnostics
+- `WS_METHODS.serverDiagnostics` — diagnostics (not sensitive for observe clients)
 
 ### Owner-only (no scope, must be owner role)
+
 - All git methods (`gitPull`, `gitStatus`, `gitCheckout`, etc.)
 - All terminal methods (`terminalOpen`, `terminalWrite`, etc.)
 - Project write methods (`projectsWriteFile`)
@@ -77,16 +84,19 @@ Rationale:
 ## Wave Plan
 
 ### Wave 1: Context Service Upgrade
+
 - [ ] Replace `CurrentRpcAuthSession` shape from `{ sessionId }` to full `AuthenticatedSession`
 - [ ] Update `wsRpc.ts` line 1009-1014 to provide full session in `Effect.provideService`
 - [ ] Update all consumers of `CurrentRpcAuthSession` to use `.sessionId` accessor (should be minimal — used for session listing only)
 
 ### Wave 2: Scope Guard Wrappers
+
 - [ ] Create `withScope(scope, handler)` helper that reads session from context, calls `requireScope`, wraps in rpcEffect-style error mapping
 - [ ] Create `withAnyScope(scopes, handler)` for methods needing multiple scopes
 - [ ] Create `withCommandScope(handler)` for `dispatchCommand` — inspects command type to determine required scope
 
 ### Wave 3: Wire Observe Methods (thread:read)
+
 - [ ] Wrap `subscribeThread`, `unsubscribeThread` with `withScope("thread:read", ...)`
 - [ ] Wrap `getSnapshot`, `getShellSnapshot` with `withScope("thread:read", ...)`
 - [ ] Wrap `getTurnDiff`, `getFullThreadDiff` with `withScope("thread:read", ...)`
@@ -94,20 +104,24 @@ Rationale:
 - [ ] Wrap `subscribeShell`, `unsubscribeShell` with `withScope("thread:read", ...)`
 
 ### Wave 4: Wire Approve/Respond Methods
+
 - [ ] Wrap `dispatchCommand` with `withCommandScope(...)` that checks:
   - `thread.approval.respond` → `approval:respond`
   - `thread.user-input.respond` → `user_input:respond`
   - All other command types → owner-only (reject with 403 for client sessions)
 
 ### Wave 5: Wire Provider Status Methods
+
 - [ ] Wrap `subscribeServerProviderStatuses` with `withScope("provider_status:read", ...)`
 - [ ] Wrap `serverGetConfig` with `withScope("provider_status:read", ...)`
 
 ### Wave 6: Documentation
-- [ ] Write ADR 0006: Remote Client Runtime WS Scope Wiring
+
+- [x] Write ADR 0006: Remote Client Runtime WS Scope Wiring (see [ADR 0006](../../adr/0006-remote-client-runtime-ws-rpc-scope-wiring.md))
 - [ ] Update `CONTEXT.md` with runtime scope wiring decisions
 
 ## Verification
+
 - LSP diagnostics clean on all changed files
 - `bunx oxfmt@0.52.0 --check` on changed files
 - Existing WS RPC behavior unchanged for owner sessions (scopes undefined = all access)

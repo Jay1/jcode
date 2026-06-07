@@ -297,9 +297,7 @@ export function buildThreadRecapPrompt(input: {
   );
   parts.push("Start with the current work area or task. Include the likely next step at the end.");
   parts.push("Do not use markdown, headers, bullet points, or quotation marks. Plain text only.");
-  parts.push(
-    'Do not start with "The user\" or \"The assistant\". Write as a factual status update.',
-  );
+  parts.push('Do not start with "The user" or "The assistant". Write as a factual status update.');
   parts.push(`The recap must not exceed ${MAX_RECAP_CHARS} characters.`);
   parts.push("Return a JSON object with key: recap.");
 

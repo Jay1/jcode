@@ -551,6 +551,22 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
                 detail: `Invalid attachment id '${attachment.id}'.`,
               });
             }
+            const imageStat = yield* Effect.tryPromise({
+              try: () => import("node:fs/promises").then((fs) => fs.stat(attachmentPath)),
+              catch: (cause) =>
+                new ProviderAdapterRequestError({
+                  provider: PROVIDER,
+                  method: "session/prompt",
+                  detail: `Failed to stat attachment '${attachment.id}': ${String(cause)}`,
+                }),
+            });
+            if (imageStat.size > 10 * 1024 * 1024) {
+              return yield* new ProviderAdapterRequestError({
+                provider: PROVIDER,
+                method: "session/prompt",
+                detail: `Image attachment '${attachment.id}' is too large (${imageStat.size} bytes, max 10MB).`,
+              });
+            }
             // Read image file as base64 data URI for ACP image content block
             const imageBuffer = yield* Effect.tryPromise({
               try: () => import("node:fs/promises").then((fs) => fs.readFile(attachmentPath)),
@@ -610,7 +626,9 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
                 provider: PROVIDER,
                 threadId: input.threadId,
                 turnId: activeTurnId,
-                payload: { message: error._tag },
+                payload: {
+                  message: `${error._tag}: ${"message" in error ? String(error.message) : String(error)}`,
+                },
               });
             }),
           ),

@@ -873,62 +873,65 @@ export const makeWsRpcLayer = () =>
             "Failed to reset keybindings",
           ),
         [WS_METHODS.serverGenerateThreadRecap]: (input) =>
-          rpcEffect(
-            Effect.gen(function* () {
-              const settings = yield* serverSettings.getSettings;
-              const detail = yield* projectionReadModelQuery.getThreadDetailById(input.threadId);
-              if (Option.isNone(detail)) {
-                return yield* Effect.fail(new Error(`Thread '${input.threadId}' was not found.`));
-              }
+          withScope(
+            "thread:write",
+            rpcEffect(
+              Effect.gen(function* () {
+                const settings = yield* serverSettings.getSettings;
+                const detail = yield* projectionReadModelQuery.getThreadDetailById(input.threadId);
+                if (Option.isNone(detail)) {
+                  return yield* Effect.fail(new Error(`Thread '${input.threadId}' was not found.`));
+                }
 
-              const source = deriveThreadRecapSource({
-                messages: detail.value.thread.messages.map((message) => ({
-                  id: message.id,
-                  role: message.role,
-                  text: message.text,
-                })),
-                activities: detail.value.thread.activities.map((activity) => ({
-                  kind: activity.kind,
-                  summary: activity.summary,
-                  createdAt: activity.createdAt,
-                })),
-                title: detail.value.thread.title,
-                previousCoveredMessageId: detail.value.thread.recap?.coveredMessageId ?? null,
-              });
-
-              if (!source.hasNewMaterial) {
-                return {
-                  recap:
-                    detail.value.thread.recap?.text ??
-                    input.previousRecap ??
-                    "No meaningful recap yet.",
-                };
-              }
-
-              const generated = yield* textGeneration.generateThreadRecap({
-                cwd: config.cwd,
-                previousRecap: detail.value.thread.recap?.text ?? input.previousRecap,
-                newMaterial: source.newMaterial,
-                currentState: source.currentState || undefined,
-                modelSelection: settings.textGenerationModelSelection,
-              });
-              const persistedThread = yield* projectionThreadRepository.getById({
-                threadId: input.threadId,
-              });
-              if (Option.isSome(persistedThread)) {
-                yield* projectionThreadRepository.upsert({
-                  ...persistedThread.value,
-                  recap: {
-                    text: generated.recap,
-                    coveredMessageId: source.latestMessageId,
-                    sourceSignature: source.sourceSignature,
-                    generatedAt: new Date().toISOString(),
-                  },
+                const source = deriveThreadRecapSource({
+                  messages: detail.value.thread.messages.map((message) => ({
+                    id: message.id,
+                    role: message.role,
+                    text: message.text,
+                  })),
+                  activities: detail.value.thread.activities.map((activity) => ({
+                    kind: activity.kind,
+                    summary: activity.summary,
+                    createdAt: activity.createdAt,
+                  })),
+                  title: detail.value.thread.title,
+                  previousCoveredMessageId: detail.value.thread.recap?.coveredMessageId ?? null,
                 });
-              }
-              return { recap: generated.recap };
-            }),
-            "Failed to generate thread recap",
+
+                if (!source.hasNewMaterial) {
+                  return {
+                    recap:
+                      detail.value.thread.recap?.text ??
+                      input.previousRecap ??
+                      "No meaningful recap yet.",
+                  };
+                }
+
+                const generated = yield* textGeneration.generateThreadRecap({
+                  cwd: config.cwd,
+                  previousRecap: detail.value.thread.recap?.text ?? input.previousRecap,
+                  newMaterial: source.newMaterial,
+                  currentState: source.currentState || undefined,
+                  modelSelection: settings.textGenerationModelSelection,
+                });
+                const persistedThread = yield* projectionThreadRepository.getById({
+                  threadId: input.threadId,
+                });
+                if (Option.isSome(persistedThread)) {
+                  yield* projectionThreadRepository.upsert({
+                    ...persistedThread.value,
+                    recap: {
+                      text: generated.recap,
+                      coveredMessageId: source.latestMessageId,
+                      sourceSignature: source.sourceSignature,
+                      generatedAt: new Date().toISOString(),
+                    },
+                  });
+                }
+                return { recap: generated.recap };
+              }),
+              "Failed to generate thread recap",
+            ),
           ),
         [WS_METHODS.subscribeServerLifecycle]: () =>
           Stream.concat(
