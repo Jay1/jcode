@@ -194,9 +194,16 @@ A thread environment describes whether a thread works in the project's local wor
 
 Worktree identity includes path, branch, and sometimes a detached ref. Normalize workspace roots for comparison without changing the stored display path.
 
-Parallel Windows and WSL backend routing is a future thread-environment expansion that should come after the remote client auth design clarifies environment and backend boundaries. It should route each project or thread to the backend where its workspace lives rather than treating Windows and WSL as mutually exclusive global modes.
+Parallel Windows and WSL backend routing is a thread-environment expansion that routes each project or thread to the backend where its workspace lives rather than treating Windows and WSL as mutually exclusive global modes.
 
-The first Windows/WSL routing slice should be design-only: define project-to-backend routing, backend lifecycle, auth bootstrap, failure states, and user-visible mode transitions before starting implementation.
+ADR 0007 (Proposed) defines the design-only first slice. Key decisions:
+
+- A **Backend** is a named execution environment with a `BackendId`, `BackendKind` (`local`, `wsl`, future `ssh`/`docker`), `BackendConnection`, and an `ExecutionEnvironmentDescriptor`. The server has one host backend and may discover WSL backends.
+- Project-to-backend routing is path-based (WSL `\\wsl$\` paths detected at project-open time) with user override in `.jcode/settings.json`. Threads inherit their project's backend.
+- Backend lifecycle: unknown → probing → healthy → degraded → removed, with periodic health checks for WSL backends via `wsl.exe`.
+- Transport abstraction: `BackendTransport` interface with `LocalTransport` (direct spawn) and `WslTransport` (spawn via `wsl.exe -d <distro>`). Path translation via `BackendPathResolver`.
+- Auth bootstrap uses the existing server auth model (ADR 0005 scopes apply at server level, not per-backend). WSL requires no separate auth — `wsl.exe` inherits the Windows user.
+- Failure states: degraded backends trigger reconnect banners, terminated distributions show migration prompts, no global "WSL mode" toggle.
 
 ### Project Identity
 
