@@ -13,6 +13,7 @@ Cursor adapter (`CursorAcpSupport.ts` → `AcpSessionRuntime` → `AcpClient`) i
 ### Slice 1: Contracts — Add `devin` ProviderKind + Model Selection
 
 **Files:**
+
 - `packages/contracts/src/orchestration.ts` — Add `"devin"` to `ProviderKind` literal union
 - `packages/contracts/src/orchestration.ts` — Add `DevinModelSelection` schema (provider: "devin", model: string)
 - `packages/contracts/src/orchestration.ts` — Add to `ModelSelection` union
@@ -23,6 +24,7 @@ Cursor adapter (`CursorAcpSupport.ts` → `AcpSessionRuntime` → `AcpClient`) i
 ### Slice 2: Server — DevinAcpSupport Module
 
 **Files:**
+
 - `apps/server/src/provider/acp/DevinAcpSupport.ts` — NEW
   - `buildDevinAcpSpawnInput(settings, cwd)` → `AcpSpawnInput` — builds `devin acp` command
   - `makeDevinAcpRuntime(input)` → Effect building `AcpSessionRuntimeShape` — wraps `AcpSessionRuntime.layer`
@@ -34,10 +36,12 @@ Cursor adapter (`CursorAcpSupport.ts` → `AcpSessionRuntime` → `AcpClient`) i
 ### Slice 3: Server — DevinAdapter Service + Layer
 
 **Files:**
+
 - `apps/server/src/provider/Services/DevinAdapter.ts` — NEW — ServiceMap service tag
 - `apps/server/src/provider/Layers/DevinAdapter.ts` — NEW — `makeDevinAdapterLive()` factory
 
 **ProviderAdapter implementation:**
+
 - `startSession(input)` → spawn `devin acp`, initialize ACP, return session
 - `sendTurn(input)` → send prompt via ACP `session/prompt`
 - `interruptTurn(input)` → send cancel via ACP `session/cancel`
@@ -48,6 +52,7 @@ Cursor adapter (`CursorAcpSupport.ts` → `AcpSessionRuntime` → `AcpClient`) i
 - User input → delegate to `handleElicitation` via ACP elicitation protocol
 
 **Capabilities:**
+
 ```typescript
 {
   sessionModelSwitch: "restart-session",
@@ -59,18 +64,21 @@ Cursor adapter (`CursorAcpSupport.ts` → `AcpSessionRuntime` → `AcpClient`) i
 ### Slice 4: Server — Wire Into Provider Runtime
 
 **Files:**
+
 - `apps/server/src/provider/runtimeLayer.ts` — Add `devinAdapterLayer` and register in `ProviderAdapterRegistryLive`
 - `apps/server/src/provider/acp/AcpCoreRuntimeEvents.ts` — Add `"devin"` to provider event helpers if needed
 
 ### Slice 5: Server — Devin CLI Probe + Discovery
 
 **Files:**
+
 - `apps/server/src/provider/devinAcpProbe.ts` — NEW — Probe for `devin` binary availability
   - `probeDevinCli()` → checks if `devin` command exists and reports version
 
 ### Slice 6: Web — Model Selection Support
 
 **Files:**
+
 - `apps/web/...` — Add Devin to provider model selection UI (if needed, minimal)
 
 ## What Devin Does NOT Need (deferred)
