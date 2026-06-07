@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { Schema } from "effect";
 
-import { ProviderRuntimeEvent } from "./providerRuntime";
+import {
+  ProviderRuntimeEvent,
+  type ProviderRuntimeEvent as ProviderRuntimeEventType,
+} from "./providerRuntime";
 
-const decodeRuntimeEvent = Schema.decodeUnknownSync(ProviderRuntimeEvent);
+const decodeRuntimeEvent = Schema.decodeUnknownSync(ProviderRuntimeEvent) as (
+  input: unknown,
+) => ProviderRuntimeEventType;
 
 describe("ProviderRuntimeEvent", () => {
   it("decodes turn.tasks.updated for task-list rendering", () => {
