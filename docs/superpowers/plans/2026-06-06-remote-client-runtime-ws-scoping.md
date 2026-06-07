@@ -51,12 +51,12 @@ Rationale:
 
 ### Unguarded (available to all authenticated sessions)
 
-- `ORCHESTRATION_WS_METHODS.importThread` — thread import (owner-level action, but doesn't expose sensitive data)
 - `WS_METHODS.serverGetProviderUsageSnapshot` — usage data (not sensitive for observe clients)
 - `WS_METHODS.serverDiagnostics` — diagnostics (not sensitive for observe clients)
 
 ### Owner-only (no scope, must be owner role)
 
+- `ORCHESTRATION_WS_METHODS.importThread` — thread import (owner-level action that modifies server state)
 - All git methods (`gitPull`, `gitStatus`, `gitCheckout`, etc.)
 - All terminal methods (`terminalOpen`, `terminalWrite`, etc.)
 - Project write methods (`projectsWriteFile`)

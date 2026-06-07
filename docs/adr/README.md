@@ -22,7 +22,7 @@
 | [0003](0003-settings-native-skill-library.md)              | Accepted | Settings-native provider-aware Skill Library |
 | [0004](0004-project-language-icons.md)                     | Proposed | Project language icons as metadata           |
 | [0005](0005-openclaw-gateway-provider.md)                  | Proposed | OpenClaw Gateway as a first-class Provider   |
-| [0005](0005-scoped-remote-client-capability-tokens.md)     | Proposed | Scoped remote client capability tokens       |
+| [0005](0005-scoped-remote-client-capability-tokens.md)     | Accepted | Scoped remote client capability tokens       |
 | [0006](0006-remote-client-runtime-ws-rpc-scope-wiring.md)  | Decided  | Remote Client Runtime WS RPC Scope Wiring    |
 | [0007](0007-parallel-windows-wsl-backend-routing.md)       | Proposed | Parallel Windows + WSL Backend Routing       |
 

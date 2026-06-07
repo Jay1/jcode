@@ -25,7 +25,7 @@ Introduce a **Backend** as a named execution environment within a single JCode s
 
 The JCode server always has exactly one **host backend** (where the server process runs). On Windows, it may discover one or more **WSL backends** (one per registered WSL distribution). On macOS and Linux, only the host backend exists.
 
-```
+```text
 BackendRegistry
   ├── host: Backend (kind=local, connection=direct)
   ├── wsl-ubuntu: Backend (kind=wsl, connection=wsl-exe, distro="Ubuntu")
@@ -46,7 +46,7 @@ Threads inherit the backend from their project. A thread cannot span backends. W
 
 ### 3. Backend Lifecycle
 
-```
+```text
                  ┌──────────┐
                  │ unknown  │  (server startup, before probe)
                  └────┬─────┘

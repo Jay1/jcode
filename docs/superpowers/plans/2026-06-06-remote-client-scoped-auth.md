@@ -20,7 +20,7 @@
 
 ## Scope Literals (v1 — observe-and-approve)
 
-```
+```ts
 AuthCapabilityScope =
   | "thread:read"          // read selected thread/project state
   | "approval:respond"     // approve/deny pending provider actions
