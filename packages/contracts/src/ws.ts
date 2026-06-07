@@ -72,6 +72,7 @@ import {
   ServerResetKeybindingInput,
   ServerVoiceTranscriptionInput,
 } from "./server";
+import { CompleteFirstRunWizardInput, SkipFirstRunWizardInput } from "./firstRunWizard";
 import {
   ProviderListCommandsInput,
   ProviderGetRuntimeHealthInput,
@@ -149,6 +150,9 @@ export const WS_METHODS = {
   serverUpsertKeybinding: "server.upsertKeybinding",
   serverResetKeybinding: "server.resetKeybinding",
   serverResetAllKeybindings: "server.resetAllKeybindings",
+  serverGetFirstRunWizardData: "server.getFirstRunWizardData",
+  serverCompleteFirstRunWizard: "server.completeFirstRunWizard",
+  serverSkipFirstRun: "server.skipFirstRun",
   subscribeServerLifecycle: "server.subscribeLifecycle",
   subscribeServerConfig: "server.subscribeConfig",
   subscribeServerProviderStatuses: "server.subscribeProviderStatuses",
@@ -274,6 +278,9 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(WS_METHODS.serverUpsertKeybinding, KeybindingRule),
   tagRequestBody(WS_METHODS.serverResetKeybinding, ServerResetKeybindingInput),
   tagRequestBody(WS_METHODS.serverResetAllKeybindings, Schema.Struct({})),
+  tagRequestBody(WS_METHODS.serverGetFirstRunWizardData, Schema.Struct({})),
+  tagRequestBody(WS_METHODS.serverCompleteFirstRunWizard, CompleteFirstRunWizardInput),
+  tagRequestBody(WS_METHODS.serverSkipFirstRun, SkipFirstRunWizardInput),
   tagRequestBody(WS_METHODS.subscribeAuthAccess, Schema.Struct({})),
 
   // Provider discovery

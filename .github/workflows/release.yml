@@ -355,6 +355,50 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/release-retention.ts
 
+  update_package_manifests:
+    name: Update package manager manifests
+    needs: [preflight, release]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ needs.preflight.outputs.ref }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5e8019c62421857d6
+        with:
+          bun-version-file: package.json
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Generate Scoop and Winget manifests
+        shell: bash
+        run: |
+          node scripts/update-package-manifests.ts \
+            --version "${{ needs.preflight.outputs.version }}" \
+            --release-date "$(date -u +%Y-%m-%d)" \
+            --output-dir packaging
+
+      - name: Upload packaging artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: package-manifests
+          path: |
+            packaging/scoop/jcode.json
+            packaging/winget/**/*
+          if-no-files-found: error
+          retention-days: 30
+
   finalize:
     name: Finalize release
     if: ${{ vars.JCODE_FINALIZE_RELEASE == '1' }}

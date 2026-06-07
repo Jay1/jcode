@@ -666,6 +666,9 @@ export function createWsNativeApi(): NativeApi {
       upsertKeybinding: (input) => transport.request(WS_METHODS.serverUpsertKeybinding, input),
       resetKeybinding: (input) => transport.request(WS_METHODS.serverResetKeybinding, input),
       resetAllKeybindings: () => transport.request(WS_METHODS.serverResetAllKeybindings, {}),
+      getFirstRunWizardData: () => transport.request(WS_METHODS.serverGetFirstRunWizardData, {}),
+      completeFirstRunWizard: (input) =>
+        transport.request(WS_METHODS.serverCompleteFirstRunWizard, input),
     },
     provider: {
       getComposerCapabilities: (input) =>

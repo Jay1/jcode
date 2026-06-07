@@ -3,6 +3,7 @@ import { TrimmedString } from "./baseSchemas";
 import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "./model";
 import { ModelSelection, ProviderKind, ThreadEnvironmentMode } from "./orchestration";
 import { OpenCodeRuntimeProfile } from "./providerDiscovery";
+import { FirstRunState } from "./firstRunWizard";
 
 const StringSetting = TrimmedString.check(Schema.isMaxLength(4096));
 const CustomModels = Schema.Array(Schema.String.check(Schema.isMaxLength(256))).pipe(
@@ -91,6 +92,9 @@ export const ServerSettings = Schema.Struct({
     opencode: OpenCodeServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     pi: PiServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   }).pipe(Schema.withDecodingDefault(() => ({}))),
+  firstRun: FirstRunState.pipe(
+    Schema.withDecodingDefault(() => ({ completed: false, skipped: false })),
+  ),
 });
 export type ServerSettings = typeof ServerSettings.Type;
 
@@ -113,6 +117,7 @@ export const ServerSettingsPatch = Schema.Struct({
   defaultThreadEnvMode: Schema.optionalKey(ThreadEnvironmentMode),
   addProjectBaseDirectory: Schema.optionalKey(StringSetting),
   textGenerationModelSelection: Schema.optionalKey(ModelSelectionPatch),
+  firstRun: Schema.optionalKey(FirstRunState),
   providers: Schema.optionalKey(
     Schema.Struct({
       codex: Schema.optionalKey(

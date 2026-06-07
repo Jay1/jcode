@@ -19,4 +19,6 @@ export * from "./environment";
 export * from "./project";
 export * from "./filesystem";
 export * from "./managedRuntime";
+export * from "./managedRuntimeLifecycle";
 export * from "./rpc";
+export * from "./firstRunWizard";

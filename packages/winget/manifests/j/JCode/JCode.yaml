@@ -1,0 +1,54 @@
+# Winget manifest template for JCode.
+# The release CI generates the three canonical split files
+# (version, installer, locale) from scripts/update-package-manifests.ts.
+
+PackageIdentifier: Jay1.JCode
+PackageVersion: "$VERSION"
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.10.0
+
+--- # installer
+
+PackageIdentifier: Jay1.JCode
+PackageVersion: "$VERSION"
+InstallerLocale: en-US
+InstallerType: nullsoft
+InstallModes:
+  - interactive
+  - silent
+InstallerSwitches:
+  Silent: /S
+  SilentWithProgress: /S
+UpgradeBehavior: install
+ReleaseDate: "$RELEASE_DATE"
+Installers:
+  - Architecture: x64
+    InstallerUrl: "https://github.com/Jay1/jcode/releases/download/v$VERSION/JCode-$VERSION-x64.exe"
+    InstallerSha256: $SHA256
+ManifestType: installer
+ManifestVersion: 1.10.0
+
+--- # defaultLocale
+
+PackageIdentifier: Jay1.JCode
+PackageVersion: "$VERSION"
+PackageLocale: en-US
+Publisher: Jay1
+PublisherUrl: https://github.com/Jay1
+PackageName: JCode
+PackageUrl: https://github.com/Jay1/jcode
+License: MIT
+LicenseUrl: https://github.com/Jay1/jcode/blob/main/LICENSE
+ShortDescription: Local cockpit for coding agents.
+Description: >-
+  JCode is a local cockpit for coding agents, built around OpenCode with a web
+  UI, desktop packaging, and a local server for managing coding-agent sessions.
+Moniker: jcode
+Tags:
+  - agent
+  - coding-agent
+  - developer-tools
+  - opencode
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0

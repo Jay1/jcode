@@ -61,6 +61,7 @@ import {
   OpenCodeRuntimeLive,
 } from "./provider/opencodeRuntime";
 import { checkOpenCodeRuntimeHealth } from "./provider/openCodeRuntimeHealth";
+import { makeFirstRunWizardState } from "./provider/firstRunWizard";
 import { getProviderUsageSnapshot } from "./providerUsageSnapshot";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment";
 import { ServerLifecycleEvents } from "./serverLifecycleEvents";
@@ -258,6 +259,7 @@ export const makeWsRpcLayer = () =>
       const terminalManager = yield* TerminalManager;
       const workspaceEntries = yield* WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem;
+      const firstRunWizard = yield* makeFirstRunWizardState;
 
       const getOpenCodeRuntimeHealth = (input: {
         readonly provider: "opencode";
@@ -738,6 +740,10 @@ export const makeWsRpcLayer = () =>
               ),
             "Failed to reset keybindings",
           ),
+        [WS_METHODS.serverGetFirstRunWizardData]: () =>
+          rpcEffect(firstRunWizard.getWizardData, "Failed to get first-run wizard data"),
+        [WS_METHODS.serverCompleteFirstRunWizard]: (input) =>
+          rpcEffect(firstRunWizard.completeWizard(input), "Failed to complete first-run wizard"),
         [WS_METHODS.subscribeServerLifecycle]: () =>
           Stream.concat(
             Stream.fromEffect(

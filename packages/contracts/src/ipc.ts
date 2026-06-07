@@ -77,6 +77,7 @@ import type {
   ServerVoiceTranscriptionInput,
   ServerVoiceTranscriptionResult,
 } from "./server";
+import type { CompleteFirstRunWizardInput, FirstRunWizardData } from "./firstRunWizard";
 import type {
   TerminalClearInput,
   TerminalCloseInput,
@@ -463,6 +464,8 @@ export interface NativeApi {
     upsertKeybinding: (input: ServerUpsertKeybindingInput) => Promise<ServerUpsertKeybindingResult>;
     resetKeybinding: (input: ServerResetKeybindingInput) => Promise<ServerResetKeybindingsResult>;
     resetAllKeybindings: () => Promise<ServerResetKeybindingsResult>;
+    getFirstRunWizardData: () => Promise<FirstRunWizardData>;
+    completeFirstRunWizard: (input: CompleteFirstRunWizardInput) => Promise<FirstRunWizardData>;
   };
   provider: {
     getComposerCapabilities: (
