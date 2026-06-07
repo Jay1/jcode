@@ -15,7 +15,7 @@ function shouldReplaceTextGenerationModelSelection(
 }
 
 function providerHasDefaultModel(provider: ProviderKind): provider is ProviderWithDefaultModel {
-  return provider !== "openclaw" && provider !== "pi";
+  return provider !== "openclaw" && provider !== "pi" && provider !== "devin";
 }
 
 function sanitizeOpenClawGatewayUrl(value: string | undefined): string | undefined {

@@ -1,14 +1,17 @@
-import { describe, expect, it } from "vitest";
 import { Schema } from "effect";
+import { describe, expect, it } from "vitest";
 
 import {
   ProviderRuntimeEvent,
   type ProviderRuntimeEvent as ProviderRuntimeEventType,
 } from "./providerRuntime";
 
-const decodeRuntimeEvent = Schema.decodeUnknownSync(ProviderRuntimeEvent) as (
-  input: unknown,
-) => ProviderRuntimeEventType;
+// ProviderRuntimeEvent is a complex Union whose DecodingServices constraint
+// is incompatible with decodeUnknownSync's type-level requirement. The schema
+// validates correctly at runtime, so we widen it to Schema<ProviderRuntimeEventType>
+// to satisfy TypeScript.
+const typedEventSchema: Schema.Schema<ProviderRuntimeEventType> = ProviderRuntimeEvent;
+const decodeRuntimeEvent = Schema.decodeUnknownSync(typedEventSchema);
 
 describe("ProviderRuntimeEvent", () => {
   it("decodes turn.tasks.updated for task-list rendering", () => {

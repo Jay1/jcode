@@ -1,4 +1,4 @@
-# ADR 0005: Remote Clients Use Scoped Capability Tokens
+# ADR 0008: Remote Clients Use Scoped Capability Tokens
 
 | Field           | Value                                                                                                                                                               |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
