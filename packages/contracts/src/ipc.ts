@@ -80,8 +80,6 @@ import type {
   ServerUpsertKeybindingResult,
   ServerVoiceTranscriptionInput,
   ServerVoiceTranscriptionResult,
-  ServerGenerateThreadRecapInput,
-  ServerGenerateThreadRecapResult,
 } from "./server";
 import type {
   TerminalClearInput,
