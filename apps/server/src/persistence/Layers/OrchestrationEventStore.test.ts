@@ -256,7 +256,9 @@ layer("OrchestrationEventStore", (it) => {
       const replayResult = yield* Effect.result(
         Stream.runCollect(eventStore.readFromSequence(0, 10)),
       );
+      // oxlint-disable-next-line no-underscore-dangle
       assert.equal(replayResult._tag, "Failure");
+      // oxlint-disable-next-line no-underscore-dangle
       if (replayResult._tag === "Failure") {
         assert.ok(Schema.is(PersistenceDecodeError)(replayResult.failure));
         assert.ok(

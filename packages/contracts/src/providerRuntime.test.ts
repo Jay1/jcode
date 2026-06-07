@@ -4,13 +4,9 @@ import { describe, expect, it } from "vitest";
 import type { ProviderRuntimeEvent as ProviderRuntimeEventType } from "./providerRuntime";
 import { ProviderRuntimeEvent } from "./providerRuntime";
 
-// Effect's decodeUnknownSync has a DecodingServices=never constraint that this
-// Union doesn't satisfy. We widen through Schema.Top to bypass the constraint.
-type AnySchema = Schema.Schema<ProviderRuntimeEventType, ProviderRuntimeEventType>;
-const decodeUnknown = Schema.decodeUnknownSync as (
-  schema: AnySchema,
-) => (input: unknown) => ProviderRuntimeEventType;
-const decodeRuntimeEvent = decodeUnknown(ProviderRuntimeEvent satisfies AnySchema);
+function decodeRuntimeEvent(input: unknown): ProviderRuntimeEventType {
+  return Schema.decodeUnknownSync(ProviderRuntimeEvent as never)(input) as ProviderRuntimeEventType;
+}
 
 describe("ProviderRuntimeEvent", () => {
   it("decodes turn.tasks.updated for task-list rendering", () => {
