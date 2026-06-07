@@ -166,6 +166,12 @@ Provider usage and limits should appear as cockpit status, not only as settings 
 
 The first provider usage/limits slice should define a normalized provider-status model that combines health, recent usage, rate-limit warnings, and actionable state before adding new cockpit UI.
 
+The provider status model has three layers: install/health status (`ServerProviderStatus` with `ready`/`warning`/`error` states, auth status, version advisory, and update state), runtime session status (`ProviderSession` with `connecting`/`ready`/`running`/`error`/`closed` states per thread), and runtime internal state (`RuntimeSessionState` with `starting`/`ready`/`running`/`waiting`/`stopped`/`error` states inside the provider process). These are distinct: health is about the CLI binary and credentials, session is about the active connection, runtime state is about the provider process internals.
+
+All 8 `ProviderKind` values (`codex`, `claudeAgent`, `cursor`, `gemini`, `kilo`, `opencode`, `pi`, `devin`) are wired into the provider health system: each has a `ServerProviderSettings` entry, a status cache slot, and a CLI health probe in `ProviderHealth.ts`. The provider status cache persists health snapshots to disk as JSON in `<stateDir>/provider-status/<provider>.json`, seeded on startup and refreshed periodically without blocking server boot.
+
+Rate limit events (`account.rate-limits.updated`) flow from provider runtimes with heterogeneous payload shapes. The wire type is `Record<string, unknown>` (typed enough to guarantee object shape, flexible enough for provider-specific fields). The runtime ingestion layer normalizes these into a consistent structure with `status`, `utilization`, `resetsAt`, and optional `limits` array (per-window breakdown with `window`, `utilization`, `resetsAt`). Provider usage snapshots (`ServerProviderUsageSnapshot`) aggregate 30-day local usage archives with per-provider parsers.
+
 ### ACP Integration
 
 ACP integration is JCode's Agent Client Protocol support layer for providers that speak ACP over stdio/RPC. It wraps protocol initialization, authentication, session creation, permission requests, elicitation, file access, terminal operations, extension requests, and notifications.

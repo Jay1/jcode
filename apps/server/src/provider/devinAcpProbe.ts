@@ -34,15 +34,15 @@ export function probeDevinCli(binaryPath?: string): Effect.Effect<DevinProbeResu
       if (code === 0) {
         resume(
           Effect.succeed({
-            status: "available",
-            auth: { status: "unknown" },
+            status: "ready" as const,
+            auth: { status: "unknown" as const },
           }),
         );
       } else {
         resume(
           Effect.succeed({
-            status: "unavailable",
-            auth: { status: "unauthenticated" },
+            status: "error" as const,
+            auth: { status: "unauthenticated" as const },
             message: `devin CLI exited with code ${code}: ${(stderr || stdout).trim()}`,
           }),
         );
@@ -52,8 +52,8 @@ export function probeDevinCli(binaryPath?: string): Effect.Effect<DevinProbeResu
     child.on("error", (err) => {
       resume(
         Effect.succeed({
-          status: "unavailable",
-          auth: { status: "unauthenticated" },
+          status: "error" as const,
+          auth: { status: "unauthenticated" as const },
           message: `devin CLI not found: ${err.message}`,
         }),
       );

@@ -103,6 +103,7 @@ const KILO_PROVIDER = "kilo" as const;
 const OPENCODE_PROVIDER = "opencode" as const;
 const OPENCLAW_PROVIDER = "openclaw" as const;
 const PI_PROVIDER = "pi" as const;
+const DEVIN_PROVIDER = "devin" as const;
 type ProviderStatuses = ReadonlyArray<ServerProviderStatus>;
 
 const PROVIDERS = [
@@ -114,6 +115,7 @@ const PROVIDERS = [
   OPENCODE_PROVIDER,
   OPENCLAW_PROVIDER,
   PI_PROVIDER,
+  DEVIN_PROVIDER,
 ] as const satisfies ReadonlyArray<ProviderKind>;
 
 const UPDATE_OUTPUT_MAX_BYTES = 10_000;
@@ -808,6 +810,15 @@ const runCursorCommand = (args: ReadonlyArray<string>, executable = "agent") =>
   );
 
 const runPiCommand = (args: ReadonlyArray<string>, executable = "pi") =>
+  runProviderCommand(executable, args).pipe(
+    Effect.flatMap((result) =>
+      isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
+        ? Effect.fail(new Error(`spawn ${executable} ENOENT`))
+        : Effect.succeed(result),
+    ),
+  );
+
+const runDevinCommand = (args: ReadonlyArray<string>, executable = "devin") =>
   runProviderCommand(executable, args).pipe(
     Effect.flatMap((result) =>
       isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
@@ -1676,6 +1687,75 @@ export const checkPiProviderStatus = (
     }
   });
 
+// ── Devin health check ──────────────────────────────────────────────
+
+export const makeCheckDevinProviderStatus = (
+  binaryPath?: string,
+): Effect.Effect<ServerProviderStatus, never, ChildProcessSpawner.ChildProcessSpawner> =>
+  Effect.gen(function* () {
+    const checkedAt = new Date().toISOString();
+    const executable = nonEmptyTrimmed(binaryPath) ?? "devin";
+
+    const versionProbe = yield* runDevinCommand(["--version"], executable).pipe(
+      Effect.timeoutOption(DEFAULT_TIMEOUT_MS),
+      Effect.result,
+    );
+
+    if (Result.isFailure(versionProbe)) {
+      const error = versionProbe.failure;
+      return {
+        provider: DEVIN_PROVIDER,
+        status: "error" as const,
+        available: false,
+        authStatus: "unknown" as const,
+        checkedAt,
+        message: isCommandMissingCause(error)
+          ? "Devin CLI (`devin`) is not installed or not on PATH."
+          : `Failed to execute Devin CLI health check: ${error instanceof Error ? error.message : String(error)}.`,
+      } satisfies ServerProviderStatus;
+    }
+
+    if (Option.isNone(versionProbe.success)) {
+      return {
+        provider: DEVIN_PROVIDER,
+        status: "error" as const,
+        available: false,
+        authStatus: "unknown" as const,
+        checkedAt,
+        message: "Devin CLI is installed but failed to run. Timed out while running command.",
+      } satisfies ServerProviderStatus;
+    }
+
+    const version = versionProbe.success.value;
+    if (version.code !== 0) {
+      const detail = detailFromResult(version);
+      return {
+        provider: DEVIN_PROVIDER,
+        status: "error" as const,
+        available: false,
+        authStatus: "unknown" as const,
+        checkedAt,
+        message: detail
+          ? `Devin CLI is installed but failed to run. ${detail}`
+          : "Devin CLI is installed but failed to run.",
+      } satisfies ServerProviderStatus;
+    }
+
+    const parsedVersion = parseGenericCliVersion(`${version.stdout}\n${version.stderr}`);
+
+    return {
+      provider: DEVIN_PROVIDER,
+      status: "ready" as const,
+      available: true,
+      authStatus: "unknown" as const,
+      version: parsedVersion,
+      checkedAt,
+      message: "Devin CLI is installed. Configure provider credentials inside Devin as needed.",
+    } satisfies ServerProviderStatus;
+  });
+
+export const checkDevinProviderStatus = makeCheckDevinProviderStatus();
+
 // ── Cursor health check ─────────────────────────────────────────────
 
 export const makeCheckCursorProviderStatus = (
@@ -1860,6 +1940,8 @@ export const ProviderHealthLive = Layer.effect(
           return settings.providers.opencode.binaryPath;
         case "pi":
           return settings.providers.pi.binaryPath;
+        case "devin":
+          return settings.providers.devin.binaryPath;
       }
     };
 
@@ -2003,6 +2085,7 @@ export const ProviderHealthLive = Layer.effect(
                 settings.providers.pi.agentDir,
                 settings.providers.pi.binaryPath,
               ),
+              makeCheckDevinProviderStatus(settings.providers.devin.binaryPath),
             ],
             {
               concurrency: "unbounded",
