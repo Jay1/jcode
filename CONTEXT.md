@@ -34,6 +34,8 @@ ADR 0005 (Accepted) defines the scope model: four v1 capability scopes (`thread:
 
 The scoped remote client auth model changes the Server Auth Boundary and should be captured in an ADR before implementation begins.
 
+ADR 0006 (Decided) wires scope guards into the WS RPC layer: the `CurrentRpcAuthSession` context service now stores the full `AuthenticatedSession` (including scopes/resources) instead of just `sessionId`; three wrapper functions (`withScope`, `withScopeStream`, `withCommandScope`) gate RPC methods by required scope; observe methods require `thread:read`, `dispatchCommand` is command-type-aware (`approval:respond` for approval commands, `user_input:respond` for user-input commands, owner-only for everything else), provider status methods require `provider_status:read`; owner sessions bypass all guards with zero overhead.
+
 ### Upstream Adaptation
 
 Upstream adaptation is the process of evaluating DPCode, Synara, T3Code, or other lineage work as concrete source implementations to adapt into JCode, not merely as idea titles to reimplement from scratch.
