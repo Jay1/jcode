@@ -22,3 +22,5 @@ export * from "./managedRuntime";
 export * from "./managedRuntimeLifecycle";
 export * from "./rpc";
 export * from "./firstRunWizard";
+export * from "./managedRuntimeProfile";
+export * from "./managedRuntimeHealth";
