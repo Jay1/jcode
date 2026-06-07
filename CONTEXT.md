@@ -213,9 +213,9 @@ ADR 0007 (Proposed) defines the design-only first slice. Key decisions:
 
 Project identity is the durable server-owned metadata JCode uses to make projects scannable in cockpit surfaces, including language/framework icons today and future favicon or app/site identity signals.
 
-Project favicon identity should be treated as Project Identity v2. It may extend the existing project icon model with bounded root-level favicon, manifest, and framework probing, but it must preserve the ADR 0004 constraints: no recursive workspace scans, no renderer-only identity state, capped background backfill, and no startup blocking.
+Project favicon identity is treated as Project Identity v2. It extends the existing project icon model with bounded root-level favicon, manifest, and framework probing, preserving the ADR 0004 constraints: no recursive workspace scans, no renderer-only identity state, capped background backfill, and no startup blocking.
 
-The first Project Identity v2 slice should expand the bounded detector to read root-level favicon and manifest signals through the existing server-owned metadata path, with focused tests proving it does not recursively scan workspaces.
+The Project Identity v2 slice adds web app manifest icon probing to the bounded detector. The `ProjectFaviconResolver` now reads root-level `manifest.json`/`manifest.webmanifest` files from a bounded candidate list (8 paths, no recursion), extracts icon `src` entries from the JSON `icons` array, scores them (SVG > PNG > ICO, larger sizes preferred), and resolves the highest-quality existing icon. The same manifest probing is applied in the sync route handler (`projectFaviconRoute.ts`). The detection order is: direct favicon candidates → manifest icon entries → HTML source file `<link>` extraction. All manifest reads are capped at 128KB. No contract types were changed.
 
 ### Handoff
 

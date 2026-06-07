@@ -179,4 +179,45 @@ describe("tryHandleProjectFaviconRequest", () => {
       expect(response.body).toBe("");
     });
   });
+
+  it("resolves icon from root manifest.json via route", async () => {
+    const projectDir = makeTempDir("jcode-favicon-route-manifest-");
+    fs.mkdirSync(path.join(projectDir, "public"), { recursive: true });
+    fs.writeFileSync(
+      path.join(projectDir, "manifest.json"),
+      JSON.stringify({
+        icons: [{ src: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+      }),
+    );
+    fs.writeFileSync(path.join(projectDir, "public", "icon-192.png"), "png-data");
+
+    await withRouteServer(async (baseUrl) => {
+      const pathname = `/api/project-favicon?cwd=${encodeURIComponent(projectDir)}`;
+      const response = await request(baseUrl, pathname);
+      expect(response.statusCode).toBe(200);
+      expect(response.contentType).toContain("image/png");
+      expect(response.body).toBe("png-data");
+    });
+  });
+
+  it("resolves icon from public/manifest.webmanifest via route", async () => {
+    const projectDir = makeTempDir("jcode-favicon-route-webmanifest-");
+    const iconsDir = path.join(projectDir, "public", "icons");
+    fs.mkdirSync(iconsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(projectDir, "public", "manifest.webmanifest"),
+      JSON.stringify({
+        icons: [{ src: "icons/logo.svg", sizes: "any", type: "image/svg+xml" }],
+      }),
+    );
+    fs.writeFileSync(path.join(iconsDir, "logo.svg"), "<svg>logo</svg>");
+
+    await withRouteServer(async (baseUrl) => {
+      const pathname = `/api/project-favicon?cwd=${encodeURIComponent(projectDir)}`;
+      const response = await request(baseUrl, pathname);
+      expect(response.statusCode).toBe(200);
+      expect(response.contentType).toContain("image/svg+xml");
+      expect(response.body).toBe("<svg>logo</svg>");
+    });
+  });
 });
