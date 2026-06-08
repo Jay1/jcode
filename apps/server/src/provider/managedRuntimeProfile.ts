@@ -1,5 +1,6 @@
 import type {
   ManagedSidecarSnapshot,
+  OpenCodeRuntimeCapabilityRequirement,
   OpenCodeRuntimeProfile,
   ServerSettings,
   ServerSettingsPatch,
@@ -14,7 +15,7 @@ const EMPTY_CAPABILITY_ARRAYS = {
   requiredAgents: [] as readonly string[],
   requiredModels: [] as readonly string[],
   requiredEnv: [] as readonly string[],
-  requirements: [] as readonly unknown[],
+  requirements: [] as readonly OpenCodeRuntimeCapabilityRequirement[],
   capabilityPolicy: "warn" as const,
 };
 
