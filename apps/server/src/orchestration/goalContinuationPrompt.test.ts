@@ -1,5 +1,5 @@
 import { ORCHESTRATION_GOAL_COMPLETION_SENTINEL } from "@jcode/contracts";
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 
 import { renderGoalContinuationPrompt } from "./goalContinuationPrompt.ts";
 
