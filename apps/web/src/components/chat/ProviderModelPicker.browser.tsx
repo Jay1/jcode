@@ -55,6 +55,7 @@ const MODEL_OPTIONS_BY_PROVIDER = {
       upstreamProviderName: "Anthropic",
     },
   ],
+  devin: [],
 } as const satisfies Record<ProviderKind, ReadonlyArray<ProviderModelOption & { slug: ModelSlug }>>;
 
 const MANY_OPENCODE_MODELS = Array.from({ length: 16 }, (_, index) => ({
