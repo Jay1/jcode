@@ -3514,17 +3514,36 @@ export default function Sidebar() {
   }, []);
 
   const commitProjectRename = useCallback(
-    (projectId: ProjectId, nextName: string, previousLocalName: string | null) => {
+    async (projectId: ProjectId, nextName: string, previousName: string) => {
       const trimmed = nextName.trim();
-      const normalizedPrevious = previousLocalName?.trim() ?? "";
-      if (trimmed === normalizedPrevious) {
-        cancelProjectRename();
+      if (trimmed === previousName.trim()) {
+        setRenamingProjectId(null);
         return;
       }
-      renameProjectLocally(projectId, trimmed.length > 0 ? trimmed : null);
-      cancelProjectRename();
+      const effectiveName = trimmed.length > 0 ? trimmed : null;
+      renameProjectLocally(projectId, effectiveName);
+      setRenamingProjectId(null);
+
+      if (effectiveName !== null) {
+        const api = readNativeApi();
+        if (api) {
+          try {
+            await api.orchestration.dispatchCommand({
+              type: "project.meta.update",
+              commandId: newCommandId(),
+              projectId,
+              title: effectiveName,
+            });
+          } catch {
+            toastManager.add({
+              type: "error",
+              title: "Unable to rename project on server",
+            });
+          }
+        }
+      }
     },
-    [cancelProjectRename, renameProjectLocally],
+    [renameProjectLocally],
   );
 
   const sortedProjects = useMemo(
@@ -4658,7 +4677,7 @@ export default function Sidebar() {
                     if (event.key === "Enter") {
                       event.preventDefault();
                       renamingProjectCommittedRef.current = true;
-                      commitProjectRename(project.id, renamingProjectName, project.localName);
+                      commitProjectRename(project.id, renamingProjectName, project.name);
                     } else if (event.key === "Escape") {
                       event.preventDefault();
                       renamingProjectCommittedRef.current = true;
@@ -4667,7 +4686,7 @@ export default function Sidebar() {
                   }}
                   onBlur={() => {
                     if (!renamingProjectCommittedRef.current) {
-                      commitProjectRename(project.id, renamingProjectName, project.localName);
+                      commitProjectRename(project.id, renamingProjectName, project.name);
                     }
                   }}
                 />
@@ -4676,7 +4695,7 @@ export default function Sidebar() {
                   <span className="sidebar-project-header-label truncate font-system-ui text-[length:var(--app-font-size-ui,12px)] font-semibold tracking-[0.01em] text-foreground/82">
                     {project.name}
                   </span>
-                  {project.localName ? (
+                  {project.localName && project.folderName !== project.name ? (
                     <span className="shrink-0 truncate text-[length:var(--app-font-size-ui,12px)] text-muted-foreground/40">
                       {project.folderName}
                     </span>
