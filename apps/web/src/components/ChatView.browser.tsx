@@ -1093,6 +1093,12 @@ async function waitForLayout(): Promise<void> {
   await nextFrame();
 }
 
+async function waitForProgrammaticScrollGuard(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    window.setTimeout(resolve, 260);
+  });
+}
+
 function dispatchUpwardWheel(element: HTMLElement): void {
   element.dispatchEvent(
     new WheelEvent("wheel", {
@@ -1994,6 +2000,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
         },
         { timeout: 8_000, interval: 16 },
       );
+
+      await waitForProgrammaticScrollGuard();
 
       setScrollContainerAwayFromBottom(scrollContainer);
       dispatchUpwardWheel(scrollContainer);
