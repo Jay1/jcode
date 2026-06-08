@@ -38,6 +38,7 @@ export const DEFAULT_CHAT_FONT_SIZE_PX = 12;
 export const TimestampFormat = Schema.Literals(["locale", "12-hour", "24-hour"]);
 export type TimestampFormat = typeof TimestampFormat.Type;
 export const DEFAULT_TIMESTAMP_FORMAT: TimestampFormat = "locale";
+export const DEFAULT_SHOW_INTERFACE_CLOCK = true;
 export const SidebarSide = Schema.Literals(["left", "right"]);
 export type SidebarSide = typeof SidebarSide.Type;
 export const DEFAULT_SIDEBAR_SIDE: SidebarSide = "left";
@@ -133,6 +134,7 @@ export const AppSettingsSchema = Schema.Struct({
     withDefaults(() => DEFAULT_SIDEBAR_THREAD_SORT_ORDER),
   ),
   timestampFormat: TimestampFormat.pipe(withDefaults(() => DEFAULT_TIMESTAMP_FORMAT)),
+  showInterfaceClock: Schema.Boolean.pipe(withDefaults(() => DEFAULT_SHOW_INTERFACE_CLOCK)),
   customCodexModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customClaudeModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customCursorModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
