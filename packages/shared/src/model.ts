@@ -32,6 +32,7 @@ const MODEL_SLUG_SET_BY_PROVIDER: Record<ProviderKind, ReadonlySet<ModelSlug>> =
   opencode: new Set(MODEL_OPTIONS_BY_PROVIDER.opencode.map((option) => option.slug)),
   openclaw: new Set(MODEL_OPTIONS_BY_PROVIDER.openclaw.map((option) => option.slug)),
   pi: new Set<ModelSlug>(),
+  devin: new Set<ModelSlug>(),
 };
 
 export interface SelectableModelOption {
