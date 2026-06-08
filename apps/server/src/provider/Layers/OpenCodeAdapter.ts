@@ -785,6 +785,7 @@ function trackActiveTurnAssistantFinish(
   }
   if (isOpenCodeToolCallFinish(entry.info.finish)) {
     context.activeTurnSawToolCallFinish = true;
+    context.activeTurnCompletionActivitySerial = 0;
   }
   if (isOpenCodeCompletedAssistantMessage(entry)) {
     context.activeTurnSawFinalAssistant = true;
@@ -2270,6 +2271,32 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
         );
       });
 
+      function clearResumptionWaitingState(context: OpenCodeSessionContext): void {
+        context.activeTurnWaitingForResumption = false;
+        context.activeTurnResumptionStartedAt = undefined;
+        context.activeTurnSawToolCallFinish = false;
+        context.activeTurnSawFinalAssistant = false;
+        context.activeTurnToolCallIdleWatchdogStarted = false;
+      }
+
+      function isOpenCodeResumptionActivityEvent(event: OpenCodeSubscribedEvent): boolean {
+        switch (event.type) {
+          case "session.next.step.started":
+          case "session.next.text.started":
+          case "session.next.text.delta":
+          case "session.next.text.ended":
+          case "session.next.reasoning.started":
+          case "session.next.reasoning.delta":
+            return true;
+          case "session.status":
+            return event.properties.status.type === "busy";
+          case "message.updated":
+            return event.properties.info.role === "assistant";
+          default:
+            return false;
+        }
+      }
+
       const enterResumptionWaiting = Effect.fn("enterResumptionWaiting")(function* (
         context: OpenCodeSessionContext,
         turnId: TurnId,
@@ -2652,6 +2679,10 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
           },
         });
 
+        if (context.activeTurnWaitingForResumption && isOpenCodeResumptionActivityEvent(event)) {
+          clearResumptionWaitingState(context);
+        }
+
         switch (event.type) {
           case "message.updated": {
             context.messageRoleById.set(event.properties.info.id, event.properties.info.role);
@@ -2977,11 +3008,7 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
                 activeTurnId: turnId,
               });
               if (context.activeTurnWaitingForResumption) {
-                context.activeTurnWaitingForResumption = false;
-                context.activeTurnResumptionStartedAt = undefined;
-                context.activeTurnSawToolCallFinish = false;
-                context.activeTurnSawFinalAssistant = false;
-                context.activeTurnToolCallIdleWatchdogStarted = false;
+                clearResumptionWaitingState(context);
               }
             }
 
@@ -3074,6 +3101,10 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
 
           // Newer OpenCode servers can emit session.next.* events for the active
           // agent loop. Mirror them into JCode's canonical transcript stream.
+          case "session.next.step.started": {
+            break;
+          }
+
           case "session.next.text.delta": {
             if (!turnId || event.properties.delta.length === 0) {
               break;
@@ -3317,6 +3348,7 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             context.latestTurnCostUsd = asFiniteNonNegativeNumber(event.properties.cost);
             if (isOpenCodeToolCallFinish(event.properties.finish)) {
               context.activeTurnSawToolCallFinish = true;
+              context.activeTurnCompletionActivitySerial = 0;
             }
             if (isOpenCodeTerminalStepFinish(event.properties.finish)) {
               yield* completeOpenCodeTurn(context, {
