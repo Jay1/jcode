@@ -2379,6 +2379,13 @@ describe("ChatView timeline estimator parity (full app)", () => {
     });
 
     try {
+      // subscribeThread delivers the snapshot via queueMicrotask, so
+      // composerMessageHistory may still be empty on first render.
+      await waitForElement(
+        () => document.querySelector<HTMLElement>('[data-message-role="user"]'),
+        "Thread messages not loaded before history navigation test.",
+      );
+
       const composerEditor = await waitForComposerEditor();
       const readComposerText = async () => (await waitForComposerEditor()).textContent ?? "";
       const waitForComposerText = async (predicate: (text: string) => boolean) => {
