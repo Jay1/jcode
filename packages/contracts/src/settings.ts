@@ -90,6 +90,11 @@ export const DevinServerProviderSettings = Schema.Struct({
 });
 export type DevinServerProviderSettings = typeof DevinServerProviderSettings.Type;
 
+const TimestampFormat = Schema.Literals(["locale", "12-hour", "24-hour"]);
+const SidebarSide = Schema.Literals(["left", "right"]);
+const SidebarProjectSortOrder = Schema.Literals(["updated_at", "created_at", "manual"]);
+const SidebarThreadSortOrder = Schema.Literals(["updated_at", "created_at"]);
+
 export const ServerSettings = Schema.Struct({
   enableAssistantStreaming: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
   defaultThreadEnvMode: ThreadEnvironmentMode.pipe(Schema.withDecodingDefault(() => "local")),
@@ -111,6 +116,44 @@ export const ServerSettings = Schema.Struct({
     pi: PiServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     devin: DevinServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   }).pipe(Schema.withDecodingDefault(() => ({}))),
+  chatFontSizePx: Schema.Number.pipe(Schema.withDecodingDefault(() => 12)),
+  chatCodeFontFamily: Schema.String.check(Schema.isMaxLength(256)).pipe(
+    Schema.withDecodingDefault(() => ""),
+  ),
+  uiFontFamily: Schema.String.check(Schema.isMaxLength(256)).pipe(
+    Schema.withDecodingDefault(() => ""),
+  ),
+  enableNativeFontSmoothing: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
+  timestampFormat: TimestampFormat.pipe(Schema.withDecodingDefault(() => "locale" as const)),
+  sidebarSide: SidebarSide.pipe(Schema.withDecodingDefault(() => "left" as const)),
+  sidebarProjectSortOrder: SidebarProjectSortOrder.pipe(
+    Schema.withDecodingDefault(() => "manual" as const),
+  ),
+  sidebarThreadSortOrder: SidebarThreadSortOrder.pipe(
+    Schema.withDecodingDefault(() => "updated_at" as const),
+  ),
+  confirmThreadDelete: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
+  confirmThreadArchive: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
+  confirmTerminalTabClose: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
+  diffWordWrap: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
+  enableTaskCompletionToasts: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
+  enableSystemTaskCompletionNotifications: Schema.Boolean.pipe(
+    Schema.withDecodingDefault(() => true),
+  ),
+  defaultProvider: ProviderKind.pipe(Schema.withDecodingDefault(() => "codex" as const)),
+  providerOrder: Schema.Array(ProviderKind).pipe(
+    Schema.withDecodingDefault(() => [
+      "codex",
+      "claudeAgent",
+      "cursor",
+      "gemini",
+      "kilo",
+      "opencode",
+      "openclaw",
+      "pi",
+    ]),
+  ),
+  themeState: Schema.String.pipe(Schema.withDecodingDefault(() => "")),
 });
 export type ServerSettings = typeof ServerSettings.Type;
 
@@ -188,6 +231,23 @@ export const ServerSettingsPatch = Schema.Struct({
       devin: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
     }),
   ),
+  chatFontSizePx: Schema.optionalKey(Schema.Number),
+  chatCodeFontFamily: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(256))),
+  uiFontFamily: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(256))),
+  enableNativeFontSmoothing: Schema.optionalKey(Schema.Boolean),
+  timestampFormat: Schema.optionalKey(TimestampFormat),
+  sidebarSide: Schema.optionalKey(SidebarSide),
+  sidebarProjectSortOrder: Schema.optionalKey(SidebarProjectSortOrder),
+  sidebarThreadSortOrder: Schema.optionalKey(SidebarThreadSortOrder),
+  confirmThreadDelete: Schema.optionalKey(Schema.Boolean),
+  confirmThreadArchive: Schema.optionalKey(Schema.Boolean),
+  confirmTerminalTabClose: Schema.optionalKey(Schema.Boolean),
+  diffWordWrap: Schema.optionalKey(Schema.Boolean),
+  enableTaskCompletionToasts: Schema.optionalKey(Schema.Boolean),
+  enableSystemTaskCompletionNotifications: Schema.optionalKey(Schema.Boolean),
+  defaultProvider: Schema.optionalKey(ProviderKind),
+  providerOrder: Schema.optionalKey(Schema.Array(ProviderKind)),
+  themeState: Schema.optionalKey(Schema.String),
 });
 export type ServerSettingsPatch = typeof ServerSettingsPatch.Type;
 

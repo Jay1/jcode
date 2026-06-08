@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { isElectron } from "../env";
 import { isMacPlatform } from "../lib/utils";
+import { ensureNativeApi } from "../nativeApi";
 import {
   DEFAULT_THEME_STATE,
   type ChromeTheme,
@@ -102,6 +103,10 @@ function updateStoredThemeState(update: (state: ThemeState) => ThemeState) {
   writeStoredThemeState(nextState);
   applyThemeState(nextState, true);
   emitChange();
+
+  void ensureNativeApi()
+    .server.updateSettings({ themeState: serializeThemeState(nextState) })
+    .catch(() => {});
 }
 
 function subscribe(listener: () => void): () => void {
@@ -221,6 +226,25 @@ function syncDesktopTheme(theme: ThemeMode) {
 // Apply immediately on module load to minimize flash before React mounts.
 if (typeof document !== "undefined") {
   applyThemeState(readStoredThemeState());
+}
+
+export function hydrateThemeFromServer(themeState: string | undefined) {
+  if (!themeState) {
+    return;
+  }
+  const current = readStoredThemeState();
+  let incoming: ReturnType<typeof readStoredThemeState>;
+  try {
+    incoming = parseStoredThemeState(themeState);
+  } catch {
+    return;
+  }
+  if (serializeThemeState(current) === serializeThemeState(incoming)) {
+    return;
+  }
+  writeStoredThemeState(incoming);
+  applyThemeState(incoming, true);
+  emitChange();
 }
 
 // ─── Public hook ──────────────────────────────────────────────────────────

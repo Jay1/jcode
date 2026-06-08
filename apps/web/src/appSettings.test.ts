@@ -26,6 +26,7 @@ import {
   resolveAppModelSelection,
   serverSettingsToAppSettings,
 } from "./appSettings";
+import { DEFAULT_PROVIDER_ORDER } from "./providerOrdering";
 
 describe("normalizeCustomModelSlugs", () => {
   it("normalizes aliases, removes built-ins, and deduplicates values", () => {
@@ -465,6 +466,223 @@ describe("server-backed app settings", () => {
           authMode: "token",
         },
       },
+    });
+  });
+
+  it("maps new UI preference fields from server settings", () => {
+    expect(
+      serverSettingsToAppSettings(
+        Schema.decodeSync(ServerSettings)({
+          addProjectBaseDirectory: "/home/jay/code",
+          defaultThreadEnvMode: "local",
+          enableAssistantStreaming: false,
+          chatFontSizePx: 16,
+          chatCodeFontFamily: "JetBrains Mono",
+          uiFontFamily: "Inter",
+          enableNativeFontSmoothing: true,
+          timestampFormat: "24-hour",
+          sidebarSide: "right",
+          sidebarProjectSortOrder: "updated_at",
+          sidebarThreadSortOrder: "created_at",
+          confirmThreadDelete: false,
+          confirmThreadArchive: false,
+          confirmTerminalTabClose: false,
+          diffWordWrap: true,
+          enableTaskCompletionToasts: false,
+          enableSystemTaskCompletionNotifications: false,
+          defaultProvider: "claudeAgent",
+          providers: {
+            claudeAgent: { enabled: true, binaryPath: "claude", launchArgs: "", customModels: [] },
+            codex: {
+              enabled: true,
+              binaryPath: "codex",
+              homePath: "",
+              launchArgs: "",
+              customModels: [],
+            },
+            cursor: { enabled: true, binaryPath: "agent", apiEndpoint: "", customModels: [] },
+            gemini: { enabled: true, binaryPath: "gemini", customModels: [] },
+            kilo: {
+              enabled: true,
+              binaryPath: "kilo",
+              serverUrl: "",
+              serverPassword: "",
+              customModels: [],
+            },
+            opencode: {
+              enabled: true,
+              binaryPath: "opencode",
+              serverUrl: "",
+              serverPassword: "",
+              runtimeProfiles: [],
+              activeRuntimeProfileId: "",
+              customModels: [],
+            },
+            pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
+          },
+          textGenerationModelSelection: { provider: "codex", model: "gpt-5.4" },
+        }),
+      ),
+    ).toMatchObject({
+      chatFontSizePx: 16,
+      chatCodeFontFamily: "JetBrains Mono",
+      uiFontFamily: "Inter",
+      enableNativeFontSmoothing: true,
+      timestampFormat: "24-hour",
+      sidebarSide: "right",
+      sidebarProjectSortOrder: "updated_at",
+      sidebarThreadSortOrder: "created_at",
+      confirmThreadDelete: false,
+      confirmThreadArchive: false,
+      confirmTerminalTabClose: false,
+      diffWordWrap: true,
+      enableTaskCompletionToasts: false,
+      enableSystemTaskCompletionNotifications: false,
+      defaultProvider: "claudeAgent",
+    });
+  });
+
+  it("computes hiddenProviders from providers with enabled: false", () => {
+    expect(
+      serverSettingsToAppSettings(
+        Schema.decodeSync(ServerSettings)({
+          addProjectBaseDirectory: "",
+          defaultThreadEnvMode: "local",
+          enableAssistantStreaming: false,
+          providers: {
+            claudeAgent: { enabled: true, binaryPath: "claude", launchArgs: "", customModels: [] },
+            codex: {
+              enabled: false,
+              binaryPath: "codex",
+              homePath: "",
+              launchArgs: "",
+              customModels: [],
+            },
+            cursor: { enabled: true, binaryPath: "agent", apiEndpoint: "", customModels: [] },
+            gemini: { enabled: false, binaryPath: "gemini", customModels: [] },
+            kilo: {
+              enabled: true,
+              binaryPath: "kilo",
+              serverUrl: "",
+              serverPassword: "",
+              customModels: [],
+            },
+            opencode: {
+              enabled: true,
+              binaryPath: "opencode",
+              serverUrl: "",
+              serverPassword: "",
+              runtimeProfiles: [],
+              activeRuntimeProfileId: "",
+              customModels: [],
+            },
+            pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
+          },
+          textGenerationModelSelection: { provider: "codex", model: "gpt-5.4" },
+        }),
+      ),
+    ).toMatchObject({
+      hiddenProviders: ["codex", "gemini"],
+    });
+  });
+
+  it("maps new UI preference fields to server settings patches", () => {
+    expect(
+      appSettingsPatchToServerSettingsPatch({
+        chatFontSizePx: 15,
+        chatCodeFontFamily: "Fira Code",
+        uiFontFamily: "IBM Plex Sans",
+        enableNativeFontSmoothing: false,
+        timestampFormat: "12-hour",
+        sidebarSide: "right",
+        sidebarProjectSortOrder: "created_at",
+        sidebarThreadSortOrder: "created_at",
+        confirmThreadDelete: false,
+        confirmThreadArchive: true,
+        confirmTerminalTabClose: false,
+        diffWordWrap: true,
+        enableTaskCompletionToasts: true,
+        enableSystemTaskCompletionNotifications: true,
+        defaultProvider: "gemini",
+      }),
+    ).toEqual({
+      chatFontSizePx: 15,
+      chatCodeFontFamily: "Fira Code",
+      uiFontFamily: "IBM Plex Sans",
+      enableNativeFontSmoothing: false,
+      timestampFormat: "12-hour",
+      sidebarSide: "right",
+      sidebarProjectSortOrder: "created_at",
+      sidebarThreadSortOrder: "created_at",
+      confirmThreadDelete: false,
+      confirmThreadArchive: true,
+      confirmTerminalTabClose: false,
+      diffWordWrap: true,
+      enableTaskCompletionToasts: true,
+      enableSystemTaskCompletionNotifications: true,
+      defaultProvider: "gemini",
+    });
+  });
+
+  it("converts hiddenProviders to per-provider enabled flags in server patch", () => {
+    const patch = appSettingsPatchToServerSettingsPatch({
+      hiddenProviders: ["codex", "gemini"],
+    });
+
+    expect(patch.providers).toMatchObject({
+      codex: { enabled: false },
+      gemini: { enabled: false },
+    });
+    expect(patch.providers!.codex!.enabled).toBe(false);
+    expect(patch.providers!.gemini!.enabled).toBe(false);
+  });
+
+  it("re-enables previously hidden providers when hiddenProviders becomes empty", () => {
+    const patch = appSettingsPatchToServerSettingsPatch({
+      hiddenProviders: [],
+    });
+
+    for (const provider of DEFAULT_PROVIDER_ORDER) {
+      expect(patch.providers![provider]!.enabled).toBe(true);
+    }
+  });
+
+  it("handles non-default providers in hiddenProviders", () => {
+    const patch = appSettingsPatchToServerSettingsPatch({
+      hiddenProviders: ["devin", "codex"],
+    });
+
+    expect(patch.providers!.devin!.enabled).toBe(false);
+    expect(patch.providers!.codex!.enabled).toBe(false);
+    expect(patch.providers!.claudeAgent!.enabled).toBe(true);
+  });
+
+  it("re-enables non-default providers when hiddenProviders becomes empty", () => {
+    const patch = appSettingsPatchToServerSettingsPatch({
+      hiddenProviders: [],
+    });
+
+    for (const provider of DEFAULT_PROVIDER_ORDER) {
+      expect(patch.providers![provider]!.enabled).toBe(true);
+    }
+  });
+
+  it("maps providerOrder to server settings patch", () => {
+    expect(
+      appSettingsPatchToServerSettingsPatch({
+        providerOrder: ["claudeAgent", "codex", "gemini", "cursor", "kilo", "opencode"],
+      }),
+    ).toEqual({
+      providerOrder: [
+        "claudeAgent",
+        "codex",
+        "gemini",
+        "cursor",
+        "kilo",
+        "opencode",
+        "openclaw",
+        "pi",
+      ],
     });
   });
 });

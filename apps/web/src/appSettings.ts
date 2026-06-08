@@ -24,12 +24,15 @@ import {
   DEFAULT_PROVIDER_ORDER,
   normalizeHiddenProviders,
   normalizeProviderOrder,
+  sameProviderOrder,
 } from "./providerOrdering";
 import { ensureNativeApi } from "./nativeApi";
+import { hydrateThemeFromServer } from "./hooks/useTheme";
 import { serverQueryKeys, serverSettingsQueryOptions } from "./lib/serverReactQuery";
 
 const APP_SETTINGS_STORAGE_KEY = "jcode:app-settings:v1";
 const SERVER_SETTINGS_MIGRATION_STORAGE_KEY = "t3code:server-settings-migrated:v1";
+const SERVER_SETTINGS_V2_MIGRATION_STORAGE_KEY = "jcode:server-settings-migrated:v2";
 const MAX_CUSTOM_MODEL_COUNT = 32;
 const GIT_TEXT_GENERATION_PROVIDERS = new Set<ProviderKind>(["codex", "kilo", "opencode"]);
 export const MAX_CUSTOM_MODEL_LENGTH = 256;
@@ -319,6 +322,9 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
 }
 
 export function serverSettingsToAppSettings(settings: ServerSettings): Partial<AppSettings> {
+  const allProviders = Object.keys(settings.providers) as Array<ProviderKind>;
+  const hiddenProviders = allProviders.filter((p) => settings.providers[p]?.enabled === false);
+
   return {
     addProjectBaseDirectory: settings.addProjectBaseDirectory,
     claudeBinaryPath: settings.providers.claudeAgent.binaryPath,
@@ -353,6 +359,23 @@ export function serverSettingsToAppSettings(settings: ServerSettings): Partial<A
     customPiModels: settings.providers.pi.customModels,
     textGenerationProvider: settings.textGenerationModelSelection.provider,
     textGenerationModel: settings.textGenerationModelSelection.model,
+    chatFontSizePx: settings.chatFontSizePx,
+    chatCodeFontFamily: settings.chatCodeFontFamily,
+    uiFontFamily: settings.uiFontFamily,
+    enableNativeFontSmoothing: settings.enableNativeFontSmoothing,
+    timestampFormat: settings.timestampFormat,
+    sidebarSide: settings.sidebarSide,
+    sidebarProjectSortOrder: settings.sidebarProjectSortOrder,
+    sidebarThreadSortOrder: settings.sidebarThreadSortOrder,
+    confirmThreadDelete: settings.confirmThreadDelete,
+    confirmThreadArchive: settings.confirmThreadArchive,
+    confirmTerminalTabClose: settings.confirmTerminalTabClose,
+    diffWordWrap: settings.diffWordWrap,
+    enableTaskCompletionToasts: settings.enableTaskCompletionToasts,
+    enableSystemTaskCompletionNotifications: settings.enableSystemTaskCompletionNotifications,
+    defaultProvider: settings.defaultProvider,
+    hiddenProviders,
+    ...(settings.providerOrder ? { providerOrder: settings.providerOrder } : {}),
   };
 }
 
@@ -510,9 +533,77 @@ export function appSettingsPatchToServerSettingsPatch(
     };
   }
 
+  // hiddenProviders → per-provider enabled
+  if (hasOwn(patch, "hiddenProviders")) {
+    const hiddenSet = new Set(patch.hiddenProviders ?? []);
+    const allKinds = new Set<ProviderKind>([
+      ...DEFAULT_PROVIDER_ORDER,
+      ...(patch.hiddenProviders ?? []),
+    ]);
+    for (const kind of allKinds) {
+      const existing = providers[kind];
+      providers[kind] = { ...existing, enabled: !hiddenSet.has(kind) };
+    }
+  }
+
   if (Object.keys(providers).length > 0) {
     serverPatch.providers = providers;
   }
+
+  // UI preference scalar fields
+  if (hasOwn(patch, "chatFontSizePx")) {
+    serverPatch.chatFontSizePx = normalizeChatFontSizePx(patch.chatFontSizePx);
+  }
+  if (hasOwn(patch, "chatCodeFontFamily")) {
+    serverPatch.chatCodeFontFamily = patch.chatCodeFontFamily ?? "";
+  }
+  if (hasOwn(patch, "uiFontFamily")) {
+    serverPatch.uiFontFamily = patch.uiFontFamily ?? "";
+  }
+  if (hasOwn(patch, "enableNativeFontSmoothing")) {
+    serverPatch.enableNativeFontSmoothing = Boolean(patch.enableNativeFontSmoothing);
+  }
+  if (hasOwn(patch, "timestampFormat")) {
+    serverPatch.timestampFormat = patch.timestampFormat ?? DEFAULT_TIMESTAMP_FORMAT;
+  }
+  if (hasOwn(patch, "sidebarSide")) {
+    serverPatch.sidebarSide = patch.sidebarSide ?? DEFAULT_SIDEBAR_SIDE;
+  }
+  if (hasOwn(patch, "sidebarProjectSortOrder")) {
+    serverPatch.sidebarProjectSortOrder =
+      patch.sidebarProjectSortOrder ?? DEFAULT_SIDEBAR_PROJECT_SORT_ORDER;
+  }
+  if (hasOwn(patch, "sidebarThreadSortOrder")) {
+    serverPatch.sidebarThreadSortOrder =
+      patch.sidebarThreadSortOrder ?? DEFAULT_SIDEBAR_THREAD_SORT_ORDER;
+  }
+  if (hasOwn(patch, "confirmThreadDelete")) {
+    serverPatch.confirmThreadDelete = Boolean(patch.confirmThreadDelete);
+  }
+  if (hasOwn(patch, "confirmThreadArchive")) {
+    serverPatch.confirmThreadArchive = Boolean(patch.confirmThreadArchive);
+  }
+  if (hasOwn(patch, "confirmTerminalTabClose")) {
+    serverPatch.confirmTerminalTabClose = Boolean(patch.confirmTerminalTabClose);
+  }
+  if (hasOwn(patch, "diffWordWrap")) {
+    serverPatch.diffWordWrap = Boolean(patch.diffWordWrap);
+  }
+  if (hasOwn(patch, "enableTaskCompletionToasts")) {
+    serverPatch.enableTaskCompletionToasts = Boolean(patch.enableTaskCompletionToasts);
+  }
+  if (hasOwn(patch, "enableSystemTaskCompletionNotifications")) {
+    serverPatch.enableSystemTaskCompletionNotifications = Boolean(
+      patch.enableSystemTaskCompletionNotifications,
+    );
+  }
+  if (hasOwn(patch, "defaultProvider")) {
+    serverPatch.defaultProvider = patch.defaultProvider ?? "codex";
+  }
+  if (hasOwn(patch, "providerOrder")) {
+    serverPatch.providerOrder = normalizeProviderOrder(patch.providerOrder ?? []);
+  }
+
   return serverPatch;
 }
 
@@ -566,6 +657,48 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
     if (settings[key].length > 0) {
       patch[key] = settings[key] as never;
     }
+  }
+
+  return appSettingsPatchToServerSettingsPatch(patch);
+}
+
+function buildV2ServerSettingsMigrationPatch(settings: AppSettings): ServerSettingsPatch {
+  const patch: Partial<Mutable<AppSettings>> = {};
+  const defaults = DEFAULT_APP_SETTINGS;
+
+  for (const key of [
+    "chatFontSizePx",
+    "chatCodeFontFamily",
+    "uiFontFamily",
+    "enableNativeFontSmoothing",
+    "timestampFormat",
+    "sidebarSide",
+    "sidebarProjectSortOrder",
+    "sidebarThreadSortOrder",
+    "confirmThreadDelete",
+    "confirmThreadArchive",
+    "confirmTerminalTabClose",
+    "diffWordWrap",
+    "enableTaskCompletionToasts",
+    "enableSystemTaskCompletionNotifications",
+    "defaultProvider",
+  ] as const) {
+    if (settings[key] !== defaults[key]) {
+      patch[key] = settings[key] as never;
+    }
+  }
+
+  if (!sameProviderOrder(settings.providerOrder, defaults.providerOrder)) {
+    patch.providerOrder = settings.providerOrder;
+  }
+  if (settings.hiddenProviders.length > 0) {
+    patch.hiddenProviders = settings.hiddenProviders;
+  }
+
+  const themeRaw = globalThis.localStorage?.getItem("jcode:theme");
+  if (themeRaw) {
+    const serverPatch = appSettingsPatchToServerSettingsPatch(patch);
+    return { ...serverPatch, themeState: themeRaw };
   }
 
   return appSettingsPatchToServerSettingsPatch(patch);
@@ -924,6 +1057,44 @@ export function useAppSettings() {
         serverSettingsMigrationInFlight = false;
       });
   }, [localSettings, queryClient, serverSettingsQuery.data]);
+
+  useEffect(() => {
+    if (!serverSettingsQuery.data || serverSettingsMigrationInFlight) {
+      return;
+    }
+    if (globalThis.localStorage?.getItem(SERVER_SETTINGS_V2_MIGRATION_STORAGE_KEY) === "1") {
+      return;
+    }
+
+    const migrationPatch = buildV2ServerSettingsMigrationPatch(localSettings);
+    if (isServerSettingsPatchEmpty(migrationPatch)) {
+      globalThis.localStorage?.setItem(SERVER_SETTINGS_V2_MIGRATION_STORAGE_KEY, "1");
+      return;
+    }
+
+    serverSettingsMigrationInFlight = true;
+    void ensureNativeApi()
+      .server.updateSettings(migrationPatch)
+      .then((nextSettings) => {
+        queryClient.setQueryData(serverQueryKeys.settings(), nextSettings);
+        globalThis.localStorage?.setItem(SERVER_SETTINGS_V2_MIGRATION_STORAGE_KEY, "1");
+      })
+      .catch(() => {
+        void queryClient.invalidateQueries({ queryKey: serverQueryKeys.settings() });
+      })
+      .finally(() => {
+        serverSettingsMigrationInFlight = false;
+      });
+  }, [localSettings, queryClient, serverSettingsQuery.data]);
+
+  const themeHydratedRef = useRef(false);
+  useEffect(() => {
+    if (themeHydratedRef.current || !serverSettingsQuery.data?.themeState) {
+      return;
+    }
+    themeHydratedRef.current = true;
+    hydrateThemeFromServer(serverSettingsQuery.data.themeState);
+  }, [serverSettingsQuery.data]);
 
   const updateSettings = useCallback(
     (patch: Partial<AppSettings>) => {
