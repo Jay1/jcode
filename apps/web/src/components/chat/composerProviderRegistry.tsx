@@ -295,6 +295,11 @@ const composerProviderRegistry: Record<ProviderKind, ProviderRegistryEntry> = {
     renderTraitsMenuContent: (input) => renderTraitsMenuContentForProvider("pi", input),
     renderTraitsPicker: (input) => renderTraitsPickerForProvider("pi", input),
   },
+  devin: {
+    getState: getOpenClawProviderState,
+    renderTraitsMenuContent: renderNoTraits,
+    renderTraitsPicker: renderNoTraits,
+  },
 };
 
 export function getComposerProviderState(input: ComposerProviderStateInput): ComposerProviderState {
