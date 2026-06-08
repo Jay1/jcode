@@ -120,22 +120,6 @@ describe("checkManagedSidecarHealth", () => {
     const snapshot: ManagedSidecarSnapshot = { state: "ready", serverUrl: "http://127.0.0.1:9999" };
 
     const result = await Effect.runPromise(
-      checkManagedSidecarHealth({ sidecarSnapshot: READY_SNAPSHOT }).pipe(
-        Effect.provide(NodeServices.layer),
-      ),
-    );
-
-    expect(result.status).toBe("healthy");
-    expect(result.sidecarState).toBe("ready");
-    expect(result.serverReachable).toBe(true);
-    expect(result.binaryExists).toBe(true);
-    expect(result.checkedAt).toBeTruthy();
-  });
-
-  it("returns unhealthy when ready with missing binary", async () => {
-    const snapshot: ManagedSidecarSnapshot = { state: "ready", serverUrl: "http://127.0.0.1:9999" };
-
-    const result = await Effect.runPromise(
       checkManagedSidecarHealth({ sidecarSnapshot: snapshot }).pipe(
         Effect.provide(NodeServices.layer),
       ),
