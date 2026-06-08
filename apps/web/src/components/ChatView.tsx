@@ -189,6 +189,7 @@ import { useComposerCommandMenuItems } from "../hooks/useComposerCommandMenuItem
 import { useThreadHandoff } from "../hooks/useThreadHandoff";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
 import BranchToolbar, { RuntimeUsageControls } from "./BranchToolbar";
+import { resolveRuntimeUsageControlsClassName } from "./BranchToolbar.logic";
 import { ThreadWorktreeHandoffDialog } from "./ThreadWorktreeHandoffDialog";
 import {
   formatShortcutLabel,
@@ -8058,7 +8059,13 @@ export default function ChatView({
             onSelectWorkspaceRoot={handleSelectWorkspaceRoot}
             onResetToHome={handleResetWorkspaceToHome}
           />
-          <RuntimeUsageControls {...runtimeUsageControlsProps} className="shrink-0" />
+          <RuntimeUsageControls
+            {...runtimeUsageControlsProps}
+            className={resolveRuntimeUsageControlsClassName({
+              className: "shrink-0",
+              showInterfaceClock: settings.showInterfaceClock,
+            })}
+          />
         </div>
       ) : null}
     </>
@@ -8224,7 +8231,12 @@ export default function ChatView({
                     <BranchToolbar {...branchToolbarProps} />
                   ) : !isEmptyChatLanding ? (
                     <div className="mx-auto flex w-full max-w-3xl items-center justify-end px-3 pb-3 pt-1">
-                      <RuntimeUsageControls {...runtimeUsageControlsProps} />
+                      <RuntimeUsageControls
+                        {...runtimeUsageControlsProps}
+                        className={resolveRuntimeUsageControlsClassName({
+                          showInterfaceClock: settings.showInterfaceClock,
+                        })}
+                      />
                     </div>
                   ) : null}
                 </div>
@@ -8812,7 +8824,12 @@ export default function ChatView({
                     <BranchToolbar {...branchToolbarProps} />
                   ) : (
                     <div className="mx-auto flex w-full max-w-3xl items-center justify-end px-3 pb-3 pt-1">
-                      <RuntimeUsageControls {...runtimeUsageControlsProps} />
+                      <RuntimeUsageControls
+                        {...runtimeUsageControlsProps}
+                        className={resolveRuntimeUsageControlsClassName({
+                          showInterfaceClock: settings.showInterfaceClock,
+                        })}
+                      />
                     </div>
                   )
                 ) : null}

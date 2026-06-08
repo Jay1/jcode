@@ -23,6 +23,7 @@ import {
 } from "../storeSelectors";
 import {
   EnvMode,
+  resolveRuntimeUsageControlsClassName,
   resolveAssociatedWorktreeMetadataAfterWorkspacePatch,
   resolveDraftEnvModeAfterBranchChange,
   resolveEffectiveEnvMode,
@@ -463,6 +464,9 @@ export default function BranchToolbar({
         cumulativeCostUsd={cumulativeCostUsd}
         activeContextWindowLabel={activeContextWindowLabel}
         pendingContextWindowLabel={pendingContextWindowLabel}
+        className={resolveRuntimeUsageControlsClassName({
+          showInterfaceClock: settings.showInterfaceClock,
+        })}
       />
     </div>
   );
