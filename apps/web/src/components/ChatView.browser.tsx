@@ -1104,6 +1104,11 @@ function dispatchUpwardWheel(element: HTMLElement): void {
   );
 }
 
+function setScrollContainerAwayFromBottom(element: HTMLElement): void {
+  const maxScrollTop = Math.max(0, element.scrollHeight - element.clientHeight);
+  element.scrollTop = Math.max(0, maxScrollTop - AUTO_SCROLL_BOTTOM_THRESHOLD_PX - 32);
+}
+
 async function setViewport(viewport: ViewportSpec): Promise<void> {
   await page.viewport(viewport.width, viewport.height);
   await waitForLayout();
@@ -1990,13 +1995,19 @@ describe("ChatView timeline estimator parity (full app)", () => {
         { timeout: 8_000, interval: 16 },
       );
 
-      scrollContainer.scrollTop = Math.max(0, scrollContainer.scrollTop - 240);
+      setScrollContainerAwayFromBottom(scrollContainer);
       dispatchUpwardWheel(scrollContainer);
       scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
 
-      await waitForElement(
-        () => document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
-        "Unable to find scroll-to-bottom button after upward scroll.",
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.distanceFromBottomPx).toBeGreaterThan(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+          expect(
+            document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+          ).toBeTruthy();
+        },
+        { timeout: 8_000, interval: 16 },
       );
 
       useStore
@@ -2048,7 +2059,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
       scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
       await waitForLayout();
 
-      scrollContainer.scrollTop = Math.max(0, scrollContainer.scrollTop - 240);
+      setScrollContainerAwayFromBottom(scrollContainer);
       dispatchUpwardWheel(scrollContainer);
       scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
 
