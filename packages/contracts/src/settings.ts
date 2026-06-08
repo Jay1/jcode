@@ -149,6 +149,8 @@ export const ServerSettings = Schema.Struct({
       "gemini",
       "kilo",
       "opencode",
+      "openclaw",
+      "pi",
     ]),
   ),
   themeState: Schema.String.pipe(Schema.withDecodingDefault(() => "")),
