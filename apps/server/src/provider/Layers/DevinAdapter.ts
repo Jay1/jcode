@@ -11,13 +11,16 @@ import {
   type ProviderApprovalDecision,
   type ProviderListModelsResult,
   type ProviderRuntimeEvent,
+  type ProviderSendTurnInput,
   type ProviderSession,
+  type ProviderSessionStartInput,
+  type ProviderTurnStartResult,
   type ProviderUserInputAnswers,
   RuntimeRequestId,
   type ThreadId,
   TurnId,
 } from "@jcode/contracts";
-import { Deferred, Effect, Exit, Fiber, Layer, PubSub, Scope, Stream } from "effect";
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, PubSub, Scope, Stream } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import type * as EffectAcpSchema from "effect-acp/schema";
 
@@ -43,7 +46,7 @@ import {
 import { parsePermissionRequest } from "../acp/AcpRuntimeModel.ts";
 import { makeAcpNativeLoggers } from "../acp/AcpNativeLogging.ts";
 import { makeDevinAcpRuntime, type DevinAcpRuntimeSettings } from "../acp/DevinAcpSupport.ts";
-import { DevinAdapter } from "../Services/DevinAdapter.ts";
+import { DevinAdapter, type DevinAdapterShape } from "../Services/DevinAdapter.ts";
 import type { ProviderThreadSnapshot } from "../Services/ProviderAdapter.ts";
 import { type EventNdjsonLogger, makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
 
@@ -141,7 +144,7 @@ export interface DevinAdapterLiveOptions {
   readonly nativeEventLogger?: EventNdjsonLogger;
 }
 
-export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
+function makeDevinAdapter(options?: DevinAdapterLiveOptions) {
   return Effect.gen(function* () {
     const serverConfig = yield* Effect.service(ServerConfig);
     const childProcessSpawner = yield* Effect.service(ChildProcessSpawner.ChildProcessSpawner);
@@ -181,7 +184,7 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
                 provider: PROVIDER,
                 createdAt: new Date().toISOString(),
                 threadId,
-                payload: { method, ...payload },
+                payload: { method, ...(payload as Record<string, unknown>) },
               },
             },
             threadId,
@@ -196,10 +199,12 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
         Effect.flatMap((ctx) =>
           ctx
             ? Effect.succeed(ctx)
-            : new ProviderAdapterSessionNotFoundError({
-                provider: PROVIDER,
-                threadId,
-              }),
+            : Effect.fail(
+                new ProviderAdapterSessionNotFoundError({
+                  provider: PROVIDER,
+                  threadId,
+                }),
+              ),
         ),
       );
 
@@ -225,9 +230,7 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
 
     // --- startSession ---
 
-    const startSession = (
-      input: ProviderSessionStartInput,
-    ): Effect.Effect<ProviderSession, ProviderAdapterValidationError> =>
+    const startSession: DevinAdapterShape["startSession"] = (input) =>
       Effect.gen(function* () {
         if (input.provider !== undefined && input.provider !== PROVIDER) {
           return yield* new ProviderAdapterValidationError({
@@ -319,6 +322,11 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
                 turnId: ctx?.activeTurnId,
                 requestId: runtimeRequestId,
                 permissionRequest,
+                detail: permissionRequest.detail ?? JSON.stringify(params).slice(0, 2000),
+                args: params,
+                source: "acp.jsonrpc",
+                method: "session/request_permission",
+                rawPayload: params,
               }),
             );
             const outcome = yield* Deferred.await(decision);
@@ -330,15 +338,14 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
                 threadId: input.threadId,
                 turnId: ctx?.activeTurnId,
                 requestId: runtimeRequestId,
+                permissionRequest,
                 decision: outcome,
               }),
             );
             return {
               outcome: {
-                outcome: acpPermissionOutcome(outcome) as
-                  | "allow-always"
-                  | "allow-once"
-                  | "reject-once",
+                outcome: "selected" as const,
+                optionId: acpPermissionOutcome(outcome),
               },
             };
           }),
@@ -358,11 +365,20 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
               threadId: input.threadId,
               turnId: ctx?.activeTurnId,
               requestId: runtimeRequestId,
-              payload: { message: params.message },
+              payload: {
+                questions: [
+                  {
+                    id: "answer",
+                    header: "Input",
+                    question: params.message,
+                    options: [],
+                  },
+                ],
+              },
             });
             const result = yield* Deferred.await(answers);
             ctx?.pendingUserInputs.delete(requestId);
-            return { answer: result };
+            return { action: { action: "accept" as const } };
           }),
         );
 
@@ -445,6 +461,8 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
                       threadId: ctx.threadId,
                       turnId: ctx.activeTurnId,
                       payload: event.payload,
+                      source: "acp.jsonrpc",
+                      method: "session/update",
                       rawPayload: event.rawPayload,
                     }),
                   );
@@ -468,44 +486,45 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
                       stamp: yield* makeEventStamp,
                       provider: PROVIDER,
                       threadId: ctx.threadId,
-                      turnId: ctx.activeTurnId,
-                      itemId: event.itemId,
-                      streamKind: event.streamKind,
-                      textDelta: event.textDelta,
+                      turnId: ctx.activeTurnId ?? undefined,
+                      ...(event.itemId != null ? { itemId: event.itemId } : {}),
+                      text: event.text,
+                      ...(event.streamKind != null ? { streamKind: event.streamKind } : {}),
+                      rawPayload: event.rawPayload as unknown,
                     }),
                   );
                   return;
-                case "TokenUsage":
+                case "UsageUpdated":
                   yield* offerRuntimeEvent(
                     makeAcpTokenUsageEvent({
                       stamp: yield* makeEventStamp,
                       provider: PROVIDER,
                       threadId: ctx.threadId,
                       turnId: ctx.activeTurnId,
-                      snapshot: event.snapshot,
+                      usage: event.usage,
+                      rawPayload: event.rawPayload ?? undefined,
                     }),
                   );
-                  return;
-                case "CostUpdate": {
-                  const sessionCostUsd = readAcpUsdCost(event.cost);
-                  if (sessionCostUsd !== undefined) {
-                    ctx.latestSessionCostUsd = sessionCostUsd;
+                  {
+                    const sessionCostUsd = readAcpUsdCost(event.cost);
+                    if (sessionCostUsd !== undefined) {
+                      ctx.latestSessionCostUsd = sessionCostUsd;
+                    }
                   }
                   return;
-                }
                 default:
                   return;
               }
             }),
           ),
-        ).pipe(Effect.fork);
+        ).pipe(Effect.forkIn(sessionScope));
         ctx.notificationFiber = nf;
 
         sessionScopeTransferred = true;
         sessions.set(input.threadId, ctx);
 
         yield* offerRuntimeEvent({
-          type: "session.ready",
+          type: "session.started",
           ...(yield* makeEventStamp),
           provider: PROVIDER,
           threadId: input.threadId,
@@ -513,13 +532,11 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
         });
 
         return session;
-      });
+      }).pipe(Effect.scoped);
 
     // --- sendTurn ---
 
-    const sendTurn = (
-      input: ProviderSendTurnInput,
-    ): Effect.Effect<ProviderTurnStartResult, ProviderAdapterSessionNotFoundError> =>
+    const sendTurn: DevinAdapterShape["sendTurn"] = (input) =>
       Effect.gen(function* () {
         const ctx = yield* requireSession(input.threadId);
         const turnId = TurnId.makeUnsafe(crypto.randomUUID());
@@ -589,6 +606,7 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
             promptParts.push({
               type: "image",
               data: `data:${mimeType};base64,${imageBuffer.toString("base64")}`,
+              mimeType,
             });
           }
         }
@@ -611,23 +629,28 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
 
         const promptFiber = yield* Effect.gen(function* () {
           yield* ctx.acp
-            .prompt({ content: promptParts })
+            .prompt({ prompt: promptParts })
             .pipe(
               Effect.mapError((error) =>
                 mapAcpToAdapterError(PROVIDER, input.threadId, "session/prompt", error),
               ),
             );
         }).pipe(
-          Effect.catchAll((error) =>
+          Effect.catchCause((cause) =>
             Effect.gen(function* () {
+              const error = Cause.squash(cause);
+              const errorObj = error as Record<string, unknown> | undefined;
+              const errorTag = errorObj?._tag ? String(errorObj._tag) : "Error";
+              const errorMessage =
+                errorObj && "message" in errorObj ? String(errorObj.message) : Cause.pretty(cause);
               yield* offerRuntimeEvent({
-                type: "turn.error",
+                type: "runtime.error",
                 ...(yield* makeEventStamp),
                 provider: PROVIDER,
                 threadId: input.threadId,
                 turnId: activeTurnId,
                 payload: {
-                  message: `${error._tag}: ${"message" in error ? String(error.message) : String(error)}`,
+                  message: `${errorTag}: ${errorMessage}`,
                 },
               });
             }),
@@ -643,7 +666,7 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
               ctx.turns.push({ id: turnId, items: [] });
             }),
           ),
-          Effect.fork,
+          Effect.forkIn(ctx.scope),
         );
         ctx.activePromptFiber = promptFiber;
 
@@ -677,11 +700,11 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
 
     // --- respondToRequest ---
 
-    const respondToRequest = (
-      threadId: ThreadId,
-      requestId: ApprovalRequestId,
-      decision: ProviderApprovalDecision,
-    ): Effect.Effect<void, ProviderAdapterSessionNotFoundError> =>
+    const respondToRequest: DevinAdapterShape["respondToRequest"] = (
+      threadId,
+      requestId,
+      decision,
+    ) =>
       Effect.gen(function* () {
         const ctx = yield* requireSession(threadId);
         const pending = ctx.pendingApprovals.get(requestId);
@@ -697,11 +720,11 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
 
     // --- respondToUserInput ---
 
-    const respondToUserInput = (
-      threadId: ThreadId,
-      requestId: ApprovalRequestId,
-      answers: ProviderUserInputAnswers,
-    ): Effect.Effect<void, ProviderAdapterSessionNotFoundError> =>
+    const respondToUserInput: DevinAdapterShape["respondToUserInput"] = (
+      threadId,
+      requestId,
+      answers,
+    ) =>
       Effect.gen(function* () {
         const ctx = yield* requireSession(threadId);
         const pending = ctx.pendingUserInputs.get(requestId);
@@ -717,9 +740,7 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
 
     // --- stopSession ---
 
-    const stopSession = (
-      threadId: ThreadId,
-    ): Effect.Effect<void, ProviderAdapterSessionNotFoundError> =>
+    const stopSession: DevinAdapterShape["stopSession"] = (threadId) =>
       Effect.gen(function* () {
         const ctx = yield* requireSession(threadId);
         yield* stopSessionInternal(ctx);
@@ -801,8 +822,12 @@ export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
       stopAll,
       streamEvents,
       listModels,
-    } satisfies DevinAdapter["Type"];
+    } satisfies DevinAdapterShape;
   });
 }
 
-export const DevinAdapterLive = Layer.effect(DevinAdapter, makeDevinAdapterLive());
+export const DevinAdapterLive = makeDevinAdapterLive();
+
+export function makeDevinAdapterLive(options?: DevinAdapterLiveOptions) {
+  return Layer.effect(DevinAdapter, makeDevinAdapter(options));
+}

@@ -13,56 +13,53 @@ const DEVIN_PROBE_TIMEOUT_MS = 10_000;
 
 export function probeDevinCli(binaryPath?: string): Effect.Effect<DevinProbeResult, never> {
   const command = binaryPath || "devin";
-  return Effect.async<DevinProbeResult, never>((resume) => {
-    const child = spawn(command, ["--version"], {
-      timeout: DEVIN_PROBE_TIMEOUT_MS,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+  return Effect.tryPromise(
+    () =>
+      new Promise<DevinProbeResult>((resolve) => {
+        const child = spawn(command, ["--version"], {
+          timeout: DEVIN_PROBE_TIMEOUT_MS,
+          stdio: ["ignore", "pipe", "pipe"],
+        });
 
-    let stdout = "";
-    let stderr = "";
+        let stdout = "";
+        let stderr = "";
 
-    child.stdout?.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString();
-    });
+        child.stdout?.on("data", (chunk: Buffer) => {
+          stdout += chunk.toString();
+        });
 
-    child.stderr?.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString();
-    });
+        child.stderr?.on("data", (chunk: Buffer) => {
+          stderr += chunk.toString();
+        });
 
-    let settled = false;
+        let settled = false;
 
-    child.on("close", (code) => {
-      if (settled) return;
-      settled = true;
-      if (code === 0) {
-        resume(
-          Effect.succeed({
-            status: "ready" as const,
-            auth: { status: "unknown" as const },
-          }),
-        );
-      } else {
-        resume(
-          Effect.succeed({
+        child.on("close", (code) => {
+          if (settled) return;
+          settled = true;
+          if (code === 0) {
+            resolve({
+              status: "ready" as const,
+              auth: { status: "unknown" as const },
+            });
+          } else {
+            resolve({
+              status: "error" as const,
+              auth: { status: "unauthenticated" as const },
+              message: `devin CLI exited with code ${code ?? "null (killed by timeout or signal)"}: ${(stderr || stdout).trim()}`,
+            });
+          }
+        });
+
+        child.on("error", (err) => {
+          if (settled) return;
+          settled = true;
+          resolve({
             status: "error" as const,
             auth: { status: "unauthenticated" as const },
-            message: `devin CLI exited with code ${code ?? "null (killed by timeout or signal)"}: ${(stderr || stdout).trim()}`,
-          }),
-        );
-      }
-    });
-
-    child.on("error", (err) => {
-      if (settled) return;
-      settled = true;
-      resume(
-        Effect.succeed({
-          status: "error" as const,
-          auth: { status: "unauthenticated" as const },
-          message: `devin CLI not found: ${err.message}`,
-        }),
-      );
-    });
-  });
+            message: `devin CLI not found: ${err.message}`,
+          });
+        });
+      }),
+  ).pipe(Effect.orDie);
 }

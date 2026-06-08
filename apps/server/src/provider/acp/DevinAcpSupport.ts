@@ -1,4 +1,4 @@
-import { Effect, Layer, Scope } from "effect";
+import { Effect, Layer, Scope, ServiceMap } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import type * as EffectAcpErrors from "effect-acp/errors";
 
@@ -48,5 +48,5 @@ export const makeDevinAcpRuntime = (
         ),
       ),
     );
-    return acpContext;
+    return ServiceMap.getUnsafe(acpContext, AcpSessionRuntime);
   });
