@@ -3517,12 +3517,12 @@ export default function Sidebar() {
     async (projectId: ProjectId, nextName: string, previousName: string) => {
       const trimmed = nextName.trim();
       if (trimmed === previousName.trim()) {
-        cancelProjectRename();
+        setRenamingProjectId(null);
         return;
       }
       const effectiveName = trimmed.length > 0 ? trimmed : null;
       renameProjectLocally(projectId, effectiveName);
-      cancelProjectRename();
+      setRenamingProjectId(null);
 
       if (effectiveName !== null) {
         const api = readNativeApi();
@@ -3543,7 +3543,7 @@ export default function Sidebar() {
         }
       }
     },
-    [cancelProjectRename, renameProjectLocally],
+    [renameProjectLocally],
   );
 
   const sortedProjects = useMemo(
