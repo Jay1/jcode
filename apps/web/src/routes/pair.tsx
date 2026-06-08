@@ -49,41 +49,38 @@ export function PairRoute() {
   );
   const [error, setError] = useState<string | null>(null);
 
-  const submitPairing = useCallback(
-    async (value: string) => {
-      const nextCredential = value.trim();
-      if (!nextCredential) return;
-      setStatus("pairing");
-      setError(null);
-      try {
-        if (hasRemoteHost(window.location.href)) {
-          await addSavedConnectionFromPairing({ pairingUrl: window.location.href });
-          window.history.replaceState(
-            null,
-            "",
-            stripPairingTokenFromUrl(window.location.href).toString(),
-          );
-          toastManager.add({ type: "success", title: "Remote backend paired" });
-          window.location.assign("/");
-          return;
-        }
-
-        await bootstrapSameOrigin(nextCredential);
+  const submitPairing = useCallback(async (value: string) => {
+    const nextCredential = value.trim();
+    if (!nextCredential) return;
+    setStatus("pairing");
+    setError(null);
+    try {
+      if (hasRemoteHost(window.location.href)) {
+        await addSavedConnectionFromPairing({ pairingUrl: window.location.href });
         window.history.replaceState(
           null,
           "",
           stripPairingTokenFromUrl(window.location.href).toString(),
         );
-        setStatus("paired");
-        toastManager.add({ type: "success", title: "Client paired" });
+        toastManager.add({ type: "success", title: "Remote backend paired" });
         window.location.assign("/");
-      } catch (caught) {
-        setError((caught as Error).message);
-        setStatus("error");
+        return;
       }
-    },
-    [],
-  );
+
+      await bootstrapSameOrigin(nextCredential);
+      window.history.replaceState(
+        null,
+        "",
+        stripPairingTokenFromUrl(window.location.href).toString(),
+      );
+      setStatus("paired");
+      toastManager.add({ type: "success", title: "Client paired" });
+      window.location.assign("/");
+    } catch (caught) {
+      setError((caught as Error).message);
+      setStatus("error");
+    }
+  }, []);
 
   const hasSubmittedRef = useRef(false);
   if (initialCredential && !hasSubmittedRef.current) {
