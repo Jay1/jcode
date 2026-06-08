@@ -191,6 +191,12 @@ export const makeBootstrapCredentialService = Effect.gen(function* () {
         return yield* toBootstrapCredentialError("Bootstrap credential expired.", 401);
       }
       if (seeded) {
+        const consumed = yield* pairingLinks.consumeAvailable({
+          credential,
+          consumedAt: now,
+          now,
+        });
+        if (Option.isSome(consumed)) yield* emitRemoved(consumed.value.id);
         return {
           method: seeded.method,
           role: seeded.role,
