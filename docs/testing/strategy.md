@@ -41,6 +41,8 @@ Use the local-safe variants when you need workstation-friendly verification that
 
 These commands are meant to reduce workstation lag, screen flicker, and other application pressure. They do not replace the full CI commands when the change needs merge or release-level confidence.
 
+Web browser test scripts run through `scripts/run-vitest-browser.mjs`, which starts Vitest Browser Mode in a separate process group and cleans up the group on exit or interruption. Keep browser checks on the `:local` variants during workstation and agent-driven debugging unless you explicitly need CI-level parallelism.
+
 ## Rules
 
 - Add a focused regression before fixing non-trivial bugs.

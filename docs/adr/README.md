@@ -8,7 +8,7 @@
 | Audience        | Engineers, reviewers, maintainers, and automation agents                                                         |
 | Scope           | Durable architecture decisions for JCode boundaries, runtime posture, release strategy, and provider integration |
 | Canonical path  | `docs/adr/README.md`                                                                                             |
-| Last reviewed   | 2026-05-22                                                                                                       |
+| Last reviewed   | 2026-06-05                                                                                                       |
 | Review cadence  | Event-driven; add or update ADRs when a decision changes how future work should be done                          |
 | Source of truth | ADR files, linked architecture docs, and runtime source                                                          |
 | Verification    | Cross-check ADR claims against current source and tests before relying on them                                   |
@@ -21,6 +21,7 @@
 | [0002](0002-release-notes-and-latest-package-retention.md) | Accepted | Release notes and latest-package retention   |
 | [0003](0003-settings-native-skill-library.md)              | Accepted | Settings-native provider-aware Skill Library |
 | [0004](0004-project-language-icons.md)                     | Proposed | Project language icons as metadata           |
+| [0005](0005-openclaw-gateway-provider.md)                  | Proposed | OpenClaw Gateway as a first-class Provider   |
 
 ## When To Add An ADR
 

@@ -329,3 +329,23 @@ export type ServerUpdateSettingsInput = typeof ServerUpdateSettingsInput.Type;
 
 export const ServerUpdateSettingsResult = ServerSettings;
 export type ServerUpdateSettingsResult = typeof ServerUpdateSettingsResult.Type;
+
+const OpenClawSecretValue = Schema.NullOr(Schema.String.check(Schema.isMaxLength(4096)));
+
+export const ServerUpdateOpenClawSecretsInput = Schema.Struct({
+  token: Schema.optionalKey(OpenClawSecretValue),
+  password: Schema.optionalKey(OpenClawSecretValue),
+  deviceToken: Schema.optionalKey(OpenClawSecretValue),
+  rotateDeviceKey: Schema.optionalKey(Schema.Boolean),
+  clearDeviceIdentity: Schema.optionalKey(Schema.Boolean),
+});
+export type ServerUpdateOpenClawSecretsInput = typeof ServerUpdateOpenClawSecretsInput.Type;
+
+export const ServerUpdateOpenClawSecretsResult = Schema.Struct({
+  hasToken: Schema.Boolean,
+  hasPassword: Schema.Boolean,
+  hasDeviceKey: Schema.Boolean,
+  hasDeviceToken: Schema.Boolean,
+  paired: Schema.Boolean,
+});
+export type ServerUpdateOpenClawSecretsResult = typeof ServerUpdateOpenClawSecretsResult.Type;

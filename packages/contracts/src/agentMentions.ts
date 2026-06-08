@@ -217,6 +217,7 @@ export const AGENT_MENTION_ALIASES_BY_PROVIDER: Record<
   gemini: {},
   kilo: OPENCODE_AGENT_MENTION_ALIASES,
   opencode: OPENCODE_AGENT_MENTION_ALIASES,
+  openclaw: {},
   pi: {},
 } as const satisfies Record<ProviderKind, Record<string, AgentAliasDefinition>>;
 
@@ -233,6 +234,7 @@ const AGENT_MENTION_AUTOCOMPLETE_ALIASES_BY_PROVIDER: Record<ProviderKind, reado
   gemini: [],
   kilo: [],
   opencode: [],
+  openclaw: [],
   pi: [],
 };
 

@@ -12,9 +12,9 @@
     "test": "vitest run --passWithNoTests",
     "test:agent": "JCODE_LOCAL_TEST_PROFILE=1 vitest run --passWithNoTests",
     "test:local": "JCODE_LOCAL_TEST_PROFILE=1 vitest run --passWithNoTests",
-    "test:browser": "vitest run --config vitest.browser.config.ts",
-    "test:browser:agent": "JCODE_LOCAL_TEST_PROFILE=1 vitest run --config vitest.browser.config.ts",
-    "test:browser:local": "JCODE_LOCAL_TEST_PROFILE=1 vitest run --config vitest.browser.config.ts",
+    "test:browser": "node ../../scripts/run-vitest-browser.mjs",
+    "test:browser:agent": "JCODE_LOCAL_TEST_PROFILE=1 node ../../scripts/run-vitest-browser.mjs",
+    "test:browser:local": "JCODE_LOCAL_TEST_PROFILE=1 node ../../scripts/run-vitest-browser.mjs",
     "test:browser:install": "playwright install chromium",
     "test:browser:install:deps": "playwright install --with-deps chromium"
   },

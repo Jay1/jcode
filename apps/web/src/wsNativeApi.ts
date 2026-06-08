@@ -605,6 +605,8 @@ export function createWsNativeApi(): NativeApi {
       getEnvironment: () => transport.request(WS_METHODS.serverGetEnvironment),
       getSettings: () => transport.request(WS_METHODS.serverGetSettings),
       updateSettings: (input) => transport.request(WS_METHODS.serverUpdateSettings, input),
+      updateOpenClawSecrets: (input) =>
+        transport.request(WS_METHODS.serverUpdateOpenClawSecrets, input),
       getAuthSession: () =>
         requestAuthJson<AuthSessionState>(AuthHttpRoutes.session.pathname, {
           method: AuthHttpRoutes.session.method,

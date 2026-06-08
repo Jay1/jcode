@@ -32,6 +32,7 @@ const MODEL_OPTIONS_BY_PROVIDER = {
       upstreamProviderName: "Kilo",
     },
   ],
+  openclaw: [],
   opencode: [
     {
       slug: "opencode/nemotron-3-super-free",

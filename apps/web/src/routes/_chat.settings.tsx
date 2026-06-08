@@ -7,6 +7,7 @@ import {
   PROVIDER_DISPLAY_NAMES,
   type ProviderKind,
   type ServerProviderStatus,
+  type ServerUpdateOpenClawSecretsInput,
   type ThreadId,
   DEFAULT_GIT_TEXT_GENERATION_MODEL,
 } from "@jcode/contracts";
@@ -37,6 +38,7 @@ import {
   MAX_CUSTOM_MODEL_LENGTH,
   MIN_CHAT_FONT_SIZE_PX,
   MODEL_PROVIDER_SETTINGS,
+  type CustomModelProviderKind,
   normalizeChatFontSizePx,
   patchCustomModels,
   useAppSettings,
@@ -165,9 +167,9 @@ type InstallProviderSettings = {
     label: string;
     href: string;
   }>;
-  binaryPathKey: InstallBinarySettingsKey;
-  binaryPlaceholder: string;
-  binaryDescription: ReactNode;
+  binaryPathKey?: InstallBinarySettingsKey;
+  binaryPlaceholder?: string;
+  binaryDescription?: ReactNode;
   homePathKey?: "codexHomePath";
   homePlaceholder?: string;
   homeDescription?: ReactNode;
@@ -183,6 +185,10 @@ type InstallProviderSettings = {
   serverPasswordKey?: "kiloServerPassword" | "openCodeServerPassword";
   serverPasswordPlaceholder?: string;
   serverPasswordDescription?: ReactNode;
+  gatewayUrlKey?: "openClawGatewayUrl";
+  gatewayUrlPlaceholder?: string;
+  gatewayUrlDescription?: ReactNode;
+  authModeKey?: "openClawAuthMode";
   agentDirKey?: "piAgentDir";
   agentDirPlaceholder?: string;
   agentDirDescription?: ReactNode;
@@ -195,6 +201,8 @@ const PROVIDER_VISIBILITY_OPTIONS: ReadonlyArray<{ provider: ProviderKind; title
   { provider: "gemini", title: PROVIDER_DISPLAY_NAMES.gemini },
   { provider: "kilo", title: PROVIDER_DISPLAY_NAMES.kilo },
   { provider: "opencode", title: PROVIDER_DISPLAY_NAMES.opencode },
+  { provider: "openclaw", title: PROVIDER_DISPLAY_NAMES.openclaw },
+  { provider: "pi", title: PROVIDER_DISPLAY_NAMES.pi },
 ];
 
 // Pure helper kept at module scope so the toggle handler stays trivial and the
@@ -231,7 +239,7 @@ function SortableProviderVisibilityRow(props: {
         transition,
       }}
       className={cn(
-        "flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-[var(--color-background-elevated-secondary)]/40 px-3 py-2.5",
+        "flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-(--color-background-elevated-secondary)/40 px-3 py-2.5",
         isDragging && "z-10 opacity-80 shadow-lg",
       )}
     >
@@ -239,7 +247,7 @@ function SortableProviderVisibilityRow(props: {
         <button
           type="button"
           ref={setActivatorNodeRef}
-          className="inline-flex size-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--color-background-elevated-secondary)] hover:text-foreground active:cursor-grabbing"
+          className="inline-flex size-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-(--color-background-elevated-secondary) hover:text-foreground active:cursor-grabbing"
           aria-label={`Reorder ${props.option.title}`}
           {...attributes}
           {...listeners}
@@ -384,6 +392,16 @@ const INSTALL_PROVIDER_SETTINGS: readonly InstallProviderSettings[] = [
     serverPasswordDescription: "Optional password for an externally managed OpenCode server.",
   },
   {
+    provider: "openclaw",
+    title: "OpenClaw",
+    docs: [],
+    gatewayUrlKey: "openClawGatewayUrl",
+    gatewayUrlPlaceholder: "ws://127.0.0.1:18789",
+    gatewayUrlDescription:
+      "Gateway endpoint used by OpenClaw. Authentication secrets are managed by the server, not the browser.",
+    authModeKey: "openClawAuthMode",
+  },
+  {
     provider: "pi",
     title: "Pi",
     docs: [
@@ -437,7 +455,7 @@ function SettingsRow({
 }) {
   return (
     <div
-      className="rounded-xl border border-[color:var(--color-border-light)] bg-[var(--color-background-panel)] px-4 py-3.5 transition-colors hover:bg-[var(--sidebar-accent)]"
+      className="rounded-xl border border-(--color-border-light) bg-(--color-background-panel) px-4 py-3.5 transition-colors hover:bg-(--sidebar-accent)"
       data-slot="settings-row"
     >
       <div
@@ -494,7 +512,7 @@ function SettingResetButton({ label, onClick }: { label: string; onClick: () => 
 
 function ProviderDocsLinks({ docs }: { docs: InstallProviderSettings["docs"] }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-[var(--color-background-elevated-secondary)]/35 px-3 py-2.5">
+    <div className="rounded-lg border border-border/60 bg-(--color-background-elevated-secondary)/35 px-3 py-2.5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-xs font-medium text-foreground">CLI docs</span>
         <div className="flex flex-wrap gap-2">
@@ -504,7 +522,7 @@ function ProviderDocsLinks({ docs }: { docs: InstallProviderSettings["docs"] }) 
               href={doc.href}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border/70 px-2.5 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-[var(--color-background-panel)] hover:text-foreground"
+              className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border/70 px-2.5 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-(--color-background-panel) hover:text-foreground"
             >
               <span>{doc.label}</span>
               <ExternalLinkIcon className="size-3" />
@@ -606,13 +624,14 @@ function SettingsRouteView() {
     opencode: Boolean(
       settings.openCodeBinaryPath || settings.openCodeServerUrl || settings.openCodeServerPassword,
     ),
+    openclaw: Boolean(settings.openClawGatewayUrl || settings.openClawAuthMode !== "none"),
     pi: Boolean(settings.piBinaryPath || settings.piAgentDir),
   });
   const [updatingProviders, setUpdatingProviders] = useState<ReadonlySet<ProviderKind>>(
     () => new Set(),
   );
   const [selectedCustomModelProvider, setSelectedCustomModelProvider] =
-    useState<ProviderKind>("codex");
+    useState<CustomModelProviderKind>("codex");
   const [customModelInputByProvider, setCustomModelInputByProvider] = useState<
     Record<ProviderKind, string>
   >({
@@ -622,11 +641,18 @@ function SettingsRouteView() {
     gemini: "",
     kilo: "",
     opencode: "",
+    openclaw: "",
     pi: "",
   });
   const [customModelErrorByProvider, setCustomModelErrorByProvider] = useState<
     Partial<Record<ProviderKind, string | null>>
   >({});
+  const [openClawTokenInput, setOpenClawTokenInput] = useState("");
+  const [openClawPasswordInput, setOpenClawPasswordInput] = useState("");
+  const [openClawDeviceTokenInput, setOpenClawDeviceTokenInput] = useState("");
+  const [isUpdatingOpenClawCredential, setIsUpdatingOpenClawCredential] = useState(false);
+  const [openClawCredentialError, setOpenClawCredentialError] = useState<string | null>(null);
+  const [openClawCredentialStatus, setOpenClawCredentialStatus] = useState<string | null>(null);
   const [showAllCustomModels, setShowAllCustomModels] = useState(false);
   const [browserNotificationPermission, setBrowserNotificationPermission] = useState(
     readBrowserNotificationPermissionState(),
@@ -677,6 +703,11 @@ function SettingsRouteView() {
   const openCodeBinaryPath = settings.openCodeBinaryPath;
   const openCodeServerUrl = settings.openCodeServerUrl;
   const openCodeServerPassword = settings.openCodeServerPassword;
+  const openClawEnabled = settings.openClawEnabled;
+  const openClawAuthMode = settings.openClawAuthMode;
+  const openClawGatewayUrl = settings.openClawGatewayUrl;
+  const openClawHasSecret = settings.openClawHasSecret;
+  const openClawPaired = settings.openClawPaired;
   const piBinaryPath = settings.piBinaryPath;
   const piAgentDir = settings.piAgentDir;
   const keybindingsConfigPath = serverConfigQuery.data?.keybindingsConfigPath ?? null;
@@ -807,12 +838,15 @@ function SettingsRouteView() {
               ? settings.kiloBinaryPath !== defaults.kiloBinaryPath ||
                 settings.kiloServerUrl !== defaults.kiloServerUrl ||
                 settings.kiloServerPassword !== defaults.kiloServerPassword
-              : providerSettings.provider === "pi"
-                ? settings.piBinaryPath !== defaults.piBinaryPath ||
-                  settings.piAgentDir !== defaults.piAgentDir
-                : settings.openCodeBinaryPath !== defaults.openCodeBinaryPath ||
+              : providerSettings.provider === "opencode"
+                ? settings.openCodeBinaryPath !== defaults.openCodeBinaryPath ||
                   settings.openCodeServerUrl !== defaults.openCodeServerUrl ||
-                  settings.openCodeServerPassword !== defaults.openCodeServerPassword,
+                  settings.openCodeServerPassword !== defaults.openCodeServerPassword
+                : providerSettings.provider === "openclaw"
+                  ? settings.openClawGatewayUrl !== defaults.openClawGatewayUrl ||
+                    settings.openClawAuthMode !== defaults.openClawAuthMode
+                  : settings.piBinaryPath !== defaults.piBinaryPath ||
+                    settings.piAgentDir !== defaults.piAgentDir,
   );
 
   const changedSettingLabels = [
@@ -897,8 +931,76 @@ function SettingsRouteView() {
       });
   }, [availableEditors, keybindingsConfigPath]);
 
+  useEffect(() => {
+    setBrowserNotificationPermission(readBrowserNotificationPermissionState());
+  }, []);
+
+  useEffect(() => {
+    setOpenClawTokenInput("");
+    setOpenClawPasswordInput("");
+    setOpenClawDeviceTokenInput("");
+    setOpenClawCredentialError(null);
+    setOpenClawCredentialStatus(null);
+  }, [openClawAuthMode]);
+
+  const updateOpenClawSecrets = useCallback(
+    async (action: "save" | "clear") => {
+      if (openClawAuthMode === "none") return;
+
+      const input: ServerUpdateOpenClawSecretsInput =
+        openClawAuthMode === "token"
+          ? { token: action === "clear" ? null : openClawTokenInput }
+          : openClawAuthMode === "password"
+            ? { password: action === "clear" ? null : openClawPasswordInput }
+            : action === "clear"
+              ? { clearDeviceIdentity: true }
+              : {
+                  rotateDeviceKey: true,
+                  ...(openClawDeviceTokenInput ? { deviceToken: openClawDeviceTokenInput } : {}),
+                };
+
+      setIsUpdatingOpenClawCredential(true);
+      setOpenClawCredentialError(null);
+      setOpenClawCredentialStatus(null);
+      try {
+        const api = readNativeApi() ?? ensureNativeApi();
+        const metadata = await api.server.updateOpenClawSecrets(input);
+        updateSettings({
+          openClawHasSecret: metadata.hasToken || metadata.hasPassword,
+          openClawPaired: metadata.paired,
+        });
+
+        setOpenClawTokenInput("");
+        setOpenClawPasswordInput("");
+        setOpenClawDeviceTokenInput("");
+        setOpenClawCredentialStatus(
+          openClawAuthMode === "device"
+            ? action === "clear"
+              ? "Device identity cleared."
+              : "Device key rotated."
+            : action === "clear"
+              ? "Selected secret cleared."
+              : "Secret saved.",
+        );
+      } catch (error) {
+        setOpenClawCredentialError(
+          error instanceof Error ? error.message : "Unable to update OpenClaw secret.",
+        );
+      } finally {
+        setIsUpdatingOpenClawCredential(false);
+      }
+    },
+    [
+      openClawAuthMode,
+      openClawDeviceTokenInput,
+      openClawPasswordInput,
+      openClawTokenInput,
+      updateSettings,
+    ],
+  );
+
   const addCustomModel = useCallback(
-    (provider: ProviderKind) => {
+    (provider: CustomModelProviderKind) => {
       const customModelInput = customModelInputByProvider[provider];
       const customModels = getCustomModelsForProvider(settings, provider);
       const normalized = normalizeModelSlug(customModelInput, provider);
@@ -945,7 +1047,7 @@ function SettingsRouteView() {
   );
 
   const removeCustomModel = useCallback(
-    (provider: ProviderKind, slug: string) => {
+    (provider: CustomModelProviderKind, slug: string) => {
       const customModels = getCustomModelsForProvider(settings, provider);
       updateSettings(
         patchCustomModels(
@@ -1043,6 +1145,7 @@ function SettingsRouteView() {
       gemini: false,
       kilo: false,
       opencode: false,
+      openclaw: false,
       pi: false,
     });
     setSelectedCustomModelProvider("codex");
@@ -1053,9 +1156,15 @@ function SettingsRouteView() {
       gemini: "",
       kilo: "",
       opencode: "",
+      openclaw: "",
       pi: "",
     });
     setCustomModelErrorByProvider({});
+    setOpenClawTokenInput("");
+    setOpenClawPasswordInput("");
+    setOpenClawDeviceTokenInput("");
+    setOpenClawCredentialError(null);
+    setOpenClawCredentialStatus(null);
     setShowAllCustomModels(false);
     setShowRecoveryTools(false);
     setOpenKeybindingsError(null);
@@ -1351,6 +1460,7 @@ function SettingsRouteView() {
                     value !== "gemini" &&
                     value !== "kilo" &&
                     value !== "opencode" &&
+                    value !== "openclaw" &&
                     value !== "pi"
                   ) {
                     return;
@@ -1370,6 +1480,8 @@ function SettingsRouteView() {
                       ) : settings.defaultProvider === "kilo" ? (
                         <KiloIcon className="size-3.5 text-muted-foreground/70" />
                       ) : settings.defaultProvider === "opencode" ? (
+                        <OpenCodeIcon className="size-3.5 text-muted-foreground/70" />
+                      ) : settings.defaultProvider === "openclaw" ? (
                         <OpenCodeIcon className="size-3.5 text-muted-foreground/70" />
                       ) : settings.defaultProvider === "pi" ? (
                         <PiIcon className="size-3.5 text-foreground" />
@@ -1405,16 +1517,22 @@ function SettingsRouteView() {
                       Gemini
                     </span>
                   </SelectItem>
+                  <SelectItem hideIndicator value="kilo">
+                    <span className="flex items-center gap-2">
+                      <KiloIcon className="size-3.5 text-muted-foreground/70" />
+                      Kilo
+                    </span>
+                  </SelectItem>
                   <SelectItem hideIndicator value="opencode">
                     <span className="flex items-center gap-2">
                       <OpenCodeIcon className="size-3.5 text-muted-foreground/70" />
                       OpenCode
                     </span>
                   </SelectItem>
-                  <SelectItem hideIndicator value="kilo">
+                  <SelectItem hideIndicator value="openclaw">
                     <span className="flex items-center gap-2">
-                      <KiloIcon className="size-3.5 text-muted-foreground/70" />
-                      Kilo
+                      <OpenCodeIcon className="size-3.5 text-muted-foreground/70" />
+                      OpenClaw
                     </span>
                   </SelectItem>
                   <SelectItem hideIndicator value="pi">
@@ -2690,6 +2808,8 @@ function SettingsRouteView() {
                       openCodeBinaryPath: defaults.openCodeBinaryPath,
                       openCodeServerUrl: defaults.openCodeServerUrl,
                       openCodeServerPassword: defaults.openCodeServerPassword,
+                      openClawAuthMode: defaults.openClawAuthMode,
+                      openClawGatewayUrl: defaults.openClawGatewayUrl,
                       piAgentDir: defaults.piAgentDir,
                       piBinaryPath: defaults.piBinaryPath,
                     });
@@ -2700,6 +2820,7 @@ function SettingsRouteView() {
                       gemini: false,
                       kilo: false,
                       opencode: false,
+                      openclaw: false,
                       pi: false,
                     });
                   }}
@@ -2727,15 +2848,18 @@ function SettingsRouteView() {
                               ? settings.kiloBinaryPath !== defaults.kiloBinaryPath ||
                                 settings.kiloServerUrl !== defaults.kiloServerUrl ||
                                 settings.kiloServerPassword !== defaults.kiloServerPassword
-                              : providerSettings.provider === "pi"
-                                ? settings.piBinaryPath !== defaults.piBinaryPath ||
-                                  settings.piAgentDir !== defaults.piAgentDir
-                                : settings.openCodeBinaryPath !== defaults.openCodeBinaryPath ||
+                              : providerSettings.provider === "opencode"
+                                ? settings.openCodeBinaryPath !== defaults.openCodeBinaryPath ||
                                   settings.openCodeServerUrl !== defaults.openCodeServerUrl ||
                                   settings.openCodeServerPassword !==
-                                    defaults.openCodeServerPassword;
-                  const binaryPathValue =
-                    providerSettings.binaryPathKey === "claudeBinaryPath"
+                                    defaults.openCodeServerPassword
+                                : providerSettings.provider === "openclaw"
+                                  ? settings.openClawGatewayUrl !== defaults.openClawGatewayUrl ||
+                                    settings.openClawAuthMode !== defaults.openClawAuthMode
+                                  : settings.piBinaryPath !== defaults.piBinaryPath ||
+                                    settings.piAgentDir !== defaults.piAgentDir;
+                  const binaryPathValue = providerSettings.binaryPathKey
+                    ? providerSettings.binaryPathKey === "claudeBinaryPath"
                       ? claudeBinaryPath
                       : providerSettings.binaryPathKey === "cursorBinaryPath"
                         ? cursorBinaryPath
@@ -2747,7 +2871,8 @@ function SettingsRouteView() {
                               ? openCodeBinaryPath
                               : providerSettings.binaryPathKey === "piBinaryPath"
                                 ? piBinaryPath
-                                : codexBinaryPath;
+                                : codexBinaryPath
+                    : "";
                   const providerStatus = providerStatusByProvider.get(providerSettings.provider);
                   const providerUpdateLabel = providerStatus
                     ? providerUpdateStatusLabel(providerStatus)
@@ -2843,7 +2968,9 @@ function SettingsRouteView() {
                         <CollapsibleContent>
                           <div className="border-t border-border/70 bg-muted/20 px-3 py-3">
                             <div className="space-y-3">
-                              <ProviderDocsLinks docs={providerSettings.docs} />
+                              {providerSettings.docs.length > 0 ? (
+                                <ProviderDocsLinks docs={providerSettings.docs} />
+                              ) : null}
                               {updateAdvisory?.status === "behind_latest" ? (
                                 <div className="text-xs text-muted-foreground">
                                   {updateAdvisory.canUpdate && updateAdvisory.updateCommand ? (
@@ -2859,42 +2986,372 @@ function SettingsRouteView() {
                                 </div>
                               ) : null}
 
-                              <label
-                                htmlFor={`provider-install-${providerSettings.binaryPathKey}`}
-                                className="block"
-                              >
-                                <span className="block text-xs font-medium text-foreground">
-                                  {providerSettings.title} binary path
-                                </span>
-                                <Input
-                                  id={`provider-install-${providerSettings.binaryPathKey}`}
-                                  className="mt-1"
-                                  value={binaryPathValue}
-                                  onChange={(event) =>
-                                    updateSettings(
-                                      providerSettings.binaryPathKey === "claudeBinaryPath"
-                                        ? { claudeBinaryPath: event.target.value }
-                                        : providerSettings.binaryPathKey === "cursorBinaryPath"
-                                          ? { cursorBinaryPath: event.target.value }
-                                          : providerSettings.binaryPathKey === "geminiBinaryPath"
-                                            ? { geminiBinaryPath: event.target.value }
-                                            : providerSettings.binaryPathKey === "kiloBinaryPath"
-                                              ? { kiloBinaryPath: event.target.value }
-                                              : providerSettings.binaryPathKey ===
-                                                  "openCodeBinaryPath"
-                                                ? { openCodeBinaryPath: event.target.value }
-                                                : providerSettings.binaryPathKey === "piBinaryPath"
-                                                  ? { piBinaryPath: event.target.value }
-                                                  : { codexBinaryPath: event.target.value },
-                                    )
-                                  }
-                                  placeholder={providerSettings.binaryPlaceholder}
-                                  spellCheck={false}
-                                />
-                                <span className="mt-1 block text-xs text-muted-foreground">
-                                  {providerSettings.binaryDescription}
-                                </span>
-                              </label>
+                              {providerSettings.binaryPathKey ? (
+                                <label
+                                  htmlFor={`provider-install-${providerSettings.binaryPathKey}`}
+                                  className="block"
+                                >
+                                  <span className="block text-xs font-medium text-foreground">
+                                    {providerSettings.title} binary path
+                                  </span>
+                                  <Input
+                                    id={`provider-install-${providerSettings.binaryPathKey}`}
+                                    className="mt-1"
+                                    value={binaryPathValue}
+                                    onChange={(event) =>
+                                      updateSettings(
+                                        providerSettings.binaryPathKey === "claudeBinaryPath"
+                                          ? { claudeBinaryPath: event.target.value }
+                                          : providerSettings.binaryPathKey === "cursorBinaryPath"
+                                            ? { cursorBinaryPath: event.target.value }
+                                            : providerSettings.binaryPathKey === "geminiBinaryPath"
+                                              ? { geminiBinaryPath: event.target.value }
+                                              : providerSettings.binaryPathKey === "kiloBinaryPath"
+                                                ? { kiloBinaryPath: event.target.value }
+                                                : providerSettings.binaryPathKey ===
+                                                    "openCodeBinaryPath"
+                                                  ? { openCodeBinaryPath: event.target.value }
+                                                  : providerSettings.binaryPathKey ===
+                                                      "piBinaryPath"
+                                                    ? { piBinaryPath: event.target.value }
+                                                    : { codexBinaryPath: event.target.value },
+                                      )
+                                    }
+                                    placeholder={providerSettings.binaryPlaceholder}
+                                    spellCheck={false}
+                                  />
+                                  <span className="mt-1 block text-xs text-muted-foreground">
+                                    {providerSettings.binaryDescription}
+                                  </span>
+                                </label>
+                              ) : null}
+
+                              {providerSettings.gatewayUrlKey ? (
+                                <div className="space-y-3">
+                                  <div className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-(--color-background-elevated-secondary)/35 px-3 py-2.5">
+                                    <div className="min-w-0 space-y-1">
+                                      <div className="text-xs font-medium text-foreground">
+                                        OpenClaw gateway enabled
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        Allow JCode to connect through the configured OpenClaw
+                                        gateway.
+                                      </div>
+                                    </div>
+                                    <Switch
+                                      checked={openClawEnabled}
+                                      onCheckedChange={(checked) =>
+                                        updateSettings({ openClawEnabled: checked })
+                                      }
+                                      aria-label="Enable OpenClaw gateway"
+                                    />
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-3">
+                                    <div className="rounded-lg border border-border/60 bg-(--color-background-elevated-secondary)/35 px-3 py-2.5">
+                                      <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                                        Gateway
+                                      </div>
+                                      <div className="mt-1 truncate text-xs text-foreground">
+                                        {openClawGatewayUrl || "Not configured"}
+                                      </div>
+                                    </div>
+                                    <div className="rounded-lg border border-border/60 bg-(--color-background-elevated-secondary)/35 px-3 py-2.5">
+                                      <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                                        Auth mode
+                                      </div>
+                                      <div className="mt-1 text-xs capitalize text-foreground">
+                                        {openClawAuthMode}
+                                      </div>
+                                    </div>
+                                    <div className="rounded-lg border border-border/60 bg-(--color-background-elevated-secondary)/35 px-3 py-2.5">
+                                      <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                                        Pairing
+                                      </div>
+                                      <div className="mt-1 text-xs text-foreground">
+                                        {openClawPaired
+                                          ? "Paired"
+                                          : openClawHasSecret
+                                            ? "Secret saved"
+                                            : "No secret"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <label
+                                    htmlFor="provider-install-openClawGatewayUrl"
+                                    className="block"
+                                  >
+                                    <span className="block text-xs font-medium text-foreground">
+                                      OpenClaw gateway URL
+                                    </span>
+                                    <Input
+                                      id="provider-install-openClawGatewayUrl"
+                                      className="mt-1"
+                                      value={openClawGatewayUrl}
+                                      onChange={(event) =>
+                                        updateSettings({ openClawGatewayUrl: event.target.value })
+                                      }
+                                      placeholder={providerSettings.gatewayUrlPlaceholder}
+                                      spellCheck={false}
+                                      aria-label="OpenClaw gateway URL"
+                                      aria-describedby="provider-install-openClawGatewayUrl-description"
+                                    />
+                                    <span
+                                      id="provider-install-openClawGatewayUrl-description"
+                                      className="mt-1 block text-xs text-muted-foreground"
+                                    >
+                                      {providerSettings.gatewayUrlDescription}
+                                    </span>
+                                  </label>
+                                  <label
+                                    htmlFor="provider-install-openClawAuthMode"
+                                    className="block"
+                                  >
+                                    <span className="block text-xs font-medium text-foreground">
+                                      OpenClaw auth mode
+                                    </span>
+                                    <Select
+                                      value={openClawAuthMode}
+                                      onValueChange={(value) => {
+                                        if (
+                                          value !== "none" &&
+                                          value !== "token" &&
+                                          value !== "password" &&
+                                          value !== "device"
+                                        ) {
+                                          return;
+                                        }
+                                        updateSettings({ openClawAuthMode: value });
+                                      }}
+                                    >
+                                      <SelectTrigger
+                                        id="provider-install-openClawAuthMode"
+                                        size="sm"
+                                        className="mt-1 w-full sm:w-48"
+                                        aria-label="OpenClaw authentication mode"
+                                        aria-describedby="provider-install-openClawAuthMode-description"
+                                      >
+                                        <SelectValue>
+                                          {openClawAuthMode === "none"
+                                            ? "None"
+                                            : openClawAuthMode === "device"
+                                              ? "Device pairing"
+                                              : openClawAuthMode === "token"
+                                                ? "Token"
+                                                : "Password"}
+                                        </SelectValue>
+                                      </SelectTrigger>
+                                      <SelectPopup align="start" alignItemWithTrigger={false}>
+                                        <SelectItem hideIndicator value="none">
+                                          None
+                                        </SelectItem>
+                                        <SelectItem hideIndicator value="device">
+                                          Device pairing
+                                        </SelectItem>
+                                        <SelectItem hideIndicator value="token">
+                                          Token
+                                        </SelectItem>
+                                        <SelectItem hideIndicator value="password">
+                                          Password
+                                        </SelectItem>
+                                      </SelectPopup>
+                                    </Select>
+                                    <span
+                                      id="provider-install-openClawAuthMode-description"
+                                      className="mt-1 block text-xs text-muted-foreground"
+                                    >
+                                      Select the gateway's auth mode. Secret values are sent to the
+                                      native secret store only and are not saved in settings.
+                                    </span>
+                                  </label>
+                                  {openClawAuthMode === "token" ? (
+                                    <div className="rounded-lg border border-border/60 bg-(--color-background-elevated-secondary)/35 px-3 py-2.5">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 space-y-1">
+                                          <div className="text-xs font-medium text-foreground">
+                                            OpenClaw token
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {openClawHasSecret
+                                              ? "A gateway secret is saved in native storage."
+                                              : "No gateway secret is saved."}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
+                                        <label
+                                          htmlFor="provider-install-openClaw-token"
+                                          className="min-w-0 flex-1"
+                                        >
+                                          <span className="block text-xs font-medium text-foreground">
+                                            Token
+                                          </span>
+                                          <Input
+                                            id="provider-install-openClaw-token"
+                                            className="mt-1"
+                                            value={openClawTokenInput}
+                                            onChange={(event) =>
+                                              setOpenClawTokenInput(event.target.value)
+                                            }
+                                            type="password"
+                                            placeholder="Paste token"
+                                            autoComplete="off"
+                                            spellCheck={false}
+                                          />
+                                        </label>
+                                        <div className="flex gap-2">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => void updateOpenClawSecrets("save")}
+                                            disabled={
+                                              isUpdatingOpenClawCredential ||
+                                              openClawTokenInput.trim().length === 0
+                                            }
+                                          >
+                                            Save token
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => void updateOpenClawSecrets("clear")}
+                                            disabled={
+                                              isUpdatingOpenClawCredential || !openClawHasSecret
+                                            }
+                                          >
+                                            Clear token
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : openClawAuthMode === "password" ? (
+                                    <div className="rounded-lg border border-border/60 bg-(--color-background-elevated-secondary)/35 px-3 py-2.5">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 space-y-1">
+                                          <div className="text-xs font-medium text-foreground">
+                                            OpenClaw password
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {openClawHasSecret
+                                              ? "A gateway secret is saved in native storage."
+                                              : "No gateway secret is saved."}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
+                                        <label
+                                          htmlFor="provider-install-openClaw-password"
+                                          className="min-w-0 flex-1"
+                                        >
+                                          <span className="block text-xs font-medium text-foreground">
+                                            Password
+                                          </span>
+                                          <Input
+                                            id="provider-install-openClaw-password"
+                                            className="mt-1"
+                                            value={openClawPasswordInput}
+                                            onChange={(event) =>
+                                              setOpenClawPasswordInput(event.target.value)
+                                            }
+                                            type="password"
+                                            placeholder="Enter password"
+                                            autoComplete="off"
+                                            spellCheck={false}
+                                          />
+                                        </label>
+                                        <div className="flex gap-2">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => void updateOpenClawSecrets("save")}
+                                            disabled={
+                                              isUpdatingOpenClawCredential ||
+                                              openClawPasswordInput.trim().length === 0
+                                            }
+                                          >
+                                            Save password
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => void updateOpenClawSecrets("clear")}
+                                            disabled={
+                                              isUpdatingOpenClawCredential || !openClawHasSecret
+                                            }
+                                          >
+                                            Clear password
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : openClawAuthMode === "device" ? (
+                                    <div className="rounded-lg border border-border/60 bg-(--color-background-elevated-secondary)/35 px-3 py-2.5">
+                                      <div className="space-y-1">
+                                        <div className="text-xs font-medium text-foreground">
+                                          OpenClaw device identity
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {openClawPaired
+                                            ? "Device identity is paired."
+                                            : "Device identity is not paired."}
+                                        </div>
+                                      </div>
+                                      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
+                                        <label
+                                          htmlFor="provider-install-openClaw-deviceToken"
+                                          className="min-w-0 flex-1"
+                                        >
+                                          <span className="block text-xs font-medium text-foreground">
+                                            Optional device token
+                                          </span>
+                                          <Input
+                                            id="provider-install-openClaw-deviceToken"
+                                            className="mt-1"
+                                            value={openClawDeviceTokenInput}
+                                            onChange={(event) =>
+                                              setOpenClawDeviceTokenInput(event.target.value)
+                                            }
+                                            type="password"
+                                            placeholder="Paste pairing token"
+                                            autoComplete="off"
+                                            spellCheck={false}
+                                          />
+                                        </label>
+                                        <div className="flex gap-2">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => void updateOpenClawSecrets("save")}
+                                            disabled={isUpdatingOpenClawCredential}
+                                          >
+                                            {openClawDeviceTokenInput.trim().length > 0
+                                              ? "Save pairing token"
+                                              : "Rotate device key"}
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => void updateOpenClawSecrets("clear")}
+                                            disabled={isUpdatingOpenClawCredential}
+                                          >
+                                            Clear device identity
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="rounded-lg border border-border/60 bg-(--color-background-elevated-secondary)/35 px-3 py-2.5 text-xs text-muted-foreground">
+                                      No OpenClaw gateway secret is required for this auth mode.
+                                    </div>
+                                  )}
+                                  {openClawCredentialError ? (
+                                    <div className="text-xs text-destructive">
+                                      {openClawCredentialError}
+                                    </div>
+                                  ) : null}
+                                  {openClawCredentialStatus ? (
+                                    <div className="text-xs text-muted-foreground">
+                                      {openClawCredentialStatus}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : null}
 
                               {providerSettings.homePathKey ? (
                                 <label
@@ -3212,8 +3669,8 @@ function SettingsRouteView() {
         {isElectron ? (
           <div
             className={cn(
-              "drag-region flex h-[52px] shrink-0 items-center border-b border-border/70 px-5",
-              settings.sidebarSide === "right" && "pl-[90px]",
+              "drag-region flex h-13 shrink-0 items-center border-b border-border/70 px-5",
+              settings.sidebarSide === "right" && "pl-22.5",
             )}
           >
             <SidebarHeaderNavigationControls />

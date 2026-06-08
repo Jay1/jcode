@@ -385,6 +385,46 @@ function createSnapshotWithLongAssistantResponse(): OrchestrationReadModel {
   };
 }
 
+function createSnapshotWithTailAssistantText(text: string): OrchestrationReadModel {
+  const snapshot = createSnapshotForTargetUser({
+    targetMessageId: "msg-user-tail-follow-target" as MessageId,
+    targetText: "tail follow target",
+  });
+
+  const threads = [...snapshot.threads];
+  const threadIndex = threads.findIndex((thread) => thread.id === THREAD_ID);
+  if (threadIndex < 0) {
+    return snapshot;
+  }
+
+  const thread = threads[threadIndex]!;
+  const messages = [...thread.messages];
+  const messageIndex = messages.findLastIndex((message) => message.role === "assistant");
+  if (messageIndex < 0) {
+    return snapshot;
+  }
+
+  const message = messages[messageIndex]!;
+  messages[messageIndex] = {
+    ...message,
+    text,
+    updatedAt: isoAt(500),
+  };
+
+  threads[threadIndex] = {
+    ...thread,
+    messages,
+    updatedAt: isoAt(500),
+  };
+
+  return {
+    ...snapshot,
+    snapshotSequence: snapshot.snapshotSequence + 1,
+    threads,
+    updatedAt: isoAt(500),
+  };
+}
+
 function createSnapshotWithBottomAttachments(): OrchestrationReadModel {
   const snapshot = createSnapshotForTargetUser({
     targetMessageId: "msg-user-bottom-attachments" as MessageId,
@@ -1051,6 +1091,17 @@ async function waitForLayout(): Promise<void> {
   await nextFrame();
   await nextFrame();
   await nextFrame();
+}
+
+function dispatchUpwardWheel(element: HTMLElement): void {
+  element.dispatchEvent(
+    new WheelEvent("wheel", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      deltaY: -240,
+    }),
+  );
 }
 
 async function setViewport(viewport: ViewportSpec): Promise<void> {
@@ -1833,6 +1884,220 @@ describe("ChatView timeline estimator parity (full app)", () => {
     }
   });
 
+  it("keeps following the bottom after the scroll button is clicked and tail content grows", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotWithTailAssistantText("short tail response"),
+    });
+
+    try {
+      const scrollContainer = await waitForElement(
+        () => document.querySelector<HTMLElement>("[data-chat-scroll-container='true']"),
+        "Unable to find message scroll container.",
+      );
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.scrollHeightPx).toBeGreaterThan(layout.scrollClientHeightPx);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await waitForLayout();
+
+      scrollContainer.scrollTop = 0;
+      dispatchUpwardWheel(scrollContainer);
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+
+      const scrollButton = await waitForElement(
+        () => document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+        "Unable to find scroll-to-bottom button.",
+      );
+      scrollButton.click();
+
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.distanceFromBottomPx).toBeLessThanOrEqual(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      useStore
+        .getState()
+        .syncServerReadModel(
+          createSnapshotWithTailAssistantText(
+            Array.from(
+              { length: 160 },
+              (_, lineIndex) => `tail-follow expanded line ${lineIndex + 1}`,
+            ).join("\n"),
+          ),
+        );
+
+      await vi.waitFor(
+        async () => {
+          expect(document.body.textContent).toContain("tail-follow expanded line 160");
+          const layout = await mounted.measureLayout();
+          expect(layout.distanceFromBottomPx).toBeLessThanOrEqual(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("stops following the bottom after an intentional upward scroll", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotWithTailAssistantText("short tail response"),
+    });
+
+    try {
+      const scrollContainer = await waitForElement(
+        () => document.querySelector<HTMLElement>("[data-chat-scroll-container='true']"),
+        "Unable to find message scroll container.",
+      );
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.scrollHeightPx).toBeGreaterThan(layout.scrollClientHeightPx);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await waitForLayout();
+
+      scrollContainer.scrollTop = 0;
+      dispatchUpwardWheel(scrollContainer);
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+
+      const scrollButton = await waitForElement(
+        () => document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+        "Unable to find scroll-to-bottom button.",
+      );
+      scrollButton.click();
+
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.distanceFromBottomPx).toBeLessThanOrEqual(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      scrollContainer.scrollTop = Math.max(0, scrollContainer.scrollTop - 240);
+      dispatchUpwardWheel(scrollContainer);
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+
+      await waitForElement(
+        () => document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+        "Unable to find scroll-to-bottom button after upward scroll.",
+      );
+
+      useStore
+        .getState()
+        .syncServerReadModel(
+          createSnapshotWithTailAssistantText(
+            Array.from(
+              { length: 160 },
+              (_, lineIndex) => `detached tail growth line ${lineIndex + 1}`,
+            ).join("\n"),
+          ),
+        );
+
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.distanceFromBottomPx).toBeGreaterThan(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+          expect(
+            document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+          ).toBeTruthy();
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("re-arms tail follow when a detached user manually reaches the bottom", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotWithTailAssistantText("short tail response"),
+    });
+
+    try {
+      const scrollContainer = await waitForElement(
+        () => document.querySelector<HTMLElement>("[data-chat-scroll-container='true']"),
+        "Unable to find message scroll container.",
+      );
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.scrollHeightPx).toBeGreaterThan(layout.scrollClientHeightPx);
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await waitForLayout();
+
+      scrollContainer.scrollTop = Math.max(0, scrollContainer.scrollTop - 240);
+      dispatchUpwardWheel(scrollContainer);
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+
+      await waitForElement(
+        () => document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+        "Unable to find scroll-to-bottom button after upward scroll.",
+      );
+
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.distanceFromBottomPx).toBeLessThanOrEqual(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+          expect(
+            document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+          ).toBeNull();
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+      const bottomLayout = await mounted.measureLayout();
+
+      useStore
+        .getState()
+        .syncServerReadModel(
+          createSnapshotWithTailAssistantText(
+            Array.from(
+              { length: 160 },
+              (_, lineIndex) => `manual-bottom detached growth line ${lineIndex + 1}`,
+            ).join("\n"),
+          ),
+        );
+
+      await vi.waitFor(
+        async () => {
+          const layout = await mounted.measureLayout();
+          expect(layout.scrollHeightPx).toBeGreaterThan(bottomLayout.scrollHeightPx);
+          expect(layout.distanceFromBottomPx).toBeLessThanOrEqual(AUTO_SCROLL_BOTTOM_THRESHOLD_PX);
+          expect(
+            document.querySelector<HTMLButtonElement>('button[aria-label="Scroll to bottom"]'),
+          ).toBeNull();
+        },
+        { timeout: 8_000, interval: 16 },
+      );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
   it.each(ATTACHMENT_VIEWPORT_MATRIX)(
     "keeps user attachment estimate close at the $name viewport",
     async (viewport) => {
@@ -2164,8 +2429,9 @@ describe("ChatView timeline estimator parity (full app)", () => {
 
     try {
       const composerEditor = await waitForComposerEditor();
-      const dispatchComposerKey = (key: "ArrowDown" | "ArrowUp") => {
-        composerEditor.dispatchEvent(
+      const dispatchComposerKey = async (key: "ArrowDown" | "ArrowUp") => {
+        const currentComposerEditor = await waitForComposerEditor();
+        currentComposerEditor.dispatchEvent(
           new KeyboardEvent("keydown", {
             key,
             bubbles: true,
@@ -2177,31 +2443,34 @@ describe("ChatView timeline estimator parity (full app)", () => {
       composerEditor.focus();
       expect(composerEditor.textContent).toBe("");
 
-      dispatchComposerKey("ArrowUp");
+      await dispatchComposerKey("ArrowUp");
       await vi.waitFor(
         () => {
           expect(composerEditor.textContent).toBe("filler user message 21");
         },
         { timeout: 8_000, interval: 16 },
       );
+      await nextFrame();
 
-      dispatchComposerKey("ArrowUp");
+      await dispatchComposerKey("ArrowUp");
       await vi.waitFor(
         () => {
           expect(composerEditor.textContent).toBe("filler user message 20");
         },
         { timeout: 8_000, interval: 16 },
       );
+      await nextFrame();
 
-      dispatchComposerKey("ArrowDown");
+      await dispatchComposerKey("ArrowDown");
       await vi.waitFor(
         () => {
           expect(composerEditor.textContent).toBe("filler user message 21");
         },
         { timeout: 8_000, interval: 16 },
       );
+      await nextFrame();
 
-      dispatchComposerKey("ArrowDown");
+      await dispatchComposerKey("ArrowDown");
       await vi.waitFor(
         () => {
           expect(composerEditor.textContent).toBe("");
@@ -2873,7 +3142,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
     }
   });
 
-  it("starts stale branchless worktree drafts as local threads on first Enter", async () => {
+  it("rejects stale branchless worktree drafts on first Enter", async () => {
     useComposerDraftStore.setState({
       draftThreadsByThreadId: {
         [THREAD_ID]: {
@@ -2907,15 +3176,9 @@ describe("ChatView timeline estimator parity (full app)", () => {
     try {
       useComposerDraftStore.getState().setPrompt(THREAD_ID, "test");
 
-      const editor = await waitForComposerEditor();
-      editor.focus();
-      editor.dispatchEvent(
-        new KeyboardEvent("keydown", {
-          key: "Enter",
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
+      const sendButton = await waitForSendButton();
+      expect(sendButton.disabled).toBe(false);
+      await sendButton.click();
 
       await vi.waitFor(
         () => {
@@ -2927,13 +3190,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
               "type" in request.command &&
               request.command.type === "thread.create",
           );
-          expect(createThreadRequest?.command).toMatchObject({
-            projectId: HOMEASSIST_PROJECT_ID,
-            threadId: THREAD_ID,
-            envMode: "local",
-            branch: null,
-            worktreePath: null,
-          });
+          expect(createThreadRequest).toBeUndefined();
 
           const turnStartRequest = wsRequests.find(
             (request) =>
@@ -2943,12 +3200,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
               "type" in request.command &&
               request.command.type === "thread.turn.start",
           );
-          expect(turnStartRequest?.command).toMatchObject({
-            threadId: THREAD_ID,
-            message: {
-              text: "test",
-            },
-          });
+          expect(turnStartRequest).toBeUndefined();
         },
         { timeout: 1_000, interval: 16 },
       );

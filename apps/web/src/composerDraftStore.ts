@@ -50,6 +50,7 @@ import { createDebouncedStorage, createMemoryStorage } from "./lib/storage";
 
 export const COMPOSER_DRAFT_STORAGE_KEY = "jcode:composer-drafts:v1";
 const COMPOSER_DRAFT_STORAGE_VERSION = 4;
+type ProviderModelOptionValue = ProviderModelOptions[keyof ProviderModelOptions];
 const DraftThreadEnvModeSchema = Schema.Literals(["local", "worktree"]);
 export type DraftThreadEnvMode = typeof DraftThreadEnvModeSchema.Type;
 const DraftThreadEntryPointSchema = Schema.Literals(["chat", "terminal"]);
@@ -696,6 +697,7 @@ function normalizeProviderKind(value: unknown): ProviderKind | null {
     value === "gemini" ||
     value === "kilo" ||
     value === "opencode" ||
+    value === "openclaw" ||
     value === "pi"
     ? value
     : null;
@@ -712,7 +714,7 @@ function trimStringOrUndefined(value: unknown): string | undefined {
 function makeModelSelection(
   provider: ProviderKind,
   model: string,
-  options?: ProviderModelOptions[ProviderKind],
+  options?: ProviderModelOptionValue,
 ): ModelSelection {
   switch (provider) {
     case "codex":
@@ -773,7 +775,22 @@ function makeModelSelection(
           ? { options: options as Extract<ModelSelection, { provider: "pi" }>["options"] }
           : {}),
       };
+    case "openclaw":
+      return { provider, model: "gateway" };
   }
+}
+
+function getModelSelectionOptions(
+  selection: ModelSelection | null,
+): ProviderModelOptionValue | undefined {
+  return selection !== null && "options" in selection ? selection.options : undefined;
+}
+
+function getProviderModelOptions(
+  modelOptions: ProviderModelOptions | null | undefined,
+  provider: ProviderKind,
+): ProviderModelOptionValue | undefined {
+  return provider === "openclaw" ? undefined : modelOptions?.[provider];
 }
 
 function normalizeProviderModelOptions(
@@ -1036,7 +1053,7 @@ function legacySyncModelSelectionOptions(
   if (modelSelection === null) {
     return null;
   }
-  const options = modelOptions?.[modelSelection.provider];
+  const options = getProviderModelOptions(modelOptions, modelSelection.provider);
   return makeModelSelection(modelSelection.provider, modelSelection.model, options);
 }
 
@@ -1044,13 +1061,17 @@ function legacyMergeModelSelectionIntoProviderModelOptions(
   modelSelection: ModelSelection | null,
   currentModelOptions: ProviderModelOptions | null | undefined,
 ): ProviderModelOptions | null {
-  if (modelSelection?.options === undefined) {
+  if (modelSelection === null) {
+    return normalizeProviderModelOptions(currentModelOptions);
+  }
+  const selectionOptions = getModelSelectionOptions(modelSelection);
+  if (!modelSelection || selectionOptions === undefined) {
     return normalizeProviderModelOptions(currentModelOptions);
   }
   return legacyReplaceProviderModelOptions(
     normalizeProviderModelOptions(currentModelOptions),
     modelSelection.provider,
-    modelSelection.options,
+    selectionOptions,
   );
 }
 
@@ -1215,8 +1236,10 @@ export function resolvePreferredComposerModelSelection(input: {
     (input.projectModelSelection?.provider === preferredProvider
       ? input.projectModelSelection
       : null) ?? {
-      provider: preferredProvider === "pi" ? "codex" : preferredProvider,
-      model: getDefaultModel(preferredProvider === "pi" ? "codex" : preferredProvider),
+      ...makeModelSelection(
+        preferredProvider === "pi" ? "codex" : preferredProvider,
+        getDefaultModel(preferredProvider === "pi" ? "codex" : preferredProvider) ?? "gateway",
+      ),
     }
   );
 }
@@ -2600,10 +2623,11 @@ export const useComposerDraftStore = create<ComposerDraftStoreState>()(
           for (const [provider, selection] of Object.entries(stickyMap)) {
             if (selection) {
               const current = nextMap[provider as ProviderKind];
-              nextMap[provider as ProviderKind] = {
-                ...selection,
-                model: current?.model ?? selection.model,
-              };
+              nextMap[provider as ProviderKind] = makeModelSelection(
+                selection.provider,
+                current?.model ?? selection.model,
+                "options" in selection ? selection.options : undefined,
+              );
             }
           }
           if (

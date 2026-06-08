@@ -84,6 +84,7 @@ const PROVIDER_ICON: Record<ProviderKind, React.FC<React.SVGProps<SVGSVGElement>
   gemini: Gemini,
   kilo: KiloIcon,
   opencode: OpenCodeIcon,
+  openclaw: PlugIcon,
   pi: PiIcon,
 };
 const PROVIDER_DISCOVERY_ORDER: ReadonlyArray<ProviderKind> = [
@@ -416,6 +417,10 @@ export function PluginLibrary() {
       opencode: {
         plugins: supportsPluginDiscovery(openCodeCapabilitiesQuery.data),
         skills: supportsSkillDiscovery(openCodeCapabilitiesQuery.data),
+      },
+      openclaw: {
+        plugins: false,
+        skills: false,
       },
       pi: {
         plugins: supportsPluginDiscovery(piCapabilitiesQuery.data),

@@ -4,6 +4,7 @@ import { Option, Schema } from "effect";
 import {
   DEFAULT_GIT_TEXT_GENERATION_MODEL,
   DEFAULT_SERVER_SETTINGS,
+  OpenClawAuthMode,
   TrimmedNonEmptyString,
   ProviderKind,
   type ProviderStartOptions,
@@ -30,6 +31,7 @@ import { serverQueryKeys, serverSettingsQueryOptions } from "./lib/serverReactQu
 const APP_SETTINGS_STORAGE_KEY = "jcode:app-settings:v1";
 const SERVER_SETTINGS_MIGRATION_STORAGE_KEY = "t3code:server-settings-migrated:v1";
 const MAX_CUSTOM_MODEL_COUNT = 32;
+const GIT_TEXT_GENERATION_PROVIDERS = new Set<ProviderKind>(["codex", "kilo", "opencode"]);
 export const MAX_CUSTOM_MODEL_LENGTH = 256;
 export const MIN_CHAT_FONT_SIZE_PX = 11;
 export const MAX_CHAT_FONT_SIZE_PX = 18;
@@ -61,8 +63,9 @@ type CustomModelSettingsKey =
   | "customKiloModels"
   | "customOpenCodeModels"
   | "customPiModels";
+export type CustomModelProviderKind = Exclude<ProviderKind, "openclaw">;
 export type ProviderCustomModelConfig = {
-  provider: ProviderKind;
+  provider: CustomModelProviderKind;
   settingsKey: CustomModelSettingsKey;
   defaultSettingsKey: CustomModelSettingsKey;
   title: string;
@@ -78,6 +81,7 @@ const BUILT_IN_MODEL_SLUGS_BY_PROVIDER: Record<ProviderKind, ReadonlySet<string>
   gemini: new Set(getModelOptions("gemini").map((option) => option.slug)),
   kilo: new Set(getModelOptions("kilo").map((option) => option.slug)),
   opencode: new Set(getModelOptions("opencode").map((option) => option.slug)),
+  openclaw: new Set(["gateway"]),
   pi: new Set(getModelOptions("pi").map((option) => option.slug)),
 };
 
@@ -117,6 +121,11 @@ export const AppSettingsSchema = Schema.Struct({
   openCodeServerPassword: Schema.String.check(Schema.isMaxLength(4096)).pipe(
     withDefaults(() => ""),
   ),
+  openClawGatewayUrl: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
+  openClawEnabled: Schema.Boolean.pipe(withDefaults(() => true)),
+  openClawAuthMode: OpenClawAuthMode.pipe(withDefaults(() => "none" as const)),
+  openClawHasSecret: Schema.Boolean.pipe(withDefaults(() => false)),
+  openClawPaired: Schema.Boolean.pipe(withDefaults(() => false)),
   defaultThreadEnvMode: EnvMode.pipe(withDefaults(() => "local" as const satisfies EnvMode)),
   confirmThreadDelete: Schema.Boolean.pipe(withDefaults(() => true)),
   confirmThreadArchive: Schema.Boolean.pipe(withDefaults(() => false)),
@@ -174,7 +183,7 @@ export interface AppModelOption extends ProviderModelOption {
 const DEFAULT_APP_SETTINGS = AppSettingsSchema.makeUnsafe({});
 let serverSettingsMigrationInFlight = false;
 
-const PROVIDER_CUSTOM_MODEL_CONFIG: Record<ProviderKind, ProviderCustomModelConfig> = {
+const PROVIDER_CUSTOM_MODEL_CONFIG: Record<CustomModelProviderKind, ProviderCustomModelConfig> = {
   codex: {
     provider: "codex",
     settingsKey: "customCodexModels",
@@ -314,6 +323,11 @@ export function serverSettingsToAppSettings(settings: ServerSettings): Partial<A
     openCodeBinaryPath: settings.providers.opencode.binaryPath,
     openCodeServerPassword: settings.providers.opencode.serverPassword,
     openCodeServerUrl: settings.providers.opencode.serverUrl,
+    openClawAuthMode: settings.providers.openclaw.authMode,
+    openClawEnabled: settings.providers.openclaw.enabled,
+    openClawGatewayUrl: settings.providers.openclaw.gatewayUrl,
+    openClawHasSecret: settings.providers.openclaw.hasSecret,
+    openClawPaired: settings.providers.openclaw.paired,
     piAgentDir: settings.providers.pi.agentDir,
     piBinaryPath: settings.providers.pi.binaryPath,
     customCodexModels: settings.providers.codex.customModels,
@@ -333,7 +347,7 @@ function resolveTextGenerationProvider(input: {
   readonly model?: string | null;
 }): ProviderKind {
   if (input.provider) {
-    return input.provider;
+    return GIT_TEXT_GENERATION_PROVIDERS.has(input.provider) ? input.provider : "codex";
   }
   const model = input.model;
   return model?.includes("/") ? "opencode" : "codex";
@@ -450,6 +464,19 @@ export function appSettingsPatchToServerSettingsPatch(
     };
   }
   if (
+    hasOwn(patch, "openClawGatewayUrl") ||
+    hasOwn(patch, "openClawAuthMode") ||
+    hasOwn(patch, "openClawEnabled")
+  ) {
+    providers.openclaw = {
+      ...(hasOwn(patch, "openClawEnabled") ? { enabled: patch.openClawEnabled ?? true } : {}),
+      ...(hasOwn(patch, "openClawGatewayUrl")
+        ? { gatewayUrl: patch.openClawGatewayUrl ?? "" }
+        : {}),
+      ...(hasOwn(patch, "openClawAuthMode") ? { authMode: patch.openClawAuthMode ?? "none" } : {}),
+    };
+  }
+  if (
     hasOwn(patch, "piAgentDir") ||
     hasOwn(patch, "piBinaryPath") ||
     hasOwn(patch, "customPiModels")
@@ -491,6 +518,9 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
     "openCodeBinaryPath",
     "openCodeServerPassword",
     "openCodeServerUrl",
+    "openClawAuthMode",
+    "openClawEnabled",
+    "openClawGatewayUrl",
     "piAgentDir",
     "piBinaryPath",
     "textGenerationModel",
@@ -524,20 +554,20 @@ export function normalizeStoredAppSettings(settings: AppSettings): AppSettings {
 
 export function getCustomModelsForProvider(
   settings: Pick<AppSettings, CustomModelSettingsKey>,
-  provider: ProviderKind,
+  provider: CustomModelProviderKind,
 ): readonly string[] {
   return settings[PROVIDER_CUSTOM_MODEL_CONFIG[provider].settingsKey];
 }
 
 export function getDefaultCustomModelsForProvider(
   defaults: Pick<AppSettings, CustomModelSettingsKey>,
-  provider: ProviderKind,
+  provider: CustomModelProviderKind,
 ): readonly string[] {
   return defaults[PROVIDER_CUSTOM_MODEL_CONFIG[provider].defaultSettingsKey];
 }
 
 export function patchCustomModels(
-  provider: ProviderKind,
+  provider: CustomModelProviderKind,
   models: string[],
 ): Partial<Pick<AppSettings, CustomModelSettingsKey>> {
   return {
@@ -555,6 +585,7 @@ export function getCustomModelsByProvider(
     gemini: getCustomModelsForProvider(settings, "gemini"),
     kilo: getCustomModelsForProvider(settings, "kilo"),
     opencode: getCustomModelsForProvider(settings, "opencode"),
+    openclaw: [],
     pi: getCustomModelsForProvider(settings, "pi"),
   };
 }
@@ -638,7 +669,11 @@ export function getGitTextGenerationModelOptions(
   const selectedProvider =
     settings.textGenerationProvider ??
     resolveTextGenerationProvider(selectedModel !== undefined ? { model: selectedModel } : {});
-  if (selectedModel && !seen.has(`${selectedProvider}:${selectedModel}`)) {
+  if (
+    selectedModel &&
+    GIT_TEXT_GENERATION_PROVIDERS.has(selectedProvider) &&
+    !seen.has(`${selectedProvider}:${selectedModel}`)
+  ) {
     deduped.push({
       provider: selectedProvider,
       slug: selectedModel,
@@ -673,6 +708,7 @@ export function getCustomModelOptionsByProvider(
     gemini: getAppModelOptions("gemini", customModelsByProvider.gemini),
     kilo: getAppModelOptions("kilo", customModelsByProvider.kilo),
     opencode: getAppModelOptions("opencode", customModelsByProvider.opencode),
+    openclaw: [],
     pi: getAppModelOptions("pi", customModelsByProvider.pi),
   };
 }
@@ -693,6 +729,7 @@ export function getProviderStartOptions(
     | "openCodeBinaryPath"
     | "openCodeServerPassword"
     | "openCodeServerUrl"
+    | "openClawGatewayUrl"
     | "piAgentDir"
     | "piBinaryPath"
   >,
@@ -788,6 +825,8 @@ export function getCustomBinaryPathForProvider(
       return settings.kiloBinaryPath;
     case "opencode":
       return settings.openCodeBinaryPath;
+    case "openclaw":
+      return "";
     case "pi":
       return settings.piBinaryPath;
   }

@@ -118,6 +118,7 @@ import { dispatchThreadRename } from "../lib/threadRename";
 import { quotePosixShellArgument } from "../lib/shellQuote";
 import { DEFAULT_THREAD_TERMINAL_ID, type SidebarThreadSummary, type Thread } from "../types";
 import { shouldRenderTerminalWorkspace } from "./ChatView.logic";
+import { buildModelSelection } from "../providerModelOptions";
 import { ClaudeAI, CursorIcon, Gemini, KiloIcon, OpenAI, OpenCodeIcon, PiIcon } from "./Icons";
 import { AppNavigationButtons } from "./AppNavigationButtons";
 import { SidebarHeaderNavigationControls } from "./SidebarHeaderNavigationControls";
@@ -2182,10 +2183,7 @@ export default function Sidebar() {
         activeProject.defaultModelSelection?.provider === provider
           ? activeProject.defaultModelSelection
           : providerDefaultModel
-            ? {
-                provider,
-                model: providerDefaultModel,
-              }
+            ? buildModelSelection(provider, providerDefaultModel)
             : null;
       if (!modelSelection) {
         throw new Error("Select a Pi model before importing a Pi thread.");

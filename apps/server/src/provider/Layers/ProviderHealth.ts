@@ -11,6 +11,7 @@
 import * as OS from "node:os";
 import * as nodePath from "node:path";
 import type {
+  OpenClawServerProviderSettings,
   ProviderKind,
   ServerSettings,
   ServerProviderAuthStatus,
@@ -51,8 +52,29 @@ import {
 } from "../codexCliVersion";
 import { ServerConfig } from "../../config";
 import { ServerSettingsService } from "../../serverSettings";
+import { ServerSecretStore } from "../../auth/Services/ServerSecretStore";
 import { isWindowsShellCommandMissingResult } from "../../shell-command-detection";
 import { normalizeGeminiCapabilityProbeResult, probeGeminiCapabilities } from "../geminiAcpProbe";
+import {
+  buildOpenClawChallengeResponse,
+  type OpenClawAuthFrame,
+  type OpenClawChallenge,
+  type OpenClawChallengeResponse,
+  type OpenClawDeviceFrame,
+  OPENCLAW_MAX_PROTOCOL_VERSION,
+  OPENCLAW_MIN_PROTOCOL_VERSION,
+  validateOpenClawMethodSupport,
+} from "../openclawGatewayProtocol";
+import {
+  defaultOpenClawHealthProbeClient,
+  type OpenClawGatewayConnectInput,
+} from "../openclawGatewayClient";
+import { normalizeOpenClawGatewayUrl } from "../openclawGatewayUrl";
+import {
+  deriveOpenClawDeviceId,
+  getOpenClawSecret,
+  getOpenClawSecretBytes,
+} from "../openclawSecrets";
 import { ProviderHealth, type ProviderHealthShape } from "../Services/ProviderHealth";
 import {
   orderProviderStatuses,
@@ -79,6 +101,7 @@ const CURSOR_PROVIDER = "cursor" as const;
 const GEMINI_PROVIDER = "gemini" as const;
 const KILO_PROVIDER = "kilo" as const;
 const OPENCODE_PROVIDER = "opencode" as const;
+const OPENCLAW_PROVIDER = "openclaw" as const;
 const PI_PROVIDER = "pi" as const;
 type ProviderStatuses = ReadonlyArray<ServerProviderStatus>;
 
@@ -89,6 +112,7 @@ const PROVIDERS = [
   GEMINI_PROVIDER,
   KILO_PROVIDER,
   OPENCODE_PROVIDER,
+  OPENCLAW_PROVIDER,
   PI_PROVIDER,
 ] as const satisfies ReadonlyArray<ProviderKind>;
 
@@ -216,6 +240,25 @@ function detailFromResult(
     return `Command exited with code ${result.code}.`;
   }
   return undefined;
+}
+
+function detailFromUnknown(error: unknown): string | undefined {
+  const raw =
+    error instanceof Error ? error.message : typeof error === "string" ? error : undefined;
+  const detail = nonEmptyTrimmed(raw);
+  if (!detail) return undefined;
+  return detail
+    .replace(/\/\/[^/@\s]+@/g, "//")
+    .replace(/\b(token|password|client_secret|secret)=([^\s&]+)/gi, "$1=[redacted]");
+}
+
+function isAuthLikeProbeFailure(detail: string | undefined): boolean {
+  return (
+    detail !== undefined &&
+    /auth|unauth|forbid|credential|invalid token|token rejected|invalid password|password rejected/i.test(
+      detail,
+    )
+  );
 }
 
 function extractAuthBoolean(value: unknown): boolean | undefined {
@@ -1377,6 +1420,203 @@ export const makeCheckKiloProviderStatus = (
 
 export const checkKiloProviderStatus = makeCheckKiloProviderStatus();
 
+export interface OpenClawHealthProbeResult {
+  readonly methods?: ReadonlyArray<string>;
+  readonly protocolVersion?: number;
+}
+
+export interface OpenClawHealthProbeClient {
+  readonly probe: (
+    input: OpenClawGatewayConnectInput,
+  ) => Effect.Effect<OpenClawHealthProbeResult, unknown>;
+}
+
+const resolveOpenClawHealthProbeAuth = (
+  authType: OpenClawServerProviderSettings["authMode"],
+): Effect.Effect<
+  Pick<OpenClawGatewayConnectInput, "auth" | "device" | "respondToChallenge">,
+  unknown,
+  ServerSecretStore
+> =>
+  Effect.gen(function* () {
+    if (authType === "token") {
+      const token = yield* getOpenClawSecret("token");
+      return token !== null ? { auth: { type: "token", token } } : {};
+    }
+    if (authType === "password") {
+      const password = yield* getOpenClawSecret("password");
+      return password !== null ? { auth: { type: "password", password } } : {};
+    }
+    if (authType === "device") {
+      const deviceKey = yield* getOpenClawSecretBytes("deviceKey");
+      if (deviceKey === null) {
+        return {};
+      }
+      const deviceToken = yield* getOpenClawSecret("deviceToken");
+      const deviceId = deriveOpenClawDeviceId(deviceKey);
+      return {
+        device: {
+          id: deviceId,
+          ...(deviceToken !== null ? { token: deviceToken } : {}),
+        },
+        respondToChallenge: (challenge: OpenClawChallenge): OpenClawChallengeResponse =>
+          buildOpenClawChallengeResponse({
+            challenge,
+            deviceId,
+            deviceKey,
+          }),
+      };
+    }
+    return {};
+  });
+
+export const makeCheckOpenClawProviderStatus = (
+  settings: OpenClawServerProviderSettings,
+  probeClient?: OpenClawHealthProbeClient,
+): Effect.Effect<ServerProviderStatus, never, ServerSecretStore> =>
+  Effect.gen(function* () {
+    const checkedAt = new Date().toISOString();
+    const gatewayUrl = settings.gatewayUrl.trim();
+    if (gatewayUrl.length === 0) {
+      return {
+        provider: OPENCLAW_PROVIDER,
+        status: "warning" as const,
+        available: false,
+        authStatus: "unknown" as const,
+        checkedAt,
+        message: "OpenClaw gateway URL is not configured.",
+      } satisfies ServerProviderStatus;
+    }
+
+    let normalized: ReturnType<typeof normalizeOpenClawGatewayUrl>;
+    try {
+      normalized = normalizeOpenClawGatewayUrl(gatewayUrl);
+    } catch (cause) {
+      return {
+        provider: OPENCLAW_PROVIDER,
+        status: "error" as const,
+        available: false,
+        authStatus: "unknown" as const,
+        checkedAt,
+        message: cause instanceof Error ? cause.message : "OpenClaw gateway URL is invalid.",
+      } satisfies ServerProviderStatus;
+    }
+    const authType = settings.authMode;
+    if ((authType === "token" || authType === "password") && !settings.hasSecret) {
+      return {
+        provider: OPENCLAW_PROVIDER,
+        status: "error" as const,
+        available: false,
+        authStatus: "unauthenticated" as const,
+        authType,
+        checkedAt,
+        message: `OpenClaw ${authType} secret is not configured.`,
+      } satisfies ServerProviderStatus;
+    }
+    if (authType === "device" && !settings.paired) {
+      return {
+        provider: OPENCLAW_PROVIDER,
+        status: "warning" as const,
+        available: false,
+        authStatus: "unauthenticated" as const,
+        authType,
+        checkedAt,
+        message: "OpenClaw device pairing is required before the gateway can be used.",
+      } satisfies ServerProviderStatus;
+    }
+
+    if (!probeClient) {
+      return {
+        provider: OPENCLAW_PROVIDER,
+        status: "warning" as const,
+        available: false,
+        authStatus: authType === "none" ? ("unknown" as const) : ("authenticated" as const),
+        ...(authType !== "none" ? { authType } : {}),
+        checkedAt,
+        message: `OpenClaw gateway is configured at ${normalized.redactedUrl}. Live gateway probing is not configured.`,
+      } satisfies ServerProviderStatus;
+    }
+
+    const probeAuthResult = yield* resolveOpenClawHealthProbeAuth(authType).pipe(Effect.result);
+    if (Result.isFailure(probeAuthResult)) {
+      return {
+        provider: OPENCLAW_PROVIDER,
+        status: "error" as const,
+        available: false,
+        authStatus: "unknown" as const,
+        ...(authType !== "none" ? { authType } : {}),
+        checkedAt,
+        message: "OpenClaw auth secret could not be read.",
+      } satisfies ServerProviderStatus;
+    }
+    const probeAuth = probeAuthResult.success;
+    const probe = yield* probeClient
+      .probe({
+        websocketUrl: normalized.websocketUrl,
+        redactedGatewayUrl: normalized.redactedUrl,
+        ...probeAuth,
+      })
+      .pipe(Effect.result);
+    if (Result.isFailure(probe)) {
+      const detail = detailFromUnknown(probe.failure);
+      const authLike = isAuthLikeProbeFailure(detail);
+      return {
+        provider: OPENCLAW_PROVIDER,
+        status: "error" as const,
+        available: false,
+        authStatus: authLike ? ("unauthenticated" as const) : ("unknown" as const),
+        ...(authType !== "none" ? { authType } : {}),
+        checkedAt,
+        message: authLike
+          ? `OpenClaw gateway authentication failed at ${normalized.redactedUrl}${detail ? `: ${detail}` : ""}.`
+          : `OpenClaw gateway probe failed at ${normalized.redactedUrl}${detail ? `: ${detail}` : ""}.`,
+      } satisfies ServerProviderStatus;
+    }
+
+    const probeResult = probe.success;
+    if (
+      probeResult.protocolVersion !== undefined &&
+      (probeResult.protocolVersion < OPENCLAW_MIN_PROTOCOL_VERSION ||
+        probeResult.protocolVersion > OPENCLAW_MAX_PROTOCOL_VERSION)
+    ) {
+      return {
+        provider: OPENCLAW_PROVIDER,
+        status: "warning" as const,
+        available: false,
+        authStatus: "unknown" as const,
+        ...(authType !== "none" ? { authType } : {}),
+        checkedAt,
+        message: `OpenClaw gateway protocol mismatch. JCode supports protocol v${OPENCLAW_MIN_PROTOCOL_VERSION}.`,
+      } satisfies ServerProviderStatus;
+    }
+
+    const support = validateOpenClawMethodSupport(probeResult.methods);
+    if (!support.supported) {
+      return {
+        provider: OPENCLAW_PROVIDER,
+        status: "warning" as const,
+        available: false,
+        authStatus: "authenticated" as const,
+        ...(authType !== "none" ? { authType } : {}),
+        checkedAt,
+        message: `OpenClaw gateway is missing required methods: ${support.missing.join(", ")}.`,
+      } satisfies ServerProviderStatus;
+    }
+
+    return {
+      provider: OPENCLAW_PROVIDER,
+      status: "ready" as const,
+      available: true,
+      authStatus: "authenticated" as const,
+      ...(authType !== "none" ? { authType } : {}),
+      checkedAt,
+      message: `OpenClaw gateway is ready at ${normalized.redactedUrl}.`,
+    } satisfies ServerProviderStatus;
+  });
+
+export const checkOpenClawProviderStatus = (settings: OpenClawServerProviderSettings) =>
+  makeCheckOpenClawProviderStatus(settings, defaultOpenClawHealthProbeClient);
+
 // ── Pi health check ─────────────────────────────────────────────
 
 export const checkPiProviderStatus = (
@@ -1542,6 +1782,7 @@ export const ProviderHealthLive = Layer.effect(
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
     const serverConfig = yield* ServerConfig;
     const serverSettings = yield* ServerSettingsService;
+    const serverSecretStore = yield* ServerSecretStore;
     const changesPubSub = yield* Effect.acquireRelease(
       PubSub.unbounded<ReadonlyArray<ServerProviderStatus>>(),
       PubSub.shutdown,
@@ -1643,6 +1884,15 @@ export const ProviderHealthLive = Layer.effect(
             updateLockKey: null,
           });
         }
+        if (provider === "openclaw") {
+          return makeProviderMaintenanceCapabilities({
+            provider,
+            packageName: null,
+            updateExecutable: null,
+            updateArgs: [],
+            updateLockKey: null,
+          });
+        }
         const definition = PACKAGE_MANAGED_PROVIDER_UPDATES[provider];
         if (!definition) {
           return makeProviderMaintenanceCapabilities({
@@ -1653,8 +1903,9 @@ export const ProviderHealthLive = Layer.effect(
             updateLockKey: null,
           });
         }
+        const binaryPath = getProviderBinaryPath(provider, settings) || null;
         return yield* resolveProviderMaintenanceCapabilitiesEffect(definition, {
-          binaryPath: getProviderBinaryPath(provider, settings),
+          binaryPath,
           env: process.env,
           platform: process.platform,
         }).pipe(Effect.provideService(FileSystem.FileSystem, fileSystem));
@@ -1745,6 +1996,9 @@ export const ProviderHealthLive = Layer.effect(
               makeCheckGeminiProviderStatus(settings.providers.gemini.binaryPath),
               makeCheckKiloProviderStatus(settings.providers.kilo.binaryPath),
               makeCheckOpenCodeProviderStatus(settings.providers.opencode.binaryPath),
+              checkOpenClawProviderStatus(settings.providers.openclaw).pipe(
+                Effect.provideService(ServerSecretStore, serverSecretStore),
+              ),
               checkPiProviderStatus(
                 settings.providers.pi.agentDir,
                 settings.providers.pi.binaryPath,
