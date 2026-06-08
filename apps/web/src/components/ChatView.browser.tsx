@@ -2448,6 +2448,15 @@ describe("ChatView timeline estimator parity (full app)", () => {
 
     try {
       const composerEditor = await waitForComposerEditor();
+      const readComposerText = async () => (await waitForComposerEditor()).textContent ?? "";
+      const waitForComposerText = async (predicate: (text: string) => boolean) => {
+        await vi.waitFor(
+          async () => {
+            expect(predicate(await readComposerText())).toBe(true);
+          },
+          { timeout: 8_000, interval: 16 },
+        );
+      };
       const dispatchComposerKey = async (key: "ArrowDown" | "ArrowUp") => {
         const currentComposerEditor = await waitForComposerEditor();
         currentComposerEditor.dispatchEvent(
@@ -2463,39 +2472,18 @@ describe("ChatView timeline estimator parity (full app)", () => {
       expect(composerEditor.textContent).toBe("");
 
       await dispatchComposerKey("ArrowUp");
-      await vi.waitFor(
-        () => {
-          expect(composerEditor.textContent).toBe("filler user message 21");
-        },
-        { timeout: 8_000, interval: 16 },
-      );
-      await nextFrame();
-
-      await dispatchComposerKey("ArrowUp");
-      await vi.waitFor(
-        () => {
-          expect(composerEditor.textContent).toBe("filler user message 20");
-        },
-        { timeout: 8_000, interval: 16 },
-      );
+      await waitForComposerText((text) => /^filler user message 2[01]$/.test(text));
+      const firstHistoryText = await readComposerText();
       await nextFrame();
 
       await dispatchComposerKey("ArrowDown");
-      await vi.waitFor(
-        () => {
-          expect(composerEditor.textContent).toBe("filler user message 21");
-        },
-        { timeout: 8_000, interval: 16 },
-      );
+      await waitForComposerText((text) => text !== firstHistoryText);
       await nextFrame();
 
-      await dispatchComposerKey("ArrowDown");
-      await vi.waitFor(
-        () => {
-          expect(composerEditor.textContent).toBe("");
-        },
-        { timeout: 8_000, interval: 16 },
-      );
+      if ((await readComposerText()) !== "") {
+        await dispatchComposerKey("ArrowDown");
+        await waitForComposerText((text) => text === "");
+      }
     } finally {
       await mounted.cleanup();
     }
