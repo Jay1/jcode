@@ -41,7 +41,15 @@ function hasRemoteHost(url: string): boolean {
   }
 }
 
-export function PairRoute() {
+type PairRouteProps = {
+  readonly redirectAfterPairing?: () => void;
+};
+
+function redirectToAppHome(): void {
+  window.location.assign("/");
+}
+
+export function PairRoute({ redirectAfterPairing = redirectToAppHome }: PairRouteProps = {}) {
   const initialCredential = useMemo(() => getPairingTokenFromUrl(window.location.href) ?? "", []);
   const [credential, setCredential] = useState(initialCredential);
   const [status, setStatus] = useState<"idle" | "pairing" | "paired" | "error">(
@@ -49,38 +57,41 @@ export function PairRoute() {
   );
   const [error, setError] = useState<string | null>(null);
 
-  const submitPairing = useCallback(async (value: string) => {
-    const nextCredential = value.trim();
-    if (!nextCredential) return;
-    setStatus("pairing");
-    setError(null);
-    try {
-      if (hasRemoteHost(window.location.href)) {
-        await addSavedConnectionFromPairing({ pairingUrl: window.location.href });
+  const submitPairing = useCallback(
+    async (value: string) => {
+      const nextCredential = value.trim();
+      if (!nextCredential) return;
+      setStatus("pairing");
+      setError(null);
+      try {
+        if (hasRemoteHost(window.location.href)) {
+          await addSavedConnectionFromPairing({ pairingUrl: window.location.href });
+          window.history.replaceState(
+            null,
+            "",
+            stripPairingTokenFromUrl(window.location.href).toString(),
+          );
+          toastManager.add({ type: "success", title: "Remote backend paired" });
+          redirectAfterPairing();
+          return;
+        }
+
+        await bootstrapSameOrigin(nextCredential);
         window.history.replaceState(
           null,
           "",
           stripPairingTokenFromUrl(window.location.href).toString(),
         );
-        toastManager.add({ type: "success", title: "Remote backend paired" });
-        window.location.assign("/");
-        return;
+        setStatus("paired");
+        toastManager.add({ type: "success", title: "Client paired" });
+        redirectAfterPairing();
+      } catch (caught) {
+        setError((caught as Error).message);
+        setStatus("error");
       }
-
-      await bootstrapSameOrigin(nextCredential);
-      window.history.replaceState(
-        null,
-        "",
-        stripPairingTokenFromUrl(window.location.href).toString(),
-      );
-      setStatus("paired");
-      toastManager.add({ type: "success", title: "Client paired" });
-      window.location.assign("/");
-    } catch (caught) {
-      setError((caught as Error).message);
-      setStatus("error");
-    }
-  }, []);
+    },
+    [redirectAfterPairing],
+  );
 
   const hasSubmittedRef = useRef(false);
   if (initialCredential && !hasSubmittedRef.current) {
