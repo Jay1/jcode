@@ -3514,10 +3514,9 @@ export default function Sidebar() {
   }, []);
 
   const commitProjectRename = useCallback(
-    async (projectId: ProjectId, nextName: string, previousLocalName: string | null) => {
+    async (projectId: ProjectId, nextName: string, previousName: string) => {
       const trimmed = nextName.trim();
-      const normalizedPrevious = previousLocalName?.trim() ?? "";
-      if (trimmed === normalizedPrevious) {
+      if (trimmed === previousName.trim()) {
         cancelProjectRename();
         return;
       }
@@ -3528,12 +3527,19 @@ export default function Sidebar() {
       if (effectiveName !== null) {
         const api = readNativeApi();
         if (api) {
-          await api.orchestration.dispatchCommand({
-            type: "project.meta.update",
-            commandId: newCommandId(),
-            projectId,
-            title: effectiveName,
-          });
+          try {
+            await api.orchestration.dispatchCommand({
+              type: "project.meta.update",
+              commandId: newCommandId(),
+              projectId,
+              title: effectiveName,
+            });
+          } catch {
+            toastManager.add({
+              type: "error",
+              title: "Unable to rename project on server",
+            });
+          }
         }
       }
     },
@@ -4671,7 +4677,7 @@ export default function Sidebar() {
                     if (event.key === "Enter") {
                       event.preventDefault();
                       renamingProjectCommittedRef.current = true;
-                      commitProjectRename(project.id, renamingProjectName, project.localName);
+                      commitProjectRename(project.id, renamingProjectName, project.name);
                     } else if (event.key === "Escape") {
                       event.preventDefault();
                       renamingProjectCommittedRef.current = true;
@@ -4680,7 +4686,7 @@ export default function Sidebar() {
                   }}
                   onBlur={() => {
                     if (!renamingProjectCommittedRef.current) {
-                      commitProjectRename(project.id, renamingProjectName, project.localName);
+                      commitProjectRename(project.id, renamingProjectName, project.name);
                     }
                   }}
                 />
