@@ -1125,7 +1125,6 @@ const makeRpcWebSocketHttpEffect = RpcServer.toHttpEffectWebsocket(WsRpcGroup, {
 
 export const websocketRpcRouteLayer = Layer.effectDiscard(
   Effect.gen(function* () {
-    const rpcWebSocketHttpEffect = yield* makeRpcWebSocketHttpEffect;
     const router = yield* HttpRouter.HttpRouter;
     yield* router.add(
       "GET",
@@ -1142,18 +1141,17 @@ export const websocketRpcRouteLayer = Layer.effectDiscard(
             ? null
             : yield* serverAuth.authenticateWebSocketUpgrade(makeEffectAuthRequest(request));
 
-        if (!authenticatedSession) {
-          return yield* rpcWebSocketHttpEffect;
-        }
+        const rpcWebSocketHttpEffect = !authenticatedSession
+          ? yield* makeRpcWebSocketHttpEffect
+          : yield* makeRpcWebSocketHttpEffect.pipe(
+              Effect.provideService(CurrentRpcAuthSession, authenticatedSession),
+            );
+
+        if (!authenticatedSession) return yield* rpcWebSocketHttpEffect;
 
         return yield* Effect.acquireUseRelease(
           sessions.markConnected(authenticatedSession.sessionId),
-          () =>
-            Effect.provideService(
-              rpcWebSocketHttpEffect,
-              CurrentRpcAuthSession,
-              authenticatedSession,
-            ),
+          () => rpcWebSocketHttpEffect,
           () => sessions.markDisconnected(authenticatedSession.sessionId),
         );
       }).pipe(Effect.catchTag("AuthError", (error) => Effect.succeed(authErrorResponse(error)))),

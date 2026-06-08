@@ -1,5 +1,5 @@
 import { AuthHttpRoutes } from "@jcode/contracts";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { APP_DISPLAY_NAME } from "../branding";
@@ -42,7 +42,6 @@ function hasRemoteHost(url: string): boolean {
 }
 
 export function PairRoute() {
-  const navigate = useNavigate();
   const initialCredential = useMemo(() => getPairingTokenFromUrl(window.location.href) ?? "", []);
   const [credential, setCredential] = useState(initialCredential);
   const [status, setStatus] = useState<"idle" | "pairing" | "paired" | "error">(
@@ -77,13 +76,13 @@ export function PairRoute() {
         );
         setStatus("paired");
         toastManager.add({ type: "success", title: "Client paired" });
-        void navigate({ to: "/" });
+        window.location.assign("/");
       } catch (caught) {
         setError((caught as Error).message);
         setStatus("error");
       }
     },
-    [navigate],
+    [],
   );
 
   const hasSubmittedRef = useRef(false);
