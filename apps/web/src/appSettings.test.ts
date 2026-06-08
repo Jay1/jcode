@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   AppSettingsSchema,
   DEFAULT_CHAT_FONT_SIZE_PX,
+  DEFAULT_SHOW_INTERFACE_CLOCK,
   DEFAULT_SIDEBAR_PROJECT_SORT_ORDER,
   DEFAULT_SIDEBAR_THREAD_SORT_ORDER,
   DEFAULT_TIMESTAMP_FORMAT,
@@ -309,6 +310,28 @@ describe("normalizeStoredAppSettings", () => {
       chatFontSizePx: 18,
       customCodexModels: ["custom/internal-model"],
     });
+  });
+});
+
+describe("interface clock settings", () => {
+  it("defaults interface clock visibility to visible", () => {
+    expect(DEFAULT_SHOW_INTERFACE_CLOCK).toBe(true);
+  });
+
+  it("fills interface clock visibility for persisted settings that predate the key", () => {
+    const decode = Schema.decodeSync(Schema.fromJsonString(AppSettingsSchema));
+
+    expect(decode("{}").showInterfaceClock).toBe(true);
+  });
+
+  it("keeps interface clock visibility local-only when building server patches", () => {
+    expect(appSettingsPatchToServerSettingsPatch({ showInterfaceClock: false })).toEqual({});
+    expect(
+      appSettingsPatchToServerSettingsPatch({
+        showInterfaceClock: false,
+        addProjectBaseDirectory: "/home/jay/code",
+      }),
+    ).toEqual({ addProjectBaseDirectory: "/home/jay/code" });
   });
 });
 
@@ -750,6 +773,7 @@ describe("AppSettingsSchema", () => {
       sidebarProjectSortOrder: DEFAULT_SIDEBAR_PROJECT_SORT_ORDER,
       sidebarThreadSortOrder: DEFAULT_SIDEBAR_THREAD_SORT_ORDER,
       timestampFormat: DEFAULT_TIMESTAMP_FORMAT,
+      showInterfaceClock: DEFAULT_SHOW_INTERFACE_CLOCK,
       customCodexModels: [],
       customClaudeModels: [],
       customCursorModels: [],

@@ -871,6 +871,7 @@ function SettingsRouteView() {
     settings.enableNativeFontSmoothing !== defaults.enableNativeFontSmoothing
       ? ["Font smoothing"]
       : []),
+    ...(settings.showInterfaceClock !== defaults.showInterfaceClock ? ["Interface clock"] : []),
     ...(settings.timestampFormat !== defaults.timestampFormat ? ["Time format"] : []),
     ...(settings.enableTaskCompletionToasts !== defaults.enableTaskCompletionToasts
       ? ["Activity toasts"]
@@ -1760,6 +1761,79 @@ function SettingsRouteView() {
           />
         </div>
       </SettingsSection>
+
+      <SettingsSection title="Time and reading">
+        <div className="space-y-2">
+          <SettingsRow
+            title="Show interface clock"
+            description="Show the ambient clock in the bottom-right chat chrome."
+            resetAction={
+              settings.showInterfaceClock !== defaults.showInterfaceClock ? (
+                <SettingResetButton
+                  label="interface clock"
+                  onClick={() =>
+                    updateSettings({ showInterfaceClock: defaults.showInterfaceClock })
+                  }
+                />
+              ) : null
+            }
+            control={
+              <Switch
+                checked={settings.showInterfaceClock}
+                onCheckedChange={(checked) =>
+                  updateSettings({ showInterfaceClock: Boolean(checked) })
+                }
+                aria-label="Show interface clock"
+              />
+            }
+          />
+
+          <SettingsRow
+            title="Time format"
+            description="System default follows your browser or OS clock preference."
+            resetAction={
+              settings.timestampFormat !== defaults.timestampFormat ? (
+                <SettingResetButton
+                  label="time format"
+                  onClick={() =>
+                    updateSettings({
+                      timestampFormat: defaults.timestampFormat,
+                    })
+                  }
+                />
+              ) : null
+            }
+            control={
+              <Select
+                value={settings.timestampFormat}
+                onValueChange={(value) => {
+                  if (value !== "locale" && value !== "12-hour" && value !== "24-hour") {
+                    return;
+                  }
+                  updateSettings({
+                    timestampFormat: value,
+                  });
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-40" aria-label="Timestamp format">
+                  <SelectValue>{TIMESTAMP_FORMAT_LABELS[settings.timestampFormat]}</SelectValue>
+                </SelectTrigger>
+                <SelectPopup align="end" alignItemWithTrigger={false}>
+                  <SelectItem hideIndicator value="locale">
+                    {TIMESTAMP_FORMAT_LABELS.locale}
+                  </SelectItem>
+                  <SelectItem hideIndicator value="12-hour">
+                    {TIMESTAMP_FORMAT_LABELS["12-hour"]}
+                  </SelectItem>
+                  <SelectItem hideIndicator value="24-hour">
+                    {TIMESTAMP_FORMAT_LABELS["24-hour"]}
+                  </SelectItem>
+                </SelectPopup>
+              </Select>
+            }
+          />
+        </div>
+      </SettingsSection>
     </div>
   );
 
@@ -1927,55 +2001,6 @@ function SettingsRouteView() {
               }
             />
           ) : null}
-        </div>
-      </SettingsSection>
-
-      <SettingsSection title="Time and reading">
-        <div className="space-y-2">
-          <SettingsRow
-            title="Time format"
-            description="System default follows your browser or OS clock preference."
-            resetAction={
-              settings.timestampFormat !== defaults.timestampFormat ? (
-                <SettingResetButton
-                  label="time format"
-                  onClick={() =>
-                    updateSettings({
-                      timestampFormat: defaults.timestampFormat,
-                    })
-                  }
-                />
-              ) : null
-            }
-            control={
-              <Select
-                value={settings.timestampFormat}
-                onValueChange={(value) => {
-                  if (value !== "locale" && value !== "12-hour" && value !== "24-hour") {
-                    return;
-                  }
-                  updateSettings({
-                    timestampFormat: value,
-                  });
-                }}
-              >
-                <SelectTrigger className="w-full sm:w-40" aria-label="Timestamp format">
-                  <SelectValue>{TIMESTAMP_FORMAT_LABELS[settings.timestampFormat]}</SelectValue>
-                </SelectTrigger>
-                <SelectPopup align="end" alignItemWithTrigger={false}>
-                  <SelectItem hideIndicator value="locale">
-                    {TIMESTAMP_FORMAT_LABELS.locale}
-                  </SelectItem>
-                  <SelectItem hideIndicator value="12-hour">
-                    {TIMESTAMP_FORMAT_LABELS["12-hour"]}
-                  </SelectItem>
-                  <SelectItem hideIndicator value="24-hour">
-                    {TIMESTAMP_FORMAT_LABELS["24-hour"]}
-                  </SelectItem>
-                </SelectPopup>
-              </Select>
-            }
-          />
         </div>
       </SettingsSection>
     </div>
