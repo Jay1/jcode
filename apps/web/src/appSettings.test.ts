@@ -647,6 +647,26 @@ describe("server-backed app settings", () => {
     }
   });
 
+  it("handles non-default providers in hiddenProviders", () => {
+    const patch = appSettingsPatchToServerSettingsPatch({
+      hiddenProviders: ["devin", "codex"],
+    });
+
+    expect(patch.providers!.devin!.enabled).toBe(false);
+    expect(patch.providers!.codex!.enabled).toBe(false);
+    expect(patch.providers!.claudeAgent!.enabled).toBe(true);
+  });
+
+  it("re-enables non-default providers when hiddenProviders becomes empty", () => {
+    const patch = appSettingsPatchToServerSettingsPatch({
+      hiddenProviders: [],
+    });
+
+    for (const provider of DEFAULT_PROVIDER_ORDER) {
+      expect(patch.providers![provider]!.enabled).toBe(true);
+    }
+  });
+
   it("maps providerOrder to server settings patch", () => {
     expect(
       appSettingsPatchToServerSettingsPatch({

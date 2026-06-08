@@ -536,13 +536,13 @@ export function appSettingsPatchToServerSettingsPatch(
   // hiddenProviders → per-provider enabled
   if (hasOwn(patch, "hiddenProviders")) {
     const hiddenSet = new Set(patch.hiddenProviders ?? []);
-    for (const kind of DEFAULT_PROVIDER_ORDER) {
+    const allKinds = new Set<ProviderKind>([
+      ...DEFAULT_PROVIDER_ORDER,
+      ...(patch.hiddenProviders ?? []),
+    ]);
+    for (const kind of allKinds) {
       const existing = providers[kind];
-      if (hiddenSet.has(kind)) {
-        providers[kind] = { ...existing, enabled: false };
-      } else {
-        providers[kind] = { ...existing, enabled: true };
-      }
+      providers[kind] = { ...existing, enabled: !hiddenSet.has(kind) };
     }
   }
 
