@@ -2400,13 +2400,14 @@ describe("ChatView timeline estimator parity (full app)", () => {
         text === "history target" || /^filler user message \d+$/.test(text);
       const dispatchComposerKey = async (key: "ArrowDown" | "ArrowUp") => {
         const currentComposerEditor = await waitForComposerEditor();
+        currentComposerEditor.focus();
+        await nextFrame();
         const selection = window.getSelection();
         const range = document.createRange();
         range.selectNodeContents(currentComposerEditor);
         range.collapse(key === "ArrowUp");
         selection?.removeAllRanges();
         selection?.addRange(range);
-        currentComposerEditor.focus();
         currentComposerEditor.dispatchEvent(
           new KeyboardEvent("keydown", {
             key,
@@ -2417,9 +2418,19 @@ describe("ChatView timeline estimator parity (full app)", () => {
       };
 
       composerEditor.focus();
+      await nextFrame();
       expect(composerEditor.textContent).toBe("");
 
-      await dispatchComposerKey("ArrowUp");
+      // Retry ArrowUp until the composer text changes. Synthetic keydown
+      // events may not reliably trigger Lexical's KEY_ARROW_UP_COMMAND on
+      // slow CI runners where React/Lexical state hasn't settled yet.
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        if (isThreadUserPrompt(await readComposerText())) {
+          break;
+        }
+        await dispatchComposerKey("ArrowUp");
+        await nextFrame();
+      }
       await waitForComposerText(isThreadUserPrompt);
       await nextFrame();
 
