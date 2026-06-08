@@ -26,6 +26,7 @@ import {
   resolveAppModelSelection,
   serverSettingsToAppSettings,
 } from "./appSettings";
+import { DEFAULT_PROVIDER_ORDER } from "./providerOrdering";
 
 describe("normalizeCustomModelSlugs", () => {
   it("normalizes aliases, removes built-ins, and deduplicates values", () => {
@@ -634,6 +635,16 @@ describe("server-backed app settings", () => {
     });
     expect(patch.providers!.codex!.enabled).toBe(false);
     expect(patch.providers!.gemini!.enabled).toBe(false);
+  });
+
+  it("re-enables previously hidden providers when hiddenProviders becomes empty", () => {
+    const patch = appSettingsPatchToServerSettingsPatch({
+      hiddenProviders: [],
+    });
+
+    for (const provider of DEFAULT_PROVIDER_ORDER) {
+      expect(patch.providers![provider]!.enabled).toBe(true);
+    }
   });
 
   it("maps providerOrder to server settings patch", () => {

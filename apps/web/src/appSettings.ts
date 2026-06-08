@@ -377,6 +377,7 @@ export function serverSettingsToAppSettings(settings: ServerSettings): Partial<A
     enableSystemTaskCompletionNotifications: settings.enableSystemTaskCompletionNotifications,
     defaultProvider: settings.defaultProvider,
     hiddenProviders,
+    ...(settings.providerOrder ? { providerOrder: settings.providerOrder } : {}),
   };
 }
 
@@ -541,12 +542,12 @@ export function appSettingsPatchToServerSettingsPatch(
       const existing = providers[kind];
       if (hiddenSet.has(kind)) {
         providers[kind] = { ...existing, enabled: false };
-      } else if (existing?.enabled === false || existing) {
+      } else {
         providers[kind] = { ...existing, enabled: true };
       }
     }
   }
-  }
+
 
   if (Object.keys(providers).length > 0) {
     serverPatch.providers = providers;

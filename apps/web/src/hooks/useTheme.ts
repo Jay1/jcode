@@ -233,7 +233,12 @@ export function hydrateThemeFromServer(themeState: string | undefined) {
     return;
   }
   const current = readStoredThemeState();
-  const incoming = parseStoredThemeState(themeState);
+  let incoming: ReturnType<typeof readStoredThemeState>;
+  try {
+    incoming = parseStoredThemeState(themeState);
+  } catch {
+    return;
+  }
   if (serializeThemeState(current) === serializeThemeState(incoming)) {
     return;
   }
