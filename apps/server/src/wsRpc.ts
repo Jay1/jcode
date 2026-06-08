@@ -6,7 +6,9 @@ import {
   type AuthCapabilityScope,
   type AuthClientSession,
   type AuthSessionId,
+  MessageId,
   ORCHESTRATION_WS_METHODS,
+  type ServerGenerateThreadRecapInput,
   ThreadId,
   WS_METHODS,
   WsRpcError,
@@ -872,9 +874,9 @@ export const makeWsRpcLayer = () =>
               ),
             "Failed to reset keybindings",
           ),
-        [WS_METHODS.serverGenerateThreadRecap]: (input) =>
+        [WS_METHODS.serverGenerateThreadRecap]: (input: ServerGenerateThreadRecapInput) =>
           withScope(
-            "thread:write",
+            "thread:read",
             rpcEffect(
               Effect.gen(function* () {
                 const settings = yield* serverSettings.getSettings;
@@ -884,36 +886,36 @@ export const makeWsRpcLayer = () =>
                 }
 
                 const source = deriveThreadRecapSource({
-                  messages: detail.value.thread.messages.map((message) => ({
+                  messages: detail.value.messages.map((message) => ({
                     id: message.id,
                     role: message.role,
                     text: message.text,
                   })),
-                  activities: detail.value.thread.activities.map((activity) => ({
+                  activities: detail.value.activities.map((activity) => ({
                     kind: activity.kind,
                     summary: activity.summary,
                     createdAt: activity.createdAt,
                   })),
-                  title: detail.value.thread.title,
-                  previousCoveredMessageId: detail.value.thread.recap?.coveredMessageId ?? null,
+                  title: detail.value.title,
+                  previousCoveredMessageId: detail.value.recap?.coveredMessageId ?? null,
                 });
 
                 if (!source.hasNewMaterial) {
                   return {
                     recap:
-                      detail.value.thread.recap?.text ??
-                      input.previousRecap ??
-                      "No meaningful recap yet.",
+                      detail.value.recap?.text ?? input.previousRecap ?? "No meaningful recap yet.",
                   };
                 }
 
-                const generated = yield* textGeneration.generateThreadRecap({
+                const previousRecap = detail.value.recap?.text ?? input.previousRecap;
+                const recapInput = {
                   cwd: config.cwd,
-                  previousRecap: detail.value.thread.recap?.text ?? input.previousRecap,
                   newMaterial: source.newMaterial,
-                  currentState: source.currentState || undefined,
                   modelSelection: settings.textGenerationModelSelection,
-                });
+                  ...(previousRecap !== undefined ? { previousRecap } : {}),
+                  ...(source.currentState ? { currentState: source.currentState } : {}),
+                };
+                const generated = yield* textGeneration.generateThreadRecap(recapInput);
                 const persistedThread = yield* projectionThreadRepository.getById({
                   threadId: input.threadId,
                 });
@@ -922,7 +924,9 @@ export const makeWsRpcLayer = () =>
                     ...persistedThread.value,
                     recap: {
                       text: generated.recap,
-                      coveredMessageId: source.latestMessageId,
+                      coveredMessageId: source.latestMessageId
+                        ? MessageId.makeUnsafe(source.latestMessageId)
+                        : null,
                       sourceSignature: source.sourceSignature,
                       generatedAt: new Date().toISOString(),
                     },
@@ -998,9 +1002,10 @@ export const makeWsRpcLayer = () =>
           Stream.unwrap(
             Effect.gen(function* () {
               const currentAuthSession = yield* Effect.serviceOption(CurrentRpcAuthSession);
-              const currentSessionId = Option.isSome(currentAuthSession)
-                ? currentAuthSession.value.sessionId
-                : null;
+              const currentSessionId =
+                Option.isSome(currentAuthSession) && currentAuthSession.value !== null
+                  ? currentAuthSession.value.sessionId
+                  : null;
               const revisionRef = yield* Ref.make(0);
               const nextRevision = Ref.updateAndGet(revisionRef, (revision) => revision + 1);
 
