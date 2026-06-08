@@ -3514,15 +3514,28 @@ export default function Sidebar() {
   }, []);
 
   const commitProjectRename = useCallback(
-    (projectId: ProjectId, nextName: string, previousLocalName: string | null) => {
+    async (projectId: ProjectId, nextName: string, previousLocalName: string | null) => {
       const trimmed = nextName.trim();
       const normalizedPrevious = previousLocalName?.trim() ?? "";
       if (trimmed === normalizedPrevious) {
         cancelProjectRename();
         return;
       }
-      renameProjectLocally(projectId, trimmed.length > 0 ? trimmed : null);
+      const effectiveName = trimmed.length > 0 ? trimmed : null;
+      renameProjectLocally(projectId, effectiveName);
       cancelProjectRename();
+
+      if (effectiveName !== null) {
+        const api = readNativeApi();
+        if (api) {
+          await api.orchestration.dispatchCommand({
+            type: "project.meta.update",
+            commandId: newCommandId(),
+            projectId,
+            title: effectiveName,
+          });
+        }
+      }
     },
     [cancelProjectRename, renameProjectLocally],
   );
@@ -4676,7 +4689,7 @@ export default function Sidebar() {
                   <span className="sidebar-project-header-label truncate font-system-ui text-[length:var(--app-font-size-ui,12px)] font-semibold tracking-[0.01em] text-foreground/82">
                     {project.name}
                   </span>
-                  {project.localName ? (
+                  {project.localName && project.folderName !== project.name ? (
                     <span className="shrink-0 truncate text-[length:var(--app-font-size-ui,12px)] text-muted-foreground/40">
                       {project.folderName}
                     </span>
