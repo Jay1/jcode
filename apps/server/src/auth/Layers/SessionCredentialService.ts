@@ -50,10 +50,9 @@ const SessionClaims = Schema.Struct({
   sub: Schema.String,
   role: Schema.Literals(["owner", "client"]),
   method: Schema.Literals(["browser-session-cookie", "bearer-session-token"]),
-  scopes: Schema.optionalWith(Schema.Array(Schema.String), { exact: true }),
-  resources: Schema.optionalWith(
+  scopes: Schema.optional(Schema.Array(Schema.String)),
+  resources: Schema.optional(
     Schema.Array(Schema.Struct({ type: Schema.String, id: Schema.String })),
-    { exact: true },
   ),
   iat: Schema.Number,
   exp: Schema.Number,
@@ -269,6 +268,18 @@ export const makeSessionCredentialService = Effect.gen(function* () {
       if (Option.isNone(row)) return yield* toSessionCredentialError("Unknown session token.");
       if (row.value.revokedAt !== null)
         return yield* toSessionCredentialError("Session token revoked.");
+      const scopes = Array.isArray(claims.scopes)
+        ? claims.scopes.filter((s): s is AuthCapabilityScope => typeof s === "string")
+        : undefined;
+      const resources = Array.isArray(claims.resources)
+        ? claims.resources.filter(
+            (r): r is CapabilityResource =>
+              typeof r === "object" &&
+              r !== null &&
+              typeof r.type === "string" &&
+              typeof r.id === "string",
+          )
+        : undefined;
       return {
         sessionId: claims.sid,
         token,
@@ -277,22 +288,8 @@ export const makeSessionCredentialService = Effect.gen(function* () {
         expiresAt: DateTime.makeUnsafe(claims.exp),
         subject: claims.sub,
         role: claims.role,
-        ...(Array.isArray(claims.scopes)
-          ? {
-              scopes: claims.scopes.filter((s): s is AuthCapabilityScope => typeof s === "string"),
-            }
-          : {}),
-        ...(Array.isArray(claims.resources)
-          ? {
-              resources: claims.resources.filter(
-                (r): r is CapabilityResource =>
-                  typeof r === "object" &&
-                  r !== null &&
-                  typeof r.type === "string" &&
-                  typeof r.id === "string",
-              ),
-            }
-          : {}),
+        ...(scopes !== undefined ? { scopes } : {}),
+        ...(resources !== undefined ? { resources } : {}),
       } satisfies VerifiedSession;
     }).pipe(
       Effect.mapError((cause) =>

@@ -392,7 +392,7 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
     ) {
       const session = yield* input.serverAuth
         .authenticateHttpRequest(authRequest)
-        .pipe(Effect.flatMap(requireScope(_, "provider_status:read")));
+        .pipe(Effect.flatMap((authSession) => requireScope(authSession, "provider_status:read")));
       const clients = yield* input.serverAuth.listClientSessions(session.sessionId);
       respondJson(input.respond, 200, clients);
       return;
@@ -443,8 +443,10 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
 
     input.respond(404, { "Content-Type": "text/plain" }, "Not Found");
   }).pipe(
-    Effect.catchTag("AuthError", (error) =>
-      Effect.sync(() => respondToAuthError(input.respond, error)),
+    Effect.catch((error) =>
+      error instanceof AuthError
+        ? Effect.sync(() => respondToAuthError(input.respond, error))
+        : Effect.void,
     ),
   );
 
