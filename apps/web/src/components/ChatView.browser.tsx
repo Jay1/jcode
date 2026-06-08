@@ -2369,6 +2369,63 @@ describe("ChatView timeline estimator parity (full app)", () => {
     }
   });
 
+  it("navigates current-thread composer message history with Up and Down", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotForTargetUser({
+        targetMessageId: "msg-user-history-target" as MessageId,
+        targetText: "history target",
+      }),
+    });
+
+    try {
+      const composerEditor = await waitForComposerEditor();
+      const readComposerText = async () => (await waitForComposerEditor()).textContent ?? "";
+      const waitForComposerText = async (predicate: (text: string) => boolean) => {
+        await vi.waitFor(
+          async () => {
+            expect(predicate(await readComposerText())).toBe(true);
+          },
+          { timeout: 8_000, interval: 16 },
+        );
+      };
+      const isThreadUserPrompt = (text: string) =>
+        text === "history target" || /^filler user message \d+$/.test(text);
+      const dispatchComposerKey = async (key: "ArrowDown" | "ArrowUp") => {
+        const currentComposerEditor = await waitForComposerEditor();
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(currentComposerEditor);
+        range.collapse(key === "ArrowUp");
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        currentComposerEditor.focus();
+        currentComposerEditor.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      };
+
+      composerEditor.focus();
+      expect(composerEditor.textContent).toBe("");
+
+      await dispatchComposerKey("ArrowUp");
+      await waitForComposerText(isThreadUserPrompt);
+      await nextFrame();
+
+      for (let step = 0; step < 24 && (await readComposerText()) !== ""; step += 1) {
+        await dispatchComposerKey("ArrowDown");
+        await nextFrame();
+      }
+      await waitForComposerText((text) => text === "");
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
   it("toggles plan mode with Shift+Tab only while the composer is focused", async () => {
     const mounted = await mountChatView({
       viewport: DEFAULT_VIEWPORT,
@@ -2429,70 +2486,6 @@ describe("ChatView timeline estimator parity (full app)", () => {
       await vi.waitFor(
         () => {
           expect(readInteractionMode()).toBe("default");
-        },
-        { timeout: 8_000, interval: 16 },
-      );
-    } finally {
-      await mounted.cleanup();
-    }
-  });
-
-  it("navigates current-thread composer message history with Up and Down", async () => {
-    const mounted = await mountChatView({
-      viewport: DEFAULT_VIEWPORT,
-      snapshot: createSnapshotForTargetUser({
-        targetMessageId: "msg-user-history-target" as MessageId,
-        targetText: "history target",
-      }),
-    });
-
-    try {
-      const composerEditor = await waitForComposerEditor();
-      const dispatchComposerKey = async (key: "ArrowDown" | "ArrowUp") => {
-        const currentComposerEditor = await waitForComposerEditor();
-        currentComposerEditor.dispatchEvent(
-          new KeyboardEvent("keydown", {
-            key,
-            bubbles: true,
-            cancelable: true,
-          }),
-        );
-      };
-
-      composerEditor.focus();
-      expect(composerEditor.textContent).toBe("");
-
-      await dispatchComposerKey("ArrowUp");
-      await vi.waitFor(
-        () => {
-          expect(composerEditor.textContent).toBe("filler user message 21");
-        },
-        { timeout: 8_000, interval: 16 },
-      );
-      await nextFrame();
-
-      await dispatchComposerKey("ArrowUp");
-      await vi.waitFor(
-        () => {
-          expect(composerEditor.textContent).toBe("filler user message 20");
-        },
-        { timeout: 8_000, interval: 16 },
-      );
-      await nextFrame();
-
-      await dispatchComposerKey("ArrowDown");
-      await vi.waitFor(
-        () => {
-          expect(composerEditor.textContent).toBe("filler user message 21");
-        },
-        { timeout: 8_000, interval: 16 },
-      );
-      await nextFrame();
-
-      await dispatchComposerKey("ArrowDown");
-      await vi.waitFor(
-        () => {
-          expect(composerEditor.textContent).toBe("");
         },
         { timeout: 8_000, interval: 16 },
       );

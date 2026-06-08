@@ -41,7 +41,15 @@ function hasRemoteHost(url: string): boolean {
   }
 }
 
-export function PairRoute() {
+type PairRouteProps = {
+  readonly redirectAfterPairing?: () => void;
+};
+
+function redirectToAppHome(): void {
+  window.location.assign("/");
+}
+
+export function PairRoute({ redirectAfterPairing = redirectToAppHome }: PairRouteProps = {}) {
   const initialCredential = useMemo(() => getPairingTokenFromUrl(window.location.href) ?? "", []);
   const [credential, setCredential] = useState(initialCredential);
   const [status, setStatus] = useState<"idle" | "pairing" | "paired" | "error">(
@@ -64,7 +72,7 @@ export function PairRoute() {
             stripPairingTokenFromUrl(window.location.href).toString(),
           );
           toastManager.add({ type: "success", title: "Remote backend paired" });
-          window.location.assign("/");
+          redirectAfterPairing();
           return;
         }
 
@@ -76,13 +84,13 @@ export function PairRoute() {
         );
         setStatus("paired");
         toastManager.add({ type: "success", title: "Client paired" });
-        window.location.assign("/");
+        redirectAfterPairing();
       } catch (caught) {
         setError((caught as Error).message);
         setStatus("error");
       }
     },
-    [],
+    [redirectAfterPairing],
   );
 
   const hasSubmittedRef = useRef(false);
