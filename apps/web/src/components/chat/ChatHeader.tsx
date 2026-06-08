@@ -6,6 +6,7 @@
 import {
   type EditorId,
   type ProjectScript,
+  type OrchestrationGoal,
   PROVIDER_DISPLAY_NAMES,
   type ProviderKind,
   type ResolvedKeybindingsConfig,
@@ -39,6 +40,7 @@ import { gitWorkingTreeDiffQueryOptions } from "~/lib/gitReactQuery";
 import { summarizePatchStats } from "~/lib/diffRendering";
 import { useRepoDiffScopeStore } from "~/repoDiffScopeStore";
 import { resolveChatHeaderThreadIconKind } from "./ChatHeader.logic";
+import { GoalIndicator } from "./GoalIndicator";
 
 /** Width (px) below which collapsible header controls fold into the ellipsis menu. */
 const HEADER_COMPACT_BREAKPOINT = 480;
@@ -71,6 +73,7 @@ interface ChatHeaderProps {
   handoffActionTargetProviders: ReadonlyArray<ProviderKind>;
   handoffBadgeSourceProvider: ProviderKind | null;
   handoffBadgeTargetProvider: ProviderKind | null;
+  goal?: OrchestrationGoal | null | undefined;
   browserOpen: boolean;
   gitCwd: string | null;
   showGitActions?: boolean;
@@ -101,6 +104,31 @@ interface ChatHeaderProps {
   onCloseThreadPane?: () => void;
 }
 
+function renderProviderIcon(provider: ProviderKind | null, className: string) {
+  if (provider === "claudeAgent") {
+    return <ClaudeAI className={cn("text-foreground", className)} />;
+  }
+  if (provider === "cursor") {
+    return <CursorIcon className={cn("text-foreground", className)} />;
+  }
+  if (provider === "gemini") {
+    return <Gemini className={cn("text-foreground", className)} />;
+  }
+  if (provider === "kilo") {
+    return <KiloIcon className={cn("text-muted-foreground/70", className)} />;
+  }
+  if (provider === "opencode") {
+    return <OpenCodeIcon className={cn("text-muted-foreground/70", className)} />;
+  }
+  if (provider === "pi") {
+    return <PiIcon className={cn("text-foreground", className)} />;
+  }
+  if (provider === "codex") {
+    return <OpenAI className={cn("text-muted-foreground/75", className)} />;
+  }
+  return <FiGitBranch className={className} />;
+}
+
 export const ChatHeader = memo(function ChatHeader({
   activeThreadId,
   activeThreadTitle,
@@ -126,6 +154,7 @@ export const ChatHeader = memo(function ChatHeader({
   handoffActionTargetProviders,
   handoffBadgeSourceProvider,
   handoffBadgeTargetProvider,
+  goal,
   browserOpen,
   gitCwd,
   showGitActions = true,
@@ -177,31 +206,6 @@ export const ChatHeader = memo(function ChatHeader({
     observer.observe(el);
     return () => observer.disconnect();
   }, [isSplitPane]);
-
-  const renderProviderIcon = (provider: ProviderKind | null, className: string) => {
-    if (provider === "claudeAgent") {
-      return <ClaudeAI className={cn("text-foreground", className)} />;
-    }
-    if (provider === "cursor") {
-      return <CursorIcon className={cn("text-foreground", className)} />;
-    }
-    if (provider === "gemini") {
-      return <Gemini className={cn("text-foreground", className)} />;
-    }
-    if (provider === "kilo") {
-      return <KiloIcon className={cn("text-muted-foreground/70", className)} />;
-    }
-    if (provider === "opencode") {
-      return <OpenCodeIcon className={cn("text-muted-foreground/70", className)} />;
-    }
-    if (provider === "pi") {
-      return <PiIcon className={cn("text-foreground", className)} />;
-    }
-    if (provider === "codex") {
-      return <OpenAI className={cn("text-muted-foreground/75", className)} />;
-    }
-    return <FiGitBranch className={className} />;
-  };
 
   return (
     <div ref={headerRef} className="flex min-w-0 flex-1 items-center gap-2">
@@ -306,6 +310,7 @@ export const ChatHeader = memo(function ChatHeader({
                   <TooltipPopup side="bottom">{handoffBadgeLabel}</TooltipPopup>
                 </Tooltip>
               ) : null}
+              <GoalIndicator goal={goal} className="max-sm:max-w-[9rem]" />
             </div>
           </div>
         </div>

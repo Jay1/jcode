@@ -24,6 +24,7 @@ import {
   parseComposerSlashInvocationForCommands,
   parseFastSlashCommandAction,
   parseForkSlashCommandArgs,
+  parseGoalSlashCommandAction,
   type ForkSlashCommandTarget,
 } from "../composerSlashCommands";
 import { buildThreadHandoffImportedMessages } from "../lib/threadHandoff";
@@ -230,6 +231,105 @@ export function useComposerSlashCommands(input: {
       return true;
     },
     [fastModeEnabled, supportsFastSlashCommand, setFastModeFromSlashCommand],
+  );
+
+  const runGoalSlashCommand = useCallback(
+    async (text: string): Promise<boolean> => {
+      const action = parseGoalSlashCommandAction(text);
+      if (action === null) {
+        return false;
+      }
+      if (!activeThread || !isServerThread) {
+        toastManager.add({
+          type: "warning",
+          title: "Goal is unavailable",
+          description: "Open a server-backed thread before using /goal.",
+        });
+        return true;
+      }
+      if (action.type === "invalid") {
+        toastManager.add({
+          type: "warning",
+          title: "Invalid /goal command",
+          description:
+            "Use /goal <objective>, /goal pause, /goal resume, /goal clear, or /goal status.",
+        });
+        return true;
+      }
+      if (action.type === "status") {
+        const goal = activeThread.goal;
+        toastManager.add({
+          type: goal ? "info" : "warning",
+          title: goal ? `Goal is ${goal.status}` : "No active goal",
+          description: goal?.objective ?? "Use /goal <objective> to set one for this thread.",
+        });
+        return true;
+      }
+
+      const api = readNativeApi();
+      if (!api) {
+        toastManager.add({
+          type: "error",
+          title: "Goal command failed",
+          description: "The local API is not available.",
+        });
+        return true;
+      }
+
+      const createdAt = new Date().toISOString();
+      try {
+        if (action.type === "set") {
+          await api.orchestration.dispatchCommand({
+            type: "thread.goal.set",
+            commandId: newCommandId(),
+            threadId: activeThread.id,
+            objective: action.objective,
+            createdByMessageId: null,
+            createdAt,
+          });
+        } else if (action.type === "pause") {
+          await api.orchestration.dispatchCommand({
+            type: "thread.goal.pause",
+            commandId: newCommandId(),
+            threadId: activeThread.id,
+            reason: null,
+            createdAt,
+          });
+        } else if (action.type === "resume") {
+          await api.orchestration.dispatchCommand({
+            type: "thread.goal.resume",
+            commandId: newCommandId(),
+            threadId: activeThread.id,
+            createdAt,
+          });
+        } else if (action.type === "clear") {
+          await api.orchestration.dispatchCommand({
+            type: "thread.goal.clear",
+            commandId: newCommandId(),
+            threadId: activeThread.id,
+            createdAt,
+          });
+        }
+
+        const snapshot = await api.orchestration.getShellSnapshot();
+        syncServerShellSnapshot(snapshot);
+        toastManager.add({
+          type: "success",
+          title: "Goal updated",
+          description:
+            action.type === "set" ? "Persistent goal mode is active for this thread." : undefined,
+        });
+      } catch (error) {
+        toastManager.add({
+          type: "error",
+          title: "Goal command failed",
+          description:
+            error instanceof Error ? error.message : "An error occurred while updating the goal.",
+        });
+      }
+      return true;
+    },
+    [activeThread, isServerThread, syncServerShellSnapshot],
   );
 
   const createForkThreadFromSlashCommand = useCallback(
@@ -596,6 +696,11 @@ export function useComposerSlashCommands(input: {
         setIsSlashStatusDialogOpen(true);
         return true;
       }
+      if (slashInvocation.command === "goal") {
+        editorActions.clearComposerSlashDraft();
+        await runGoalSlashCommand(trimmed);
+        return true;
+      }
       if (slashInvocation.command === "subagents") {
         editorActions.setComposerPromptValue(buildSubagentsPrompt(slashInvocation.args));
         return true;
@@ -703,6 +808,7 @@ export function useComposerSlashCommands(input: {
       supportsTextNativeReviewCommand,
       runCodexReviewStart,
       runFastSlashCommand,
+      runGoalSlashCommand,
     ],
   );
 
@@ -798,6 +904,26 @@ export function useComposerSlashCommands(input: {
         editorActions.setComposerHighlightedItemId(null);
         void runFastSlashCommand("/fast");
         editorActions.scheduleComposerFocus();
+        return;
+      }
+
+      if (item.command === "goal") {
+        const replacement = "/goal ";
+        const replacementRangeEnd = extendReplacementRangeForTrailingSpace(
+          snapshot.value,
+          trigger.rangeEnd,
+          replacement,
+        );
+        const applied = editorActions.applyPromptReplacement(
+          trigger.rangeStart,
+          replacementRangeEnd,
+          replacement,
+          { expectedText: snapshot.value.slice(trigger.rangeStart, replacementRangeEnd) },
+        );
+        if (wasPromptReplacementApplied(applied)) {
+          editorActions.setComposerHighlightedItemId(null);
+          editorActions.scheduleComposerFocus();
+        }
         return;
       }
 

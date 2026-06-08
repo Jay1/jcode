@@ -305,5 +305,7 @@ export function buildModelSelection(
         : { provider, model };
     case "openclaw":
       return { provider, model: "gateway" };
+    case "devin":
+      return { provider, model };
   }
 }

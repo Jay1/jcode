@@ -20,6 +20,36 @@ The OpenClaw Gateway Provider is a first-class JCode Provider that connects to a
 
 Its first version should treat the OpenClaw Gateway as a provider runtime rather than a separate external chat launcher. JCode owns the Settings configuration, provider health, thread-to-session mapping, and runtime-event translation while keeping OpenClaw protocol details behind the Provider boundary.
 
+### Remote Client Runtime
+
+A remote client runtime is the shared client-side capability layer that lets trusted non-primary clients observe or control selected JCode cockpit state without turning JCode into a hosted multi-tenant product.
+
+Remote client runtime work should start from local-first auth, session, thread, provider-runtime, and orchestration boundaries. Mobile apps, remote browser clients, and lightweight approval companions are possible consumers, not the defining product boundary.
+
+The first remote client runtime capability set should be observe-and-approve: view selected cockpit state, answer pending user-input requests, and approve or deny pending actions. Freeform new turns, git actions, project mutation, and full cockpit parity belong to later capability expansions after the auth and scope model is explicit.
+
+Remote clients should authenticate through owner-issued capability tokens with explicit scopes, such as reading selected thread state, responding to approvals, or answering user-input requests. Remote client runtime work must not reuse the dev automation access grant, which is limited to trusted loopback browser automation.
+
+ADR 0005 (Accepted) defines the scope model: four v1 capability scopes (`thread:read`, `approval:respond`, `user_input:respond`, `provider_status:read`), optional resource scoping by project or thread ID, scopes stored directly on `AuthClientSession` and `AuthPairingLink` (not a separate table or JWT claims), owner sessions implicitly hold all scopes, and scope checks use the `requireScope` guard function. The first guarded route is `/api/auth/clients` (requires `provider_status:read`).
+
+The scoped remote client auth model changes the Server Auth Boundary and should be captured in an ADR before implementation begins.
+
+ADR 0006 (Decided) wires scope guards into the WS RPC layer: the `CurrentRpcAuthSession` context service now stores the full `AuthenticatedSession` (including scopes/resources) instead of just `sessionId`; three wrapper functions (`withScope`, `withScopeStream`, `withCommandScope`) gate RPC methods by required scope; observe methods require `thread:read`, `dispatchCommand` is command-type-aware (`approval:respond` for approval commands, `user_input:respond` for user-input commands, owner-only for everything else), provider status methods require `provider_status:read`; owner sessions bypass all guards with zero overhead.
+
+### Upstream Adaptation
+
+Upstream adaptation is the process of evaluating DPCode, Synara, T3Code, or other lineage work as concrete source implementations to adapt into JCode, not merely as idea titles to reimplement from scratch.
+
+When an upstream feature fits JCode's product boundary, first inspect the upstream code, tests, contracts, and migrations to identify reusable mechanics. Adapt as much working implementation as is compatible with JCode's architecture, license obligations, naming, local-first security model, and maintenance standards. Rewrite from scratch only when the upstream code conflicts with JCode's boundaries or would cost more to integrate than to recreate.
+
+The default posture is adapt-first, rewrite only with a reason. Roadmap work sourced from upstream should include an explicit upstream-code inspection step and should preserve compatible upstream mechanics unless the implementation conflicts with JCode's architecture, security model, product language, or testability.
+
+JCode's existing README and credits lineage references are the default attribution surface for T3Code and DPCode/Synara adaptation work. Per-feature attribution is not required for ordinary adaptation unless an upstream file carries explicit license or notice requirements that must be preserved.
+
+Adapt upstream work as feature slices rather than whole upstream PR imports. A feature slice should pull only the contracts, migrations, runtime mechanics, UI pieces, and tests needed for one JCode-native vertical slice, then reshape names and seams to fit JCode while keeping compatible upstream behavior intact.
+
+The upstream-roadmap sequence is continuity first, then remote capability, then platform/provider polish: recap adaptation dossier, first thread recap slice, persistent goal mode, remote auth ADR, observe-and-approve remote client runtime, Windows/WSL routing design, Devin ACP runtime skeleton, Project Identity v2, and provider usage/limits status modeling.
+
 ### Skill Library
 
 The Skill Library is the settings-native surface for discovering and managing coding-agent skills across providers such as OpenCode and Codex.
@@ -100,17 +130,61 @@ A turn is one provider execution attempt in a thread. User messages queue or ste
 
 Turn dispatch defaults to queue. Steer is the urgent redirect path and should not be treated as ordinary message submission.
 
+### Persistent Goal Mode
+
+Persistent goal mode is a JCode orchestration capability where a thread can carry an explicit objective that drives continuation turns until the goal is completed, paused, cleared, or stopped by budget and safety guardrails.
+
+Goal state belongs to JCode's thread orchestration model rather than to a single provider command wrapper. Providers may differ in how completion is detected or prompted, but the cockpit should present goal lifecycle, continuation budget, and hidden continuation noise consistently.
+
+Persistent goal mode depends on thread recaps and current-state context so continuation turns can operate from stable summarized state rather than relying only on raw transcript length or provider context windows.
+
+### Thread Recap
+
+A thread recap is JCode-owned current-state context for a thread. It summarizes the durable facts, decisions, open tasks, risks, and recent progress needed to reorient the maintainer or safely continue work.
+
+Thread recaps are not the same as sidebar thread summaries. Sidebar summaries optimize for scanning lists; thread recaps optimize for continuation quality, handoff, and long-running goal-mode context.
+
+Thread recap state is owned by JCode's thread model and should be stored as thread metadata or projection state. Providers may help generate or refresh recap content, but JCode is responsible for deciding which recap is current and how it is supplied back into continuation, handoff, and cockpit surfaces.
+
+Thread recaps are the first upstream-roadmap implementation slice and the dependency gate for persistent goal mode. Goal-mode implementation should not begin until the recap model can provide stable current-state context for continuation turns.
+
+The first thread recap slice should persist recap projection state and expose a manual refresh UI. Automatic refresh policies should wait until the stored model and visible current-state surface prove useful.
+
+The first recap UI should live as a compact current-state entry point near the active thread controls, opening a focused panel or popover with recap content and manual refresh. Recaps should not initially be inserted into the transcript or used as sidebar snippets.
+
+Before implementing thread recaps, create an adaptation dossier that compares Synara's recap/current-state implementation with T3Code's shared-runtime/current-state mechanics. The dossier should identify which upstream contracts, projection patterns, UI surfaces, tests, and migrations can be adapted into the first JCode recap slice.
+
+The recap adaptation dossier should produce a concrete implementation plan: upstream source files and PRs mapped to JCode target files, adaptable mechanics, rewrite-only areas with reasons, required migrations/contracts/UI changes, focused tests, and the recommended first vertical slice.
+
 ### Provider Session
 
 A provider session is the runtime connection between a provider and a thread. It records provider kind, runtime mode, current status, active turn, resume cursor, model/cwd details, timestamps, and last error.
 
 Provider session health is not the same thing as local CLI freshness. OpenCode-compatible providers can run against external or remote runtimes, so runtime update state must be derived from the actual runtime path rather than the local `opencode` binary alone.
 
+Provider usage and limits should appear as cockpit status, not only as settings data. JCode should consolidate provider health, recent usage, rate-limit warnings, and actionable provider status near active thread controls when they affect current work.
+
+The first provider usage/limits slice should define a normalized provider-status model that combines health, recent usage, rate-limit warnings, and actionable state before adding new cockpit UI.
+
+The provider status model has three layers: install/health status (`ServerProviderStatus` with `ready`/`warning`/`error` states, auth status, version advisory, and update state), runtime session status (`ProviderSession` with `connecting`/`ready`/`running`/`error`/`closed` states per thread), and runtime internal state (`RuntimeSessionState` with `starting`/`ready`/`running`/`waiting`/`stopped`/`error` states inside the provider process). These are distinct: health is about the CLI binary and credentials, session is about the active connection, runtime state is about the provider process internals.
+
+All 8 `ProviderKind` values (`codex`, `claudeAgent`, `cursor`, `gemini`, `kilo`, `opencode`, `pi`, `devin`) are wired into the provider health system: each has a `ServerProviderSettings` entry, a status cache slot, and a CLI health probe in `ProviderHealth.ts`. The provider status cache persists health snapshots to disk as JSON in `<stateDir>/provider-status/<provider>.json`, seeded on startup and refreshed periodically without blocking server boot.
+
+Rate limit events (`account.rate-limits.updated`) flow from provider runtimes with heterogeneous payload shapes. The wire type is `Record<string, unknown>` (typed enough to guarantee object shape, flexible enough for provider-specific fields). The runtime ingestion layer normalizes these into a consistent structure with `status`, `utilization`, `resetsAt`, and optional `limits` array (per-window breakdown with `window`, `utilization`, `resetsAt`). Provider usage snapshots (`ServerProviderUsageSnapshot`) aggregate 30-day local usage archives with per-provider parsers.
+
 ### ACP Integration
 
 ACP integration is JCode's Agent Client Protocol support layer for providers that speak ACP over stdio/RPC. It wraps protocol initialization, authentication, session creation, permission requests, elicitation, file access, terminal operations, extension requests, and notifications.
 
 Treat generated ACP schema bindings as protocol-bound artifacts. Domain decisions should live in provider adapters and contracts; generated schema files should only change through the generator or with a documented reason.
+
+Devin ACP is a provider-expansion candidate now scaffolded as a skeleton. Provider expansion should not outrun the continuity model that long-running and asynchronous provider sessions need.
+
+The Devin ACP skeleton adds `ProviderKind: "devin"`, `DevinModelSelection`, `DevinAcpSupport` (spawn config for `devin acp`), `DevinAdapter` service tag, skeleton adapter layer with `dieMessage` stubs for all `ProviderAdapterShape` methods, and registry wiring in `runtimeLayer.ts` and `ProviderAdapterRegistry.ts`.
+
+Devin CLI spawns as `devin acp` over stdio ACP. Auth method ID: `"devin_api_key"`. Auth sources: `WINDSURF_API_KEY` env var, `devin auth login` credentials, or ACP `authenticate` request. No special client capabilities (empty object). Capabilities: `sessionModelSwitch: "restart-session"`, `supportsTurnSteering: false`, `supportsRuntimeModelList: true`.
+
+The next Devin slice should fill in the adapter layer with real session lifecycle: ACP session init, prompt handling, event mapping via `AcpCoreRuntimeEvents`, permission/elicitation delegation, and model listing from ACP initialize response.
 
 ### Runtime Mode
 
@@ -129,6 +203,25 @@ Plan mode can create actionable proposed plans that may later be implemented or 
 A thread environment describes whether a thread works in the project's local workspace or an associated git worktree. `local` uses the project workspace root. `worktree` uses branch/worktree metadata and may be created for isolated implementation or pull-request preparation.
 
 Worktree identity includes path, branch, and sometimes a detached ref. Normalize workspace roots for comparison without changing the stored display path.
+
+Parallel Windows and WSL backend routing is a thread-environment expansion that routes each project or thread to the backend where its workspace lives rather than treating Windows and WSL as mutually exclusive global modes.
+
+ADR 0007 (Proposed) defines the design-only first slice. Key decisions:
+
+- A **Backend** is a named execution environment with a `BackendId`, `BackendKind` (`local`, `wsl`, future `ssh`/`docker`), `BackendConnection`, and an `ExecutionEnvironmentDescriptor`. The server has one host backend and may discover WSL backends.
+- Project-to-backend routing is path-based (WSL `\\wsl$\` paths detected at project-open time) with user override in `.jcode/settings.json`. Threads inherit their project's backend.
+- Backend lifecycle: unknown → probing → healthy → degraded → removed, with periodic health checks for WSL backends via `wsl.exe`.
+- Transport abstraction: `BackendTransport` interface with `LocalTransport` (direct spawn) and `WslTransport` (spawn via `wsl.exe -d <distro>`). Path translation via `BackendPathResolver`.
+- Auth bootstrap uses the existing server auth model (ADR 0005 scopes apply at server level, not per-backend). WSL requires no separate auth — `wsl.exe` inherits the Windows user.
+- Failure states: degraded backends trigger reconnect banners, terminated distributions show migration prompts, no global "WSL mode" toggle.
+
+### Project Identity
+
+Project identity is the durable server-owned metadata JCode uses to make projects scannable in cockpit surfaces, including language/framework icons today and future favicon or app/site identity signals.
+
+Project favicon identity is treated as Project Identity v2. It extends the existing project icon model with bounded root-level favicon, manifest, and framework probing, preserving the ADR 0004 constraints: no recursive workspace scans, no renderer-only identity state, capped background backfill, and no startup blocking.
+
+The Project Identity v2 slice adds web app manifest icon probing to the bounded detector. The `ProjectFaviconResolver` now reads root-level `manifest.json`/`manifest.webmanifest` files from a bounded candidate list (8 paths, no recursion), extracts icon `src` entries from the JSON `icons` array, scores them (SVG > PNG > ICO, larger sizes preferred), and resolves the highest-quality existing icon. The same manifest probing is applied in the sync route handler (`projectFaviconRoute.ts`). The detection order is: direct favicon candidates → manifest icon entries → HTML source file `<link>` extraction. All manifest reads are capped at 128KB. No contract types were changed.
 
 ### Handoff
 

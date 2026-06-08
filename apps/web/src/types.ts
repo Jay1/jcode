@@ -5,6 +5,7 @@
 import type {
   ModelSelection,
   OrchestrationMessageSource,
+  OrchestrationGoal,
   TurnDispatchMode,
   OrchestrationLatestTurn,
   OrchestrationThreadPullRequest,
@@ -12,6 +13,7 @@ import type {
   OrchestrationSessionStatus,
   OrchestrationThreadActivity,
   ThreadHandoff,
+  ThreadRecap as ThreadRecapType,
   ProjectScript as ContractProjectScript,
   ProjectIconMetadata,
   ThreadId,
@@ -192,6 +194,8 @@ export interface Thread extends ThreadWorkspaceState {
   hasActionableProposedPlan?: boolean;
   turnDiffSummaries: TurnDiffSummary[];
   activities: OrchestrationThreadActivity[];
+  goal?: OrchestrationGoal | null;
+  recap?: ThreadRecapType | null;
 }
 
 export interface ThreadShell extends ThreadWorkspaceState {
@@ -220,6 +224,7 @@ export interface ThreadShell extends ThreadWorkspaceState {
   hasPendingUserInput?: boolean;
   hasActionableProposedPlan?: boolean;
   lastVisitedAt?: string | undefined;
+  goal?: OrchestrationGoal | null;
 }
 
 export interface ThreadTurnState {

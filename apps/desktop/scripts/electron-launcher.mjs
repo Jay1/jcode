@@ -23,6 +23,7 @@ const LAUNCHER_VERSION = 2;
 const MICROPHONE_USAGE_DESCRIPTION =
   "JCode needs microphone access so you can record voice notes and transcribe them into the chat composer.";
 
+// oxlint-disable-next-line no-underscore-dangle
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const desktopDir = resolve(__dirname, "..");
 

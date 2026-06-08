@@ -777,6 +777,8 @@ function makeModelSelection(
       };
     case "openclaw":
       return { provider, model: "gateway" };
+    case "devin":
+      return { provider, model };
   }
 }
 

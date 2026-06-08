@@ -59,6 +59,7 @@ type CustomModelSettingsKey =
   | "customCodexModels"
   | "customClaudeModels"
   | "customCursorModels"
+  | "customDevinModels"
   | "customGeminiModels"
   | "customKiloModels"
   | "customOpenCodeModels"
@@ -78,6 +79,7 @@ const BUILT_IN_MODEL_SLUGS_BY_PROVIDER: Record<ProviderKind, ReadonlySet<string>
   codex: new Set(getModelOptions("codex").map((option) => option.slug)),
   claudeAgent: new Set(getModelOptions("claudeAgent").map((option) => option.slug)),
   cursor: new Set(getModelOptions("cursor").map((option) => option.slug)),
+  devin: new Set(getModelOptions("devin").map((option) => option.slug)),
   gemini: new Set(getModelOptions("gemini").map((option) => option.slug)),
   kilo: new Set(getModelOptions("kilo").map((option) => option.slug)),
   opencode: new Set(getModelOptions("opencode").map((option) => option.slug)),
@@ -147,6 +149,7 @@ export const AppSettingsSchema = Schema.Struct({
   customCodexModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customClaudeModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customCursorModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
+  customDevinModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customGeminiModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customKiloModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customOpenCodeModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
@@ -247,6 +250,15 @@ const PROVIDER_CUSTOM_MODEL_CONFIG: Record<CustomModelProviderKind, ProviderCust
     placeholder: "provider/model",
     example: "anthropic/claude-sonnet-4-5",
   },
+  devin: {
+    provider: "devin",
+    settingsKey: "customDevinModels",
+    defaultSettingsKey: "customDevinModels",
+    title: "Devin",
+    description: "Save additional Devin model slugs for the picker and provider runtime.",
+    placeholder: "provider/model",
+    example: "devin/devin-auto",
+  },
 };
 
 export const MODEL_PROVIDER_SETTINGS = Object.values(PROVIDER_CUSTOM_MODEL_CONFIG);
@@ -295,6 +307,7 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
     customCodexModels: normalizeCustomModelSlugs(settings.customCodexModels, "codex"),
     customClaudeModels: normalizeCustomModelSlugs(settings.customClaudeModels, "claudeAgent"),
     customCursorModels: normalizeCustomModelSlugs(settings.customCursorModels, "cursor"),
+    customDevinModels: normalizeCustomModelSlugs(settings.customDevinModels, "devin"),
     customGeminiModels: normalizeCustomModelSlugs(settings.customGeminiModels, "gemini"),
     customKiloModels: normalizeCustomModelSlugs(settings.customKiloModels, "kilo"),
     customOpenCodeModels: normalizeCustomModelSlugs(settings.customOpenCodeModels, "opencode"),
@@ -333,6 +346,7 @@ export function serverSettingsToAppSettings(settings: ServerSettings): Partial<A
     customCodexModels: settings.providers.codex.customModels,
     customClaudeModels: settings.providers.claudeAgent.customModels,
     customCursorModels: settings.providers.cursor.customModels,
+    customDevinModels: settings.providers.devin.customModels,
     customGeminiModels: settings.providers.gemini.customModels,
     customKiloModels: settings.providers.kilo.customModels,
     customOpenCodeModels: settings.providers.opencode.customModels,
@@ -488,6 +502,14 @@ export function appSettingsPatchToServerSettingsPatch(
     };
   }
 
+  if (hasOwn(patch, "customDevinModels")) {
+    providers.devin = {
+      ...(hasOwn(patch, "customDevinModels")
+        ? { customModels: patch.customDevinModels ?? [] }
+        : {}),
+    };
+  }
+
   if (Object.keys(providers).length > 0) {
     serverPatch.providers = providers;
   }
@@ -535,6 +557,7 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
     "customCodexModels",
     "customClaudeModels",
     "customCursorModels",
+    "customDevinModels",
     "customGeminiModels",
     "customKiloModels",
     "customOpenCodeModels",
@@ -582,6 +605,7 @@ export function getCustomModelsByProvider(
     codex: getCustomModelsForProvider(settings, "codex"),
     claudeAgent: getCustomModelsForProvider(settings, "claudeAgent"),
     cursor: getCustomModelsForProvider(settings, "cursor"),
+    devin: getCustomModelsForProvider(settings, "devin"),
     gemini: getCustomModelsForProvider(settings, "gemini"),
     kilo: getCustomModelsForProvider(settings, "kilo"),
     opencode: getCustomModelsForProvider(settings, "opencode"),
@@ -705,6 +729,7 @@ export function getCustomModelOptionsByProvider(
     codex: getAppModelOptions("codex", customModelsByProvider.codex),
     claudeAgent: getAppModelOptions("claudeAgent", customModelsByProvider.claudeAgent),
     cursor: getAppModelOptions("cursor", customModelsByProvider.cursor),
+    devin: getAppModelOptions("devin", customModelsByProvider.devin),
     gemini: getAppModelOptions("gemini", customModelsByProvider.gemini),
     kilo: getAppModelOptions("kilo", customModelsByProvider.kilo),
     opencode: getAppModelOptions("opencode", customModelsByProvider.opencode),
@@ -829,6 +854,8 @@ export function getCustomBinaryPathForProvider(
       return "";
     case "pi":
       return settings.piBinaryPath;
+    case "devin":
+      return "";
   }
 }
 

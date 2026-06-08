@@ -3,9 +3,12 @@ import { realpathSync } from "node:fs";
 
 import {
   type AuthAccessStreamEvent,
+  type AuthCapabilityScope,
   type AuthClientSession,
   type AuthSessionId,
+  MessageId,
   ORCHESTRATION_WS_METHODS,
+  type ServerGenerateThreadRecapInput,
   ThreadId,
   WS_METHODS,
   WsRpcError,
@@ -20,6 +23,7 @@ import {
   ServerVoiceTranscriptionErrorDetail,
   type ServerVoiceTranscriptionErrorDetail as ServerVoiceTranscriptionErrorDetailType,
 } from "@jcode/contracts";
+import { deriveThreadRecapSource } from "@jcode/shared/threadRecapSource";
 import { clamp } from "effect/Number";
 import {
   Effect,
@@ -38,13 +42,15 @@ import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
 
 import { authErrorResponse, makeEffectAuthRequest } from "./auth/http";
 import { BootstrapCredentialService } from "./auth/Services/BootstrapCredentialService";
-import { ServerAuth } from "./auth/Services/ServerAuth";
+import { type AuthenticatedSession, ServerAuth } from "./auth/Services/ServerAuth";
 import { ServerSecretStore } from "./auth/Services/ServerSecretStore";
 import { SessionCredentialService } from "./auth/Services/SessionCredentialService";
+import { requireScope } from "./auth/Services/scopeGuard";
 import { CheckpointDiffQuery } from "./checkpointing/Services/CheckpointDiffQuery";
 import { ServerConfig } from "./config";
 import { GitCore } from "./git/Services/GitCore";
 import { GitManager } from "./git/Services/GitManager";
+import { TextGeneration } from "./git/Services/TextGeneration";
 import { GitStatusBroadcaster } from "./git/Services/GitStatusBroadcaster";
 import { Keybindings } from "./keybindings";
 import { Open, resolveAvailableEditors } from "./open";
@@ -56,6 +62,7 @@ import { ProviderDiscoveryService } from "./provider/Services/ProviderDiscoveryS
 import { ProviderAdapterRegistry } from "./provider/Services/ProviderAdapterRegistry";
 import { ProviderHealth } from "./provider/Services/ProviderHealth";
 import { ProviderService } from "./provider/Services/ProviderService";
+import { ProjectionThreadRepository } from "./persistence/Services/ProjectionThreads";
 import {
   OPENCODE_CLI_SPEC,
   OpenCodeRuntime,
@@ -75,9 +82,7 @@ import { WorkspaceFileSystem } from "./workspace/Services/WorkspaceFileSystem";
 const MAX_DIAGNOSTIC_CHILD_PROCESSES = 80;
 const MAX_DIAGNOSTIC_ARGS_CHARS = 500;
 
-interface CurrentRpcAuthSessionShape {
-  readonly sessionId: AuthSessionId | null;
-}
+type CurrentRpcAuthSessionShape = AuthenticatedSession | null;
 
 const CurrentRpcAuthSession = ServiceMap.Service<CurrentRpcAuthSessionShape>(
   "jcode/wsRpc/CurrentRpcAuthSession",
@@ -242,12 +247,14 @@ export const makeWsRpcLayer = () =>
       const fileSystem = yield* FileSystem.FileSystem;
       const git = yield* GitCore;
       const gitManager = yield* GitManager;
+      const textGeneration = yield* TextGeneration;
       const gitStatusBroadcaster = yield* GitStatusBroadcaster;
       const keybindings = yield* Keybindings;
       const open = yield* Open;
       const orchestrationEngine = yield* OrchestrationEngineService;
       const path = yield* Path.Path;
       const projectionReadModelQuery = yield* ProjectionSnapshotQuery;
+      const projectionThreadRepository = yield* ProjectionThreadRepository;
       const providerAdapterRegistry = yield* ProviderAdapterRegistry;
       const providerDiscoveryService = yield* ProviderDiscoveryService;
       const providerHealth = yield* ProviderHealth;
@@ -422,94 +429,203 @@ export const makeWsRpcLayer = () =>
       const rpcEffect = <A, E, R>(effect: Effect.Effect<A, E, R>, fallbackMessage: string) =>
         effect.pipe(Effect.mapError((cause) => toWsRpcError(cause, fallbackMessage)));
 
-      return WsRpcGroup.of({
-        [ORCHESTRATION_WS_METHODS.dispatchCommand]: (command) =>
-          rpcEffect(
-            Effect.gen(function* () {
-              const normalizedCommand = yield* normalizeDispatchCommand({ command });
-              return yield* runtimeStartup.enqueueCommand(
-                orchestrationEngine.dispatch(normalizedCommand),
+      /**
+       * Wrap an Effect-returning RPC handler with a scope guard.
+       * Reads the current session from context, validates the required scope,
+       * and maps AuthError to WsRpcError. Owner sessions bypass all checks.
+       */
+      const withScope = <A, E, R>(
+        scope: AuthCapabilityScope,
+        effect: Effect.Effect<A, E, R>,
+      ): Effect.Effect<A, E | WsRpcError, R> =>
+        Effect.serviceOption(CurrentRpcAuthSession).pipe(
+          Effect.flatMap((sessionOpt) => {
+            const session = Option.getOrNull(sessionOpt);
+            if (!session) {
+              return Effect.fail(new WsRpcError({ message: "Authentication required" }));
+            }
+            return requireScope(session, scope).pipe(
+              Effect.mapError((err) => new WsRpcError({ message: err.message, cause: err })),
+              Effect.flatMap(() => effect),
+            );
+          }),
+        );
+
+      /**
+       * Wrap a Stream-returning RPC handler with a scope guard.
+       * Validates scope before emitting any events. Owner sessions bypass all checks.
+       */
+      const withScopeStream = <A, E, R>(
+        scope: AuthCapabilityScope,
+        stream: Stream.Stream<A, E, R>,
+      ): Stream.Stream<A, E | WsRpcError, R> =>
+        Stream.unwrap(
+          Effect.serviceOption(CurrentRpcAuthSession).pipe(
+            Effect.flatMap((sessionOpt) => {
+              const session = Option.getOrNull(sessionOpt);
+              if (!session) {
+                return Effect.fail(new WsRpcError({ message: "Authentication required" }));
+              }
+              return requireScope(session, scope).pipe(
+                Effect.mapError((err) => new WsRpcError({ message: err.message, cause: err })),
+                Effect.map(() => stream),
               );
             }),
-            "Failed to dispatch orchestration command",
+          ),
+        );
+
+      /**
+       * Wrap dispatchCommand with command-type-aware scope checking.
+       * - thread.approval.respond → requires "approval:respond" scope
+       * - thread.user-input.respond → requires "user_input:respond" scope
+       * - All other command types → owner-only (client sessions rejected)
+       */
+      const withCommandScope = <A, E, R>(
+        command: { readonly type: string },
+        effect: Effect.Effect<A, E, R>,
+      ): Effect.Effect<A, E | WsRpcError, R> =>
+        Effect.serviceOption(CurrentRpcAuthSession).pipe(
+          Effect.flatMap((sessionOpt) => {
+            const session = Option.getOrNull(sessionOpt);
+            if (!session) {
+              return Effect.fail(new WsRpcError({ message: "Authentication required" }));
+            }
+            if (session.role === "owner") {
+              return effect;
+            }
+            switch (command.type) {
+              case "thread.approval.respond":
+                return requireScope(session, "approval:respond").pipe(
+                  Effect.mapError((err) => new WsRpcError({ message: err.message, cause: err })),
+                  Effect.flatMap(() => effect),
+                );
+              case "thread.user-input.respond":
+                return requireScope(session, "user_input:respond").pipe(
+                  Effect.mapError((err) => new WsRpcError({ message: err.message, cause: err })),
+                  Effect.flatMap(() => effect),
+                );
+              default:
+                return Effect.fail(
+                  new WsRpcError({
+                    message: "Insufficient permissions: this command requires owner role",
+                  }),
+                );
+            }
+          }),
+        );
+
+      return WsRpcGroup.of({
+        [ORCHESTRATION_WS_METHODS.dispatchCommand]: (command) =>
+          withCommandScope(
+            command,
+            rpcEffect(
+              Effect.gen(function* () {
+                const normalizedCommand = yield* normalizeDispatchCommand({ command });
+                return yield* runtimeStartup.enqueueCommand(
+                  orchestrationEngine.dispatch(normalizedCommand),
+                );
+              }),
+              "Failed to dispatch orchestration command",
+            ),
           ),
         [ORCHESTRATION_WS_METHODS.importThread]: (input) =>
           rpcEffect(importThread(input), "Failed to import thread"),
         [ORCHESTRATION_WS_METHODS.getSnapshot]: () =>
-          rpcEffect(
-            projectionReadModelQuery.getSnapshot(),
-            "Failed to load orchestration snapshot",
+          withScope(
+            "thread:read",
+            rpcEffect(
+              projectionReadModelQuery.getSnapshot(),
+              "Failed to load orchestration snapshot",
+            ),
           ),
         [ORCHESTRATION_WS_METHODS.getShellSnapshot]: () =>
-          rpcEffect(
-            projectionReadModelQuery.getShellSnapshot(),
-            "Failed to load orchestration shell snapshot",
+          withScope(
+            "thread:read",
+            rpcEffect(
+              projectionReadModelQuery.getShellSnapshot(),
+              "Failed to load orchestration shell snapshot",
+            ),
           ),
         [ORCHESTRATION_WS_METHODS.repairState]: () =>
           rpcEffect(orchestrationEngine.repairState(), "Failed to repair orchestration state"),
         [ORCHESTRATION_WS_METHODS.getTurnDiff]: (input) =>
-          rpcEffect(checkpointDiffQuery.getTurnDiff(input), "Failed to load turn diff"),
+          withScope(
+            "thread:read",
+            rpcEffect(checkpointDiffQuery.getTurnDiff(input), "Failed to load turn diff"),
+          ),
         [ORCHESTRATION_WS_METHODS.getFullThreadDiff]: (input) =>
-          rpcEffect(
-            checkpointDiffQuery.getFullThreadDiff(input),
-            "Failed to load full thread diff",
+          withScope(
+            "thread:read",
+            rpcEffect(
+              checkpointDiffQuery.getFullThreadDiff(input),
+              "Failed to load full thread diff",
+            ),
           ),
         [ORCHESTRATION_WS_METHODS.replayEvents]: (input) =>
-          rpcEffect(
-            Stream.runCollect(
-              orchestrationEngine.readEvents(
-                clamp(input.fromSequenceExclusive, {
-                  maximum: Number.MAX_SAFE_INTEGER,
-                  minimum: 0,
-                }),
-              ),
-            ).pipe(Effect.map((events) => Array.from(events))),
-            "Failed to replay orchestration events",
+          withScope(
+            "thread:read",
+            rpcEffect(
+              Stream.runCollect(
+                orchestrationEngine.readEvents(
+                  clamp(input.fromSequenceExclusive, {
+                    maximum: Number.MAX_SAFE_INTEGER,
+                    minimum: 0,
+                  }),
+                ),
+              ).pipe(Effect.map((events) => Array.from(events))),
+              "Failed to replay orchestration events",
+            ),
           ),
         [ORCHESTRATION_WS_METHODS.subscribeShell]: () =>
-          Stream.merge(
-            Stream.fromEffect(
-              projectionReadModelQuery.getShellSnapshot().pipe(
-                Effect.map((snapshot) => ({ kind: "snapshot" as const, snapshot })),
-                Effect.mapError((cause) => toWsRpcError(cause, "Failed to load shell snapshot")),
-              ),
-            ),
-            orchestrationEngine.streamDomainEvents.pipe(
-              Stream.mapEffect(toShellStreamEvent),
-              Stream.flatMap((event) =>
-                Option.isSome(event) ? Stream.succeed(event.value) : Stream.empty,
-              ),
-            ),
-          ),
-        [ORCHESTRATION_WS_METHODS.unsubscribeShell]: () => Effect.void,
-        [ORCHESTRATION_WS_METHODS.subscribeThread]: (input) =>
-          Stream.merge(
-            Stream.fromEffect(
-              projectionReadModelQuery.getThreadDetailSnapshotById(input.threadId).pipe(
-                Effect.map((snapshot) =>
-                  Option.map(snapshot, (value) => ({
-                    kind: "snapshot" as const,
-                    snapshot: value,
-                  })),
+          withScopeStream(
+            "thread:read",
+            Stream.merge(
+              Stream.fromEffect(
+                projectionReadModelQuery.getShellSnapshot().pipe(
+                  Effect.map((snapshot) => ({ kind: "snapshot" as const, snapshot })),
+                  Effect.mapError((cause) => toWsRpcError(cause, "Failed to load shell snapshot")),
                 ),
-                Effect.mapError((cause) => toWsRpcError(cause, "Failed to load thread snapshot")),
               ),
-            ).pipe(
-              Stream.flatMap((snapshot) =>
-                Option.isSome(snapshot) ? Stream.succeed(snapshot.value) : Stream.empty,
-              ),
-            ),
-            orchestrationEngine.streamDomainEvents.pipe(
-              Stream.filter((event) => isThreadDetailEventFor(input.threadId, event)),
-              Stream.map(
-                (event): OrchestrationThreadStreamItem => ({
-                  kind: "event",
-                  event,
-                }),
+              orchestrationEngine.streamDomainEvents.pipe(
+                Stream.mapEffect(toShellStreamEvent),
+                Stream.flatMap((event) =>
+                  Option.isSome(event) ? Stream.succeed(event.value) : Stream.empty,
+                ),
               ),
             ),
           ),
-        [ORCHESTRATION_WS_METHODS.unsubscribeThread]: () => Effect.void,
+        [ORCHESTRATION_WS_METHODS.unsubscribeShell]: () => withScope("thread:read", Effect.void),
+        [ORCHESTRATION_WS_METHODS.subscribeThread]: (input) =>
+          withScopeStream(
+            "thread:read",
+            Stream.merge(
+              Stream.fromEffect(
+                projectionReadModelQuery.getThreadDetailSnapshotById(input.threadId).pipe(
+                  Effect.map((snapshot) =>
+                    Option.map(snapshot, (value) => ({
+                      kind: "snapshot" as const,
+                      snapshot: value,
+                    })),
+                  ),
+                  Effect.mapError((cause) => toWsRpcError(cause, "Failed to load thread snapshot")),
+                ),
+              ).pipe(
+                Stream.flatMap((snapshot) =>
+                  Option.isSome(snapshot) ? Stream.succeed(snapshot.value) : Stream.empty,
+                ),
+              ),
+              orchestrationEngine.streamDomainEvents.pipe(
+                Stream.filter((event) => isThreadDetailEventFor(input.threadId, event)),
+                Stream.map(
+                  (event): OrchestrationThreadStreamItem => ({
+                    kind: "event",
+                    event,
+                  }),
+                ),
+              ),
+            ),
+          ),
+        [ORCHESTRATION_WS_METHODS.unsubscribeThread]: () => withScope("thread:read", Effect.void),
         [WS_METHODS.subscribeOrchestrationDomainEvents]: () =>
           orchestrationEngine.streamDomainEvents,
 
@@ -645,7 +761,10 @@ export const makeWsRpcLayer = () =>
           ),
 
         [WS_METHODS.serverGetConfig]: () =>
-          rpcEffect(loadServerConfig, "Failed to load server config"),
+          withScope(
+            "provider_status:read",
+            rpcEffect(loadServerConfig, "Failed to load server config"),
+          ),
         [WS_METHODS.serverGetEnvironment]: () =>
           rpcEffect(serverEnvironment.getDescriptor, "Failed to load server environment"),
         [WS_METHODS.serverGetSettings]: () =>
@@ -755,6 +874,69 @@ export const makeWsRpcLayer = () =>
               ),
             "Failed to reset keybindings",
           ),
+        [WS_METHODS.serverGenerateThreadRecap]: (input: ServerGenerateThreadRecapInput) =>
+          withScope(
+            "thread:read",
+            rpcEffect(
+              Effect.gen(function* () {
+                const settings = yield* serverSettings.getSettings;
+                const detail = yield* projectionReadModelQuery.getThreadDetailById(input.threadId);
+                if (Option.isNone(detail)) {
+                  return yield* Effect.fail(new Error(`Thread '${input.threadId}' was not found.`));
+                }
+
+                const source = deriveThreadRecapSource({
+                  messages: detail.value.messages.map((message) => ({
+                    id: message.id,
+                    role: message.role,
+                    text: message.text,
+                  })),
+                  activities: detail.value.activities.map((activity) => ({
+                    kind: activity.kind,
+                    summary: activity.summary,
+                    createdAt: activity.createdAt,
+                  })),
+                  title: detail.value.title,
+                  previousCoveredMessageId: detail.value.recap?.coveredMessageId ?? null,
+                });
+
+                if (!source.hasNewMaterial) {
+                  return {
+                    recap:
+                      detail.value.recap?.text ?? input.previousRecap ?? "No meaningful recap yet.",
+                  };
+                }
+
+                const previousRecap = detail.value.recap?.text ?? input.previousRecap;
+                const recapInput = {
+                  cwd: config.cwd,
+                  newMaterial: source.newMaterial,
+                  modelSelection: settings.textGenerationModelSelection,
+                  ...(previousRecap !== undefined ? { previousRecap } : {}),
+                  ...(source.currentState ? { currentState: source.currentState } : {}),
+                };
+                const generated = yield* textGeneration.generateThreadRecap(recapInput);
+                const persistedThread = yield* projectionThreadRepository.getById({
+                  threadId: input.threadId,
+                });
+                if (Option.isSome(persistedThread)) {
+                  yield* projectionThreadRepository.upsert({
+                    ...persistedThread.value,
+                    recap: {
+                      text: generated.recap,
+                      coveredMessageId: source.latestMessageId
+                        ? MessageId.makeUnsafe(source.latestMessageId)
+                        : null,
+                      sourceSignature: source.sourceSignature,
+                      generatedAt: new Date().toISOString(),
+                    },
+                  });
+                }
+                return { recap: generated.recap };
+              }),
+              "Failed to generate thread recap",
+            ),
+          ),
         [WS_METHODS.subscribeServerLifecycle]: () =>
           Stream.concat(
             Stream.fromEffect(
@@ -810,16 +992,20 @@ export const makeWsRpcLayer = () =>
             ),
           ).pipe(Stream.mapError((cause) => toWsRpcError(cause, "Server config stream failed"))),
         [WS_METHODS.subscribeServerProviderStatuses]: () =>
-          providerHealth.streamChanges.pipe(Stream.map((providers) => ({ providers }))),
+          withScopeStream(
+            "provider_status:read",
+            providerHealth.streamChanges.pipe(Stream.map((providers) => ({ providers }))),
+          ),
         [WS_METHODS.subscribeServerSettings]: () =>
           serverSettings.streamChanges.pipe(Stream.map((settings) => ({ settings }))),
         [WS_METHODS.subscribeAuthAccess]: () =>
           Stream.unwrap(
             Effect.gen(function* () {
               const currentAuthSession = yield* Effect.serviceOption(CurrentRpcAuthSession);
-              const currentSessionId = Option.isSome(currentAuthSession)
-                ? currentAuthSession.value.sessionId
-                : null;
+              const currentSessionId =
+                Option.isSome(currentAuthSession) && currentAuthSession.value !== null
+                  ? currentAuthSession.value.sessionId
+                  : null;
               const revisionRef = yield* Ref.make(0);
               const nextRevision = Ref.updateAndGet(revisionRef, (revision) => revision + 1);
 
@@ -963,9 +1149,11 @@ export const websocketRpcRouteLayer = Layer.effectDiscard(
         return yield* Effect.acquireUseRelease(
           sessions.markConnected(authenticatedSession.sessionId),
           () =>
-            Effect.provideService(rpcWebSocketHttpEffect, CurrentRpcAuthSession, {
-              sessionId: authenticatedSession.sessionId,
-            }),
+            Effect.provideService(
+              rpcWebSocketHttpEffect,
+              CurrentRpcAuthSession,
+              authenticatedSession,
+            ),
           () => sessions.markDisconnected(authenticatedSession.sessionId),
         );
       }).pipe(Effect.catchTag("AuthError", (error) => Effect.succeed(authErrorResponse(error)))),

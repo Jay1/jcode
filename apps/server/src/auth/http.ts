@@ -18,6 +18,7 @@ import {
 } from "../startupAccess";
 import { AuthError, type AuthRequest, type ServerAuthShape } from "./Services/ServerAuth";
 import type { SessionCredentialServiceShape } from "./Services/SessionCredentialService";
+import { requireScope } from "./Services/scopeGuard";
 import { deriveAuthClientMetadata } from "./utils";
 
 type Respond = (
@@ -389,10 +390,9 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
       method === AuthHttpRoutes.clients.method &&
       input.url.pathname === AuthHttpRoutes.clients.pathname
     ) {
-      const session = yield* authenticateOwnerSession({
-        serverAuth: input.serverAuth,
-        authRequest,
-      });
+      const session = yield* input.serverAuth
+        .authenticateHttpRequest(authRequest)
+        .pipe(Effect.flatMap((authSession) => requireScope(authSession, "provider_status:read")));
       const clients = yield* input.serverAuth.listClientSessions(session.sessionId);
       respondJson(input.respond, 200, clients);
       return;
@@ -443,8 +443,10 @@ export const serveAuthHttpRoute = Effect.fn(function* (input: AuthHttpRouteOptio
 
     input.respond(404, { "Content-Type": "text/plain" }, "Not Found");
   }).pipe(
-    Effect.catchTag("AuthError", (error) =>
-      Effect.sync(() => respondToAuthError(input.respond, error)),
+    Effect.catch((error) =>
+      error instanceof AuthError
+        ? Effect.sync(() => respondToAuthError(input.respond, error))
+        : Effect.void,
     ),
   );
 

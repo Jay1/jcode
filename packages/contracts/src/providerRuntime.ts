@@ -553,7 +553,7 @@ const AccountUpdatedPayload = Schema.Struct({
 export type AccountUpdatedPayload = typeof AccountUpdatedPayload.Type;
 
 const AccountRateLimitsUpdatedPayload = Schema.Struct({
-  rateLimits: Schema.Unknown,
+  rateLimits: Schema.Record(Schema.String, Schema.Unknown),
 });
 export type AccountRateLimitsUpdatedPayload = typeof AccountRateLimitsUpdatedPayload.Type;
 

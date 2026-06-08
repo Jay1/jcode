@@ -296,6 +296,7 @@ import {
 import { ComposerPromptEditor, type ComposerPromptEditorHandle } from "./ComposerPromptEditor";
 import { PullRequestThreadDialog } from "./PullRequestThreadDialog";
 import { ChatHeader } from "./chat/ChatHeader";
+import { ThreadRecapPanel } from "./ThreadRecapPanel";
 import { SidebarHeaderNavigationControls } from "./SidebarHeaderNavigationControls";
 import { SidebarHeaderTrigger } from "./ui/sidebar";
 import { ChatTranscriptPane } from "./chat/ChatTranscriptPane";
@@ -474,6 +475,8 @@ function getProviderStartOptionsCustomBinaryPath(
     case "pi":
       return normalizeCustomBinaryPath(providerOptions?.pi?.binaryPath);
     case "openclaw":
+      return null;
+    case "devin":
       return null;
   }
 }
@@ -1457,6 +1460,7 @@ export default function ChatView({
       codex: resolveHint("codex"),
       claudeAgent: resolveHint("claudeAgent"),
       cursor: resolveHint("cursor"),
+      devin: resolveHint("devin"),
       gemini: resolveHint("gemini"),
       kilo: resolveHint("kilo"),
       opencode: resolveHint("opencode"),
@@ -1598,6 +1602,11 @@ export default function ChatView({
       ),
       openclaw: getAppModelOptions("openclaw", [], composerModelHintByProvider.openclaw),
       pi: getAppModelOptions("pi", customModelsByProvider.pi, composerModelHintByProvider.pi),
+      devin: getAppModelOptions(
+        "devin",
+        customModelsByProvider.devin,
+        composerModelHintByProvider.devin,
+      ),
     };
     const result: Record<
       ProviderKind,
@@ -1616,12 +1625,14 @@ export default function ChatView({
       opencode: openCodeDynamicModelsQuery.data,
       openclaw: undefined,
       pi: piDynamicModelsQuery.data,
+      devin: undefined,
     };
 
     for (const provider of [
       "claudeAgent",
       "codex",
       "cursor",
+      "devin",
       "gemini",
       "kilo",
       "opencode",
@@ -1672,6 +1683,7 @@ export default function ChatView({
       claudeAgent: claudeDynamicModelsQuery.data?.models ?? [],
       codex: codexDynamicModelsQuery.data?.models ?? [],
       cursor: cursorRuntimeModels,
+      devin: [],
       gemini: geminiModelsQuery.data?.models ?? [],
       kilo: kiloDynamicModelsQuery.data?.models ?? [],
       opencode: openCodeDynamicModelsQuery.data?.models ?? [],
@@ -1692,6 +1704,7 @@ export default function ChatView({
     claudeAgent: claudeDynamicModelsQuery,
     codex: codexDynamicModelsQuery,
     cursor: cursorDynamicModelsQuery,
+    devin: undefined,
     gemini: geminiModelsQuery,
     kilo: kiloDynamicModelsQuery,
     opencode: openCodeDynamicModelsQuery,
@@ -8252,6 +8265,7 @@ export default function ChatView({
           handoffActionTargetProviders={handoffTargetProviders}
           handoffBadgeSourceProvider={handoffBadgeSourceProvider}
           handoffBadgeTargetProvider={handoffBadgeTargetProvider}
+          goal={activeThread.goal ?? undefined}
           browserOpen={resolvedBrowserOpen}
           gitCwd={threadWorkspaceCwd}
           showGitActions={showGitActions}
@@ -8378,52 +8392,57 @@ export default function ChatView({
                 </div>
               </div>
             ) : (
-              <ChatTranscriptPane
-                activeThreadId={activeThread.id}
-                activeTurnId={activeThread.session?.activeTurnId ?? null}
-                hasMessages={timelineEntries.length > 0}
-                isWorking={isWorking}
-                activeTurnInProgress={activeTurnInProgress}
-                activeTurnStartedAt={activeWorkStartedAt}
-                listRef={legendListRef}
-                timelineEntries={timelineEntries}
-                completionDividerBeforeEntryId={completionDividerBeforeEntryId}
-                completionSummary={completionSummary}
-                turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
-                onOpenTurnDiff={onOpenTurnDiff}
-                onOpenThread={onNavigateToThread}
-                revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
-                onRevertUserMessage={onRevertUserMessage}
-                onEditUserMessage={onEditUserMessage}
-                isRevertingCheckpoint={isRevertingCheckpoint}
-                onExpandTimelineImage={onExpandTimelineImage}
-                followLiveOutput={hasStreamingAssistantText}
-                onIsAtEndChange={onIsAtEndChange}
-                markdownCwd={threadWorkspaceCwd ?? undefined}
-                resolvedTheme={resolvedTheme}
-                chatFontSizePx={settings.chatFontSizePx}
-                timestampFormat={timestampFormat}
-                workspaceRoot={activeProject?.cwd ?? undefined}
-                emptyStateProjectName={activeProjectDisplayName}
-                terminalWorkspaceTerminalTabActive={terminalWorkspaceTerminalTabActive}
-                onMessagesScroll={onMessagesScroll}
-                onMessagesClickCapture={onMessagesClickCapture}
-                onMessagesMouseUp={onMessagesMouseUp}
-                onMessagesWheel={onMessagesWheel}
-                onMessagesPointerDown={onMessagesPointerDown}
-                onMessagesPointerUp={onMessagesPointerUp}
-                onMessagesPointerCancel={onMessagesPointerCancel}
-                onMessagesTouchStart={onMessagesTouchStart}
-                onMessagesTouchMove={onMessagesTouchMove}
-                onMessagesTouchEnd={onMessagesTouchEnd}
-                scrollButtonVisible={showScrollToBottom}
-                onScrollToBottom={onScrollToBottom}
-                bottomContentInsetPx={
-                  activeTaskList && !planSidebarOpen && activeTaskListCardHeight > 0
-                    ? activeTaskListCardHeight + 8
-                    : undefined
-                }
-              />
+              <>
+                <div className="mx-auto w-full max-w-3xl px-3 py-2 sm:px-5">
+                  <ThreadRecapPanel thread={activeThread} />
+                </div>
+                <ChatTranscriptPane
+                  activeThreadId={activeThread.id}
+                  activeTurnId={activeThread.session?.activeTurnId ?? null}
+                  hasMessages={timelineEntries.length > 0}
+                  isWorking={isWorking}
+                  activeTurnInProgress={activeTurnInProgress}
+                  activeTurnStartedAt={activeWorkStartedAt}
+                  listRef={legendListRef}
+                  timelineEntries={timelineEntries}
+                  completionDividerBeforeEntryId={completionDividerBeforeEntryId}
+                  completionSummary={completionSummary}
+                  turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
+                  onOpenTurnDiff={onOpenTurnDiff}
+                  onOpenThread={onNavigateToThread}
+                  revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
+                  onRevertUserMessage={onRevertUserMessage}
+                  onEditUserMessage={onEditUserMessage}
+                  isRevertingCheckpoint={isRevertingCheckpoint}
+                  onExpandTimelineImage={onExpandTimelineImage}
+                  followLiveOutput={hasStreamingAssistantText}
+                  onIsAtEndChange={onIsAtEndChange}
+                  markdownCwd={threadWorkspaceCwd ?? undefined}
+                  resolvedTheme={resolvedTheme}
+                  chatFontSizePx={settings.chatFontSizePx}
+                  timestampFormat={timestampFormat}
+                  workspaceRoot={activeProject?.cwd ?? undefined}
+                  emptyStateProjectName={activeProjectDisplayName}
+                  terminalWorkspaceTerminalTabActive={terminalWorkspaceTerminalTabActive}
+                  onMessagesScroll={onMessagesScroll}
+                  onMessagesClickCapture={onMessagesClickCapture}
+                  onMessagesMouseUp={onMessagesMouseUp}
+                  onMessagesWheel={onMessagesWheel}
+                  onMessagesPointerDown={onMessagesPointerDown}
+                  onMessagesPointerUp={onMessagesPointerUp}
+                  onMessagesPointerCancel={onMessagesPointerCancel}
+                  onMessagesTouchStart={onMessagesTouchStart}
+                  onMessagesTouchMove={onMessagesTouchMove}
+                  onMessagesTouchEnd={onMessagesTouchEnd}
+                  scrollButtonVisible={showScrollToBottom}
+                  onScrollToBottom={onScrollToBottom}
+                  bottomContentInsetPx={
+                    activeTaskList && !planSidebarOpen && activeTaskListCardHeight > 0
+                      ? activeTaskListCardHeight + 8
+                      : undefined
+                  }
+                />
+              </>
             )}
 
             {/* Input bar */}

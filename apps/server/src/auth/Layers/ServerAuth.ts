@@ -64,6 +64,8 @@ function toAuthenticatedSession(session: {
   readonly method: AuthenticatedSession["method"];
   readonly role: AuthenticatedSession["role"];
   readonly expiresAt?: DateTime.DateTime;
+  readonly scopes?: AuthenticatedSession["scopes"];
+  readonly resources?: AuthenticatedSession["resources"];
 }): AuthenticatedSession {
   return {
     sessionId: session.sessionId,
@@ -71,6 +73,8 @@ function toAuthenticatedSession(session: {
     method: session.method,
     role: session.role,
     ...(session.expiresAt ? { expiresAt: session.expiresAt } : {}),
+    ...(session.scopes ? { scopes: session.scopes } : {}),
+    ...(session.resources ? { resources: session.resources } : {}),
   };
 }
 
@@ -150,6 +154,8 @@ export const makeServerAuth = Effect.gen(function* () {
               ...requestMetadata,
               ...(grant.label ? { label: grant.label } : {}),
             },
+            ...(grant.scopes ? { scopes: grant.scopes } : {}),
+            ...(grant.resources ? { resources: grant.resources } : {}),
           })
           .pipe(
             Effect.mapError(
@@ -190,6 +196,8 @@ export const makeServerAuth = Effect.gen(function* () {
                 ...requestMetadata,
                 ...(grant.label ? { label: grant.label } : {}),
               },
+              ...(grant.scopes ? { scopes: grant.scopes } : {}),
+              ...(grant.resources ? { resources: grant.resources } : {}),
             })
             .pipe(
               Effect.mapError(
@@ -254,6 +262,8 @@ export const makeServerAuth = Effect.gen(function* () {
         role: input?.role ?? "client",
         subject: input?.role === "owner" ? "owner-bootstrap" : "one-time-token",
         ...(input?.label ? { label: input.label } : {}),
+        ...(input?.scopes ? { scopes: input.scopes } : {}),
+        ...(input?.resources ? { resources: input.resources } : {}),
       })
       .pipe(
         Effect.mapError(

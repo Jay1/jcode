@@ -9,8 +9,10 @@ import {
   ModelSelection,
   OrchestrationCommand,
   OrchestrationEvent,
+  OrchestrationGoal,
   OrchestrationGetTurnDiffInput,
   OrchestrationLatestTurn,
+  OrchestrationMessage,
   OrchestrationReadModel,
   ProviderKind,
   ProjectIconMetadata,
@@ -39,6 +41,8 @@ const decodeThreadTurnStartRequestedPayload = Schema.decodeUnknownEffect(
 const decodeOrchestrationLatestTurn = Schema.decodeUnknownEffect(OrchestrationLatestTurn);
 const decodeOrchestrationProposedPlan = Schema.decodeUnknownEffect(OrchestrationProposedPlan);
 const decodeOrchestrationSession = Schema.decodeUnknownEffect(OrchestrationSession);
+const decodeOrchestrationGoal = Schema.decodeUnknownEffect(OrchestrationGoal);
+const decodeOrchestrationMessage = Schema.decodeUnknownEffect(OrchestrationMessage);
 const decodeThreadCreatedPayload = Schema.decodeUnknownEffect(ThreadCreatedPayload);
 const decodeThreadMetaUpdatedPayload = Schema.decodeUnknownEffect(ThreadMetaUpdatedPayload);
 const decodeProviderKind = Schema.decodeUnknownEffect(ProviderKind);
@@ -61,6 +65,143 @@ it.effect("accepts the OpenClaw gateway model-selection sentinel", () =>
 
     assert.equal(parsed.provider, "openclaw");
     assert.equal(parsed.model, "gateway");
+  }),
+);
+
+it.effect("decodes persistent thread goal state", () =>
+  Effect.gen(function* () {
+    const goal = yield* decodeOrchestrationGoal({
+      objective: "Ship durable thread goals",
+      status: "active",
+      createdAt: "2026-06-06T00:00:00.000Z",
+      updatedAt: "2026-06-06T00:00:00.000Z",
+      createdByMessageId: null,
+      completedAt: null,
+      lastContinuationTurnId: null,
+      turnCount: 0,
+      blockedReason: null,
+    });
+
+    assert.strictEqual(goal.objective, "Ship durable thread goals");
+    assert.strictEqual(goal.status, "active");
+  }),
+);
+
+it.effect("accepts goal-continuation user messages", () =>
+  Effect.gen(function* () {
+    const message = yield* decodeOrchestrationMessage({
+      id: "goal-continuation:message-1",
+      role: "user",
+      text: "Continue toward the active goal.",
+      turnId: null,
+      streaming: false,
+      source: "goal-continuation",
+      createdAt: "2026-06-06T00:00:00.000Z",
+      updatedAt: "2026-06-06T00:00:00.000Z",
+    });
+
+    assert.strictEqual(message.source, "goal-continuation");
+  }),
+);
+
+it.effect("decodes goal lifecycle commands and events", () =>
+  Effect.gen(function* () {
+    const cases = [
+      {
+        command: {
+          type: "thread.goal.set",
+          commandId: "command-goal-set",
+          threadId: "thread-1",
+          objective: "Finish the release checklist",
+          createdByMessageId: null,
+          createdAt: "2026-06-06T00:00:00.000Z",
+        },
+        eventType: "thread.goal-set",
+        payload: {
+          threadId: "thread-1",
+          objective: "Finish the release checklist",
+          createdByMessageId: null,
+          createdAt: "2026-06-06T00:00:00.000Z",
+          updatedAt: "2026-06-06T00:00:00.000Z",
+        },
+      },
+      {
+        command: {
+          type: "thread.goal.pause",
+          commandId: "command-goal-pause",
+          threadId: "thread-1",
+          reason: "Waiting for user approval",
+          createdAt: "2026-06-06T00:01:00.000Z",
+        },
+        eventType: "thread.goal-paused",
+        payload: {
+          threadId: "thread-1",
+          reason: "Waiting for user approval",
+          updatedAt: "2026-06-06T00:01:00.000Z",
+        },
+      },
+      {
+        command: {
+          type: "thread.goal.resume",
+          commandId: "command-goal-resume",
+          threadId: "thread-1",
+          createdAt: "2026-06-06T00:02:00.000Z",
+        },
+        eventType: "thread.goal-resumed",
+        payload: {
+          threadId: "thread-1",
+          updatedAt: "2026-06-06T00:02:00.000Z",
+        },
+      },
+      {
+        command: {
+          type: "thread.goal.complete",
+          commandId: "command-goal-complete",
+          threadId: "thread-1",
+          completedAt: "2026-06-06T00:03:00.000Z",
+          createdAt: "2026-06-06T00:03:00.000Z",
+        },
+        eventType: "thread.goal-completed",
+        payload: {
+          threadId: "thread-1",
+          completedAt: "2026-06-06T00:03:00.000Z",
+          updatedAt: "2026-06-06T00:03:00.000Z",
+        },
+      },
+      {
+        command: {
+          type: "thread.goal.clear",
+          commandId: "command-goal-clear",
+          threadId: "thread-1",
+          createdAt: "2026-06-06T00:04:00.000Z",
+        },
+        eventType: "thread.goal-cleared",
+        payload: {
+          threadId: "thread-1",
+          updatedAt: "2026-06-06T00:04:00.000Z",
+        },
+      },
+    ] as const;
+
+    for (const [index, testCase] of cases.entries()) {
+      const command = yield* decodeOrchestrationCommand(testCase.command);
+      const event = yield* decodeOrchestrationEvent({
+        sequence: index + 1,
+        eventId: `event-goal-${index}`,
+        aggregateKind: "thread",
+        aggregateId: "thread-1",
+        type: testCase.eventType,
+        payload: testCase.payload,
+        occurredAt: "2026-06-06T00:00:00.000Z",
+        commandId: testCase.command.commandId,
+        causationEventId: null,
+        correlationId: testCase.command.commandId,
+        metadata: {},
+      });
+
+      assert.strictEqual(command.type, testCase.command.type);
+      assert.strictEqual(event.type, testCase.eventType);
+    }
   }),
 );
 
@@ -381,6 +522,26 @@ it.effect("decodes thread.turn.start defaults for provider, runtime mode, and di
     assert.strictEqual(parsed.runtimeMode, DEFAULT_RUNTIME_MODE);
     assert.strictEqual(parsed.interactionMode, DEFAULT_PROVIDER_INTERACTION_MODE);
     assert.strictEqual(parsed.dispatchMode, "queue");
+  }),
+);
+
+it.effect("decodes thread.turn.start goal-continuation message source", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decodeThreadTurnStartCommand({
+      type: "thread.turn.start",
+      commandId: "cmd-turn-goal-continuation",
+      threadId: "thread-1",
+      message: {
+        messageId: "msg-goal-continuation",
+        role: "user",
+        text: "continue goal",
+        attachments: [],
+        source: "goal-continuation",
+      },
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    assert.strictEqual(parsed.message.source, "goal-continuation");
   }),
 );
 

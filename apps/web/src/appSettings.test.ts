@@ -167,6 +167,7 @@ describe("resolveAppModelSelection", () => {
           codex: ["galapagos-alpha"],
           claudeAgent: [],
           cursor: [],
+          devin: [],
           gemini: [],
           kilo: [],
           opencode: [],
@@ -186,6 +187,7 @@ describe("resolveAppModelSelection", () => {
           codex: [],
           claudeAgent: [],
           cursor: [],
+          devin: [],
           gemini: [],
           kilo: [],
           opencode: [],
@@ -205,6 +207,7 @@ describe("resolveAppModelSelection", () => {
           codex: [],
           claudeAgent: [],
           cursor: [],
+          devin: [],
           gemini: [],
           kilo: [],
           opencode: [],
@@ -224,6 +227,7 @@ describe("resolveAppModelSelection", () => {
           codex: [],
           claudeAgent: [],
           cursor: [],
+          devin: [],
           gemini: [],
           kilo: [],
           opencode: [],
@@ -243,6 +247,7 @@ describe("resolveAppModelSelection", () => {
           codex: [],
           claudeAgent: [],
           cursor: [],
+          devin: [],
           gemini: [],
           kilo: [],
           opencode: [],
@@ -567,6 +572,7 @@ describe("provider-indexed custom model settings", () => {
     customKiloModels: ["kilo/kilo-auto/free"],
     customOpenCodeModels: ["openrouter/gpt-oss-120b"],
     customPiModels: ["anthropic/custom-pi"],
+    customDevinModels: [],
   } as const;
 
   it("exports custom model configs only for providers that support custom models", () => {
@@ -578,6 +584,7 @@ describe("provider-indexed custom model settings", () => {
       "kilo",
       "opencode",
       "pi",
+      "devin",
     ]);
     expect(MODEL_PROVIDER_SETTINGS.map((config) => config.provider as string)).not.toContain(
       "openclaw",
@@ -603,6 +610,7 @@ describe("provider-indexed custom model settings", () => {
       customKiloModels: ["kilo/default-auto"],
       customOpenCodeModels: ["openai/gpt-5"],
       customPiModels: ["anthropic/default-pi"],
+      customDevinModels: [],
     } as const;
 
     expect(getDefaultCustomModelsForProvider(defaults, "codex")).toEqual(["default/codex-model"]);
@@ -663,6 +671,7 @@ describe("provider-indexed custom model settings", () => {
       codex: ["custom/codex-model"],
       claudeAgent: ["claude/custom-opus"],
       cursor: ["cursor/custom-model"],
+      devin: [],
       gemini: ["gemini/custom-flash"],
       kilo: ["kilo/kilo-auto/free"],
       opencode: ["openrouter/gpt-oss-120b"],
@@ -714,6 +723,7 @@ describe("provider-indexed custom model settings", () => {
         "anthropic/custom-pi",
         "anthropic/custom-pi",
       ],
+      customDevinModels: [],
     });
 
     expect(

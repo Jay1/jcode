@@ -1,4 +1,9 @@
-import type { AuthPairingLink, ServerAuthBootstrapMethod } from "@jcode/contracts";
+import type {
+  AuthCapabilityScope,
+  AuthPairingLink,
+  CapabilityResource,
+  ServerAuthBootstrapMethod,
+} from "@jcode/contracts";
 import { Data, DateTime, Duration, ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";
 
@@ -10,6 +15,8 @@ export interface BootstrapGrant {
   readonly subject: string;
   readonly label?: string;
   readonly expiresAt: DateTime.DateTime;
+  readonly scopes?: ReadonlyArray<AuthCapabilityScope>;
+  readonly resources?: ReadonlyArray<CapabilityResource>;
 }
 
 export class BootstrapCredentialError extends Data.TaggedError("BootstrapCredentialError")<{
@@ -41,6 +48,8 @@ export interface BootstrapCredentialServiceShape {
     readonly role?: BootstrapCredentialRole;
     readonly subject?: string;
     readonly label?: string;
+    readonly scopes?: ReadonlyArray<AuthCapabilityScope>;
+    readonly resources?: ReadonlyArray<CapabilityResource>;
   }) => Effect.Effect<IssuedBootstrapCredential, BootstrapCredentialError>;
   readonly listActive: () => Effect.Effect<
     ReadonlyArray<AuthPairingLink>,

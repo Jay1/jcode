@@ -44,7 +44,7 @@ const itLiveUnlessCi = (process.env.CI ? it.skip : it.live) as typeof it.live;
 type IntegrationProvider = ProviderKind;
 
 function defaultModelSelectionFor(
-  provider: Exclude<ProviderKind, "openclaw" | "pi">,
+  provider: Exclude<ProviderKind, "devin" | "openclaw" | "pi">,
 ): ModelSelection {
   switch (provider) {
     case "codex":
@@ -128,8 +128,10 @@ const seedProjectAndThread = (harness: OrchestrationIntegrationHarness) =>
   Effect.gen(function* () {
     const createdAt = nowIso();
     const provider = harness.adapterHarness?.provider ?? "codex";
-    if (provider === "openclaw" || provider === "pi") {
-      throw new Error("OpenClaw and Pi integration tests require an explicit model selection.");
+    if (provider === "devin" || provider === "openclaw" || provider === "pi") {
+      throw new Error(
+        "Devin, OpenClaw, and Pi integration tests require an explicit model selection.",
+      );
     }
     const defaultModelSelection = defaultModelSelectionFor(provider);
 

@@ -81,6 +81,7 @@ const PROVIDER_ICON: Record<ProviderKind, React.FC<React.SVGProps<SVGSVGElement>
   codex: HammerIcon,
   claudeAgent: ClaudeAI,
   cursor: CursorIcon,
+  devin: PlugIcon,
   gemini: Gemini,
   kilo: KiloIcon,
   opencode: OpenCodeIcon,
@@ -425,6 +426,10 @@ export function PluginLibrary() {
       pi: {
         plugins: supportsPluginDiscovery(piCapabilitiesQuery.data),
         skills: supportsSkillDiscovery(piCapabilitiesQuery.data),
+      },
+      devin: {
+        plugins: false,
+        skills: false,
       },
     }),
     [

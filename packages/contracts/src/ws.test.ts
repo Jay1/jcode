@@ -1,3 +1,4 @@
+// oxlint-disable no-underscore-dangle
 import { assert, it } from "@effect/vitest";
 import { Effect, Schema } from "effect";
 

@@ -1,13 +1,16 @@
-import { describe, expect, it } from "vitest";
 import { Schema } from "effect";
+import { describe, expect, it } from "vitest";
 
+import type { ProviderRuntimeEvent as ProviderRuntimeEventType } from "./providerRuntime";
 import { ProviderRuntimeEvent } from "./providerRuntime";
 
-const decodeRuntimeEvent = Schema.decodeUnknownSync(ProviderRuntimeEvent);
+function decodeSync<S extends Schema.Top>(schema: S, input: unknown): Schema.Schema.Type<S> {
+  return Schema.decodeUnknownSync(schema as never)(input) as Schema.Schema.Type<S>;
+}
 
 describe("ProviderRuntimeEvent", () => {
   it("decodes turn.tasks.updated for task-list rendering", () => {
-    const parsed = decodeRuntimeEvent({
+    const parsed = decodeSync(ProviderRuntimeEvent, {
       type: "turn.tasks.updated",
       eventId: "event-1",
       provider: "claudeAgent",
@@ -33,7 +36,7 @@ describe("ProviderRuntimeEvent", () => {
   });
 
   it("decodes redacted OpenClaw raw gateway events", () => {
-    const parsed = decodeRuntimeEvent({
+    const parsed = decodeSync(ProviderRuntimeEvent, {
       type: "runtime.warning",
       eventId: "event-openclaw-raw",
       provider: "openclaw",
@@ -56,7 +59,7 @@ describe("ProviderRuntimeEvent", () => {
   });
 
   it("decodes proposed-plan completion events", () => {
-    const parsed = decodeRuntimeEvent({
+    const parsed = decodeSync(ProviderRuntimeEvent, {
       type: "turn.proposed.completed",
       eventId: "event-proposed-plan-1",
       provider: "codex",
@@ -76,7 +79,7 @@ describe("ProviderRuntimeEvent", () => {
   });
 
   it("decodes user-input.requested with structured questions", () => {
-    const parsed = decodeRuntimeEvent({
+    const parsed = decodeSync(ProviderRuntimeEvent, {
       type: "user-input.requested",
       eventId: "event-2",
       provider: "claudeAgent",
@@ -114,7 +117,7 @@ describe("ProviderRuntimeEvent", () => {
   });
 
   it("decodes user-input.resolved with answer map", () => {
-    const parsed = decodeRuntimeEvent({
+    const parsed = decodeSync(ProviderRuntimeEvent, {
       type: "user-input.resolved",
       eventId: "event-3",
       provider: "claudeAgent",
@@ -138,7 +141,7 @@ describe("ProviderRuntimeEvent", () => {
 
   it("rejects legacy message.delta type", () => {
     expect(() =>
-      decodeRuntimeEvent({
+      decodeSync(ProviderRuntimeEvent, {
         type: "message.delta",
         eventId: "event-4",
         provider: "codex",
@@ -151,7 +154,7 @@ describe("ProviderRuntimeEvent", () => {
 
   it("rejects empty branded canonical ids", () => {
     expect(() =>
-      decodeRuntimeEvent({
+      decodeSync(ProviderRuntimeEvent, {
         type: "runtime.error",
         eventId: "event-5",
         provider: "codex",
@@ -164,7 +167,7 @@ describe("ProviderRuntimeEvent", () => {
   });
 
   it("decodes normalized thread token usage snapshots", () => {
-    const parsed = decodeRuntimeEvent({
+    const parsed = decodeSync(ProviderRuntimeEvent, {
       type: "thread.token-usage.updated",
       eventId: "event-token-usage-1",
       provider: "claudeAgent",

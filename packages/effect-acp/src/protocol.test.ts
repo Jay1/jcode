@@ -132,7 +132,9 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
         );
 
         const [update, completion] = yield* Deferred.await(notifications);
+        // oxlint-disable-next-line no-underscore-dangle
         assert.equal(update?._tag, "SessionUpdate");
+        // oxlint-disable-next-line no-underscore-dangle
         assert.equal(completion?._tag, "ElicitationComplete");
       }),
   );

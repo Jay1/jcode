@@ -1,12 +1,73 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const args = ["vitest", "run", "--config", "vitest.browser.config.ts", ...process.argv.slice(2)];
-const env = {
-  ...process.env,
-  JCODE_LOCAL_TEST_PROFILE:
-    process.env.JCODE_LOCAL_TEST_PROFILE ?? (process.env.CI === "true" ? "0" : "1"),
-};
+import {
+  createLocalSafeRunArgs,
+  createVitestBrowserArgs,
+  resolveBrowserRunnerEnv,
+  shouldUseLocalSafeRun,
+} from "./vitest-browser-runner.mjs";
+
+const testArgs = process.argv.slice(2);
+const args = createVitestBrowserArgs(testArgs);
+const env = resolveBrowserRunnerEnv(process.env);
+const scriptPath = fileURLToPath(import.meta.url);
+const safeRunAvailable = () => spawnSync("safe-run", ["--help"], { stdio: "ignore" }).status === 0;
+
+const localSafeRunArgs = createLocalSafeRunArgs({
+  env,
+  nodePath: process.execPath,
+  scriptPath,
+  testArgs,
+});
+
+const hasSafeRun = safeRunAvailable();
+const localSafeRunRequested =
+  env.JCODE_LOCAL_TEST_PROFILE === "1" &&
+  env.JCODE_BROWSER_TEST_SAFE_RUN !== "0" &&
+  env.JCODE_BROWSER_TEST_SAFE_RUN_ACTIVE !== "1";
+const useLocalSafeRun = shouldUseLocalSafeRun({ env, safeRunAvailable: hasSafeRun });
+
+if (localSafeRunRequested && !hasSafeRun) {
+  console.error(
+    "Refusing to run local browser tests without safe-run bounds. Install safe-run or set JCODE_BROWSER_TEST_SAFE_RUN=0 to opt into an unbounded run.",
+  );
+  process.exit(69);
+}
+
+if (useLocalSafeRun) {
+  if (env.JCODE_BROWSER_TEST_SAFE_RUN_DRY_RUN === "1") {
+    console.log(["safe-run", ...localSafeRunArgs].join(" "));
+    process.exit(0);
+  }
+
+  const safeRun = spawn("safe-run", localSafeRunArgs, {
+    env: {
+      ...env,
+      JCODE_BROWSER_TEST_SAFE_RUN_ACTIVE: "1",
+    },
+    stdio: "inherit",
+  });
+
+  safeRun.on("exit", (code, signal) => {
+    if (typeof code === "number") {
+      process.exit(code);
+    }
+    process.exit(signal === "SIGINT" ? 130 : signal === "SIGTERM" ? 143 : 1);
+  });
+
+  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+    process.on(signal, () => {
+      safeRun.kill(signal);
+    });
+  }
+
+  await new Promise(() => {});
+} else if (env.JCODE_BROWSER_TEST_SAFE_RUN_DRY_RUN === "1") {
+  console.log(["bunx", ...args].join(" "));
+  process.exit(0);
+}
 
 let childExitCode = null;
 let childSignal = null;

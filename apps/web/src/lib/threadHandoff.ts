@@ -35,7 +35,11 @@ function isImportableThreadMessage(
 ): message is Thread["messages"][number] & {
   role: "user" | "assistant";
 } {
-  return (message.role === "user" || message.role === "assistant") && message.streaming === false;
+  return (
+    (message.role === "user" || message.role === "assistant") &&
+    message.streaming === false &&
+    message.source !== "goal-continuation"
+  );
 }
 
 function isImportableThreadActivity(

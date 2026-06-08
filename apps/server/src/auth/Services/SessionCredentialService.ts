@@ -1,7 +1,9 @@
 import type {
+  AuthCapabilityScope,
   AuthClientMetadata,
   AuthClientSession,
   AuthSessionId,
+  CapabilityResource,
   ServerAuthSessionMethod,
 } from "@jcode/contracts";
 import { Data, DateTime, Duration, ServiceMap } from "effect";
@@ -26,6 +28,8 @@ export interface VerifiedSession {
   readonly expiresAt?: DateTime.DateTime;
   readonly subject: string;
   readonly role: SessionRole;
+  readonly scopes?: ReadonlyArray<AuthCapabilityScope>;
+  readonly resources?: ReadonlyArray<CapabilityResource>;
 }
 
 export type SessionCredentialChange =
@@ -51,6 +55,8 @@ export interface SessionCredentialServiceShape {
     readonly method?: ServerAuthSessionMethod;
     readonly role?: SessionRole;
     readonly client?: AuthClientMetadata;
+    readonly scopes?: ReadonlyArray<AuthCapabilityScope>;
+    readonly resources?: ReadonlyArray<CapabilityResource>;
   }) => Effect.Effect<IssuedSession, SessionCredentialError>;
   readonly verify: (token: string) => Effect.Effect<VerifiedSession, SessionCredentialError>;
   readonly issueWebSocketToken: (

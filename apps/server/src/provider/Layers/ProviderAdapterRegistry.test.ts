@@ -12,6 +12,7 @@ import { KiloAdapter, KiloAdapterShape } from "../Services/KiloAdapter.ts";
 import { OpenCodeAdapter, OpenCodeAdapterShape } from "../Services/OpenCodeAdapter.ts";
 import { OpenClawAdapter, OpenClawAdapterShape } from "../Services/OpenClawAdapter.ts";
 import { PiAdapter, PiAdapterShape } from "../Services/PiAdapter.ts";
+import { DevinAdapter, DevinAdapterShape } from "../Services/DevinAdapter.ts";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
 import { ProviderAdapterRegistryLive } from "./ProviderAdapterRegistry.ts";
 import { ProviderUnsupportedError } from "../Errors.ts";
@@ -153,6 +154,23 @@ const fakePiAdapter: PiAdapterShape = {
   streamEvents: Stream.empty,
 };
 
+const fakeDevinAdapter: DevinAdapterShape = {
+  provider: "devin",
+  capabilities: { sessionModelSwitch: "in-session" },
+  startSession: vi.fn(),
+  sendTurn: vi.fn(),
+  interruptTurn: vi.fn(),
+  respondToRequest: vi.fn(),
+  respondToUserInput: vi.fn(),
+  stopSession: vi.fn(),
+  listSessions: vi.fn(),
+  hasSession: vi.fn(),
+  readThread: vi.fn(),
+  rollbackThread: vi.fn(),
+  stopAll: vi.fn(),
+  streamEvents: Stream.empty,
+};
+
 const layer = it.layer(
   Layer.mergeAll(
     Layer.provide(
@@ -166,6 +184,7 @@ const layer = it.layer(
         Layer.succeed(OpenCodeAdapter, fakeOpenCodeAdapter),
         Layer.succeed(OpenClawAdapter, fakeOpenClawAdapter),
         Layer.succeed(PiAdapter, fakePiAdapter),
+        Layer.succeed(DevinAdapter, fakeDevinAdapter),
       ),
     ),
     NodeServices.layer,
@@ -179,6 +198,7 @@ layer("ProviderAdapterRegistryLive", (it) => {
       const codex = yield* registry.getByProvider("codex");
       const claude = yield* registry.getByProvider("claudeAgent");
       const cursor = yield* registry.getByProvider("cursor");
+      const devin = yield* registry.getByProvider("devin");
       const gemini = yield* registry.getByProvider("gemini");
       const kilo = yield* registry.getByProvider("kilo");
       const opencode = yield* registry.getByProvider("opencode");
@@ -187,6 +207,7 @@ layer("ProviderAdapterRegistryLive", (it) => {
       assert.equal(codex, fakeCodexAdapter);
       assert.equal(claude, fakeClaudeAdapter);
       assert.equal(cursor, fakeCursorAdapter);
+      assert.equal(devin, fakeDevinAdapter);
       assert.equal(gemini, fakeGeminiAdapter);
       assert.equal(kilo, fakeKiloAdapter);
       assert.equal(opencode, fakeOpenCodeAdapter);
@@ -198,6 +219,7 @@ layer("ProviderAdapterRegistryLive", (it) => {
         "codex",
         "claudeAgent",
         "cursor",
+        "devin",
         "gemini",
         "kilo",
         "opencode",

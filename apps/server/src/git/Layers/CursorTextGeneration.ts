@@ -21,12 +21,14 @@ import {
   buildCommitMessagePrompt,
   buildDiffSummaryPrompt,
   buildPrContentPrompt,
+  buildThreadRecapPrompt,
   buildThreadTitlePrompt,
   extractJsonObject,
   sanitizeCommitSubject,
   sanitizeDiffSummary,
   sanitizePrTitle,
 } from "../textGenerationShared.ts";
+import { sanitizeThreadRecap } from "@jcode/shared/threadRecapSource";
 
 const CURSOR_TIMEOUT_MS = 180_000;
 
@@ -35,7 +37,8 @@ type CursorTextGenerationOperation =
   | "generatePrContent"
   | "generateDiffSummary"
   | "generateBranchName"
-  | "generateThreadTitle";
+  | "generateThreadTitle"
+  | "generateThreadRecap";
 
 function mapCursorAcpError(
   operation: CursorTextGenerationOperation,
@@ -351,12 +354,43 @@ const makeCursorTextGeneration = Effect.gen(function* () {
     };
   });
 
+  const generateThreadRecap: TextGenerationShape["generateThreadRecap"] = Effect.fn(
+    "CursorTextGeneration.generateThreadRecap",
+  )(function* (input) {
+    const modelSelection = resolveCursorModelSelection(input);
+    if (!modelSelection) {
+      return yield* new TextGenerationError({
+        operation: "generateThreadRecap",
+        detail: "Invalid Cursor model selection.",
+      });
+    }
+
+    const { prompt, outputSchemaJson } = buildThreadRecapPrompt({
+      ...(input.previousRecap ? { previousRecap: input.previousRecap } : {}),
+      newMaterial: input.newMaterial,
+      ...(input.currentState ? { currentState: input.currentState } : {}),
+    });
+    const generated = yield* runCursorJson({
+      operation: "generateThreadRecap",
+      cwd: input.cwd,
+      prompt,
+      outputSchemaJson,
+      modelSelection,
+      ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
+    });
+
+    return {
+      recap: sanitizeThreadRecap(generated.recap, input.previousRecap),
+    };
+  });
+
   return {
     generateCommitMessage,
     generatePrContent,
     generateDiffSummary,
     generateBranchName,
     generateThreadTitle,
+    generateThreadRecap,
   } satisfies TextGenerationShape;
 });
 
