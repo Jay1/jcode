@@ -1,4 +1,4 @@
-import { ProjectId, ThreadId } from "@jcode/contracts";
+import { MessageId, ProjectId, ThreadId } from "@jcode/contracts";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer, Option } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
@@ -139,7 +139,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
 
       const recap = {
         text: "Working on the recap persistence slice.",
-        coveredMessageId: "message-2",
+        coveredMessageId: MessageId.makeUnsafe("message-2"),
         sourceSignature: "sig-123",
         generatedAt: "2026-06-06T00:00:00.000Z",
       };
@@ -198,7 +198,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
       const goal = {
         objective: "Ship projected goal persistence",
         status: "active" as const,
-        createdByMessageId: "message-goal-created",
+        createdByMessageId: MessageId.makeUnsafe("message-goal-created"),
         createdAt: "2026-06-06T00:00:00.000Z",
         updatedAt: "2026-06-06T00:00:01.000Z",
         completedAt: null,
@@ -245,7 +245,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         FROM projection_threads
         WHERE thread_id = 'thread-goal-json'
       `;
-      assert.strictEqual(rows[0]?.goalJson, JSON.stringify(goal));
+      assert.deepStrictEqual(JSON.parse(rows[0]?.goalJson ?? "null"), goal);
 
       const persisted = yield* threads.getById({
         threadId: ThreadId.makeUnsafe("thread-goal-json"),
