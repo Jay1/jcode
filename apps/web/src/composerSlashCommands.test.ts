@@ -279,6 +279,7 @@ describe("composerSlashCommands", () => {
       "model",
       "plan",
       "default",
+      "goal",
       "review",
       "fork",
       "side",
