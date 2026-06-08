@@ -12,6 +12,7 @@ import { KiloAdapter, KiloAdapterShape } from "../Services/KiloAdapter.ts";
 import { OpenCodeAdapter, OpenCodeAdapterShape } from "../Services/OpenCodeAdapter.ts";
 import { OpenClawAdapter, OpenClawAdapterShape } from "../Services/OpenClawAdapter.ts";
 import { PiAdapter, PiAdapterShape } from "../Services/PiAdapter.ts";
+import { DevinAdapter, DevinAdapterShape } from "../Services/DevinAdapter.ts";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
 import { ProviderAdapterRegistryLive } from "./ProviderAdapterRegistry.ts";
 import { ProviderUnsupportedError } from "../Errors.ts";
@@ -153,6 +154,23 @@ const fakePiAdapter: PiAdapterShape = {
   streamEvents: Stream.empty,
 };
 
+const fakeDevinAdapter: DevinAdapterShape = {
+  provider: "devin",
+  capabilities: { sessionModelSwitch: "in-session" },
+  startSession: vi.fn(),
+  sendTurn: vi.fn(),
+  interruptTurn: vi.fn(),
+  respondToRequest: vi.fn(),
+  respondToUserInput: vi.fn(),
+  stopSession: vi.fn(),
+  listSessions: vi.fn(),
+  hasSession: vi.fn(),
+  readThread: vi.fn(),
+  rollbackThread: vi.fn(),
+  stopAll: vi.fn(),
+  streamEvents: Stream.empty,
+};
+
 const layer = it.layer(
   Layer.mergeAll(
     Layer.provide(
@@ -166,6 +184,7 @@ const layer = it.layer(
         Layer.succeed(OpenCodeAdapter, fakeOpenCodeAdapter),
         Layer.succeed(OpenClawAdapter, fakeOpenClawAdapter),
         Layer.succeed(PiAdapter, fakePiAdapter),
+        Layer.succeed(DevinAdapter, fakeDevinAdapter),
       ),
     ),
     NodeServices.layer,

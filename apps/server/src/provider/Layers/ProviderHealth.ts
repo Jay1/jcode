@@ -1975,6 +1975,15 @@ export const ProviderHealthLive = Layer.effect(
             updateLockKey: null,
           });
         }
+        if (provider === "devin") {
+          return makeProviderMaintenanceCapabilities({
+            provider,
+            packageName: null,
+            updateExecutable: null,
+            updateArgs: [],
+            updateLockKey: null,
+          });
+        }
         const definition = PACKAGE_MANAGED_PROVIDER_UPDATES[provider];
         if (!definition) {
           return makeProviderMaintenanceCapabilities({
