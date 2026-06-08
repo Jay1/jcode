@@ -653,7 +653,16 @@ describe("server-backed app settings", () => {
         providerOrder: ["claudeAgent", "codex", "gemini", "cursor", "kilo", "opencode"],
       }),
     ).toEqual({
-      providerOrder: ["claudeAgent", "codex", "gemini", "cursor", "kilo", "opencode", "openclaw", "pi"],
+      providerOrder: [
+        "claudeAgent",
+        "codex",
+        "gemini",
+        "cursor",
+        "kilo",
+        "opencode",
+        "openclaw",
+        "pi",
+      ],
     });
   });
 });

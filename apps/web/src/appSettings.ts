@@ -323,9 +323,7 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
 
 export function serverSettingsToAppSettings(settings: ServerSettings): Partial<AppSettings> {
   const allProviders = Object.keys(settings.providers) as Array<ProviderKind>;
-  const hiddenProviders = allProviders.filter(
-    (p) => settings.providers[p]?.enabled === false,
-  );
+  const hiddenProviders = allProviders.filter((p) => settings.providers[p]?.enabled === false);
 
   return {
     addProjectBaseDirectory: settings.addProjectBaseDirectory,
@@ -547,7 +545,6 @@ export function appSettingsPatchToServerSettingsPatch(
       }
     }
   }
-
 
   if (Object.keys(providers).length > 0) {
     serverPatch.providers = providers;

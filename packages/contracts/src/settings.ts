@@ -142,7 +142,14 @@ export const ServerSettings = Schema.Struct({
   ),
   defaultProvider: ProviderKind.pipe(Schema.withDecodingDefault(() => "codex" as const)),
   providerOrder: Schema.Array(ProviderKind).pipe(
-    Schema.withDecodingDefault(() => ["codex", "claudeAgent", "cursor", "gemini", "kilo", "opencode"]),
+    Schema.withDecodingDefault(() => [
+      "codex",
+      "claudeAgent",
+      "cursor",
+      "gemini",
+      "kilo",
+      "opencode",
+    ]),
   ),
   themeState: Schema.String.pipe(Schema.withDecodingDefault(() => "")),
 });
