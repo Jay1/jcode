@@ -3244,4 +3244,152 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
     );
     expect(result).not.toContainEqual(expect.objectContaining({ type: "runtime.error" }));
   });
+
+  it("waits for resumption after tool calls even when reasoning text preceded the tool calls", async () => {
+    const eventQueue = createSubscribedEventQueue();
+    const runtime = createMockOpenCodeRuntime();
+    const client = runtime.runtime.createOpenCodeSdkClient({
+      baseUrl: "http://127.0.0.1:4099",
+      directory: process.cwd(),
+    }) as unknown as {
+      event: {
+        subscribe: () => Promise<{ stream: AsyncIterable<unknown> }>;
+      };
+    };
+    client.event.subscribe = async () => ({ stream: eventQueue.stream });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 9)).pipe(
+          Effect.forkChild,
+        );
+
+        yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-text-before-tool-resume"),
+          runtimeMode: "full-access",
+        });
+
+        yield* adapter.sendTurn({
+          threadId: asThreadId("thread-text-before-tool-resume"),
+          input: "run deep analysis",
+          attachments: [],
+          modelSelection: {
+            provider: "opencode",
+            model: "openai/gpt-5.4",
+          },
+        });
+
+        eventQueue.push({
+          type: "session.next.text.delta",
+          properties: {
+            sessionID: "opencode-session-1",
+            timestamp: Date.now(),
+            delta: "Let me analyze this...",
+          },
+        });
+
+        eventQueue.push({
+          type: "session.next.step.ended",
+          properties: {
+            sessionID: "opencode-session-1",
+            timestamp: Date.now(),
+            finish: "tool-calls",
+            cost: 0.001,
+            tokens: {
+              input: 100,
+              output: 50,
+              reasoning: 20,
+              cache: { read: 0, write: 0 },
+            },
+          },
+        });
+
+        eventQueue.push({
+          type: "session.idle",
+          properties: {
+            sessionID: "opencode-session-1",
+          },
+        });
+
+        eventQueue.push({
+          type: "session.next.step.started",
+          properties: {
+            sessionID: "opencode-session-1",
+            timestamp: Date.now(),
+            agent: "main",
+            model: { id: "openai/gpt-5.4", providerID: "openai" },
+          },
+        });
+
+        eventQueue.push({
+          type: "session.next.text.delta",
+          properties: {
+            sessionID: "opencode-session-1",
+            timestamp: Date.now(),
+            delta: "Here are the results.",
+          },
+        });
+
+        eventQueue.push({
+          type: "session.next.step.ended",
+          properties: {
+            sessionID: "opencode-session-1",
+            timestamp: Date.now(),
+            finish: "stop",
+            cost: 0.002,
+            tokens: {
+              input: 200,
+              output: 100,
+              reasoning: 0,
+              cache: { read: 0, write: 0 },
+            },
+          },
+        });
+
+        eventQueue.push({
+          type: "session.idle",
+          properties: {
+            sessionID: "opencode-session-1",
+          },
+        });
+
+        const events = Array.from(yield* Fiber.join(eventsFiber));
+        eventQueue.close();
+        return events;
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    const eventTypes = result.map((event) => event.type);
+    expect(eventTypes).toEqual([
+      "session.started",
+      "thread.started",
+      "turn.started",
+      "content.delta",
+      "thread.token-usage.updated",
+      "runtime.warning",
+      "content.delta",
+      "thread.token-usage.updated",
+      "turn.completed",
+    ]);
+
+    expect(result).not.toContainEqual(
+      expect.objectContaining({
+        type: "runtime.error",
+        payload: expect.objectContaining({
+          message: expect.stringContaining("became idle"),
+        }),
+      }),
+    );
+  });
 });
