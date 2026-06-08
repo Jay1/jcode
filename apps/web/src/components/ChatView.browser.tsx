@@ -1479,6 +1479,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
     await setViewport(DEFAULT_VIEWPORT);
     attachmentResponseDelayMs = 0;
     localStorage.clear();
+    // Prevent v2 settings migration from running during browser tests — it adds
+    // async overhead (server.updateSettings) that makes history-navigation tests
+    // flaky under resource contention.
+    localStorage.setItem("jcode:server-settings-migrated:v2", "1");
     document.body.innerHTML = "";
     wsRequests.length = 0;
     useComposerDraftStore.setState({
