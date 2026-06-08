@@ -108,7 +108,9 @@ it.effect(
       const client = new FakeOpenClawGatewayClient();
       client.requestImpl.mockImplementation((request) =>
         request.method === "chat.history"
-          ? Effect.succeed({ turns: [{ id: "existing-turn", items: [] }] })
+          ? Effect.succeed({
+              messages: [{ id: "existing-message", role: "assistant", text: "Hi" }],
+            })
           : Effect.succeed({}),
       );
 
@@ -270,6 +272,7 @@ it.effect("sends text turns and emits assistant/completion events from gateway e
       params: {
         sessionKey: "jcode:thread-openclaw",
         message: "Hello OpenClaw",
+        deliver: false,
         idempotencyKey: `jcode:thread-openclaw:${result.turnId}`,
       },
     });
@@ -356,9 +359,11 @@ it.effect("aborts active turns and stopped sessions with chat.abort", () =>
     assert.equal(sendRequest.method, "chat.send");
     assert.ok("sessionKey" in sendRequest.params);
     assert.ok("message" in sendRequest.params);
+    assert.ok("deliver" in sendRequest.params);
     assert.ok("idempotencyKey" in sendRequest.params);
     assert.equal(sendRequest.params.sessionKey, "jcode:thread-openclaw");
     assert.equal(sendRequest.params.message, "abort me");
+    assert.equal(sendRequest.params.deliver, false);
     assert.match(String(sendRequest.params.idempotencyKey), /^jcode:thread-openclaw:/);
     assert.deepEqual(requests.slice(1), [
       { method: "chat.abort", params: { sessionKey: "jcode:thread-openclaw", runId: "run-1" } },

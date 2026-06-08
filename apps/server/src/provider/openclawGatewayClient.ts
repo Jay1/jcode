@@ -1,9 +1,11 @@
+import { randomUUID } from "node:crypto";
+
 import WebSocket, { type RawData } from "ws";
 
 import { Effect } from "effect";
 
 import {
-  buildOpenClawConnectFrame,
+  buildOpenClawConnectParams,
   type OpenClawAuthFrame,
   type OpenClawChallenge,
   type OpenClawChallengeResponse,
@@ -103,8 +105,20 @@ function frameType(frame: unknown): string | undefined {
   return isRecord(frame) ? readString(frame, "type") : undefined;
 }
 
+function unwrapGatewayEventFrame(frame: unknown): unknown {
+  if (!isRecord(frame) || frame.type !== "event") {
+    return frame;
+  }
+  const event = readString(frame, "event");
+  if (event === undefined) {
+    return frame;
+  }
+  const payload = isRecord(frame.payload) ? frame.payload : {};
+  return { type: event, ...payload };
+}
+
 function isGatewayEvent(frame: unknown): frame is OpenClawGatewayEvent {
-  const type = frameType(frame);
+  const type = frameType(unwrapGatewayEventFrame(frame));
   return (
     type === "assistant.delta" ||
     type === "assistant.completed" ||
@@ -114,14 +128,36 @@ function isGatewayEvent(frame: unknown): frame is OpenClawGatewayEvent {
 }
 
 function isChallengeFrame(frame: unknown): frame is OpenClawChallenge {
+  if (isRecord(frame) && frame.type === "event" && frame.event === "connect.challenge") {
+    const payload = frame.payload;
+    return (
+      isRecord(payload) &&
+      typeof payload.nonce === "string" &&
+      payload.nonce.trim().length > 0 &&
+      (typeof payload.timestamp === "string" || typeof payload.ts === "number")
+    );
+  }
   return (
     isRecord(frame) &&
     frame.type === "connect.challenge" &&
     typeof frame.nonce === "string" &&
     frame.nonce.trim().length > 0 &&
-    typeof frame.timestamp === "string" &&
-    frame.timestamp.trim().length > 0
+    (typeof frame.timestamp === "string" || typeof frame.ts === "number")
   );
+}
+
+function challengeFromFrame(frame: unknown): OpenClawChallenge | undefined {
+  if (!isChallengeFrame(frame) || !isRecord(frame)) return undefined;
+  const payload = isRecord(frame.payload) ? frame.payload : frame;
+  const nonce = readString(payload, "nonce");
+  if (nonce === undefined) return undefined;
+  const timestamp = readString(payload, "timestamp");
+  const ts = typeof payload.ts === "number" ? payload.ts : undefined;
+  return {
+    nonce,
+    ...(timestamp !== undefined ? { timestamp } : {}),
+    ...(ts !== undefined ? { ts } : {}),
+  };
 }
 
 function rawDataToString(data: RawData): string {
@@ -136,7 +172,10 @@ function parseFrame(data: RawData): unknown {
 }
 
 function extractResult(frame: unknown): unknown {
-  return isRecord(frame) && "result" in frame ? frame.result : frame;
+  if (!isRecord(frame)) return frame;
+  if ("payload" in frame) return frame.payload;
+  if ("result" in frame) return frame.result;
+  return frame;
 }
 
 function stringArray(value: unknown): ReadonlyArray<string> | undefined {
@@ -160,6 +199,7 @@ function extractMethods(frame: unknown): ReadonlyArray<string> | undefined {
 function extractProtocolVersion(frame: unknown): number | undefined {
   const result = extractResult(frame);
   if (!isRecord(result)) return undefined;
+  if (typeof result.protocol === "number") return result.protocol;
   if (typeof result.protocolVersion === "number") return result.protocolVersion;
   if (isRecord(result.protocol) && typeof result.protocol.version === "number") {
     return result.protocol.version;
@@ -168,7 +208,12 @@ function extractProtocolVersion(frame: unknown): number | undefined {
 }
 
 function errorMessageFromFrame(frame: unknown): string | undefined {
-  const result = extractResult(frame);
+  const result =
+    isRecord(frame) && isRecord(frame.error)
+      ? frame.error
+      : isRecord(frame) && isRecord(frame.payload) && isRecord(frame.payload.error)
+        ? frame.payload.error
+        : extractResult(frame);
   if (!isRecord(result)) return undefined;
   const message = readString(result, "message");
   if (message) return scrubOpenClawGatewayDiagnostic(message);
@@ -179,6 +224,19 @@ function errorMessageFromFrame(frame: unknown): string | undefined {
     return nestedMessage ? scrubOpenClawGatewayDiagnostic(nestedMessage) : undefined;
   }
   return undefined;
+}
+
+function isResponseFrame(
+  frame: unknown,
+  requestId: string,
+): frame is {
+  readonly type: "res";
+  readonly id: string;
+  readonly ok?: boolean;
+  readonly payload?: unknown;
+  readonly error?: unknown;
+} {
+  return isRecord(frame) && frame.type === "res" && frame.id === requestId;
 }
 
 export function scrubOpenClawGatewayDiagnostic(message: string): string {
@@ -297,27 +355,34 @@ async function completeHandshake(
   socket: WebSocket,
   input: OpenClawGatewayConnectInput,
 ): Promise<OpenClawGatewayConnectResult> {
-  await sendFrame(
-    socket,
-    buildOpenClawConnectFrame({
+  const firstFrame = await receiveFrame(socket, CONNECT_TIMEOUT_MS, input.redactedGatewayUrl);
+  const challenge = challengeFromFrame(firstFrame);
+  if (challenge === undefined) {
+    throw new Error("OpenClaw gateway did not provide a connect.challenge event.");
+  }
+  if (input.respondToChallenge) {
+    input.respondToChallenge(challenge);
+  }
+  const requestId = randomUUID();
+  await sendFrame(socket, {
+    type: "req",
+    id: requestId,
+    method: "connect",
+    params: buildOpenClawConnectParams({
       ...(input.auth !== undefined ? { auth: input.auth } : {}),
       ...(input.device !== undefined ? { device: input.device } : {}),
     }),
+  });
+  const frame = await receiveResponseFrame(
+    socket,
+    requestId,
+    CONNECT_TIMEOUT_MS,
+    input.redactedGatewayUrl,
   );
-  let frame = await receiveFrame(socket, CONNECT_TIMEOUT_MS, input.redactedGatewayUrl);
-  if (isChallengeFrame(frame)) {
-    if (!input.respondToChallenge) {
-      throw new Error(
-        "OpenClaw gateway requested device challenge but no challenge responder is configured.",
-      );
-    }
-    await sendFrame(socket, input.respondToChallenge(frame));
-    frame = await receiveFrame(socket, CONNECT_TIMEOUT_MS, input.redactedGatewayUrl);
-  }
   if (isOpenClawAuthFailureFrame(frame)) {
     throw new Error(errorMessageFromFrame(frame) ?? "OpenClaw gateway rejected authentication.");
   }
-  if (frameType(frame) === "error") {
+  if (frameType(frame) === "error" || (isRecord(frame) && frame.ok === false)) {
     throw new Error(errorMessageFromFrame(frame) ?? "OpenClaw gateway connect failed.");
   }
   const methods = extractMethods(frame);
@@ -333,19 +398,63 @@ function normalizeRequestResult(frame: unknown): OpenClawGatewayRequestResult {
   return isRecord(result) ? result : {};
 }
 
+async function receiveResponseFrame(
+  socket: WebSocket,
+  requestId: string,
+  timeoutMs: number,
+  redactedGatewayUrl: string,
+): Promise<unknown> {
+  const deadline = Date.now() + timeoutMs;
+  while (true) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      throw new Error(
+        `Timed out waiting for OpenClaw gateway response from ${redactedGatewayUrl}.`,
+      );
+    }
+    const frame = await receiveFrame(socket, remaining, redactedGatewayUrl);
+    if (isResponseFrame(frame, requestId)) {
+      return frame;
+    }
+  }
+}
+
 async function requestOverSocket(
   socket: WebSocket,
   redactedGatewayUrl: string,
   request: OpenClawRequest<string, object>,
 ): Promise<OpenClawGatewayRequestResult> {
-  await sendFrame(socket, request);
+  const requestId = randomUUID();
+  await sendFrame(socket, {
+    type: "req",
+    id: requestId,
+    method: request.method,
+    params: request.params,
+  });
   if (request.method !== "chat.send") {
-    return normalizeRequestResult(
-      await receiveFrame(socket, REQUEST_TIMEOUT_MS, redactedGatewayUrl),
+    const response = await receiveResponseFrame(
+      socket,
+      requestId,
+      REQUEST_TIMEOUT_MS,
+      redactedGatewayUrl,
     );
+    if (isRecord(response) && response.ok === false) {
+      throw new Error(
+        errorMessageFromFrame(response) ?? `OpenClaw gateway ${request.method} failed.`,
+      );
+    }
+    return normalizeRequestResult(response);
   }
 
-  const firstFrame = await receiveFrame(socket, REQUEST_TIMEOUT_MS, redactedGatewayUrl);
+  const firstFrame = await receiveResponseFrame(
+    socket,
+    requestId,
+    REQUEST_TIMEOUT_MS,
+    redactedGatewayUrl,
+  );
+  if (isRecord(firstFrame) && firstFrame.ok === false) {
+    throw new Error(errorMessageFromFrame(firstFrame) ?? "OpenClaw gateway chat.send failed.");
+  }
   const firstResult = normalizeRequestResult(firstFrame);
   if ("events" in firstResult) {
     return firstResult;
@@ -357,7 +466,9 @@ async function requestOverSocket(
     return firstResult;
   }
 
-  const events: OpenClawGatewayEvent[] = [firstFrame];
+  const events: OpenClawGatewayEvent[] = [
+    unwrapGatewayEventFrame(firstFrame) as OpenClawGatewayEvent,
+  ];
   while (true) {
     const latest = events[events.length - 1];
     if (latest?.type === "run.completed" || latest?.type === "error") break;

@@ -4,13 +4,15 @@ import {
   OPENCLAW_CLIENT_DISPLAY_NAME,
   OPENCLAW_CLIENT_ID,
   OPENCLAW_CLIENT_MODE,
+  OPENCLAW_CLIENT_PLATFORM,
+  OPENCLAW_CLIENT_VERSION,
   OPENCLAW_MAX_PROTOCOL_VERSION,
   OPENCLAW_MIN_PROTOCOL_VERSION,
   OPENCLAW_REQUIRED_METHODS,
   OPENCLAW_SCOPES,
   buildOpenClawAbortRequest,
   buildOpenClawChallengeResponse,
-  buildOpenClawConnectFrame,
+  buildOpenClawConnectParams,
   isOpenClawAuthFailureFrame,
   buildOpenClawHistoryRequest,
   buildOpenClawSendRequest,
@@ -20,19 +22,22 @@ import {
 } from "./openclawGatewayProtocol";
 
 describe("openclawGatewayProtocol", () => {
-  it("builds the canonical backend operator connect frame", () => {
-    expect(buildOpenClawConnectFrame({ auth: { type: "token", token: "secret" } })).toEqual({
-      type: "connect",
+  it("builds the canonical backend operator connect params", () => {
+    expect(buildOpenClawConnectParams({ auth: { type: "token", token: "secret" } })).toEqual({
       minProtocol: OPENCLAW_MIN_PROTOCOL_VERSION,
       maxProtocol: OPENCLAW_MAX_PROTOCOL_VERSION,
       client: {
         id: OPENCLAW_CLIENT_ID,
         mode: OPENCLAW_CLIENT_MODE,
         displayName: OPENCLAW_CLIENT_DISPLAY_NAME,
+        version: OPENCLAW_CLIENT_VERSION,
+        platform: OPENCLAW_CLIENT_PLATFORM,
       },
       role: "operator",
       scopes: OPENCLAW_SCOPES,
-      auth: { type: "token", token: "secret" },
+      caps: [],
+      commands: [],
+      auth: { token: "secret" },
     });
   });
 
@@ -80,6 +85,18 @@ describe("openclawGatewayProtocol", () => {
         redactedGatewayUrl: "wss://gateway.example.test/path",
       }),
     ).resolves.toEqual({ nonce: "nonce-1", timestamp: "2026-06-05T00:00:00.000Z" });
+    await expect(
+      waitForOpenClawChallenge({
+        receive: () =>
+          Promise.resolve({
+            type: "event",
+            event: "connect.challenge",
+            payload: { nonce: "nonce-2", ts: 1_780_000_000_000 },
+          }),
+        timeoutMs: 50,
+        redactedGatewayUrl: "wss://gateway.example.test/path",
+      }),
+    ).resolves.toEqual({ nonce: "nonce-2", ts: 1_780_000_000_000 });
 
     await expect(
       waitForOpenClawChallenge({
@@ -99,6 +116,14 @@ describe("openclawGatewayProtocol", () => {
 
   it("identifies auth failure frames that require paired-token clearing", () => {
     expect(isOpenClawAuthFailureFrame({ type: "connect.error", code: "unauthorized" })).toBe(true);
+    expect(
+      isOpenClawAuthFailureFrame({
+        type: "res",
+        id: "req-1",
+        ok: false,
+        error: { code: "auth_failed" },
+      }),
+    ).toBe(true);
     expect(isOpenClawAuthFailureFrame({ type: "error", message: "authentication failed" })).toBe(
       true,
     );
@@ -139,6 +164,7 @@ describe("openclawGatewayProtocol", () => {
       params: {
         sessionKey: "jcode:thread-1",
         message: "hello",
+        deliver: false,
         idempotencyKey: "jcode:thread-1:turn-1",
       },
     });

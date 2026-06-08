@@ -166,7 +166,29 @@ function sendResultEvents(
 function historyTurns(
   result: OpenClawGatewayRequestResult,
 ): ReadonlyArray<{ readonly id: TurnId; readonly items: ReadonlyArray<unknown> }> {
-  if (typeof result !== "object" || result === null || !("turns" in result)) {
+  if (typeof result !== "object" || result === null) {
+    return [];
+  }
+  if ("messages" in result) {
+    const messages = (result as { readonly messages?: ReadonlyArray<unknown> }).messages;
+    if (!Array.isArray(messages)) {
+      return [];
+    }
+    return messages.flatMap((message, index) => {
+      if (typeof message !== "object" || message === null) {
+        return [];
+      }
+      const record = message as Record<string, unknown>;
+      const id =
+        typeof record.id === "string" && record.id.trim().length > 0
+          ? record.id
+          : typeof record.messageId === "string" && record.messageId.trim().length > 0
+            ? record.messageId
+            : `message-${index}`;
+      return [{ id: asTurnId(id), items: [message] }];
+    });
+  }
+  if (!("turns" in result)) {
     return [];
   }
   const turns = (result as { readonly turns?: ReadonlyArray<unknown> }).turns;
