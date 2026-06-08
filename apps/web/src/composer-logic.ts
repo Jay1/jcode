@@ -17,7 +17,7 @@ export interface ComposerTrigger {
 
 export interface ComposerHistoryMessageLike {
   role: string;
-  source?: "native" | "handoff-import" | "fork-import";
+  source?: "native" | "handoff-import" | "fork-import" | "goal-continuation";
   text: string;
 }
 
