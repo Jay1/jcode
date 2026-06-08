@@ -475,8 +475,8 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
       ]);
 
       const detail = yield* snapshotQuery.getThreadDetailById(asThreadId("thread-1"));
-      assert.deepEqual(Option.getOrNull(detail)?.thread.recap, expectedRecap);
-      assert.deepEqual(Option.getOrNull(detail)?.thread.goal, expectedGoal);
+      assert.deepEqual(Option.getOrNull(detail)?.recap, expectedRecap);
+      assert.deepEqual(Option.getOrNull(detail)?.goal, expectedGoal);
     }),
   );
 
@@ -1436,6 +1436,8 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           subagentRole: null,
           forkSourceThreadId: null,
           sidechatSourceThreadId: null,
+          recap: null,
+          goal: null,
           lastKnownPr: null,
           latestTurn: {
             turnId: asTurnId("turn-shell"),

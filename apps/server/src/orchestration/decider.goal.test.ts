@@ -367,6 +367,7 @@ describe("decider goal lifecycle", () => {
         },
       }),
     );
-    expect(pausedComplete.type).toBe("thread.goal-completed");
+    const pausedCompleteEvent = Array.isArray(pausedComplete) ? pausedComplete[0] : pausedComplete;
+    expect(pausedCompleteEvent?.type).toBe("thread.goal-completed");
   });
 });
