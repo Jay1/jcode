@@ -13,6 +13,7 @@ import type {
   OrchestrationSessionStatus,
   OrchestrationThreadActivity,
   ThreadHandoff,
+  ThreadRecap as ThreadRecapType,
   ProjectScript as ContractProjectScript,
   ProjectIconMetadata,
   ThreadId,
@@ -194,6 +195,7 @@ export interface Thread extends ThreadWorkspaceState {
   turnDiffSummaries: TurnDiffSummary[];
   activities: OrchestrationThreadActivity[];
   goal?: OrchestrationGoal | null;
+  recap?: ThreadRecapType | null;
 }
 
 export interface ThreadShell extends ThreadWorkspaceState {

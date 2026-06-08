@@ -475,6 +475,8 @@ function getProviderStartOptionsCustomBinaryPath(
       return normalizeCustomBinaryPath(providerOptions?.pi?.binaryPath);
     case "openclaw":
       return null;
+    case "devin":
+      return null;
   }
 }
 
@@ -1457,6 +1459,7 @@ export default function ChatView({
       codex: resolveHint("codex"),
       claudeAgent: resolveHint("claudeAgent"),
       cursor: resolveHint("cursor"),
+      devin: resolveHint("devin"),
       gemini: resolveHint("gemini"),
       kilo: resolveHint("kilo"),
       opencode: resolveHint("opencode"),
@@ -1598,6 +1601,11 @@ export default function ChatView({
       ),
       openclaw: getAppModelOptions("openclaw", [], composerModelHintByProvider.openclaw),
       pi: getAppModelOptions("pi", customModelsByProvider.pi, composerModelHintByProvider.pi),
+      devin: getAppModelOptions(
+        "devin",
+        customModelsByProvider.devin,
+        composerModelHintByProvider.devin,
+      ),
     };
     const result: Record<
       ProviderKind,
@@ -1616,12 +1624,14 @@ export default function ChatView({
       opencode: openCodeDynamicModelsQuery.data,
       openclaw: undefined,
       pi: piDynamicModelsQuery.data,
+      devin: undefined,
     };
 
     for (const provider of [
       "claudeAgent",
       "codex",
       "cursor",
+      "devin",
       "gemini",
       "kilo",
       "opencode",
@@ -1672,6 +1682,7 @@ export default function ChatView({
       claudeAgent: claudeDynamicModelsQuery.data?.models ?? [],
       codex: codexDynamicModelsQuery.data?.models ?? [],
       cursor: cursorRuntimeModels,
+      devin: [],
       gemini: geminiModelsQuery.data?.models ?? [],
       kilo: kiloDynamicModelsQuery.data?.models ?? [],
       opencode: openCodeDynamicModelsQuery.data?.models ?? [],
@@ -1692,6 +1703,7 @@ export default function ChatView({
     claudeAgent: claudeDynamicModelsQuery,
     codex: codexDynamicModelsQuery,
     cursor: cursorDynamicModelsQuery,
+    devin: undefined,
     gemini: geminiModelsQuery,
     kilo: kiloDynamicModelsQuery,
     opencode: openCodeDynamicModelsQuery,
@@ -8246,7 +8258,7 @@ export default function ChatView({
           handoffActionTargetProviders={handoffTargetProviders}
           handoffBadgeSourceProvider={handoffBadgeSourceProvider}
           handoffBadgeTargetProvider={handoffBadgeTargetProvider}
-          goal={activeThread.goal}
+          goal={activeThread.goal ?? undefined}
           browserOpen={resolvedBrowserOpen}
           gitCwd={threadWorkspaceCwd}
           showGitActions={showGitActions}

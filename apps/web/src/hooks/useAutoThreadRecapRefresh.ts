@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 
-import type { ThreadRecap as ThreadRecapType } from "@jcode/contracts";
+import type { ThreadRecap as ThreadRecapType, ThreadId } from "@jcode/contracts";
 import { deriveThreadRecapSource } from "@jcode/shared/threadRecapSource";
 
 import type { ChatMessage } from "../types";
@@ -8,7 +8,7 @@ import type { ChatMessage } from "../types";
 const AUTO_THREAD_RECAP_REFRESH_DELAY_MS = 1_200;
 
 interface ThreadForAutoRecapRefresh {
-  id: string;
+  id: ThreadId;
   title: string;
   messages: ChatMessage[];
   activities: ReadonlyArray<{
@@ -16,7 +16,7 @@ interface ThreadForAutoRecapRefresh {
     summary: string;
     createdAt: string;
   }>;
-  recap: ThreadRecapType | null | undefined;
+  recap?: ThreadRecapType | null | undefined;
   session: { status?: string | null } | null | undefined;
 }
 

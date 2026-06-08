@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
-import type { ThreadRecap as ThreadRecapType } from "@jcode/contracts";
+import type { ThreadRecap as ThreadRecapType, ThreadId } from "@jcode/contracts";
 import type { NativeApi } from "@jcode/contracts";
 
 import { deriveThreadRecapSource } from "@jcode/shared/threadRecapSource";
@@ -8,7 +8,7 @@ import { deriveThreadRecapSource } from "@jcode/shared/threadRecapSource";
 import type { ChatMessage } from "../types";
 
 interface ThreadForRecap {
-  id: string;
+  id: ThreadId;
   title: string;
   messages: ChatMessage[];
   activities: ReadonlyArray<{
@@ -16,7 +16,7 @@ interface ThreadForRecap {
     summary: string;
     createdAt: string;
   }>;
-  recap: ThreadRecapType | null | undefined;
+  recap?: ThreadRecapType | null | undefined;
 }
 
 export interface UseThreadRecapResult {
@@ -69,7 +69,7 @@ export function useThreadRecap(
       }
 
       const result = await nativeApi.server.generateThreadRecap({
-        threadId: thread.id,
+        threadId: thread.id as import("@jcode/contracts").ThreadId,
         previousRecap: thread.recap?.text ?? undefined,
         newMaterial: source.newMaterial,
         currentState: source.currentState || undefined,

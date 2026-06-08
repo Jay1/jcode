@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import type { ThreadRecap as ThreadRecapType } from "@jcode/contracts";
+import type { ThreadRecap as ThreadRecapType, ThreadId } from "@jcode/contracts";
 
 import { useAutoThreadRecapRefresh } from "../hooks/useAutoThreadRecapRefresh";
 import { useThreadRecap } from "../hooks/useThreadRecap";
@@ -10,7 +10,7 @@ import { cn } from "~/lib/utils";
 import { Button } from "./ui/button";
 
 interface ThreadForRecapPanel {
-  id: string;
+  id: ThreadId;
   title: string;
   messages: ChatMessage[];
   activities: ReadonlyArray<{
@@ -18,7 +18,7 @@ interface ThreadForRecapPanel {
     summary: string;
     createdAt: string;
   }>;
-  recap: ThreadRecapType | null | undefined;
+  recap?: ThreadRecapType | null;
   session: { status?: string | null } | null | undefined;
 }
 

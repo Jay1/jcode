@@ -73,7 +73,7 @@ interface ChatHeaderProps {
   handoffActionTargetProviders: ReadonlyArray<ProviderKind>;
   handoffBadgeSourceProvider: ProviderKind | null;
   handoffBadgeTargetProvider: ProviderKind | null;
-  goal?: OrchestrationGoal | null;
+  goal?: OrchestrationGoal | null | undefined;
   browserOpen: boolean;
   gitCwd: string | null;
   showGitActions?: boolean;

@@ -315,6 +315,7 @@ describe("wsNativeApi", () => {
             paired: false,
           },
           pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
+          devin: { enabled: true, binaryPath: "devin", customModels: [] },
         },
       },
     } as const;
