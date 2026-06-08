@@ -90,6 +90,8 @@ import {
   ServerConfig,
   ServerConfigStreamEvent,
   ServerDiagnosticsResult,
+  ServerGenerateThreadRecapInput,
+  ServerGenerateThreadRecapResult,
   ServerGetEnvironmentResult,
   ServerGetProviderUsageSnapshotInput,
   ServerGetProviderUsageSnapshotResult,
@@ -455,6 +457,12 @@ export const WsServerUpdateOpenClawSecretsRpc = Rpc.make(WS_METHODS.serverUpdate
   error: WsRpcError,
 });
 
+export const WsServerGenerateThreadRecapRpc = Rpc.make(WS_METHODS.serverGenerateThreadRecap, {
+  payload: ServerGenerateThreadRecapInput,
+  success: ServerGenerateThreadRecapResult,
+  error: WsRpcError,
+});
+
 export const WsServerRefreshProvidersRpc = Rpc.make(WS_METHODS.serverRefreshProviders, {
   payload: Schema.Struct({}),
   success: ServerRefreshProvidersResult,
@@ -688,6 +696,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerGetProviderUsageSnapshotRpc,
   WsServerGetDiagnosticsRpc,
   WsServerTranscribeVoiceRpc,
+  WsServerGenerateThreadRecapRpc,
   WsServerUpsertKeybindingRpc,
   WsServerResetKeybindingRpc,
   WsServerResetAllKeybindingsRpc,

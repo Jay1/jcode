@@ -1,10 +1,11 @@
-import { Effect, FileSystem, Layer } from "effect";
+import { Effect, FileSystem, Layer, Path } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { ServerConfig } from "../config";
-import { ServerSecretStore } from "../auth/Services/ServerSecretStore";
-import { ServerSettingsService } from "../serverSettings";
+import { SecretStoreError } from "../auth/Services/ServerSecretStore";
+import { ServerSecretStoreLive } from "../auth/Layers/ServerSecretStore";
+import { ServerSettingsLive } from "../serverSettings";
 import { AnalyticsService } from "../telemetry/Services/AnalyticsService";
 import { ProviderUnsupportedError } from "./Errors";
 import { makeClaudeAdapterLive } from "./Layers/ClaudeAdapter";
@@ -29,13 +30,12 @@ import { ProviderSessionRuntimeRepositoryLive } from "../persistence/Layers/Prov
 
 export function makeServerProviderLayer(): Layer.Layer<
   ProviderService | ProviderDiscoveryService | ProviderAdapterRegistry | ProviderSessionDirectory,
-  ProviderUnsupportedError,
+  ProviderUnsupportedError | SecretStoreError,
   | SqlClient.SqlClient
   | ServerConfig
   | FileSystem.FileSystem
+  | Path.Path
   | AnalyticsService
-  | ServerSecretStore
-  | ServerSettingsService
   | ChildProcessSpawner.ChildProcessSpawner
 > {
   return Effect.gen(function* () {
@@ -62,7 +62,12 @@ export function makeServerProviderLayer(): Layer.Layer<
     const openCodeAdapterLayer = makeOpenCodeAdapterLive(
       nativeEventLogger ? { nativeEventLogger } : undefined,
     );
-    const openClawAdapterLayer = makeOpenClawAdapterLive();
+    const openClawSettingsLayer = ServerSettingsLive.pipe(
+      Layer.provideMerge(ServerSecretStoreLive),
+    );
+    const openClawAdapterLayer = makeOpenClawAdapterLive().pipe(
+      Layer.provideMerge(openClawSettingsLayer),
+    );
     const kiloAdapterLayer = makeKiloAdapterLive(
       nativeEventLogger ? { nativeEventLogger } : undefined,
     );
