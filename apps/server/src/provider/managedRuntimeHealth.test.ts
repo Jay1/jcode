@@ -1,6 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it, vi } from "vitest";
-import { Effect } from "effect";
+import { Effect, Scope } from "effect";
 
 import type { ManagedSidecarSnapshot } from "@jcode/contracts";
 
@@ -184,11 +184,13 @@ describe("repairManagedSidecar", () => {
     );
 
     const lifecycle = makeMockLifecycle();
+    const scope = await Effect.runPromise(Scope.make());
 
     const result = await Effect.runPromise(
-      repairManagedSidecar({ sidecarSnapshot: IDLE_SNAPSHOT, lifecycle }).pipe(
-        Effect.provide(NodeServices.layer),
-      ),
+      Scope.provide(
+        repairManagedSidecar({ sidecarSnapshot: IDLE_SNAPSHOT, lifecycle }),
+        scope,
+      ).pipe(Effect.provide(NodeServices.layer)),
     );
 
     expect(result.success).toBe(true);
@@ -202,13 +204,17 @@ describe("repairManagedSidecar", () => {
     );
 
     const lifecycle = makeMockLifecycle();
+    const scope = await Effect.runPromise(Scope.make());
 
     await Effect.runPromise(
-      repairManagedSidecar({
-        sidecarSnapshot: IDLE_SNAPSHOT,
-        lifecycle,
-        forceRedownload: true,
-      }).pipe(Effect.provide(NodeServices.layer)),
+      Scope.provide(
+        repairManagedSidecar({
+          sidecarSnapshot: IDLE_SNAPSHOT,
+          lifecycle,
+          forceRedownload: true,
+        }),
+        scope,
+      ).pipe(Effect.provide(NodeServices.layer)),
     );
 
     expect(lifecycle.startManagedRuntime).toHaveBeenCalledWith({ forceDownload: true });
@@ -225,11 +231,13 @@ describe("repairManagedSidecar", () => {
     });
 
     const lifecycle = makeMockLifecycle({ startError: startError });
+    const scope = await Effect.runPromise(Scope.make());
 
     const result = await Effect.runPromise(
-      repairManagedSidecar({ sidecarSnapshot: IDLE_SNAPSHOT, lifecycle }).pipe(
-        Effect.provide(NodeServices.layer),
-      ),
+      Scope.provide(
+        repairManagedSidecar({ sidecarSnapshot: IDLE_SNAPSHOT, lifecycle }),
+        scope,
+      ).pipe(Effect.provide(NodeServices.layer)),
     );
 
     expect(result.success).toBe(false);

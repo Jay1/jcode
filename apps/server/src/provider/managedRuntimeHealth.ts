@@ -7,7 +7,9 @@ import type {
   ManagedSidecarRepairResult,
   ManagedSidecarSnapshot,
 } from "@jcode/contracts";
-import { Effect } from "effect";
+import { Effect, Scope } from "effect";
+import * as FileSystem from "effect/FileSystem";
+import * as Path from "effect/Path";
 
 import { verifyManagedRuntimeBinary } from "./managedRuntimeDownload.ts";
 import type { ManagedSidecarLifecycleShape } from "./managedRuntimeLifecycle.ts";
@@ -39,30 +41,32 @@ export const deriveHealthStatus = (
 
 export const checkManagedSidecarHealth = (input: {
   sidecarSnapshot: ManagedSidecarSnapshot;
-}): Effect.Effect<ManagedSidecarHealthCheck> =>
+}): Effect.Effect<ManagedSidecarHealthCheck, never, FileSystem.FileSystem | Path.Path> =>
   Effect.gen(function* () {
     const snapshot = input.sidecarSnapshot;
     const binaryExists = checkBinaryExists(snapshot.binaryPath);
     const serverReachable = checkServerReachable(snapshot.serverUrl);
 
-    let binaryValid = false;
-    if (binaryExists && snapshot.binaryPath) {
-      const verification = yield* verifyManagedRuntimeBinary(undefined, snapshot.binaryPath);
-      binaryValid = verification.valid;
-    }
+    const binaryValid =
+      binaryExists && snapshot.binaryPath
+        ? yield* verifyManagedRuntimeBinary(undefined, snapshot.binaryPath).pipe(
+            Effect.map((verification) => verification.valid),
+            Effect.catch(() => Effect.succeed(false)),
+          )
+        : false;
 
     const status = deriveHealthStatus(snapshot.state, binaryExists, binaryValid, serverReachable);
 
     return {
       status,
       sidecarState: snapshot.state,
-      binaryPath: snapshot.binaryPath,
       binaryExists,
       binaryValid,
-      serverUrl: snapshot.serverUrl,
       serverReachable,
-      error: snapshot.error,
       checkedAt: isoNow(),
+      ...(snapshot.binaryPath ? { binaryPath: snapshot.binaryPath } : {}),
+      ...(snapshot.serverUrl ? { serverUrl: snapshot.serverUrl } : {}),
+      ...(snapshot.error ? { error: snapshot.error } : {}),
     } satisfies ManagedSidecarHealthCheck;
   });
 
@@ -70,7 +74,11 @@ export const repairManagedSidecar = (input: {
   sidecarSnapshot: ManagedSidecarSnapshot;
   lifecycle: ManagedSidecarLifecycleShape;
   forceRedownload?: boolean;
-}): Effect.Effect<ManagedSidecarRepairResult, ManagedSidecarError> => {
+}): Effect.Effect<
+  ManagedSidecarRepairResult,
+  ManagedSidecarError,
+  FileSystem.FileSystem | Path.Path | Scope.Scope
+> => {
   const { lifecycle, forceRedownload = false } = input;
 
   return Effect.gen(function* () {
@@ -115,7 +123,7 @@ export const repairManagedSidecar = (input: {
 
 export const exportManagedSidecarDiagnostics = (input: {
   sidecarSnapshot: ManagedSidecarSnapshot;
-}): Effect.Effect<ManagedSidecarDiagnostics> =>
+}): Effect.Effect<ManagedSidecarDiagnostics, never, FileSystem.FileSystem | Path.Path> =>
   Effect.gen(function* () {
     const health = yield* checkManagedSidecarHealth(input);
 
