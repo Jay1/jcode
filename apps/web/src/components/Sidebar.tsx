@@ -3540,6 +3540,8 @@ export default function Sidebar() {
               title: "Unable to rename project on server",
             });
           }
+        } else {
+          console.warn("commitProjectRename: server API not available, title not persisted");
         }
       }
     },
@@ -4695,9 +4697,9 @@ export default function Sidebar() {
                   <span className="sidebar-project-header-label truncate font-system-ui text-[length:var(--app-font-size-ui,12px)] font-semibold tracking-[0.01em] text-foreground/82">
                     {project.name}
                   </span>
-                  {project.localName && project.folderName !== project.name ? (
+                  {project.localName && project.remoteName !== project.name ? (
                     <span className="shrink-0 truncate text-[length:var(--app-font-size-ui,12px)] text-muted-foreground/40">
-                      {project.folderName}
+                      {project.remoteName}
                     </span>
                   ) : null}
                 </>
