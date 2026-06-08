@@ -17,6 +17,7 @@ import { Effect, Exit, Layer, ManagedRuntime, Option, PubSub, Scope, Stream } fr
 import { afterEach, describe, expect, it } from "vitest";
 
 import { GoalContinuationReactorLive } from "./GoalContinuationReactor.ts";
+import { OrchestrationCommandInternalError } from "../Errors.ts";
 import { GoalContinuationReactor } from "../Services/GoalContinuationReactor.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
@@ -157,7 +158,13 @@ async function createHarness(
         dispatch: (command) => {
           if (remainingDispatchFailures > 0) {
             remainingDispatchFailures -= 1;
-            return Effect.fail(new Error("dispatch failed"));
+            return Effect.fail(
+              new OrchestrationCommandInternalError({
+                commandId: command.commandId,
+                commandType: command.type,
+                detail: "dispatch failed",
+              }),
+            );
           }
           return Effect.sync(() => {
             dispatched.push(command);
@@ -174,10 +181,10 @@ async function createHarness(
         getCounts: () => Effect.die("unused"),
         getShellSnapshot: () => Effect.die("unused"),
         getActiveProjectByWorkspaceRoot: () => Effect.die("unused"),
-        listProjectShells: () => Effect.die("unused"),
-        listThreadShells: () => Effect.die("unused"),
-        getProjectById: () => Effect.die("unused"),
-        listThreadsByProjectId: () => Effect.die("unused"),
+        getProjectShellById: () => Effect.die("unused"),
+        getFirstActiveThreadIdByProjectId: () => Effect.die("unused"),
+        getThreadCheckpointContext: () => Effect.die("unused"),
+        getFullThreadDiffContext: () => Effect.die("unused"),
         getThreadShellById: () => Effect.die("unused"),
         getThreadDetailById: () => Effect.succeed(threadState.current),
         getThreadDetailSnapshotById: () => Effect.die("unused"),
@@ -188,6 +195,9 @@ async function createHarness(
   const reactor = await runtime.runPromise(Effect.service(GoalContinuationReactor));
   const scope = await Effect.runPromise(Scope.make("sequential"));
   await Effect.runPromise(reactor.start.pipe(Scope.provide(scope)));
+  await Effect.runPromise(Effect.yieldNow);
+  await Effect.runPromise(Effect.yieldNow);
+  await Effect.runPromise(Effect.yieldNow);
 
   return {
     runtime,
