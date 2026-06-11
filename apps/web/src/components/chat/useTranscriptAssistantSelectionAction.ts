@@ -47,7 +47,7 @@ interface UseTranscriptAssistantSelectionActionOptions {
   onMessagesPointerDownBase: PointerEventHandler<HTMLDivElement>;
   onMessagesPointerUpBase: PointerEventHandler<HTMLDivElement>;
   onMessagesPointerCancelBase: PointerEventHandler<HTMLDivElement>;
-  onMessagesScrollBase: () => void;
+  onMessagesScrollBase: (event: unknown) => void;
   onMessagesWheelBase: WheelEventHandler<HTMLDivElement>;
   onMessagesTouchStartBase: TouchEventHandler<HTMLDivElement>;
   onMessagesTouchMoveBase: TouchEventHandler<HTMLDivElement>;
@@ -112,10 +112,13 @@ export function useTranscriptAssistantSelectionAction(
     [dismissTranscriptSelectionAction, onMessagesPointerCancelBase],
   );
 
-  const onMessagesScroll = useCallback(() => {
-    dismissTranscriptSelectionAction();
-    onMessagesScrollBase();
-  }, [dismissTranscriptSelectionAction, onMessagesScrollBase]);
+  const onMessagesScroll = useCallback(
+    (event: unknown) => {
+      dismissTranscriptSelectionAction();
+      onMessagesScrollBase(event);
+    },
+    [dismissTranscriptSelectionAction, onMessagesScrollBase],
+  );
 
   const onMessagesWheel = useCallback<WheelEventHandler<HTMLDivElement>>(
     (event) => {

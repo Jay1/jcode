@@ -30,7 +30,9 @@ const MODEL_SLUG_SET_BY_PROVIDER: Record<ProviderKind, ReadonlySet<ModelSlug>> =
   gemini: new Set(MODEL_OPTIONS_BY_PROVIDER.gemini.map((option) => option.slug)),
   kilo: new Set(MODEL_OPTIONS_BY_PROVIDER.kilo.map((option) => option.slug)),
   opencode: new Set(MODEL_OPTIONS_BY_PROVIDER.opencode.map((option) => option.slug)),
+  openclaw: new Set(MODEL_OPTIONS_BY_PROVIDER.openclaw.map((option) => option.slug)),
   pi: new Set<ModelSlug>(),
+  devin: new Set<ModelSlug>(),
 };
 
 export interface SelectableModelOption {
@@ -110,10 +112,10 @@ export function getModelOptions(provider: ProviderKind = "codex") {
 }
 
 function hasDefaultModel(provider: ProviderKind): provider is ProviderWithDefaultModel {
-  return provider !== "pi";
+  return provider !== "openclaw" && provider !== "pi";
 }
 
-export function getDefaultModel(provider: "pi"): null;
+export function getDefaultModel(provider: "openclaw" | "pi"): null;
 export function getDefaultModel(provider?: ProviderWithDefaultModel): ModelSlug;
 export function getDefaultModel(provider: ProviderKind): ModelSlug | null;
 export function getDefaultModel(provider: ProviderKind = "codex"): ModelSlug | null {
@@ -615,7 +617,10 @@ export function resolveModelSlug(
   provider: ProviderKind = "codex",
 ): ModelSlug | null {
   const normalized = normalizeModelSlug(model, provider);
-  if (provider === "pi") {
+  if (!hasDefaultModel(provider)) {
+    if (provider === "openclaw") {
+      return resolveSelectableModel(provider, model, MODEL_OPTIONS_BY_PROVIDER.openclaw);
+    }
     return normalized;
   }
   if (!normalized) {

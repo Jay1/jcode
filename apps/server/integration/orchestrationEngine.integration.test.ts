@@ -43,6 +43,25 @@ const APPROVAL_REQUEST_ID = asApprovalRequestId("req-approval-1");
 const itLiveUnlessCi = (process.env.CI ? it.skip : it.live) as typeof it.live;
 type IntegrationProvider = ProviderKind;
 
+function defaultModelSelectionFor(
+  provider: Exclude<ProviderKind, "devin" | "openclaw" | "pi">,
+): ModelSelection {
+  switch (provider) {
+    case "codex":
+      return { provider, model: DEFAULT_MODEL_BY_PROVIDER.codex };
+    case "claudeAgent":
+      return { provider, model: DEFAULT_MODEL_BY_PROVIDER.claudeAgent };
+    case "cursor":
+      return { provider, model: DEFAULT_MODEL_BY_PROVIDER.cursor };
+    case "gemini":
+      return { provider, model: DEFAULT_MODEL_BY_PROVIDER.gemini };
+    case "kilo":
+      return { provider, model: DEFAULT_MODEL_BY_PROVIDER.kilo };
+    case "opencode":
+      return { provider, model: DEFAULT_MODEL_BY_PROVIDER.opencode };
+  }
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -109,10 +128,12 @@ const seedProjectAndThread = (harness: OrchestrationIntegrationHarness) =>
   Effect.gen(function* () {
     const createdAt = nowIso();
     const provider = harness.adapterHarness?.provider ?? "codex";
-    if (provider === "pi") {
-      throw new Error("Pi integration tests require an explicit model selection.");
+    if (provider === "devin" || provider === "openclaw" || provider === "pi") {
+      throw new Error(
+        "Devin, OpenClaw, and Pi integration tests require an explicit model selection.",
+      );
     }
-    const defaultModel = DEFAULT_MODEL_BY_PROVIDER[provider];
+    const defaultModelSelection = defaultModelSelectionFor(provider);
 
     yield* harness.engine.dispatch({
       type: "project.create",
@@ -120,10 +141,7 @@ const seedProjectAndThread = (harness: OrchestrationIntegrationHarness) =>
       projectId: PROJECT_ID,
       title: "Integration Project",
       workspaceRoot: harness.workspaceDir,
-      defaultModelSelection: {
-        provider,
-        model: defaultModel,
-      },
+      defaultModelSelection,
       createdAt,
     });
 
@@ -133,10 +151,7 @@ const seedProjectAndThread = (harness: OrchestrationIntegrationHarness) =>
       threadId: THREAD_ID,
       projectId: PROJECT_ID,
       title: "Integration Thread",
-      modelSelection: {
-        provider,
-        model: defaultModel,
-      },
+      modelSelection: defaultModelSelection,
       interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
       runtimeMode: "approval-required",
       branch: null,

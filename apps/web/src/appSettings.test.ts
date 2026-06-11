@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   AppSettingsSchema,
   DEFAULT_CHAT_FONT_SIZE_PX,
+  DEFAULT_SHOW_INTERFACE_CLOCK,
   DEFAULT_SIDEBAR_PROJECT_SORT_ORDER,
   DEFAULT_SIDEBAR_THREAD_SORT_ORDER,
   DEFAULT_TIMESTAMP_FORMAT,
@@ -25,6 +26,7 @@ import {
   resolveAppModelSelection,
   serverSettingsToAppSettings,
 } from "./appSettings";
+import { DEFAULT_PROVIDER_ORDER } from "./providerOrdering";
 
 describe("normalizeCustomModelSlugs", () => {
   it("normalizes aliases, removes built-ins, and deduplicates values", () => {
@@ -143,6 +145,18 @@ describe("getGitTextGenerationModelOptions", () => {
       isCustom: true,
     });
   });
+
+  it("does not add OpenClaw gateway to git-writing model options", () => {
+    const options = getGitTextGenerationModelOptions({
+      customCodexModels: [],
+      customKiloModels: [],
+      customOpenCodeModels: [],
+      textGenerationModel: "gateway",
+      textGenerationProvider: "openclaw",
+    });
+
+    expect(options.some((option) => option.provider === "openclaw")).toBe(false);
+  });
 });
 
 describe("resolveAppModelSelection", () => {
@@ -154,9 +168,11 @@ describe("resolveAppModelSelection", () => {
           codex: ["galapagos-alpha"],
           claudeAgent: [],
           cursor: [],
+          devin: [],
           gemini: [],
           kilo: [],
           opencode: [],
+          openclaw: [],
           pi: [],
         },
         "galapagos-alpha",
@@ -168,7 +184,17 @@ describe("resolveAppModelSelection", () => {
     expect(
       resolveAppModelSelection(
         "codex",
-        { codex: [], claudeAgent: [], cursor: [], gemini: [], kilo: [], opencode: [], pi: [] },
+        {
+          codex: [],
+          claudeAgent: [],
+          cursor: [],
+          devin: [],
+          gemini: [],
+          kilo: [],
+          opencode: [],
+          openclaw: [],
+          pi: [],
+        },
         "",
       ),
     ).toBe("gpt-5.5");
@@ -178,7 +204,17 @@ describe("resolveAppModelSelection", () => {
     expect(
       resolveAppModelSelection(
         "codex",
-        { codex: [], claudeAgent: [], cursor: [], gemini: [], kilo: [], opencode: [], pi: [] },
+        {
+          codex: [],
+          claudeAgent: [],
+          cursor: [],
+          devin: [],
+          gemini: [],
+          kilo: [],
+          opencode: [],
+          openclaw: [],
+          pi: [],
+        },
         "GPT-5.3 Codex",
       ),
     ).toBe("gpt-5.3-codex");
@@ -188,7 +224,17 @@ describe("resolveAppModelSelection", () => {
     expect(
       resolveAppModelSelection(
         "claudeAgent",
-        { codex: [], claudeAgent: [], cursor: [], gemini: [], kilo: [], opencode: [], pi: [] },
+        {
+          codex: [],
+          claudeAgent: [],
+          cursor: [],
+          devin: [],
+          gemini: [],
+          kilo: [],
+          opencode: [],
+          openclaw: [],
+          pi: [],
+        },
         "sonnet",
       ),
     ).toBe("claude-sonnet-4-6");
@@ -198,7 +244,17 @@ describe("resolveAppModelSelection", () => {
     expect(
       resolveAppModelSelection(
         "codex",
-        { codex: [], claudeAgent: [], cursor: [], gemini: [], kilo: [], opencode: [], pi: [] },
+        {
+          codex: [],
+          claudeAgent: [],
+          cursor: [],
+          devin: [],
+          gemini: [],
+          kilo: [],
+          opencode: [],
+          openclaw: [],
+          pi: [],
+        },
         "custom/selected-model",
       ),
     ).toBe("custom/selected-model");
@@ -263,6 +319,28 @@ describe("normalizeStoredAppSettings", () => {
   });
 });
 
+describe("interface clock settings", () => {
+  it("defaults interface clock visibility to visible", () => {
+    expect(DEFAULT_SHOW_INTERFACE_CLOCK).toBe(true);
+  });
+
+  it("fills interface clock visibility for persisted settings that predate the key", () => {
+    const decode = Schema.decodeSync(Schema.fromJsonString(AppSettingsSchema));
+
+    expect(decode("{}").showInterfaceClock).toBe(true);
+  });
+
+  it("keeps interface clock visibility local-only when building server patches", () => {
+    expect(appSettingsPatchToServerSettingsPatch({ showInterfaceClock: false })).toEqual({});
+    expect(
+      appSettingsPatchToServerSettingsPatch({
+        showInterfaceClock: false,
+        addProjectBaseDirectory: "/home/jay/code",
+      }),
+    ).toEqual({ addProjectBaseDirectory: "/home/jay/code" });
+  });
+});
+
 describe("server-backed app settings", () => {
   it("maps the Project Folder setting from server settings", () => {
     expect(
@@ -298,6 +376,13 @@ describe("server-backed app settings", () => {
               activeRuntimeProfileId: "",
               customModels: [],
             },
+            openclaw: {
+              enabled: true,
+              gatewayUrl: "ws://127.0.0.1:18789",
+              authMode: "device",
+              hasSecret: true,
+              paired: false,
+            },
             pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
           },
           textGenerationModelSelection: { provider: "codex", model: "gpt-5.4" },
@@ -305,6 +390,10 @@ describe("server-backed app settings", () => {
       ),
     ).toMatchObject({
       addProjectBaseDirectory: "/home/jay/code",
+      openClawAuthMode: "device",
+      openClawGatewayUrl: "ws://127.0.0.1:18789",
+      openClawHasSecret: true,
+      openClawPaired: false,
     });
   });
 
@@ -341,6 +430,13 @@ describe("server-backed app settings", () => {
               activeRuntimeProfileId: "",
               customModels: [],
             },
+            openclaw: {
+              enabled: true,
+              gatewayUrl: "",
+              authMode: "none",
+              hasSecret: false,
+              paired: false,
+            },
             pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
           },
           textGenerationModelSelection: { provider: "codex", model: "gpt-5.4" },
@@ -353,6 +449,241 @@ describe("server-backed app settings", () => {
     expect(
       appSettingsPatchToServerSettingsPatch({ addProjectBaseDirectory: "/home/jay/code" }),
     ).toEqual({ addProjectBaseDirectory: "/home/jay/code" });
+  });
+
+  it("does not map OpenClaw server-derived metadata to server settings patches", () => {
+    expect(
+      appSettingsPatchToServerSettingsPatch({
+        openClawGatewayUrl: "https://gateway.example.test",
+        openClawAuthMode: "token",
+        openClawHasSecret: true,
+        openClawPaired: false,
+      }),
+    ).toEqual({
+      providers: {
+        openclaw: {
+          gatewayUrl: "https://gateway.example.test",
+          authMode: "token",
+        },
+      },
+    });
+  });
+
+  it("maps new UI preference fields from server settings", () => {
+    expect(
+      serverSettingsToAppSettings(
+        Schema.decodeSync(ServerSettings)({
+          addProjectBaseDirectory: "/home/jay/code",
+          defaultThreadEnvMode: "local",
+          enableAssistantStreaming: false,
+          chatFontSizePx: 16,
+          chatCodeFontFamily: "JetBrains Mono",
+          uiFontFamily: "Inter",
+          enableNativeFontSmoothing: true,
+          timestampFormat: "24-hour",
+          sidebarSide: "right",
+          sidebarProjectSortOrder: "updated_at",
+          sidebarThreadSortOrder: "created_at",
+          confirmThreadDelete: false,
+          confirmThreadArchive: false,
+          confirmTerminalTabClose: false,
+          diffWordWrap: true,
+          enableTaskCompletionToasts: false,
+          enableSystemTaskCompletionNotifications: false,
+          defaultProvider: "claudeAgent",
+          providers: {
+            claudeAgent: { enabled: true, binaryPath: "claude", launchArgs: "", customModels: [] },
+            codex: {
+              enabled: true,
+              binaryPath: "codex",
+              homePath: "",
+              launchArgs: "",
+              customModels: [],
+            },
+            cursor: { enabled: true, binaryPath: "agent", apiEndpoint: "", customModels: [] },
+            gemini: { enabled: true, binaryPath: "gemini", customModels: [] },
+            kilo: {
+              enabled: true,
+              binaryPath: "kilo",
+              serverUrl: "",
+              serverPassword: "",
+              customModels: [],
+            },
+            opencode: {
+              enabled: true,
+              binaryPath: "opencode",
+              serverUrl: "",
+              serverPassword: "",
+              runtimeProfiles: [],
+              activeRuntimeProfileId: "",
+              customModels: [],
+            },
+            pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
+          },
+          textGenerationModelSelection: { provider: "codex", model: "gpt-5.4" },
+        }),
+      ),
+    ).toMatchObject({
+      chatFontSizePx: 16,
+      chatCodeFontFamily: "JetBrains Mono",
+      uiFontFamily: "Inter",
+      enableNativeFontSmoothing: true,
+      timestampFormat: "24-hour",
+      sidebarSide: "right",
+      sidebarProjectSortOrder: "updated_at",
+      sidebarThreadSortOrder: "created_at",
+      confirmThreadDelete: false,
+      confirmThreadArchive: false,
+      confirmTerminalTabClose: false,
+      diffWordWrap: true,
+      enableTaskCompletionToasts: false,
+      enableSystemTaskCompletionNotifications: false,
+      defaultProvider: "claudeAgent",
+    });
+  });
+
+  it("computes hiddenProviders from providers with enabled: false", () => {
+    expect(
+      serverSettingsToAppSettings(
+        Schema.decodeSync(ServerSettings)({
+          addProjectBaseDirectory: "",
+          defaultThreadEnvMode: "local",
+          enableAssistantStreaming: false,
+          providers: {
+            claudeAgent: { enabled: true, binaryPath: "claude", launchArgs: "", customModels: [] },
+            codex: {
+              enabled: false,
+              binaryPath: "codex",
+              homePath: "",
+              launchArgs: "",
+              customModels: [],
+            },
+            cursor: { enabled: true, binaryPath: "agent", apiEndpoint: "", customModels: [] },
+            gemini: { enabled: false, binaryPath: "gemini", customModels: [] },
+            kilo: {
+              enabled: true,
+              binaryPath: "kilo",
+              serverUrl: "",
+              serverPassword: "",
+              customModels: [],
+            },
+            opencode: {
+              enabled: true,
+              binaryPath: "opencode",
+              serverUrl: "",
+              serverPassword: "",
+              runtimeProfiles: [],
+              activeRuntimeProfileId: "",
+              customModels: [],
+            },
+            pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
+          },
+          textGenerationModelSelection: { provider: "codex", model: "gpt-5.4" },
+        }),
+      ),
+    ).toMatchObject({
+      hiddenProviders: ["codex", "gemini"],
+    });
+  });
+
+  it("maps new UI preference fields to server settings patches", () => {
+    expect(
+      appSettingsPatchToServerSettingsPatch({
+        chatFontSizePx: 15,
+        chatCodeFontFamily: "Fira Code",
+        uiFontFamily: "IBM Plex Sans",
+        enableNativeFontSmoothing: false,
+        timestampFormat: "12-hour",
+        sidebarSide: "right",
+        sidebarProjectSortOrder: "created_at",
+        sidebarThreadSortOrder: "created_at",
+        confirmThreadDelete: false,
+        confirmThreadArchive: true,
+        confirmTerminalTabClose: false,
+        diffWordWrap: true,
+        enableTaskCompletionToasts: true,
+        enableSystemTaskCompletionNotifications: true,
+        defaultProvider: "gemini",
+      }),
+    ).toEqual({
+      chatFontSizePx: 15,
+      chatCodeFontFamily: "Fira Code",
+      uiFontFamily: "IBM Plex Sans",
+      enableNativeFontSmoothing: false,
+      timestampFormat: "12-hour",
+      sidebarSide: "right",
+      sidebarProjectSortOrder: "created_at",
+      sidebarThreadSortOrder: "created_at",
+      confirmThreadDelete: false,
+      confirmThreadArchive: true,
+      confirmTerminalTabClose: false,
+      diffWordWrap: true,
+      enableTaskCompletionToasts: true,
+      enableSystemTaskCompletionNotifications: true,
+      defaultProvider: "gemini",
+    });
+  });
+
+  it("converts hiddenProviders to per-provider enabled flags in server patch", () => {
+    const patch = appSettingsPatchToServerSettingsPatch({
+      hiddenProviders: ["codex", "gemini"],
+    });
+
+    expect(patch.providers).toMatchObject({
+      codex: { enabled: false },
+      gemini: { enabled: false },
+    });
+    expect(patch.providers!.codex!.enabled).toBe(false);
+    expect(patch.providers!.gemini!.enabled).toBe(false);
+  });
+
+  it("re-enables previously hidden providers when hiddenProviders becomes empty", () => {
+    const patch = appSettingsPatchToServerSettingsPatch({
+      hiddenProviders: [],
+    });
+
+    for (const provider of DEFAULT_PROVIDER_ORDER) {
+      expect(patch.providers![provider]!.enabled).toBe(true);
+    }
+  });
+
+  it("handles non-default providers in hiddenProviders", () => {
+    const patch = appSettingsPatchToServerSettingsPatch({
+      hiddenProviders: ["devin", "codex"],
+    });
+
+    expect(patch.providers!.devin!.enabled).toBe(false);
+    expect(patch.providers!.codex!.enabled).toBe(false);
+    expect(patch.providers!.claudeAgent!.enabled).toBe(true);
+  });
+
+  it("re-enables non-default providers when hiddenProviders becomes empty", () => {
+    const patch = appSettingsPatchToServerSettingsPatch({
+      hiddenProviders: [],
+    });
+
+    for (const provider of DEFAULT_PROVIDER_ORDER) {
+      expect(patch.providers![provider]!.enabled).toBe(true);
+    }
+  });
+
+  it("maps providerOrder to server settings patch", () => {
+    expect(
+      appSettingsPatchToServerSettingsPatch({
+        providerOrder: ["claudeAgent", "codex", "gemini", "cursor", "kilo", "opencode"],
+      }),
+    ).toEqual({
+      providerOrder: [
+        "claudeAgent",
+        "codex",
+        "gemini",
+        "cursor",
+        "kilo",
+        "opencode",
+        "openclaw",
+        "pi",
+      ],
+    });
   });
 });
 
@@ -381,6 +712,7 @@ describe("getProviderStartOptions", () => {
         openCodeBinaryPath: "",
         openCodeServerPassword: "",
         openCodeServerUrl: "",
+        openClawGatewayUrl: "ws://127.0.0.1:18789",
         piAgentDir: "",
         piBinaryPath: "",
       }),
@@ -402,6 +734,29 @@ describe("getProviderStartOptions", () => {
     });
   });
 
+  it("does not include only OpenClaw gateway URLs in provider start options", () => {
+    expect(
+      getProviderStartOptions({
+        claudeBinaryPath: "",
+        codexBinaryPath: "",
+        codexHomePath: "",
+        codexLaunchArgs: "",
+        cursorApiEndpoint: "",
+        cursorBinaryPath: "",
+        geminiBinaryPath: "",
+        kiloBinaryPath: "",
+        kiloServerPassword: "",
+        kiloServerUrl: "",
+        openCodeBinaryPath: "",
+        openCodeServerPassword: "",
+        openCodeServerUrl: "",
+        openClawGatewayUrl: "https://gateway.example.test",
+        piAgentDir: "",
+        piBinaryPath: "",
+      }),
+    ).toBeUndefined();
+  });
+
   it("returns undefined when no provider overrides are configured", () => {
     expect(
       getProviderStartOptions({
@@ -418,6 +773,7 @@ describe("getProviderStartOptions", () => {
         openCodeBinaryPath: "",
         openCodeServerPassword: "",
         openCodeServerUrl: "",
+        openClawGatewayUrl: "",
         piAgentDir: "",
         piBinaryPath: "",
       }),
@@ -434,9 +790,10 @@ describe("provider-indexed custom model settings", () => {
     customKiloModels: ["kilo/kilo-auto/free"],
     customOpenCodeModels: ["openrouter/gpt-oss-120b"],
     customPiModels: ["anthropic/custom-pi"],
+    customDevinModels: [],
   } as const;
 
-  it("exports one provider config per provider", () => {
+  it("exports custom model configs only for providers that support custom models", () => {
     expect(MODEL_PROVIDER_SETTINGS.map((config) => config.provider)).toEqual([
       "codex",
       "claudeAgent",
@@ -445,7 +802,11 @@ describe("provider-indexed custom model settings", () => {
       "kilo",
       "opencode",
       "pi",
+      "devin",
     ]);
+    expect(MODEL_PROVIDER_SETTINGS.map((config) => config.provider as string)).not.toContain(
+      "openclaw",
+    );
   });
 
   it("reads custom models for each provider", () => {
@@ -467,6 +828,7 @@ describe("provider-indexed custom model settings", () => {
       customKiloModels: ["kilo/default-auto"],
       customOpenCodeModels: ["openai/gpt-5"],
       customPiModels: ["anthropic/default-pi"],
+      customDevinModels: [],
     } as const;
 
     expect(getDefaultCustomModelsForProvider(defaults, "codex")).toEqual(["default/codex-model"]);
@@ -527,9 +889,11 @@ describe("provider-indexed custom model settings", () => {
       codex: ["custom/codex-model"],
       claudeAgent: ["claude/custom-opus"],
       cursor: ["cursor/custom-model"],
+      devin: [],
       gemini: ["gemini/custom-flash"],
       kilo: ["kilo/kilo-auto/free"],
       opencode: ["openrouter/gpt-oss-120b"],
+      openclaw: [],
       pi: ["anthropic/custom-pi"],
     });
   });
@@ -577,6 +941,7 @@ describe("provider-indexed custom model settings", () => {
         "anthropic/custom-pi",
         "anthropic/custom-pi",
       ],
+      customDevinModels: [],
     });
 
     expect(
@@ -604,6 +969,7 @@ describe("provider-indexed custom model settings", () => {
     expect(
       modelOptionsByProvider.opencode.filter((option) => option.slug === "openrouter/gpt-oss-120b"),
     ).toHaveLength(1);
+    expect(modelOptionsByProvider.openclaw).toEqual([]);
     expect(
       modelOptionsByProvider.pi.filter((option) => option.slug === "anthropic/custom-pi"),
     ).toHaveLength(1);
@@ -635,6 +1001,7 @@ describe("AppSettingsSchema", () => {
       sidebarProjectSortOrder: DEFAULT_SIDEBAR_PROJECT_SORT_ORDER,
       sidebarThreadSortOrder: DEFAULT_SIDEBAR_THREAD_SORT_ORDER,
       timestampFormat: DEFAULT_TIMESTAMP_FORMAT,
+      showInterfaceClock: DEFAULT_SHOW_INTERFACE_CLOCK,
       customCodexModels: [],
       customClaudeModels: [],
       customCursorModels: [],
@@ -642,6 +1009,10 @@ describe("AppSettingsSchema", () => {
       customKiloModels: [],
       customOpenCodeModels: [],
       customPiModels: [],
+      openClawAuthMode: "none",
+      openClawGatewayUrl: "",
+      openClawHasSecret: false,
+      openClawPaired: false,
       addProjectBaseDirectory: "",
     });
   });

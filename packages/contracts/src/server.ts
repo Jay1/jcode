@@ -8,7 +8,7 @@ import {
 } from "./baseSchemas";
 import { KeybindingCommand, KeybindingRule, ResolvedKeybindingsConfig } from "./keybindings";
 import { EditorId } from "./editor";
-import { ProviderKind } from "./orchestration";
+import { ModelSelection, ProviderKind } from "./orchestration";
 import { ServerSettings, ServerSettingsPatch } from "./settings";
 import { ExecutionEnvironmentDescriptor } from "./environment";
 
@@ -203,6 +203,19 @@ export const ServerVoiceTranscriptionErrorDetail = Schema.Struct({
 });
 export type ServerVoiceTranscriptionErrorDetail = typeof ServerVoiceTranscriptionErrorDetail.Type;
 
+export const ServerGenerateThreadRecapInput = Schema.Struct({
+  threadId: ThreadId,
+  previousRecap: Schema.optional(Schema.String.check(Schema.isMaxLength(1_000))),
+  newMaterial: Schema.String.check(Schema.isMaxLength(16_000)),
+  currentState: Schema.optional(Schema.String.check(Schema.isMaxLength(4_000))),
+});
+export type ServerGenerateThreadRecapInput = typeof ServerGenerateThreadRecapInput.Type;
+
+export const ServerGenerateThreadRecapResult = Schema.Struct({
+  recap: TrimmedNonEmptyString,
+});
+export type ServerGenerateThreadRecapResult = typeof ServerGenerateThreadRecapResult.Type;
+
 export const ServerUpsertKeybindingInput = KeybindingRule;
 export type ServerUpsertKeybindingInput = typeof ServerUpsertKeybindingInput.Type;
 
@@ -329,3 +342,23 @@ export type ServerUpdateSettingsInput = typeof ServerUpdateSettingsInput.Type;
 
 export const ServerUpdateSettingsResult = ServerSettings;
 export type ServerUpdateSettingsResult = typeof ServerUpdateSettingsResult.Type;
+
+const OpenClawSecretValue = Schema.NullOr(Schema.String.check(Schema.isMaxLength(4096)));
+
+export const ServerUpdateOpenClawSecretsInput = Schema.Struct({
+  token: Schema.optionalKey(OpenClawSecretValue),
+  password: Schema.optionalKey(OpenClawSecretValue),
+  deviceToken: Schema.optionalKey(OpenClawSecretValue),
+  rotateDeviceKey: Schema.optionalKey(Schema.Boolean),
+  clearDeviceIdentity: Schema.optionalKey(Schema.Boolean),
+});
+export type ServerUpdateOpenClawSecretsInput = typeof ServerUpdateOpenClawSecretsInput.Type;
+
+export const ServerUpdateOpenClawSecretsResult = Schema.Struct({
+  hasToken: Schema.Boolean,
+  hasPassword: Schema.Boolean,
+  hasDeviceKey: Schema.Boolean,
+  hasDeviceToken: Schema.Boolean,
+  paired: Schema.Boolean,
+});
+export type ServerUpdateOpenClawSecretsResult = typeof ServerUpdateOpenClawSecretsResult.Type;

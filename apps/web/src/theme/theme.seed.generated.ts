@@ -599,20 +599,20 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
   },
   sentry: {
     dark: {
-      accent: "#7055f6",
+      accent: "#7553FF",
       contrast: 60,
       fonts: {
         code: null,
         ui: null,
       },
-      ink: "#e6dff9",
+      ink: "#F8F7FA",
       opaqueWindows: false,
       semanticColors: {
-        diffAdded: "#8ee6d7",
-        diffRemoved: "#fa423e",
-        skill: "#7055f6",
+        diffAdded: "#3DDC97",
+        diffRemoved: "#FF6363",
+        skill: "#7553FF",
       },
-      surface: "#2d2935",
+      surface: "#2E2936",
     },
   },
   // Source-backed correction: ethanschoonover.com/solarized blue role.
@@ -668,7 +668,7 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
       surface: "#02120c",
     },
   },
-  // Source-backed correction: folke/tokyonight.nvim extras/lua/tokyonight_night.lua.
+  // Source-backed correction: tokyo-night/tokyo-night-vscode-theme themes/tokyo-night-color-theme.json.
   "tokyo-night": {
     dark: {
       accent: "#7aa2f7",
@@ -680,7 +680,7 @@ export const THEME_SEED_CATALOG: Record<string, Partial<Record<ThemeVariant, Chr
       ink: "#c0caf5",
       opaqueWindows: false,
       semanticColors: {
-        diffAdded: "#9ece6a",
+        diffAdded: "#73daca",
         diffRemoved: "#f7768e",
         skill: "#bb9af7",
       },

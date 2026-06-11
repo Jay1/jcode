@@ -4,20 +4,19 @@ import { page } from "vitest/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
-const navigateMock = vi.fn();
+const redirectAfterPairingMock = vi.fn();
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...actual,
     createFileRoute: () => (config: unknown) => config,
-    useNavigate: () => navigateMock,
   };
 });
 
 describe("PairRoute", () => {
   beforeEach(() => {
-    navigateMock.mockReset();
+    redirectAfterPairingMock.mockReset();
     vi.stubGlobal(
       "fetch",
       vi.fn(() =>
@@ -41,7 +40,7 @@ describe("PairRoute", () => {
     window.history.replaceState(null, "", "/pair");
     const { PairRoute } = await import("../routes/pair");
 
-    const screen = await render(<PairRoute />);
+    const screen = await render(<PairRoute redirectAfterPairing={redirectAfterPairingMock} />);
 
     await page.getByPlaceholder("Pairing code").fill("MANUAL-CODE");
     await page.getByRole("button", { name: "Pair client" }).click();
@@ -54,7 +53,7 @@ describe("PairRoute", () => {
           body: JSON.stringify({ credential: "MANUAL-CODE" }),
         }),
       );
-      expect(navigateMock).toHaveBeenCalledWith({ to: "/" });
+      expect(redirectAfterPairingMock).toHaveBeenCalledTimes(1);
     });
 
     await screen.unmount();
@@ -64,7 +63,7 @@ describe("PairRoute", () => {
     window.history.replaceState(null, "", "/pair#token=AUTO-CODE");
     const { PairRoute } = await import("../routes/pair");
 
-    const screen = await render(<PairRoute />);
+    const screen = await render(<PairRoute redirectAfterPairing={redirectAfterPairingMock} />);
 
     await vi.waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
@@ -75,7 +74,7 @@ describe("PairRoute", () => {
         }),
       );
       expect(window.location.hash).toBe("");
-      expect(navigateMock).toHaveBeenCalledWith({ to: "/" });
+      expect(redirectAfterPairingMock).toHaveBeenCalledTimes(1);
     });
 
     await screen.unmount();

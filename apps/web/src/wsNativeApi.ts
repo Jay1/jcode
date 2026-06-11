@@ -605,6 +605,8 @@ export function createWsNativeApi(): NativeApi {
       getEnvironment: () => transport.request(WS_METHODS.serverGetEnvironment),
       getSettings: () => transport.request(WS_METHODS.serverGetSettings),
       updateSettings: (input) => transport.request(WS_METHODS.serverUpdateSettings, input),
+      updateOpenClawSecrets: (input) =>
+        transport.request(WS_METHODS.serverUpdateOpenClawSecrets, input),
       getAuthSession: () =>
         requestAuthJson<AuthSessionState>(AuthHttpRoutes.session.pathname, {
           method: AuthHttpRoutes.session.method,
@@ -666,6 +668,8 @@ export function createWsNativeApi(): NativeApi {
       upsertKeybinding: (input) => transport.request(WS_METHODS.serverUpsertKeybinding, input),
       resetKeybinding: (input) => transport.request(WS_METHODS.serverResetKeybinding, input),
       resetAllKeybindings: () => transport.request(WS_METHODS.serverResetAllKeybindings, {}),
+      generateThreadRecap: (input) =>
+        transport.request(WS_METHODS.serverGenerateThreadRecap, input),
     },
     provider: {
       getComposerCapabilities: (input) =>

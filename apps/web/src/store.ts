@@ -567,7 +567,10 @@ function normalizeModelSelection<T extends { provider: ProviderKind; model: stri
   value: T,
   previous: T | null | undefined,
 ): T {
-  const normalizedModel = normalizeModelSlug(value.model, value.provider) ?? value.model;
+  const normalizedModel =
+    value.provider === "openclaw"
+      ? "gateway"
+      : (normalizeModelSlug(value.model, value.provider) ?? value.model);
   const next = normalizedModel === value.model ? value : { ...value, model: normalizedModel };
   return previous && deepEqualJson(previous, next) ? previous : next;
 }
@@ -1933,6 +1936,7 @@ function toLegacyProvider(providerName: string | null): ProviderKind {
     providerName === "gemini" ||
     providerName === "kilo" ||
     providerName === "opencode" ||
+    providerName === "openclaw" ||
     providerName === "pi"
   ) {
     return providerName;

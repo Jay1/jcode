@@ -6,6 +6,7 @@ import viteConfig from "./vite.config";
 
 const srcPath = fileURLToPath(new URL("./src", import.meta.url));
 const localTestProfile = process.env.JCODE_LOCAL_TEST_PROFILE === "1";
+const browserApiPort = Number(process.env.VITEST_BROWSER_API_PORT ?? 63315);
 
 export default mergeConfig(
   viteConfig,
@@ -22,21 +23,16 @@ export default mergeConfig(
             maxConcurrency: 1,
             minWorkers: 1,
             maxWorkers: 1,
-            poolOptions: {
-              threads: {
-                maxThreads: 1,
-                minThreads: 1,
-              },
-              forks: {
-                maxForks: 1,
-                minForks: 1,
-              },
-            },
           }
         : {}),
       include: ["src/components/**/*.browser.tsx"],
       browser: {
         enabled: true,
+        api: {
+          host: "127.0.0.1",
+          port: Number.isFinite(browserApiPort) ? browserApiPort : 63315,
+          strictPort: false,
+        },
         fileParallelism: localTestProfile ? false : undefined,
         provider: playwright(),
         instances: [{ browser: "chromium" }],

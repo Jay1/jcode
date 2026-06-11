@@ -7,9 +7,35 @@ import {
   resolveAssociatedWorktreeMetadataAfterWorkspacePatch,
   resolveDraftEnvModeAfterBranchChange,
   resolveBranchToolbarValue,
+  resolveRuntimeUsageControlsClassName,
   resolvePostCheckoutStatusCwd,
   shouldSyncLocalThreadBranch,
 } from "./BranchToolbar.logic";
+
+describe("resolveRuntimeUsageControlsClassName", () => {
+  it("reserves clock clearance only when the interface clock is visible", () => {
+    expect(
+      resolveRuntimeUsageControlsClassName({
+        className: "shrink-0",
+        showInterfaceClock: true,
+      }),
+    ).toBe("shrink-0 mr-20 sm:mr-24");
+
+    expect(
+      resolveRuntimeUsageControlsClassName({
+        className: "shrink-0",
+        showInterfaceClock: false,
+      }),
+    ).toBe("shrink-0");
+  });
+
+  it("omits empty class names when only the interface clock is hidden", () => {
+    expect(resolveRuntimeUsageControlsClassName({ showInterfaceClock: true })).toBe(
+      "mr-20 sm:mr-24",
+    );
+    expect(resolveRuntimeUsageControlsClassName({ showInterfaceClock: false })).toBeUndefined();
+  });
+});
 
 describe("resolveDraftEnvModeAfterBranchChange", () => {
   it("switches to local mode when returning from an existing worktree to the main worktree", () => {

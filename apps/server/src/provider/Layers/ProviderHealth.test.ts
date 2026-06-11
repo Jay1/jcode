@@ -10,6 +10,7 @@ import {
   checkCodexProviderStatus,
   checkCursorProviderStatus,
   checkOpenCodeProviderStatus,
+  checkOpenClawProviderStatus,
   hasCustomModelProvider,
   isExternalOpenCodeRuntimeActive,
   makeCheckClaudeProviderStatus,
@@ -17,6 +18,7 @@ import {
   makeCheckCursorProviderStatus,
   makeCheckKiloProviderStatus,
   makeCheckOpenCodeProviderStatus,
+  makeCheckOpenClawProviderStatus,
   parseAuthStatusFromOutput,
   parseClaudeAuthStatusFromOutput,
   ProviderHealthLive,
@@ -24,11 +26,32 @@ import {
 } from "./ProviderHealth";
 import { ServerConfig } from "../../config";
 import { ServerSettingsService } from "../../serverSettings";
+import { ServerSecretStoreLive } from "../../auth/Layers/ServerSecretStore";
+import { ServerSecretStore } from "../../auth/Services/ServerSecretStore";
+import { setOpenClawToken } from "../openclawSecrets";
 import { ProviderHealth } from "../Services/ProviderHealth";
 
 // ── Test helpers ────────────────────────────────────────────────────
 
 const encoder = new TextEncoder();
+
+const openClawSecretLayer = ServerSecretStoreLive.pipe(
+  Layer.provide(
+    ServerConfig.layerTest(process.cwd(), {
+      prefix: "jcode-provider-health-openclaw-test-",
+    }),
+  ),
+  Layer.provide(NodeServices.layer),
+);
+
+const openClawTokenSecretLayer = Layer.effect(
+  ServerSecretStore,
+  Effect.gen(function* () {
+    const store = yield* ServerSecretStore;
+    yield* setOpenClawToken("token-secret");
+    return store;
+  }),
+).pipe(Layer.provide(openClawSecretLayer));
 
 function mockHandle(result: { stdout: string; stderr: string; code: number }) {
   return ChildProcessSpawner.makeHandle({
@@ -413,28 +436,28 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
       Effect.gen(function* () {
         yield* withTempCodexHome();
         assert.strictEqual(yield* readCodexConfigModelProvider, undefined);
-      }),
+      }).pipe(Effect.provide(openClawSecretLayer)),
     );
 
     it.effect("returns undefined when config has no model_provider key", () =>
       Effect.gen(function* () {
         yield* withTempCodexHome('model = "gpt-5-codex"\n');
         assert.strictEqual(yield* readCodexConfigModelProvider, undefined);
-      }),
+      }).pipe(Effect.provide(openClawSecretLayer)),
     );
 
     it.effect("returns the provider when model_provider is set at top level", () =>
       Effect.gen(function* () {
         yield* withTempCodexHome('model = "gpt-5-codex"\nmodel_provider = "portkey"\n');
         assert.strictEqual(yield* readCodexConfigModelProvider, "portkey");
-      }),
+      }).pipe(Effect.provide(openClawSecretLayer)),
     );
 
     it.effect("returns openai when model_provider is openai", () =>
       Effect.gen(function* () {
         yield* withTempCodexHome('model_provider = "openai"\n');
         assert.strictEqual(yield* readCodexConfigModelProvider, "openai");
-      }),
+      }).pipe(Effect.provide(openClawSecretLayer)),
     );
 
     it.effect("ignores model_provider inside section headers", () =>
@@ -450,7 +473,7 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
           ].join("\n"),
         );
         assert.strictEqual(yield* readCodexConfigModelProvider, undefined);
-      }),
+      }).pipe(Effect.provide(openClawSecretLayer)),
     );
 
     it.effect("handles comments and whitespace", () =>
@@ -466,14 +489,14 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
           ].join("\n"),
         );
         assert.strictEqual(yield* readCodexConfigModelProvider, "azure");
-      }),
+      }).pipe(Effect.provide(openClawSecretLayer)),
     );
 
     it.effect("handles single-quoted values in TOML", () =>
       Effect.gen(function* () {
         yield* withTempCodexHome("model_provider = 'mistral'\n");
         assert.strictEqual(yield* readCodexConfigModelProvider, "mistral");
-      }),
+      }).pipe(Effect.provide(openClawSecretLayer)),
     );
   });
 
@@ -484,14 +507,14 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
       Effect.gen(function* () {
         yield* withTempCodexHome();
         assert.strictEqual(yield* hasCustomModelProvider, false);
-      }),
+      }).pipe(Effect.provide(openClawSecretLayer)),
     );
 
     it.effect("returns false when model_provider is not set", () =>
       Effect.gen(function* () {
         yield* withTempCodexHome('model = "gpt-5-codex"\n');
         assert.strictEqual(yield* hasCustomModelProvider, false);
-      }),
+      }).pipe(Effect.provide(openClawSecretLayer)),
     );
 
     it.effect("returns false when model_provider is openai", () =>
@@ -733,6 +756,225 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
     );
   });
 
+  describe("checkOpenClawProviderStatus", () => {
+    it.effect("reports unconfigured when no gateway URL is set", () =>
+      Effect.gen(function* () {
+        const status = yield* makeCheckOpenClawProviderStatus({
+          enabled: true,
+          gatewayUrl: "",
+          authMode: "none",
+          hasSecret: false,
+          paired: false,
+        });
+        assert.strictEqual(status.provider, "openclaw");
+        assert.strictEqual(status.status, "warning");
+        assert.strictEqual(status.available, false);
+        assert.strictEqual(status.authStatus, "unknown");
+        assert.match(status.message ?? "", /gateway URL is not configured/);
+      }).pipe(Effect.provide(openClawSecretLayer)),
+    );
+
+    it.effect("reports ready when the gateway probe succeeds", () =>
+      Effect.gen(function* () {
+        let capturedAuth: unknown;
+        const status = yield* makeCheckOpenClawProviderStatus(
+          {
+            enabled: true,
+            gatewayUrl: "https://gateway.example.test/path?token=must-not-leak",
+            authMode: "token",
+            hasSecret: true,
+            paired: false,
+          },
+          {
+            probe: (input) => {
+              capturedAuth = input.auth;
+              return Effect.succeed({ methods: ["chat.history", "chat.send", "chat.abort"] });
+            },
+          },
+        );
+        assert.strictEqual(status.provider, "openclaw");
+        assert.strictEqual(status.status, "ready");
+        assert.strictEqual(status.available, true);
+        assert.strictEqual(status.authStatus, "authenticated");
+        assert.strictEqual(status.authType, "token");
+        assert.deepStrictEqual(capturedAuth, { type: "token", token: "token-secret" });
+        assert.strictEqual(/must-not-leak/.test(status.message ?? ""), false);
+      }).pipe(Effect.provide(openClawTokenSecretLayer)),
+    );
+
+    it.effect("does not report available when live gateway probing is unavailable", () =>
+      Effect.gen(function* () {
+        const status = yield* makeCheckOpenClawProviderStatus({
+          enabled: true,
+          gatewayUrl: "https://gateway.example.test/path?token=must-not-leak",
+          authMode: "none",
+          hasSecret: false,
+          paired: false,
+        });
+        assert.strictEqual(status.provider, "openclaw");
+        assert.strictEqual(status.status, "warning");
+        assert.strictEqual(status.available, false);
+        assert.strictEqual(status.authStatus, "unknown");
+        assert.match(status.message ?? "", /probing is not configured/);
+        assert.strictEqual(/must-not-leak/.test(status.message ?? ""), false);
+      }).pipe(Effect.provide(openClawSecretLayer)),
+    );
+
+    it.effect("live wrapper attempts the default gateway probe", () =>
+      Effect.gen(function* () {
+        const status = yield* checkOpenClawProviderStatus({
+          enabled: true,
+          gatewayUrl: "https://127.0.0.1:1/path?token=must-not-leak",
+          authMode: "none",
+          hasSecret: false,
+          paired: false,
+        });
+        assert.strictEqual(status.provider, "openclaw");
+        assert.strictEqual(status.status, "error");
+        assert.strictEqual(status.available, false);
+        assert.match(status.message ?? "", /gateway probe failed/);
+        assert.strictEqual(/probing is not configured/.test(status.message ?? ""), false);
+        assert.strictEqual(/must-not-leak/.test(status.message ?? ""), false);
+      }).pipe(Effect.provide(openClawSecretLayer)),
+    );
+
+    it.effect("reports pairing needed when device mode is not paired", () =>
+      Effect.gen(function* () {
+        const status = yield* makeCheckOpenClawProviderStatus({
+          enabled: true,
+          gatewayUrl: "https://gateway.example.test",
+          authMode: "device",
+          hasSecret: false,
+          paired: false,
+        });
+        assert.strictEqual(status.status, "warning");
+        assert.strictEqual(status.available, false);
+        assert.strictEqual(status.authStatus, "unauthenticated");
+        assert.match(status.message ?? "", /pairing is required/);
+      }).pipe(Effect.provide(openClawSecretLayer)),
+    );
+
+    it.effect("reports unauthenticated when token mode has no stored secret", () =>
+      Effect.gen(function* () {
+        const status = yield* makeCheckOpenClawProviderStatus({
+          enabled: true,
+          gatewayUrl: "https://gateway.example.test",
+          authMode: "token",
+          hasSecret: false,
+          paired: false,
+        });
+        assert.strictEqual(status.status, "error");
+        assert.strictEqual(status.available, false);
+        assert.strictEqual(status.authStatus, "unauthenticated");
+        assert.match(status.message ?? "", /token secret is not configured/);
+      }).pipe(Effect.provide(openClawSecretLayer)),
+    );
+
+    it.effect("reports unreachable when the gateway probe fails", () =>
+      Effect.gen(function* () {
+        const status = yield* makeCheckOpenClawProviderStatus(
+          {
+            enabled: true,
+            gatewayUrl: "https://user:pass@gateway.example.test/path?token=must-not-leak",
+            authMode: "none",
+            hasSecret: false,
+            paired: false,
+          },
+          { probe: () => Effect.fail(new Error("connection refused token=must-not-leak")) },
+        );
+        assert.strictEqual(status.status, "error");
+        assert.strictEqual(status.available, false);
+        assert.strictEqual(status.authStatus, "unknown");
+        assert.match(status.message ?? "", /probe failed/);
+        assert.match(status.message ?? "", /connection refused/);
+        assert.strictEqual(/must-not-leak|user:pass/.test(status.message ?? ""), false);
+      }).pipe(Effect.provide(openClawSecretLayer)),
+    );
+
+    it.effect("reports unauthenticated when the gateway probe rejects auth", () =>
+      Effect.gen(function* () {
+        const status = yield* makeCheckOpenClawProviderStatus(
+          {
+            enabled: true,
+            gatewayUrl: "https://gateway.example.test/path?token=must-not-leak",
+            authMode: "token",
+            hasSecret: true,
+            paired: false,
+          },
+          { probe: () => Effect.fail(new Error("authentication failed token=must-not-leak")) },
+        );
+        assert.strictEqual(status.status, "error");
+        assert.strictEqual(status.available, false);
+        assert.strictEqual(status.authStatus, "unauthenticated");
+        assert.strictEqual(status.authType, "token");
+        assert.match(status.message ?? "", /authentication failed/);
+        assert.strictEqual(/must-not-leak/.test(status.message ?? ""), false);
+      }).pipe(Effect.provide(openClawTokenSecretLayer)),
+    );
+
+    it.effect("reports unsupported when required chat methods are missing", () =>
+      Effect.gen(function* () {
+        const status = yield* makeCheckOpenClawProviderStatus(
+          {
+            enabled: true,
+            gatewayUrl: "https://gateway.example.test",
+            authMode: "none",
+            hasSecret: false,
+            paired: false,
+          },
+          { probe: () => Effect.succeed({ methods: ["chat.history"] }) },
+        );
+        assert.strictEqual(status.status, "warning");
+        assert.strictEqual(status.available, false);
+        assert.strictEqual(status.authStatus, "authenticated");
+        assert.match(status.message ?? "", /chat\.send/);
+        assert.match(status.message ?? "", /chat\.abort/);
+      }).pipe(Effect.provide(openClawSecretLayer)),
+    );
+
+    it.effect("reports protocol mismatch when the gateway protocol is outside v1 support", () =>
+      Effect.gen(function* () {
+        const status = yield* makeCheckOpenClawProviderStatus(
+          {
+            enabled: true,
+            gatewayUrl: "https://gateway.example.test",
+            authMode: "none",
+            hasSecret: false,
+            paired: false,
+          },
+          {
+            probe: () =>
+              Effect.succeed({
+                methods: ["chat.history", "chat.send", "chat.abort"],
+                protocolVersion: 5,
+              }),
+          },
+        );
+        assert.strictEqual(status.status, "warning");
+        assert.strictEqual(status.available, false);
+        assert.strictEqual(status.authStatus, "unknown");
+        assert.match(status.message ?? "", /protocol/i);
+      }).pipe(Effect.provide(openClawSecretLayer)),
+    );
+
+    it.effect("rejects public insecure WebSocket gateway URLs", () =>
+      Effect.gen(function* () {
+        const status = yield* makeCheckOpenClawProviderStatus({
+          enabled: true,
+          gatewayUrl: "ws://gateway.example.test/path?token=must-not-leak",
+          authMode: "none",
+          hasSecret: false,
+          paired: false,
+        });
+        assert.strictEqual(status.status, "error");
+        assert.strictEqual(status.available, false);
+        assert.strictEqual(status.authStatus, "unknown");
+        assert.match(status.message ?? "", /requires wss/);
+        assert.strictEqual(/must-not-leak/.test(status.message ?? ""), false);
+      }).pipe(Effect.provide(openClawSecretLayer)),
+    );
+  });
+
   describe("isExternalOpenCodeRuntimeActive", () => {
     it("does not treat the default OpenCode CLI runtime as external", () => {
       assert.strictEqual(isExternalOpenCodeRuntimeActive(DEFAULT_SERVER_SETTINGS), false);
@@ -917,6 +1159,7 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
           Effect.provide(
             ServerConfig.layerTest(process.cwd(), { prefix: "jcode-provider-health-" }),
           ),
+          Effect.provide(openClawSecretLayer),
           Effect.provide(
             mockSpawnerLayer((args, command, options) => {
               calls.push({ command, args, shell: options.shell });

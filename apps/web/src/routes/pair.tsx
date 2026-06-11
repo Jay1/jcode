@@ -1,5 +1,5 @@
 import { AuthHttpRoutes } from "@jcode/contracts";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { APP_DISPLAY_NAME } from "../branding";
@@ -41,8 +41,15 @@ function hasRemoteHost(url: string): boolean {
   }
 }
 
-export function PairRoute() {
-  const navigate = useNavigate();
+type PairRouteProps = {
+  readonly redirectAfterPairing?: () => void;
+};
+
+function redirectToAppHome(): void {
+  window.location.assign("/");
+}
+
+export function PairRoute({ redirectAfterPairing = redirectToAppHome }: PairRouteProps = {}) {
   const initialCredential = useMemo(() => getPairingTokenFromUrl(window.location.href) ?? "", []);
   const [credential, setCredential] = useState(initialCredential);
   const [status, setStatus] = useState<"idle" | "pairing" | "paired" | "error">(
@@ -65,7 +72,7 @@ export function PairRoute() {
             stripPairingTokenFromUrl(window.location.href).toString(),
           );
           toastManager.add({ type: "success", title: "Remote backend paired" });
-          window.location.assign("/");
+          redirectAfterPairing();
           return;
         }
 
@@ -77,13 +84,13 @@ export function PairRoute() {
         );
         setStatus("paired");
         toastManager.add({ type: "success", title: "Client paired" });
-        void navigate({ to: "/" });
+        redirectAfterPairing();
       } catch (caught) {
         setError((caught as Error).message);
         setStatus("error");
       }
     },
-    [navigate],
+    [redirectAfterPairing],
   );
 
   const hasSubmittedRef = useRef(false);

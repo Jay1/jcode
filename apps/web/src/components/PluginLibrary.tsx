@@ -81,9 +81,11 @@ const PROVIDER_ICON: Record<ProviderKind, React.FC<React.SVGProps<SVGSVGElement>
   codex: HammerIcon,
   claudeAgent: ClaudeAI,
   cursor: CursorIcon,
+  devin: PlugIcon,
   gemini: Gemini,
   kilo: KiloIcon,
   opencode: OpenCodeIcon,
+  openclaw: PlugIcon,
   pi: PiIcon,
 };
 const PROVIDER_DISCOVERY_ORDER: ReadonlyArray<ProviderKind> = [
@@ -417,9 +419,17 @@ export function PluginLibrary() {
         plugins: supportsPluginDiscovery(openCodeCapabilitiesQuery.data),
         skills: supportsSkillDiscovery(openCodeCapabilitiesQuery.data),
       },
+      openclaw: {
+        plugins: false,
+        skills: false,
+      },
       pi: {
         plugins: supportsPluginDiscovery(piCapabilitiesQuery.data),
         skills: supportsSkillDiscovery(piCapabilitiesQuery.data),
+      },
+      devin: {
+        plugins: false,
+        skills: false,
       },
     }),
     [

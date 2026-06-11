@@ -18,9 +18,11 @@ import {
 import { ClaudeAdapter } from "../Services/ClaudeAdapter.ts";
 import { CodexAdapter } from "../Services/CodexAdapter.ts";
 import { CursorAdapter } from "../Services/CursorAdapter.ts";
+import { DevinAdapter } from "../Services/DevinAdapter.ts";
 import { GeminiAdapter } from "../Services/GeminiAdapter.ts";
 import { KiloAdapter } from "../Services/KiloAdapter.ts";
 import { OpenCodeAdapter } from "../Services/OpenCodeAdapter.ts";
+import { OpenClawAdapter } from "../Services/OpenClawAdapter.ts";
 import { PiAdapter } from "../Services/PiAdapter.ts";
 
 export interface ProviderAdapterRegistryLiveOptions {
@@ -36,9 +38,11 @@ const makeProviderAdapterRegistry = (options?: ProviderAdapterRegistryLiveOption
             yield* CodexAdapter,
             yield* ClaudeAdapter,
             yield* CursorAdapter,
+            yield* DevinAdapter,
             yield* GeminiAdapter,
             yield* KiloAdapter,
             yield* OpenCodeAdapter,
+            yield* OpenClawAdapter,
             yield* PiAdapter,
           ];
     const byProvider = new Map(adapters.map((adapter) => [adapter.provider, adapter]));

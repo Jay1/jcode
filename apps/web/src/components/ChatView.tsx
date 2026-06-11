@@ -55,6 +55,7 @@ import {
   useRef,
   useState,
   type MouseEvent,
+  type WheelEvent,
 } from "react";
 import { GoTasklist } from "react-icons/go";
 import { PiArrowBendDownRight } from "react-icons/pi";
@@ -91,6 +92,11 @@ import {
   providerUnavailableReason,
 } from "~/lib/providerAvailability";
 import { isElectron } from "../env";
+import {
+  isScrollContainerNearBottom,
+  shouldDisableTailFollowOnScroll,
+  shouldDisableTailFollowOnWheel,
+} from "../chat-scroll";
 import { parseDiffRouteSearch, stripDiffSearchParams } from "../diffRouteSearch";
 import { resolveSubagentPresentationForThread } from "../lib/subagentPresentation";
 import { isHomeChatContainerProject } from "../lib/chatProjects";
@@ -189,6 +195,7 @@ import { useComposerCommandMenuItems } from "../hooks/useComposerCommandMenuItem
 import { useThreadHandoff } from "../hooks/useThreadHandoff";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
 import BranchToolbar, { RuntimeUsageControls } from "./BranchToolbar";
+import { resolveRuntimeUsageControlsClassName } from "./BranchToolbar.logic";
 import { ThreadWorktreeHandoffDialog } from "./ThreadWorktreeHandoffDialog";
 import {
   formatShortcutLabel,
@@ -289,6 +296,7 @@ import {
 import { ComposerPromptEditor, type ComposerPromptEditorHandle } from "./ComposerPromptEditor";
 import { PullRequestThreadDialog } from "./PullRequestThreadDialog";
 import { ChatHeader } from "./chat/ChatHeader";
+import { ThreadRecapPanel } from "./ThreadRecapPanel";
 import { SidebarHeaderNavigationControls } from "./SidebarHeaderNavigationControls";
 import { SidebarHeaderTrigger } from "./ui/sidebar";
 import { ChatTranscriptPane } from "./chat/ChatTranscriptPane";
@@ -371,6 +379,7 @@ import {
   buildNextProviderOptions,
   formatProviderModelOptionName,
   type ProviderModelOption,
+  type ProviderOptions,
 } from "../providerModelOptions";
 import {
   isDuplicateProjectCreateError,
@@ -465,6 +474,10 @@ function getProviderStartOptionsCustomBinaryPath(
       return normalizeCustomBinaryPath(providerOptions?.cursor?.binaryPath);
     case "pi":
       return normalizeCustomBinaryPath(providerOptions?.pi?.binaryPath);
+    case "openclaw":
+      return null;
+    case "devin":
+      return null;
   }
 }
 
@@ -479,6 +492,14 @@ function getProviderHealthBannerDismissalKey(status: ServerProviderStatus | null
     status.authStatus,
     status.message?.trim() ?? "",
   ].join("\u001f");
+}
+
+function getModelSelectionOptions(
+  selection: ModelSelection | null | undefined,
+): ProviderOptions | undefined {
+  return selection !== null && selection !== undefined && "options" in selection
+    ? (selection.options as ProviderOptions | undefined)
+    : undefined;
 }
 
 function getRateLimitBannerDismissalKey(
@@ -1016,7 +1037,11 @@ export default function ChatView({
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
   const [isTraitsPickerOpen, setIsTraitsPickerOpen] = useState(false);
   const legendListRef = useRef<LegendListRef | null>(null);
+  const tailFollowEnabledRef = useRef(true);
   const isAtEndRef = useRef(true);
+  const lastMessagesScrollTopRef = useRef<number | null>(null);
+  const previousTranscriptFollowKeyRef = useRef<string | null>(null);
+  const tailFollowScrollFrameRef = useRef<number | null>(null);
   const pendingInteractionAnchorRef = useRef<{
     element: HTMLElement;
     top: number;
@@ -1034,6 +1059,10 @@ export default function ChatView({
   useEffect(() => {
     return () => {
       showScrollDebouncer.current.cancel();
+      const pendingTailFollowFrame = tailFollowScrollFrameRef.current;
+      if (pendingTailFollowFrame !== null) {
+        window.cancelAnimationFrame(pendingTailFollowFrame);
+      }
       const pendingFrame = pendingInteractionAnchorFrameRef.current;
       if (pendingFrame !== null) {
         window.cancelAnimationFrame(pendingFrame);
@@ -1431,9 +1460,11 @@ export default function ChatView({
       codex: resolveHint("codex"),
       claudeAgent: resolveHint("claudeAgent"),
       cursor: resolveHint("cursor"),
+      devin: resolveHint("devin"),
       gemini: resolveHint("gemini"),
       kilo: resolveHint("kilo"),
       opencode: resolveHint("opencode"),
+      openclaw: resolveHint("openclaw"),
       pi: resolveHint("pi"),
     };
   }, [
@@ -1569,7 +1600,13 @@ export default function ChatView({
         customModelsByProvider.opencode,
         composerModelHintByProvider.opencode,
       ),
+      openclaw: getAppModelOptions("openclaw", [], composerModelHintByProvider.openclaw),
       pi: getAppModelOptions("pi", customModelsByProvider.pi, composerModelHintByProvider.pi),
+      devin: getAppModelOptions(
+        "devin",
+        customModelsByProvider.devin,
+        composerModelHintByProvider.devin,
+      ),
     };
     const result: Record<
       ProviderKind,
@@ -1586,13 +1623,16 @@ export default function ChatView({
       gemini: geminiModelsQuery.data,
       kilo: kiloDynamicModelsQuery.data,
       opencode: openCodeDynamicModelsQuery.data,
+      openclaw: undefined,
       pi: piDynamicModelsQuery.data,
+      devin: undefined,
     };
 
     for (const provider of [
       "claudeAgent",
       "codex",
       "cursor",
+      "devin",
       "gemini",
       "kilo",
       "opencode",
@@ -1643,9 +1683,11 @@ export default function ChatView({
       claudeAgent: claudeDynamicModelsQuery.data?.models ?? [],
       codex: codexDynamicModelsQuery.data?.models ?? [],
       cursor: cursorRuntimeModels,
+      devin: [],
       gemini: geminiModelsQuery.data?.models ?? [],
       kilo: kiloDynamicModelsQuery.data?.models ?? [],
       opencode: openCodeDynamicModelsQuery.data?.models ?? [],
+      openclaw: [],
       pi: piDynamicModelsQuery.data?.models ?? [],
     }),
     [
@@ -1662,9 +1704,11 @@ export default function ChatView({
     claudeAgent: claudeDynamicModelsQuery,
     codex: codexDynamicModelsQuery,
     cursor: cursorDynamicModelsQuery,
+    devin: undefined,
     gemini: geminiModelsQuery,
     kilo: kiloDynamicModelsQuery,
     opencode: openCodeDynamicModelsQuery,
+    openclaw: undefined,
     pi: piDynamicModelsQuery,
   } as const;
   const selectedRuntimeModel = useMemo(
@@ -2520,7 +2564,8 @@ export default function ChatView({
     [selectedModel, selectedProvider],
   );
   const supportsFastSlashCommand = selectedModelCaps.supportsFastMode;
-  const currentProviderModelOptions = composerModelOptions?.[selectedProvider];
+  const currentProviderModelOptions =
+    selectedProvider === "openclaw" ? undefined : composerModelOptions?.[selectedProvider];
   const fastModeEnabled =
     supportsFastSlashCommand &&
     (currentProviderModelOptions as { fastMode?: boolean } | undefined)?.fastMode === true;
@@ -3856,8 +3901,8 @@ export default function ChatView({
         input.modelSelection !== undefined &&
         (input.modelSelection.model !== serverThread.modelSelection.model ||
           input.modelSelection.provider !== serverThread.modelSelection.provider ||
-          JSON.stringify(input.modelSelection.options ?? null) !==
-            JSON.stringify(serverThread.modelSelection.options ?? null))
+          JSON.stringify(getModelSelectionOptions(input.modelSelection) ?? null) !==
+            JSON.stringify(getModelSelectionOptions(serverThread.modelSelection) ?? null))
       ) {
         await api.orchestration.dispatchCommand({
           type: "thread.meta.update",
@@ -3895,10 +3940,61 @@ export default function ChatView({
   // Guards isAtEndRef from flipping during reflow-induced scroll events that
   // fire immediately after an explicit scrollToEnd.
   const programmaticScrollUntilRef = useRef(0);
-  const scrollToEnd = useCallback((animated = false) => {
-    programmaticScrollUntilRef.current = performance.now() + 200;
-    legendListRef.current?.scrollToEnd?.({ animated });
+  const setTailFollowIntent = useCallback((enabled: boolean) => {
+    tailFollowEnabledRef.current = enabled;
   }, []);
+  const rememberCurrentMessagesScrollTop = useCallback(() => {
+    const scrollContainer = legendListRef.current?.getScrollableNode?.();
+    if (scrollContainer instanceof HTMLElement && Number.isFinite(scrollContainer.scrollTop)) {
+      lastMessagesScrollTopRef.current = scrollContainer.scrollTop;
+    }
+  }, []);
+  const cancelTailFollowScrollFrame = useCallback(() => {
+    const pendingFrame = tailFollowScrollFrameRef.current;
+    if (pendingFrame === null) return;
+    tailFollowScrollFrameRef.current = null;
+    window.cancelAnimationFrame(pendingFrame);
+  }, []);
+  const scrollToEnd = useCallback(
+    (animated = false) => {
+      programmaticScrollUntilRef.current = performance.now() + 200;
+      legendListRef.current?.scrollToEnd?.({ animated });
+      rememberCurrentMessagesScrollTop();
+    },
+    [rememberCurrentMessagesScrollTop],
+  );
+  const scheduleTailFollowScrollToEnd = useCallback(
+    (animated = false) => {
+      cancelTailFollowScrollFrame();
+      scrollToEnd(animated);
+
+      let remainingFrames = 3;
+      const scrollNextFrame = () => {
+        tailFollowScrollFrameRef.current = null;
+        if (!tailFollowEnabledRef.current) return;
+
+        scrollToEnd(false);
+        remainingFrames -= 1;
+        if (remainingFrames > 0) {
+          tailFollowScrollFrameRef.current = window.requestAnimationFrame(scrollNextFrame);
+        }
+      };
+
+      tailFollowScrollFrameRef.current = window.requestAnimationFrame(scrollNextFrame);
+    },
+    [cancelTailFollowScrollFrame, scrollToEnd],
+  );
+  const enableTailFollow = useCallback(() => {
+    setTailFollowIntent(true);
+    isAtEndRef.current = true;
+    showScrollDebouncer.current.cancel();
+    setShowScrollToBottom(false);
+    rememberCurrentMessagesScrollTop();
+  }, [rememberCurrentMessagesScrollTop, setTailFollowIntent]);
+  const disableTailFollow = useCallback(() => {
+    setTailFollowIntent(false);
+    isAtEndRef.current = false;
+  }, [setTailFollowIntent]);
   useLayoutEffect(() => {
     const previousHeight = previousActiveTaskListCardHeightRef.current;
     previousActiveTaskListCardHeightRef.current = activeTaskListCardHeight;
@@ -3911,7 +4007,7 @@ export default function ChatView({
     if (delta <= 0.5) {
       return;
     }
-    if (!isAtEndRef.current) {
+    if (!tailFollowEnabledRef.current) {
       return;
     }
 
@@ -3927,17 +4023,41 @@ export default function ChatView({
     () => timelineEntries.filter((entry) => entry.kind === "message").length,
     [timelineEntries],
   );
-  const onIsAtEndChange = useCallback((isAtEnd: boolean) => {
-    if (isAtEndRef.current === isAtEnd) return;
-    if (!isAtEnd && performance.now() < programmaticScrollUntilRef.current) return;
-    isAtEndRef.current = isAtEnd;
-    if (isAtEnd) {
-      showScrollDebouncer.current.cancel();
-      setShowScrollToBottom(false);
-    } else {
-      showScrollDebouncer.current.maybeExecute();
-    }
-  }, []);
+  const transcriptTailGrowthKey = useMemo(() => {
+    const lastMessage = timelineMessages[timelineMessages.length - 1];
+    if (!lastMessage) return "empty";
+
+    return `${lastMessage.id}:${lastMessage.text.length}`;
+  }, [timelineMessages]);
+  const onIsAtEndChange = useCallback(
+    (reportedIsAtEnd: boolean) => {
+      let isAtEnd = reportedIsAtEnd;
+      if (reportedIsAtEnd) {
+        const scrollContainer = legendListRef.current?.getScrollableNode?.();
+        if (scrollContainer instanceof HTMLElement) {
+          isAtEnd = isScrollContainerNearBottom({
+            scrollTop: scrollContainer.scrollTop,
+            clientHeight: scrollContainer.clientHeight,
+            scrollHeight: scrollContainer.scrollHeight,
+          });
+        }
+      }
+
+      if (isAtEndRef.current === isAtEnd) return;
+      if (!isAtEnd && performance.now() < programmaticScrollUntilRef.current) return;
+
+      isAtEndRef.current = isAtEnd;
+      if (isAtEnd) {
+        enableTailFollow();
+      } else if (tailFollowEnabledRef.current) {
+        showScrollDebouncer.current.cancel();
+        setShowScrollToBottom(false);
+      } else {
+        showScrollDebouncer.current.maybeExecute();
+      }
+    },
+    [enableTailFollow],
+  );
   const cancelPendingInteractionAnchorAdjustment = useCallback(() => {
     const pendingFrame = pendingInteractionAnchorFrameRef.current;
     if (pendingFrame === null) return;
@@ -3981,24 +4101,82 @@ export default function ChatView({
   const onMessagesPointerCancelBase = useCallback(() => {}, []);
   const onMessagesPointerDownBase = useCallback(() => {}, []);
   const onMessagesPointerUpBase = useCallback(() => {}, []);
-  const onMessagesScrollBase = useCallback(() => {}, []);
+  const onMessagesScrollBase = useCallback(
+    (_event: unknown) => {
+      const scrollContainer = legendListRef.current?.getScrollableNode?.();
+      if (!(scrollContainer instanceof HTMLElement)) return;
+
+      const nextScrollTop = scrollContainer.scrollTop;
+      const shouldDetach = shouldDisableTailFollowOnScroll({
+        tailFollowEnabled: tailFollowEnabledRef.current,
+        previousScrollTop: lastMessagesScrollTopRef.current,
+        nextScrollTop,
+        nextClientHeight: scrollContainer.clientHeight,
+        nextScrollHeight: scrollContainer.scrollHeight,
+        nowMs: performance.now(),
+        programmaticScrollUntilMs: programmaticScrollUntilRef.current,
+      });
+      lastMessagesScrollTopRef.current = nextScrollTop;
+
+      if (!shouldDetach) return;
+
+      disableTailFollow();
+      showScrollDebouncer.current.cancel();
+      setShowScrollToBottom(true);
+    },
+    [disableTailFollow],
+  );
   const onMessagesTouchEndBase = useCallback(() => {}, []);
   const onMessagesTouchMoveBase = useCallback(() => {}, []);
   const onMessagesTouchStartBase = useCallback(() => {}, []);
-  const onMessagesWheelBase = useCallback(() => {}, []);
+  const onMessagesWheelBase = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      const shouldDetach = shouldDisableTailFollowOnWheel({
+        tailFollowEnabled: tailFollowEnabledRef.current,
+        deltaY: event.deltaY,
+      });
+      if (!shouldDetach) return;
+
+      disableTailFollow();
+      showScrollDebouncer.current.cancel();
+      setShowScrollToBottom(true);
+    },
+    [disableTailFollow],
+  );
   useEffect(() => {
-    if (!isAtEndRef.current) {
+    const nextTranscriptFollowKey = `${transcriptMessageCount}:${transcriptTailGrowthKey}`;
+    const previousTranscriptFollowKey = previousTranscriptFollowKeyRef.current;
+    previousTranscriptFollowKeyRef.current = nextTranscriptFollowKey;
+
+    if (previousTranscriptFollowKey === null) {
       return;
     }
     // Re-apply the bottom stick only for real transcript messages; tool/work
     // rows can arrive quickly and should not churn scroll/layout work.
     const frameId = window.requestAnimationFrame(() => {
-      scrollToEnd(false);
+      if (!tailFollowEnabledRef.current) {
+        const scrollContainer = legendListRef.current?.getScrollableNode?.();
+        if (
+          scrollContainer instanceof HTMLElement &&
+          !isScrollContainerNearBottom({
+            scrollTop: scrollContainer.scrollTop,
+            clientHeight: scrollContainer.clientHeight,
+            scrollHeight: scrollContainer.scrollHeight,
+          })
+        ) {
+          isAtEndRef.current = false;
+          showScrollDebouncer.current.cancel();
+          setShowScrollToBottom(true);
+        }
+        return;
+      }
+
+      scheduleTailFollowScrollToEnd(false);
     });
     return () => {
       window.cancelAnimationFrame(frameId);
     };
-  }, [scrollToEnd, transcriptMessageCount]);
+  }, [scheduleTailFollowScrollToEnd, transcriptMessageCount, transcriptTailGrowthKey]);
   const {
     pendingTranscriptSelectionAction,
     commitTranscriptAssistantSelection,
@@ -4075,7 +4253,7 @@ export default function ChatView({
       if (previousHeight > 0 && Math.abs(nextHeight - previousHeight) < 0.5) {
         return;
       }
-      if (!isAtEndRef.current) {
+      if (!tailFollowEnabledRef.current) {
         return;
       }
       window.requestAnimationFrame(() => {
@@ -4092,9 +4270,8 @@ export default function ChatView({
   useEffect(() => {
     setPullRequestDialogState(null);
     setRenameDialogOpen(false);
-    isAtEndRef.current = true;
-    showScrollDebouncer.current.cancel();
-    setShowScrollToBottom(false);
+    enableTailFollow();
+    scheduleTailFollowScrollToEnd(false);
     if (planSidebarOpenOnNextThreadRef.current) {
       planSidebarOpenOnNextThreadRef.current = false;
       setPlanSidebarOpen(true);
@@ -4102,7 +4279,7 @@ export default function ChatView({
       setPlanSidebarOpen(false);
     }
     planSidebarDismissedForTurnRef.current = null;
-  }, [activeThread?.id]);
+  }, [activeThread?.id, enableTailFollow, scheduleTailFollowScrollToEnd]);
 
   useEffect(() => {
     if (!composerMenuOpen) {
@@ -5504,22 +5681,6 @@ export default function ChatView({
       nextThreadWorktreePath = null;
     }
 
-    if (
-      isFirstMessage &&
-      nextThreadEnvMode === "worktree" &&
-      !nextThreadBranch &&
-      !nextThreadWorktreePath
-    ) {
-      nextThreadEnvMode = "local";
-      if (isLocalDraftThread) {
-        setDraftThreadContext(threadIdForSend, {
-          envMode: "local",
-          branch: null,
-          worktreePath: null,
-        });
-      }
-    }
-
     const baseBranchForWorktree =
       isFirstMessage && nextThreadEnvMode === "worktree" && !nextThreadWorktreePath
         ? nextThreadBranch
@@ -5530,10 +5691,7 @@ export default function ChatView({
     const shouldCreateWorktree =
       isFirstMessage && nextThreadEnvMode === "worktree" && !nextThreadWorktreePath;
     if (shouldCreateWorktree && !nextThreadBranch) {
-      setStoreThreadError(
-        threadIdForSend,
-        "Select a base branch before sending in New worktree mode.",
-      );
+      setThreadError(threadIdForSend, "Select a base branch before sending in New worktree mode.");
       return false;
     }
 
@@ -5607,9 +5765,7 @@ export default function ChatView({
     ]);
     // Mark the transcript as anchored before the optimistic row lands so the
     // re-snap effect on row count change pulls us to the new tail.
-    isAtEndRef.current = true;
-    showScrollDebouncer.current.cancel();
-    setShowScrollToBottom(false);
+    enableTailFollow();
 
     setThreadError(threadIdForSend, null);
     if (expiredTerminalContextCount > 0) {
@@ -5697,7 +5853,7 @@ export default function ChatView({
           : selectedModelForSend ||
               targetProjectDefaultModelSelectionForSend?.model ||
               DEFAULT_MODEL_BY_PROVIDER.codex,
-        selectedModelSelectionForSend.options,
+        getModelSelectionOptions(selectedModelSelectionForSend),
       );
 
       if (isLocalDraftThread) {
@@ -6106,9 +6262,7 @@ export default function ChatView({
         source: "native",
       },
     ]);
-    isAtEndRef.current = true;
-    showScrollDebouncer.current.cancel();
-    setShowScrollToBottom(false);
+    enableTailFollow();
 
     try {
       await persistThreadSettingsForNextTurn({
@@ -6510,10 +6664,7 @@ export default function ChatView({
         return;
       }
       const resolvedModel = resolveAppModelSelection(provider, customModelsByProvider, model);
-      const nextModelSelection: ModelSelection = {
-        provider,
-        model: resolvedModel,
-      };
+      const nextModelSelection: ModelSelection = buildModelSelection(provider, resolvedModel);
       setComposerDraftModelSelection(activeThread.id, nextModelSelection);
       if (provider === "cursor" && !showExpandedCursorModelVariants) {
         setComposerDraftProviderModelOptions(activeThread.id, provider, undefined, {
@@ -6551,7 +6702,8 @@ export default function ChatView({
     },
     [scheduleComposerFocus, setPrompt],
   );
-  const selectedProviderModelOptions = composerModelOptions?.[selectedProvider];
+  const selectedProviderModelOptions =
+    selectedProvider === "openclaw" ? undefined : composerModelOptions?.[selectedProvider];
   const composerTraitSelection = getComposerTraitSelection(
     selectedProvider,
     selectedModel,
@@ -7348,11 +7500,9 @@ export default function ChatView({
   }, []);
   const expandedImageItem = expandedImage ? expandedImage.images[expandedImage.index] : null;
   const onScrollToBottom = useCallback(() => {
-    isAtEndRef.current = true;
-    showScrollDebouncer.current.cancel();
-    setShowScrollToBottom(false);
-    scrollToEnd(true);
-  }, [scrollToEnd]);
+    enableTailFollow();
+    scheduleTailFollowScrollToEnd(true);
+  }, [enableTailFollow, scheduleTailFollowScrollToEnd]);
   const onOpenTurnDiff = useCallback(
     (turnId: TurnId, filePath?: string) => {
       if (diffEnvironmentPending) {
@@ -8058,7 +8208,13 @@ export default function ChatView({
             onSelectWorkspaceRoot={handleSelectWorkspaceRoot}
             onResetToHome={handleResetWorkspaceToHome}
           />
-          <RuntimeUsageControls {...runtimeUsageControlsProps} className="shrink-0" />
+          <RuntimeUsageControls
+            {...runtimeUsageControlsProps}
+            className={resolveRuntimeUsageControlsClassName({
+              className: "shrink-0",
+              showInterfaceClock: settings.showInterfaceClock,
+            })}
+          />
         </div>
       ) : null}
     </>
@@ -8109,6 +8265,7 @@ export default function ChatView({
           handoffActionTargetProviders={handoffTargetProviders}
           handoffBadgeSourceProvider={handoffBadgeSourceProvider}
           handoffBadgeTargetProvider={handoffBadgeTargetProvider}
+          goal={activeThread.goal ?? undefined}
           browserOpen={resolvedBrowserOpen}
           gitCwd={threadWorkspaceCwd}
           showGitActions={showGitActions}
@@ -8224,58 +8381,68 @@ export default function ChatView({
                     <BranchToolbar {...branchToolbarProps} />
                   ) : !isEmptyChatLanding ? (
                     <div className="mx-auto flex w-full max-w-3xl items-center justify-end px-3 pb-3 pt-1">
-                      <RuntimeUsageControls {...runtimeUsageControlsProps} />
+                      <RuntimeUsageControls
+                        {...runtimeUsageControlsProps}
+                        className={resolveRuntimeUsageControlsClassName({
+                          showInterfaceClock: settings.showInterfaceClock,
+                        })}
+                      />
                     </div>
                   ) : null}
                 </div>
               </div>
             ) : (
-              <ChatTranscriptPane
-                activeThreadId={activeThread.id}
-                activeTurnId={activeThread.session?.activeTurnId ?? null}
-                hasMessages={timelineEntries.length > 0}
-                isWorking={isWorking}
-                activeTurnInProgress={activeTurnInProgress}
-                activeTurnStartedAt={activeWorkStartedAt}
-                listRef={legendListRef}
-                timelineEntries={timelineEntries}
-                completionDividerBeforeEntryId={completionDividerBeforeEntryId}
-                completionSummary={completionSummary}
-                turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
-                onOpenTurnDiff={onOpenTurnDiff}
-                onOpenThread={onNavigateToThread}
-                revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
-                onRevertUserMessage={onRevertUserMessage}
-                onEditUserMessage={onEditUserMessage}
-                isRevertingCheckpoint={isRevertingCheckpoint}
-                onExpandTimelineImage={onExpandTimelineImage}
-                followLiveOutput={hasStreamingAssistantText}
-                onIsAtEndChange={onIsAtEndChange}
-                markdownCwd={threadWorkspaceCwd ?? undefined}
-                resolvedTheme={resolvedTheme}
-                chatFontSizePx={settings.chatFontSizePx}
-                timestampFormat={timestampFormat}
-                workspaceRoot={activeProject?.cwd ?? undefined}
-                emptyStateProjectName={activeProjectDisplayName}
-                terminalWorkspaceTerminalTabActive={terminalWorkspaceTerminalTabActive}
-                onMessagesScroll={onMessagesScroll}
-                onMessagesClickCapture={onMessagesClickCapture}
-                onMessagesMouseUp={onMessagesMouseUp}
-                onMessagesWheel={onMessagesWheel}
-                onMessagesPointerDown={onMessagesPointerDown}
-                onMessagesPointerUp={onMessagesPointerUp}
-                onMessagesPointerCancel={onMessagesPointerCancel}
-                onMessagesTouchStart={onMessagesTouchStart}
-                onMessagesTouchMove={onMessagesTouchMove}
-                onMessagesTouchEnd={onMessagesTouchEnd}
-                scrollButtonVisible={showScrollToBottom}
-                onScrollToBottom={onScrollToBottom}
-                bottomContentInsetPx={
-                  activeTaskList && !planSidebarOpen && activeTaskListCardHeight > 0
-                    ? activeTaskListCardHeight + 8
-                    : undefined
-                }
-              />
+              <>
+                <div className="mx-auto w-full max-w-3xl px-3 py-2 sm:px-5">
+                  <ThreadRecapPanel thread={activeThread} />
+                </div>
+                <ChatTranscriptPane
+                  activeThreadId={activeThread.id}
+                  activeTurnId={activeThread.session?.activeTurnId ?? null}
+                  hasMessages={timelineEntries.length > 0}
+                  isWorking={isWorking}
+                  activeTurnInProgress={activeTurnInProgress}
+                  activeTurnStartedAt={activeWorkStartedAt}
+                  listRef={legendListRef}
+                  timelineEntries={timelineEntries}
+                  completionDividerBeforeEntryId={completionDividerBeforeEntryId}
+                  completionSummary={completionSummary}
+                  turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
+                  onOpenTurnDiff={onOpenTurnDiff}
+                  onOpenThread={onNavigateToThread}
+                  revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
+                  onRevertUserMessage={onRevertUserMessage}
+                  onEditUserMessage={onEditUserMessage}
+                  isRevertingCheckpoint={isRevertingCheckpoint}
+                  onExpandTimelineImage={onExpandTimelineImage}
+                  followLiveOutput={hasStreamingAssistantText}
+                  onIsAtEndChange={onIsAtEndChange}
+                  markdownCwd={threadWorkspaceCwd ?? undefined}
+                  resolvedTheme={resolvedTheme}
+                  chatFontSizePx={settings.chatFontSizePx}
+                  timestampFormat={timestampFormat}
+                  workspaceRoot={activeProject?.cwd ?? undefined}
+                  emptyStateProjectName={activeProjectDisplayName}
+                  terminalWorkspaceTerminalTabActive={terminalWorkspaceTerminalTabActive}
+                  onMessagesScroll={onMessagesScroll}
+                  onMessagesClickCapture={onMessagesClickCapture}
+                  onMessagesMouseUp={onMessagesMouseUp}
+                  onMessagesWheel={onMessagesWheel}
+                  onMessagesPointerDown={onMessagesPointerDown}
+                  onMessagesPointerUp={onMessagesPointerUp}
+                  onMessagesPointerCancel={onMessagesPointerCancel}
+                  onMessagesTouchStart={onMessagesTouchStart}
+                  onMessagesTouchMove={onMessagesTouchMove}
+                  onMessagesTouchEnd={onMessagesTouchEnd}
+                  scrollButtonVisible={showScrollToBottom}
+                  onScrollToBottom={onScrollToBottom}
+                  bottomContentInsetPx={
+                    activeTaskList && !planSidebarOpen && activeTaskListCardHeight > 0
+                      ? activeTaskListCardHeight + 8
+                      : undefined
+                  }
+                />
+              </>
             )}
 
             {/* Input bar */}
@@ -8812,7 +8979,12 @@ export default function ChatView({
                     <BranchToolbar {...branchToolbarProps} />
                   ) : (
                     <div className="mx-auto flex w-full max-w-3xl items-center justify-end px-3 pb-3 pt-1">
-                      <RuntimeUsageControls {...runtimeUsageControlsProps} />
+                      <RuntimeUsageControls
+                        {...runtimeUsageControlsProps}
+                        className={resolveRuntimeUsageControlsClassName({
+                          showInterfaceClock: settings.showInterfaceClock,
+                        })}
+                      />
                     </div>
                   )
                 ) : null}

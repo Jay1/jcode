@@ -35,6 +35,7 @@ import { isElectron } from "../env";
 import { useFocusedChatContext } from "../focusedChatContext";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import {
+  serverAuthSessionQueryOptions,
   serverConfigQueryOptions,
   serverQueryKeys,
   serverSettingsQueryOptions,
@@ -135,16 +136,56 @@ function RootRouteView() {
   return (
     <ToastProvider>
       <AnchoredToastProvider>
-        <EventRouter />
-        <GlobalShortcutsDialog />
-        <GlobalWhatsNewSurface />
-        <TaskCompletionNotifications />
-        <ProviderUpdateNotifications />
-        <DesktopProjectBootstrap />
-        <Outlet />
+        <AuthSessionGate>
+          <EventRouter />
+          <GlobalShortcutsDialog />
+          <GlobalWhatsNewSurface />
+          <TaskCompletionNotifications />
+          <ProviderUpdateNotifications />
+          <DesktopProjectBootstrap />
+          <Outlet />
+        </AuthSessionGate>
       </AnchoredToastProvider>
     </ToastProvider>
   );
+}
+
+function AuthSessionGate({ children }: { readonly children: React.ReactNode }) {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const authSessionQuery = useQuery(serverAuthSessionQueryOptions());
+
+  if (pathname === "/pair") {
+    return <>{children}</>;
+  }
+
+  if (authSessionQuery.isLoading) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-background px-4 text-foreground">
+        <p className="text-sm text-muted-foreground">Checking browser access...</p>
+      </div>
+    );
+  }
+
+  if (authSessionQuery.data && !authSessionQuery.data.authenticated) {
+    return (
+      <main className="flex min-h-dvh items-center justify-center bg-background px-4 text-foreground">
+        <div className="w-full max-w-md space-y-5 rounded-lg border border-border/70 p-6 text-center shadow-sm">
+          <div className="space-y-2">
+            <h1 className="text-xl font-semibold">Pair this browser</h1>
+            <p className="text-sm text-muted-foreground">
+              This browser is not authorized for {APP_DISPLAY_NAME}. Open a fresh pairing link or
+              enter the pairing code manually.
+            </p>
+          </div>
+          <Button className="w-full" onClick={() => window.location.assign("/pair")}>
+            Open pairing
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 function ProviderUpdateNotifications() {

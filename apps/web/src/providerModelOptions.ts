@@ -12,6 +12,7 @@ import type {
   ModelSelection,
   OpenCodeModelOptions,
   OpenCodeModelSelection,
+  OpenClawModelOptions,
   PiModelOptions,
   PiModelSelection,
   ProviderKind,
@@ -231,6 +232,11 @@ export function buildModelSelection(
   options?: PiModelOptions | null | undefined,
 ): PiModelSelection;
 export function buildModelSelection(
+  provider: "openclaw",
+  model: string,
+  options?: OpenClawModelOptions | null | undefined,
+): Extract<ModelSelection, { provider: "openclaw" }>;
+export function buildModelSelection(
   provider: ProviderKind,
   model: string,
   options?: ProviderOptions | null | undefined,
@@ -297,5 +303,9 @@ export function buildModelSelection(
             options: options as PiModelOptions,
           }
         : { provider, model };
+    case "openclaw":
+      return { provider, model: "gateway" };
+    case "devin":
+      return { provider, model };
   }
 }

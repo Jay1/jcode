@@ -1,8 +1,10 @@
 import type {
+  AuthCapabilityScope,
   AuthClientMetadata,
   AuthClientSession,
   AuthPairingLink,
   AuthSessionId,
+  CapabilityResource,
 } from "@jcode/contracts";
 import { Data, DateTime, Duration, Effect, ServiceMap } from "effect";
 import type { SessionRole } from "./SessionCredentialService";
@@ -17,6 +19,8 @@ export interface IssuedPairingLink {
   readonly label?: string;
   readonly createdAt: DateTime.Utc;
   readonly expiresAt: DateTime.Utc;
+  readonly scopes?: ReadonlyArray<AuthCapabilityScope>;
+  readonly resources?: ReadonlyArray<CapabilityResource>;
 }
 
 export interface IssuedBearerSession {
@@ -27,6 +31,8 @@ export interface IssuedBearerSession {
   readonly subject: string;
   readonly client: AuthClientMetadata;
   readonly expiresAt: DateTime.Utc;
+  readonly scopes?: ReadonlyArray<AuthCapabilityScope>;
+  readonly resources?: ReadonlyArray<CapabilityResource>;
 }
 
 export class AuthControlPlaneError extends Data.TaggedError("AuthControlPlaneError")<{
@@ -40,6 +46,8 @@ export interface AuthControlPlaneShape {
     readonly label?: string;
     readonly role?: SessionRole;
     readonly subject?: string;
+    readonly scopes?: ReadonlyArray<AuthCapabilityScope>;
+    readonly resources?: ReadonlyArray<CapabilityResource>;
   }) => Effect.Effect<IssuedPairingLink, AuthControlPlaneError>;
   readonly listPairingLinks: (input?: {
     readonly role?: SessionRole;
@@ -51,6 +59,8 @@ export interface AuthControlPlaneShape {
     readonly subject?: string;
     readonly role?: SessionRole;
     readonly label?: string;
+    readonly scopes?: ReadonlyArray<AuthCapabilityScope>;
+    readonly resources?: ReadonlyArray<CapabilityResource>;
   }) => Effect.Effect<IssuedBearerSession, AuthControlPlaneError>;
   readonly listSessions: () => Effect.Effect<
     ReadonlyArray<AuthClientSession>,

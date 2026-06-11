@@ -55,7 +55,7 @@ export function createScoopManifest(input: CreateScoopManifestInput): string {
       },
     },
     installer: {
-      script: [`Start-Process \"$dir\\$fname\" -ArgumentList @('/S', \"/D=$dir\") -Wait`],
+      script: [`Start-Process "$dir\\$fname" -ArgumentList @('/S', "/D=$dir") -Wait`],
     },
     uninstaller: {
       script: [

@@ -11,9 +11,11 @@ const ProviderDiscoveryKind = Schema.Literals([
   "codex",
   "claudeAgent",
   "cursor",
+  "devin",
   "gemini",
   "kilo",
   "opencode",
+  "openclaw",
   "pi",
 ]);
 
@@ -105,6 +107,8 @@ export const PiProviderStartOptions = Schema.Struct({
   agentDir: Schema.optional(TrimmedNonEmptyString),
 });
 
+export const OpenClawProviderStartOptions = Schema.Struct({});
+
 export const ProviderStartOptions = Schema.Struct({
   codex: Schema.optional(CodexProviderStartOptions),
   claudeAgent: Schema.optional(ClaudeProviderStartOptions),
@@ -112,6 +116,7 @@ export const ProviderStartOptions = Schema.Struct({
   gemini: Schema.optional(GeminiProviderStartOptions),
   kilo: Schema.optional(KiloProviderStartOptions),
   opencode: Schema.optional(OpenCodeProviderStartOptions),
+  openclaw: Schema.optional(OpenClawProviderStartOptions),
   pi: Schema.optional(PiProviderStartOptions),
 });
 export type ProviderStartOptions = typeof ProviderStartOptions.Type;
