@@ -20,7 +20,15 @@ import { HiMiniArrowsPointingOut } from "react-icons/hi2";
 import { TbExchange, TbLayoutSidebarRight } from "react-icons/tb";
 import type { ThreadPrimarySurface } from "../../types";
 import GitActionsControl from "../GitActionsControl";
-import { AppsIcon, ArrowRightIcon, GlobeIcon, PlusIcon, TerminalIcon, XIcon } from "~/lib/icons";
+import {
+  AppsIcon,
+  ArrowRightIcon,
+  GlobeIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  TerminalIcon,
+  XIcon,
+} from "~/lib/icons";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
@@ -73,6 +81,7 @@ interface ChatHeaderProps {
   handoffActionTargetProviders: ReadonlyArray<ProviderKind>;
   handoffBadgeSourceProvider: ProviderKind | null;
   handoffBadgeTargetProvider: ProviderKind | null;
+  threadRecapOpen: boolean;
   goal?: OrchestrationGoal | null | undefined;
   browserOpen: boolean;
   gitCwd: string | null;
@@ -98,6 +107,7 @@ interface ChatHeaderProps {
   onToggleTerminal: () => void;
   onToggleDiff: () => void;
   onToggleBrowser: () => void;
+  onToggleThreadRecap: () => void;
   onCreateHandoff: (targetProvider: ProviderKind) => void;
   onNavigateToThread: (threadId: ThreadId) => void;
   onRenameThread: () => void;
@@ -154,6 +164,7 @@ export const ChatHeader = memo(function ChatHeader({
   handoffActionTargetProviders,
   handoffBadgeSourceProvider,
   handoffBadgeTargetProvider,
+  threadRecapOpen,
   goal,
   browserOpen,
   gitCwd,
@@ -171,6 +182,7 @@ export const ChatHeader = memo(function ChatHeader({
   onToggleTerminal,
   onToggleDiff,
   onToggleBrowser,
+  onToggleThreadRecap,
   onCreateHandoff,
   onNavigateToThread,
   onRenameThread,
@@ -352,6 +364,32 @@ export const ChatHeader = memo(function ChatHeader({
               ))}
             </MenuPopup>
           </Menu>
+        ) : null}
+        {!isDisposableThread && !hideHandoffControls ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  className={cn(
+                    "shrink-0 border-(--app-chrome-control-border) bg-(--app-chrome-control-bg) text-(--app-chrome-control-fg) not-disabled:before:shadow-none dark:not-disabled:before:shadow-none [:hover,[data-pressed]]:bg-(--app-chrome-control-hover-bg) [:hover,[data-pressed]]:text-(--app-chrome-control-hover-fg) dark:[:hover,[data-pressed]]:bg-(--app-chrome-control-hover-bg) data-pressed:bg-(--app-chrome-control-active-bg)",
+                    compact ? "gap-1" : "gap-1.5",
+                  )}
+                  aria-label={threadRecapOpen ? "Hide recap" : "Show recap"}
+                  aria-pressed={threadRecapOpen}
+                  onClick={onToggleThreadRecap}
+                >
+                  <RefreshCwIcon className="size-3.5 shrink-0" />
+                  {!compact ? <span className="truncate font-normal">Recap</span> : null}
+                </Button>
+              }
+            />
+            <TooltipPopup side="bottom">
+              {threadRecapOpen ? "Hide recap" : "Show recap"}
+            </TooltipPopup>
+          </Tooltip>
         ) : null}
         {/* Keep one shared project-actions controller mounted so both inline and
             compact header menus open the same dialog/state machine. */}
