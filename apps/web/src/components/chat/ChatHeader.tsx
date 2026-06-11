@@ -24,8 +24,8 @@ import {
   AppsIcon,
   ArrowRightIcon,
   GlobeIcon,
+  ListTodoIcon,
   PlusIcon,
-  RefreshCwIcon,
   TerminalIcon,
   XIcon,
 } from "~/lib/icons";
@@ -369,8 +369,7 @@ export const ChatHeader = memo(function ChatHeader({
           <Tooltip>
             <TooltipTrigger
               render={
-                <Button
-                  type="button"
+                <Toggle
                   size="xs"
                   variant="outline"
                   className={cn(
@@ -378,12 +377,12 @@ export const ChatHeader = memo(function ChatHeader({
                     compact ? "gap-1" : "gap-1.5",
                   )}
                   aria-label={threadRecapOpen ? "Hide recap" : "Show recap"}
-                  aria-pressed={threadRecapOpen}
-                  onClick={onToggleThreadRecap}
+                  pressed={threadRecapOpen}
+                  onPressedChange={() => onToggleThreadRecap()}
                 >
-                  <RefreshCwIcon className="size-3.5 shrink-0" />
+                  <ListTodoIcon className="size-3.5 shrink-0" />
                   {!compact ? <span className="truncate font-normal">Recap</span> : null}
-                </Button>
+                </Toggle>
               }
             />
             <TooltipPopup side="bottom">
