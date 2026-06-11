@@ -43,6 +43,7 @@ import { useStore } from "../store";
 import { useTemporaryThreadStore } from "../temporaryThreadStore";
 import { useTerminalStateStore } from "../terminalStateStore";
 import { __resetWsNativeApiForTests } from "../wsNativeApi";
+import { getChatTranscriptLineHeightPx } from "./chat/chatTypography";
 import { estimateTimelineMessageHeight } from "./timelineHeight";
 
 const THREAD_ID = "thread-browser-test" as ThreadId;
@@ -56,6 +57,7 @@ const HOMEASSIST_WORKSPACE_ROOT = `${HOME_DIR}/homeassist`;
 const NOW_ISO = "2026-03-04T12:00:00.000Z";
 const BASE_TIME_MS = Date.parse(NOW_ISO);
 const ATTACHMENT_SVG = "<svg xmlns='http://www.w3.org/2000/svg' width='120' height='300'></svg>";
+const USER_MESSAGE_BUBBLE_WIDTH_RATIO = 0.8;
 let attachmentResponseDelayMs = 0;
 
 interface WsRequestEnvelope {
@@ -106,6 +108,7 @@ const ATTACHMENT_VIEWPORT_MATRIX = [
 interface UserRowMeasurement {
   measuredRowHeightPx: number;
   timelineWidthMeasuredPx: number;
+  userMessageBubbleWidthMeasuredPx: number;
   renderedInVirtualizedRegion: boolean;
 }
 
@@ -1340,6 +1343,7 @@ async function measureUserRow(options: {
 
   let timelineWidthMeasuredPx = 0;
   let measuredRowHeightPx = 0;
+  let userMessageBubbleWidthMeasuredPx = 0;
   let renderedInVirtualizedRegion = false;
   await vi.waitFor(
     async () => {
@@ -1348,11 +1352,18 @@ async function measureUserRow(options: {
       await nextFrame();
       const measuredRow = host.querySelector<HTMLElement>(rowSelector);
       expect(measuredRow, "Unable to measure targeted user row height.").toBeTruthy();
+      const userMessageBubble = measuredRow!.querySelector<HTMLElement>(".app-user-message");
+      expect(userMessageBubble, "Unable to measure targeted user message bubble.").toBeTruthy();
       timelineWidthMeasuredPx = timelineRoot.getBoundingClientRect().width;
       measuredRowHeightPx = measuredRow!.getBoundingClientRect().height;
+      userMessageBubbleWidthMeasuredPx = userMessageBubble!.getBoundingClientRect().width;
       renderedInVirtualizedRegion = measuredRow!.closest("[data-index]") instanceof HTMLElement;
       expect(timelineWidthMeasuredPx, "Unable to measure timeline width.").toBeGreaterThan(0);
       expect(measuredRowHeightPx, "Unable to measure targeted user row height.").toBeGreaterThan(0);
+      expect(
+        userMessageBubbleWidthMeasuredPx,
+        "Unable to measure targeted user message bubble width.",
+      ).toBeGreaterThan(0);
     },
     {
       timeout: 4_000,
@@ -1360,7 +1371,12 @@ async function measureUserRow(options: {
     },
   );
 
-  return { measuredRowHeightPx, timelineWidthMeasuredPx, renderedInVirtualizedRegion };
+  return {
+    measuredRowHeightPx,
+    timelineWidthMeasuredPx,
+    userMessageBubbleWidthMeasuredPx,
+    renderedInVirtualizedRegion,
+  };
 }
 
 async function measureChatLayout(host: HTMLElement): Promise<ChatLayoutMeasurement> {
@@ -1616,13 +1632,23 @@ describe("ChatView timeline estimator parity (full app)", () => {
       targetMessageId,
     });
 
+    expect(mobileMeasurement.userMessageBubbleWidthMeasuredPx).toBeLessThan(
+      desktopMeasurement.userMessageBubbleWidthMeasuredPx,
+    );
+
     const estimatedDesktopPx = estimateTimelineMessageHeight(
       { role: "user", text: userText, attachments: [] },
-      { timelineWidthPx: desktopMeasurement.timelineWidthMeasuredPx },
+      {
+        timelineWidthPx:
+          desktopMeasurement.userMessageBubbleWidthMeasuredPx / USER_MESSAGE_BUBBLE_WIDTH_RATIO,
+      },
     );
     const estimatedMobilePx = estimateTimelineMessageHeight(
       { role: "user", text: userText, attachments: [] },
-      { timelineWidthPx: mobileMeasurement.timelineWidthMeasuredPx },
+      {
+        timelineWidthPx:
+          mobileMeasurement.userMessageBubbleWidthMeasuredPx / USER_MESSAGE_BUBBLE_WIDTH_RATIO,
+      },
     );
 
     const measuredDeltaPx =
@@ -1630,9 +1656,9 @@ describe("ChatView timeline estimator parity (full app)", () => {
     const estimatedDeltaPx = estimatedMobilePx - estimatedDesktopPx;
     expect(measuredDeltaPx).toBeGreaterThan(0);
     expect(estimatedDeltaPx).toBeGreaterThan(0);
-    const ratio = estimatedDeltaPx / measuredDeltaPx;
-    expect(ratio).toBeGreaterThan(0.65);
-    expect(ratio).toBeLessThan(1.35);
+    expect(Math.abs(estimatedDeltaPx - measuredDeltaPx)).toBeLessThanOrEqual(
+      getChatTranscriptLineHeightPx(),
+    );
   });
 
   it("collapses header actions into overflow before they can overlap the thread title", async () => {
