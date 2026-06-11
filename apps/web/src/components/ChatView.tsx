@@ -1219,6 +1219,20 @@ export default function ChatView({
   const resolvedDiffOpen = panelState ? panelState.panel === "diff" : diffOpen;
   const resolvedBrowserOpen = panelState ? panelState.panel === "browser" : browserOpen;
   const activeThreadId = activeThread?.id ?? null;
+  const [threadRecapOpenByThreadId, setThreadRecapOpenByThreadId] = useState<
+    Partial<Record<ThreadId, boolean>>
+  >({});
+  const threadRecapOpen = activeThreadId
+    ? (threadRecapOpenByThreadId[activeThreadId] ?? false)
+    : false;
+  const onToggleThreadRecap = useCallback(() => {
+    if (!activeThreadId) return;
+    setThreadRecapOpenByThreadId((current) => ({
+      ...current,
+      [activeThreadId]: !(current[activeThreadId] ?? false),
+    }));
+  }, [activeThreadId]);
+
   const activeLatestTurn = activeThread?.latestTurn ?? null;
   const threadActivities = activeThread?.activities ?? EMPTY_ACTIVITIES;
   const hasLiveTurnTail = hasLiveTurnTailWork({
@@ -8265,6 +8279,7 @@ export default function ChatView({
           handoffActionTargetProviders={handoffTargetProviders}
           handoffBadgeSourceProvider={handoffBadgeSourceProvider}
           handoffBadgeTargetProvider={handoffBadgeTargetProvider}
+          threadRecapOpen={threadRecapOpen}
           goal={activeThread.goal ?? undefined}
           browserOpen={resolvedBrowserOpen}
           gitCwd={threadWorkspaceCwd}
@@ -8304,6 +8319,7 @@ export default function ChatView({
           onToggleTerminal={toggleTerminalVisibility}
           onToggleDiff={onToggleDiff}
           onToggleBrowser={onToggleBrowser}
+          onToggleThreadRecap={onToggleThreadRecap}
           onCreateHandoff={onCreateHandoffThread}
           onNavigateToThread={onNavigateToThread}
           onRenameThread={() => setRenameDialogOpen(true)}
@@ -8393,8 +8409,11 @@ export default function ChatView({
               </div>
             ) : (
               <>
-                <div className="mx-auto w-full max-w-3xl px-3 py-2 sm:px-5">
-                  <ThreadRecapPanel thread={activeThread} />
+                <div
+                  hidden={!threadRecapOpen}
+                  className="mx-auto w-full max-w-3xl px-3 py-2 sm:px-5"
+                >
+                  <ThreadRecapPanel key={activeThread.id} thread={activeThread} />
                 </div>
                 <ChatTranscriptPane
                   activeThreadId={activeThread.id}
