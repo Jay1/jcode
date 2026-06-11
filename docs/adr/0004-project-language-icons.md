@@ -1,17 +1,17 @@
 # ADR 0004: Project Language Icons Are Detected As Project Metadata
 
-| Field           | Value                                                                                                                                                                                |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Status          | Proposed                                                                                                                                                                             |
-| Type            | Architecture decision record                                                                                                                                                         |
-| Owner           | Engineering                                                                                                                                                                          |
-| Audience        | Maintainers, reviewers, and automation agents                                                                                                                                        |
-| Scope           | Project identity metadata, sidebar project icons, project creation, and legacy project icon backfill                                                                                 |
-| Canonical path  | `docs/adr/0004-project-language-icons.md`                                                                                                                                            |
-| Last reviewed   | 2026-06-01                                                                                                                                                                           |
-| Review cadence  | Event-driven; review if project metadata storage, project creation, or sidebar project identity rendering changes                                                                    |
-| Source of truth | `packages/contracts/src/orchestration.ts`, `apps/server/src/orchestration`, `apps/server/src/persistence`, `apps/web/src/store.ts`, `apps/web/src/components/ProjectSidebarIcon.tsx` |
-| Verification    | Confirm project creation stays fast, missing-icon backfill is capped, and sidebar/search/project-picker icons use persisted metadata rather than scanning                            |
+| Field           | Value                                                                                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Status          | Proposed                                                                                                                                                                              |
+| Type            | Architecture decision record                                                                                                                                                          |
+| Owner           | Engineering                                                                                                                                                                           |
+| Audience        | Maintainers, reviewers, and automation agents                                                                                                                                         |
+| Scope           | Project identity metadata, sidebar project icons, project creation, and legacy project icon backfill                                                                                  |
+| Canonical path  | `docs/adr/0004-project-language-icons.md`                                                                                                                                             |
+| Last reviewed   | 2026-06-11                                                                                                                                                                            |
+| Review cadence  | Event-driven; review if project metadata storage, project creation, or sidebar project identity rendering changes                                                                     |
+| Source of truth | `packages/contracts/src/orchestration.ts`, `apps/server/src/orchestration`, `apps/server/src/persistence`, `apps/web/src/store.ts`, `apps/web/src/components/ProjectSidebarIcon.tsx`  |
+| Verification    | Confirm project creation stays fast, startup icon refresh work is capped, and renderer icon surfaces use server-owned metadata or bounded server favicon lookups rather than scanning |
 
 ## Context
 
@@ -36,9 +36,9 @@ The detector must use a bounded root-probe strategy:
 - prefer framework icons over language icons when the framework is explicit;
 - fall back to the current folder icon when there is no confident match.
 
-Legacy projects with missing icon metadata should be re-evaluated by a low-priority once-per-process backfill. The backfill should process only a small capped number of missing projects per restart and should never block startup snapshots, sidebar rendering, or thread loading.
+Legacy projects with missing icon metadata, and projects whose current icon metadata came from automatic detection, should be re-evaluated by a low-priority once-per-process startup path. The refresh should process only a small capped number of projects per restart and should never block startup snapshots, sidebar rendering, or thread loading. Manually updated icon metadata must not be overwritten by this automatic path.
 
-The renderer should render icons from metadata only. `ProjectSidebarIcon.tsx`, `SidebarSearchPalette.tsx`, and `chat/ProjectPicker.tsx` should share the same icon resolver so project identity is consistent across the left sidebar, search/import palette, and project picker.
+The renderer must not scan project workspaces. `ProjectSidebarIcon.tsx` may prefer the bounded server favicon endpoint for the visible sidebar icon, then fall back to server-owned language/framework metadata when no favicon exists or the visible favicon image fails. Other project identity surfaces should continue to consume the persisted metadata field so search/import palette and project picker remain consistent.
 
 ## Options Considered
 
@@ -60,7 +60,7 @@ Run filesystem checks from the web UI when project rows render.
 
 ### Option B: Server Metadata Detection On Project Lifecycle
 
-Detect once server-side when a project is created, persist the icon hint in project metadata, and run a capped background backfill for legacy missing metadata.
+Detect server-side when a project is created, persist the icon hint in project metadata, and run capped startup maintenance for legacy missing metadata and stale automatically detected metadata.
 
 **Pros**
 
@@ -73,7 +73,7 @@ Detect once server-side when a project is created, persist the icon hint in proj
 **Cons**
 
 - Requires contract, projection, and migration work.
-- Requires a detector version/backfill policy so stale unknown results can be revisited intentionally.
+- Requires automatic-detection provenance so stale automatic results can be revisited intentionally without overwriting manual project metadata.
 
 ### Option C: Periodic Project Scanner
 
@@ -112,8 +112,8 @@ When multiple matches exist, framework identity wins over general language ident
 - `project.created` and `project.meta-updated` payloads need a forward-compatible optional icon metadata field.
 - `ProjectionProjects` storage needs a migration for the icon hint and detector metadata.
 - The web `Project` type and store normalization need to carry the field through snapshots and shell events.
-- Sidebar icon rendering can stay cheap because it consumes a resolved icon id instead of scanning folders.
-- Legacy project backfill must be observable and capped so it cannot add seconds to JCode startup.
+- Sidebar icon rendering can stay cheap because it consumes server-owned identity data and bounded favicon endpoint results instead of scanning folders.
+- Legacy project backfill and automatic metadata refresh must be observable and capped so they cannot add seconds to JCode startup.
 
 ## Action Items
 
@@ -121,6 +121,6 @@ When multiple matches exist, framework identity wins over general language ident
 2. Add optional icon metadata to project create/update events, read models, shell snapshots, and web `Project` normalization.
 3. Add a server-side bounded project icon detector service that reads only approved root manifest/config candidates.
 4. Trigger detection after project creation without blocking project creation completion.
-5. Add a once-per-process legacy backfill that processes a small capped number of missing icon projects in the background.
-6. Update `ProjectSidebarIcon.tsx`, `SidebarSearchPalette.tsx`, and `chat/ProjectPicker.tsx` to render the shared icon hint with folder fallback.
-7. Add focused tests for detector priority, projection persistence, web normalization, and renderer fallback behavior.
+5. Add a once-per-process startup icon refresh that processes a small capped number of missing or automatically detected icon projects in the background while preserving manual metadata.
+6. Update `ProjectSidebarIcon.tsx`, `SidebarSearchPalette.tsx`, and `chat/ProjectPicker.tsx` to render the shared icon hint with folder/favicon fallback.
+7. Add focused tests for detector priority, projection persistence, web normalization, capped startup refresh, and renderer fallback behavior.
