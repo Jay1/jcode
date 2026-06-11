@@ -509,6 +509,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       readModel = nextReadModel;
 
       for (const persistedEvent of persistedEvents) {
+        recordProjectIconMetadataProvenance(persistedEvent);
         yield* PubSub.publish(eventPubSub, persistedEvent);
       }
     });
