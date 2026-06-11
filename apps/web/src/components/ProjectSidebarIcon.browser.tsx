@@ -11,28 +11,40 @@ import {
 } from "./projectSidebarIconPresentation";
 
 type ImageLoadListener = () => void;
+type ImageProbeOutcome = "load" | "error";
 
 const originalImage = window.Image;
 
-function installImageProbeRecorder(requests: string[]) {
+function installImageProbeRecorder(
+  requests: string[],
+  outcome: ImageProbeOutcome | ((src: string) => ImageProbeOutcome) = "load",
+) {
   class MockImage {
     private loadListeners: ImageLoadListener[] = [];
+    private errorListeners: ImageLoadListener[] = [];
 
     addEventListener(type: string, listener: ImageLoadListener) {
       if (type === "load") {
         this.loadListeners.push(listener);
+      } else if (type === "error") {
+        this.errorListeners.push(listener);
       }
     }
 
     removeEventListener(type: string, listener: ImageLoadListener) {
-      if (type !== "load") return;
-      this.loadListeners = this.loadListeners.filter((candidate) => candidate !== listener);
+      if (type === "load") {
+        this.loadListeners = this.loadListeners.filter((candidate) => candidate !== listener);
+      } else if (type === "error") {
+        this.errorListeners = this.errorListeners.filter((candidate) => candidate !== listener);
+      }
     }
 
     set src(value: string) {
       requests.push(value);
       window.setTimeout(() => {
-        for (const listener of this.loadListeners) {
+        const resolvedOutcome = typeof outcome === "function" ? outcome(value) : outcome;
+        const listeners = resolvedOutcome === "load" ? this.loadListeners : this.errorListeners;
+        for (const listener of listeners) {
           listener();
         }
       }, 0);
@@ -53,7 +65,7 @@ afterEach(() => {
 });
 
 describe("ProjectSidebarIcon", () => {
-  it("renders a branded TypeScript project icon without probing for a favicon", async () => {
+  it("prefers a project favicon over TypeScript icon metadata when the favicon loads", async () => {
     const imageRequests: string[] = [];
     installImageProbeRecorder(imageRequests);
 
@@ -65,22 +77,105 @@ describe("ProjectSidebarIcon", () => {
       />,
     );
 
-    await expect.element(page.getByLabelText("TypeScript project icon")).toBeInTheDocument();
-    const icon = screen.container.querySelector('[data-project-icon-id="typescript"]');
-    expect(icon).not.toBeNull();
-    const svg = icon?.querySelector("svg");
-    expect(svg).not.toBeNull();
-    expect(svg?.classList.contains("size-[94%]")).toBe(true);
-    expect(getComputedStyle(icon as HTMLElement).color).toBe("rgb(49, 120, 198)");
-    expect(getComputedStyle(icon as HTMLElement).backgroundColor).toBe("rgba(0, 0, 0, 0)");
-    expect(screen.container.textContent).not.toContain("TS");
-    expect(imageRequests).toEqual([]);
+    await vi.waitFor(() => {
+      expect(screen.container.querySelector("img")?.getAttribute("src")).toContain(
+        "/api/project-favicon",
+      );
+    });
+    expect(screen.container.querySelector("[data-project-folder-icon]")).not.toBeNull();
+    expect(screen.container.querySelector('[data-project-icon-id="typescript"]')).toBeNull();
+    expect(imageRequests).toHaveLength(1);
     await screen.unmount();
   });
 
-  it("renders Vue project icon metadata distinctly with brand color", async () => {
+  it("falls back to TypeScript icon metadata when the favicon probe fails", async () => {
+    const imageRequests: string[] = [];
+    installImageProbeRecorder(imageRequests, "error");
+
+    const screen = await render(
+      <ProjectSidebarIcon
+        cwd="/workspace/typescript-missing-favicon"
+        expanded={false}
+        iconMetadata={{ iconId: "typescript", label: "TypeScript" }}
+      />,
+    );
+
+    await expect.element(page.getByLabelText("TypeScript project icon")).toBeInTheDocument();
+    await vi.waitFor(() => {
+      expect(imageRequests).toHaveLength(1);
+    });
+    const icon = screen.container.querySelector('[data-project-icon-id="typescript"]');
+    expect(icon).not.toBeNull();
+    expect(icon?.getAttribute("data-project-favicon-preferred")).toBe("true");
+    expect(screen.container.querySelector("img")).toBeNull();
+    await screen.unmount();
+  });
+
+  it("rechecks preferred favicon state when the project cwd changes", async () => {
+    const imageRequests: string[] = [];
+    installImageProbeRecorder(imageRequests, (src) =>
+      src.includes("favicon-loaded-app") ? "load" : "error",
+    );
+
+    const screen = await render(
+      <ProjectSidebarIcon
+        cwd="/workspace/favicon-missing-app"
+        expanded={false}
+        iconMetadata={{ iconId: "typescript", label: "TypeScript" }}
+      />,
+    );
+
+    await expect.element(page.getByLabelText("TypeScript project icon")).toBeInTheDocument();
+    await vi.waitFor(() => {
+      expect(imageRequests).toHaveLength(1);
+    });
+
+    await screen.rerender(
+      <ProjectSidebarIcon
+        cwd="/workspace/favicon-loaded-app"
+        expanded={false}
+        iconMetadata={{ iconId: "typescript", label: "TypeScript" }}
+      />,
+    );
+
+    await vi.waitFor(() => {
+      expect(screen.container.querySelector("img")?.getAttribute("src")).toContain(
+        "favicon-loaded-app",
+      );
+    });
+    expect(screen.container.querySelector('[data-project-icon-id="typescript"]')).toBeNull();
+    expect(imageRequests).toHaveLength(2);
+    await screen.unmount();
+  });
+
+  it("falls back to icon metadata when a preferred favicon image later errors", async () => {
     const imageRequests: string[] = [];
     installImageProbeRecorder(imageRequests);
+
+    const screen = await render(
+      <ProjectSidebarIcon
+        cwd="/workspace/favicon-visible-error-app"
+        expanded={false}
+        iconMetadata={{ iconId: "typescript", label: "TypeScript" }}
+      />,
+    );
+
+    await vi.waitFor(() => {
+      expect(screen.container.querySelector("img")?.getAttribute("src")).toContain(
+        "/api/project-favicon",
+      );
+    });
+    screen.container.querySelector("img")?.dispatchEvent(new Event("error", { bubbles: true }));
+
+    await expect.element(page.getByLabelText("TypeScript project icon")).toBeInTheDocument();
+    expect(screen.container.querySelector("img")).toBeNull();
+    expect(screen.container.querySelector("[data-project-folder-icon]")).toBeNull();
+    await screen.unmount();
+  });
+
+  it("renders Vue project icon metadata distinctly with brand color when no favicon exists", async () => {
+    const imageRequests: string[] = [];
+    installImageProbeRecorder(imageRequests, "error");
 
     const screen = await render(
       <ProjectSidebarIcon
@@ -96,19 +191,21 @@ describe("ProjectSidebarIcon", () => {
     expect(icon?.querySelector("svg")).not.toBeNull();
     expect(getComputedStyle(icon as HTMLElement).color).toBe("rgb(66, 184, 131)");
     expect(screen.container.textContent).not.toContain("TS");
-    expect(imageRequests).toEqual([]);
+    await vi.waitFor(() => {
+      expect(imageRequests).toHaveLength(1);
+    });
     await screen.unmount();
   });
 
   it("keeps the sidebar project header wrapper flat for language icons", async () => {
     const imageRequests: string[] = [];
-    installImageProbeRecorder(imageRequests);
+    installImageProbeRecorder(imageRequests, "error");
 
     const screen = await render(
       <span className={getProjectHeaderIconClassName()} data-testid="project-icon-wrapper">
         <ProjectSidebarIcon
           className={PROJECT_HEADER_ICON_SIZE_CLASS}
-          cwd="/workspace/typescript-app"
+          cwd="/workspace/typescript-wrapper-app"
           expanded={false}
           iconMetadata={{ iconId: "typescript", label: "TypeScript" }}
         />
@@ -122,7 +219,9 @@ describe("ProjectSidebarIcon", () => {
     expect(wrapper.element().className).not.toContain("rounded-md");
     expect(wrapper.element().className).not.toContain("bg-[");
     expect(wrapper.element().className).not.toContain("border ");
-    expect(imageRequests).toEqual([]);
+    await vi.waitFor(() => {
+      expect(imageRequests).toHaveLength(1);
+    });
     await screen.unmount();
   });
 

@@ -66,6 +66,8 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           latest_turn_id,
           created_at,
           updated_at,
+          recap_json,
+          goal_json,
           deleted_at
         )
         VALUES (
@@ -78,6 +80,8 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           'turn-1',
           '2026-02-24T00:00:02.000Z',
           '2026-02-24T00:00:03.000Z',
+          '{"text":"Working on projection hydration.","coveredMessageId":"message-1","sourceSignature":"sig-projection","generatedAt":"2026-02-24T00:00:06.500Z"}',
+          '{"objective":"Ship projected goal hydration","status":"active","createdByMessageId":"message-0","createdAt":"2026-02-24T00:00:03.500Z","updatedAt":"2026-02-24T00:00:08.000Z","completedAt":null,"lastContinuationTurnId":null,"turnCount":1,"blockedReason":null}',
           NULL
         )
       `;
@@ -281,6 +285,23 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
 
       assert.equal(snapshot.snapshotSequence, 5);
       assert.equal(snapshot.updatedAt, "2026-02-24T00:00:09.000Z");
+      const expectedRecap = {
+        text: "Working on projection hydration.",
+        coveredMessageId: asMessageId("message-1"),
+        sourceSignature: "sig-projection",
+        generatedAt: "2026-02-24T00:00:06.500Z",
+      };
+      const expectedGoal = {
+        objective: "Ship projected goal hydration",
+        status: "active" as const,
+        createdByMessageId: asMessageId("message-0"),
+        createdAt: "2026-02-24T00:00:03.500Z",
+        updatedAt: "2026-02-24T00:00:08.000Z",
+        completedAt: null,
+        lastContinuationTurnId: null,
+        turnCount: 1,
+        blockedReason: null,
+      };
       assert.deepEqual(snapshot.projects, [
         {
           id: asProjectId("project-1"),
@@ -334,6 +355,8 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           subagentRole: null,
           forkSourceThreadId: null,
           sidechatSourceThreadId: null,
+          recap: expectedRecap,
+          goal: expectedGoal,
           lastKnownPr: null,
           latestUserMessageAt: "2026-02-24T00:00:03.500Z",
           hasPendingApprovals: true,
@@ -450,6 +473,10 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           },
         },
       ]);
+
+      const detail = yield* snapshotQuery.getThreadDetailById(asThreadId("thread-1"));
+      assert.deepEqual(Option.getOrNull(detail)?.recap, expectedRecap);
+      assert.deepEqual(Option.getOrNull(detail)?.goal, expectedGoal);
     }),
   );
 
@@ -1409,6 +1436,8 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           subagentRole: null,
           forkSourceThreadId: null,
           sidechatSourceThreadId: null,
+          recap: null,
+          goal: null,
           lastKnownPr: null,
           latestTurn: {
             turnId: asTurnId("turn-shell"),

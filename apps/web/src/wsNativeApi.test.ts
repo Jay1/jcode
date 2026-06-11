@@ -15,6 +15,7 @@ import {
   WS_METHODS,
   type WsPush,
   type ServerProviderStatus,
+  DEFAULT_SERVER_SETTINGS,
 } from "@jcode/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -276,11 +277,13 @@ describe("wsNativeApi", () => {
 
     const payload = {
       settings: {
+        ...DEFAULT_SERVER_SETTINGS,
         enableAssistantStreaming: true,
         defaultThreadEnvMode: "local",
         addProjectBaseDirectory: "",
         textGenerationModelSelection: { provider: "codex", model: "gpt-5.4-mini" },
         providers: {
+          ...DEFAULT_SERVER_SETTINGS.providers,
           codex: {
             enabled: true,
             binaryPath: "codex",
@@ -303,11 +306,19 @@ describe("wsNativeApi", () => {
             binaryPath: "opencode",
             serverUrl: "",
             serverPassword: "",
-            customModels: [],
             runtimeProfiles: [],
             activeRuntimeProfileId: "",
+            customModels: [],
+          },
+          openclaw: {
+            enabled: true,
+            gatewayUrl: "",
+            authMode: "none",
+            hasSecret: false,
+            paired: false,
           },
           pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
+          devin: { enabled: true, binaryPath: "devin", customModels: [] },
         },
       },
     } as const;

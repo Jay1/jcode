@@ -1,4 +1,4 @@
-import type { AuthPairingLink } from "@jcode/contracts";
+import type { AuthCapabilityScope, AuthPairingLink, CapabilityResource } from "@jcode/contracts";
 import * as Crypto from "node:crypto";
 import { DateTime, Duration, Effect, Layer, Option, PubSub, Ref, Stream } from "effect";
 
@@ -15,6 +15,8 @@ import {
 
 interface StoredBootstrapGrant extends BootstrapGrant {
   readonly remainingUses: number | "unbounded";
+  readonly scopes?: ReadonlyArray<AuthCapabilityScope>;
+  readonly resources?: ReadonlyArray<CapabilityResource>;
 }
 
 const DEFAULT_ONE_TIME_TOKEN_TTL = Duration.minutes(5);
@@ -101,6 +103,8 @@ export const makeBootstrapCredentialService = Effect.gen(function* () {
       const role = input?.role ?? "client";
       const subject = input?.subject ?? "one-time-token";
       const label = input?.label;
+      const scopes = input?.scopes;
+      const resources = input?.resources;
 
       yield* pairingLinks.create({
         id,
@@ -111,6 +115,21 @@ export const makeBootstrapCredentialService = Effect.gen(function* () {
         label: label ?? null,
         createdAt: now,
         expiresAt,
+      });
+
+      yield* Ref.update(seededGrantsRef, (current) => {
+        const next = new Map(current);
+        next.set(credential, {
+          method: "one-time-token",
+          role,
+          subject,
+          ...(label ? { label } : {}),
+          expiresAt,
+          remainingUses: 1,
+          ...(scopes ? { scopes } : {}),
+          ...(resources ? { resources } : {}),
+        });
+        return next;
       });
 
       const pairingLink = toPairingLink({
@@ -172,12 +191,20 @@ export const makeBootstrapCredentialService = Effect.gen(function* () {
         return yield* toBootstrapCredentialError("Bootstrap credential expired.", 401);
       }
       if (seeded) {
+        const consumed = yield* pairingLinks.consumeAvailable({
+          credential,
+          consumedAt: now,
+          now,
+        });
+        if (Option.isSome(consumed)) yield* emitRemoved(consumed.value.id);
         return {
           method: seeded.method,
           role: seeded.role,
           subject: seeded.subject,
           ...(seeded.label ? { label: seeded.label } : {}),
           expiresAt: seeded.expiresAt,
+          ...(seeded.scopes ? { scopes: seeded.scopes } : {}),
+          ...(seeded.resources ? { resources: seeded.resources } : {}),
         } satisfies BootstrapGrant;
       }
 

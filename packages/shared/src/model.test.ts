@@ -30,6 +30,7 @@ import {
   getProviderOptionCurrentLabel,
   getProviderOptionDescriptors,
   buildProviderOptionSelectionsFromDescriptors,
+  EMPTY_MODEL_CAPABILITIES,
   hasEffortLevel,
 } from "./model";
 
@@ -97,6 +98,22 @@ describe("resolveModelSlug", () => {
     expect(getDefaultModel()).toBe(DEFAULT_MODEL);
     expect(getModelOptions()).toEqual(MODEL_OPTIONS);
     expect(getModelOptions("claudeAgent")).toEqual(MODEL_OPTIONS_BY_PROVIDER.claudeAgent);
+  });
+
+  it("exposes the fixed OpenClaw Gateway picker option without a default model", () => {
+    expect(getDefaultModel("openclaw")).toBeNull();
+    expect(getModelOptions("openclaw")).toEqual([
+      {
+        slug: "gateway",
+        name: "OpenClaw Gateway",
+        capabilities: EMPTY_MODEL_CAPABILITIES,
+      },
+    ]);
+    expect("openclaw" in DEFAULT_MODEL_BY_PROVIDER).toBe(false);
+    expect(resolveModelSlug(undefined, "openclaw")).toBeNull();
+    expect(resolveModelSlug("gateway", "openclaw")).toBe("gateway");
+    expect(resolveModelSlug("OpenClaw Gateway", "openclaw")).toBe("gateway");
+    expect(resolveModelSlug("gpt-5.5", "openclaw")).toBeNull();
   });
 });
 

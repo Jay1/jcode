@@ -1,4 +1,4 @@
-# ADR 0005: Backend-Owned Managed Runtime Sidecar
+# ADR 0009: Backend-Owned Managed Runtime Sidecar
 
 | Field           | Value                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -7,7 +7,7 @@
 | Owner           | Engineering                                                                                                                    |
 | Audience        | Maintainers, reviewers, and automation agents                                                                                  |
 | Scope           | Runtime process ownership for managed provider sidecars in JCode desktop mode                                                  |
-| Canonical path  | `docs/adr/0005-backend-owned-managed-runtime-sidecar.md`                                                                       |
+| Canonical path  | `docs/adr/0009-backend-owned-managed-runtime-sidecar.md`                                                                       |
 | Last reviewed   | 2026-06-07                                                                                                                     |
 | Review cadence  | Event-driven; review if JCode adds a remote/hosted mode or changes provider runtime boundaries                                 |
 | Source of truth | `apps/server/src/provider/opencodeRuntime.ts`, `apps/server/src/provider/openCodeRuntimeHealth.ts`, `packages/contracts/src/providerDiscovery.ts` |
@@ -60,7 +60,7 @@ The managed runtime targets native Windows OpenCode as the default. WSL is a fal
 
 ### JCode Owns The Happy Path (PRD Decision 4)
 
-JCode provisions, verifies, starts, and repairs the managed runtime without asking the user to manually install or configure OpenCode. The user's interaction is limited to: picking a provider in the first-run wizard (ADR 0006) and seeing a splash screen while the backend bootstraps. Error states surface actionable recovery options, not instructions to "install OpenCode manually."
+JCode provisions, verifies, starts, and repairs the managed runtime without asking the user to manually install or configure OpenCode. The user's interaction is limited to: picking a provider in the first-run wizard (ADR 0010) and seeing a splash screen while the backend bootstraps. Error states surface actionable recovery options, not instructions to "install OpenCode manually."
 
 ### configMode Default (PRD Decision 13)
 

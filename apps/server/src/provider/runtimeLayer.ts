@@ -1,16 +1,21 @@
-import { Effect, FileSystem, Layer } from "effect";
+import { Effect, FileSystem, Layer, Path } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { ServerConfig } from "../config";
+import { SecretStoreError } from "../auth/Services/ServerSecretStore";
+import { ServerSecretStoreLive } from "../auth/Layers/ServerSecretStore";
+import { ServerSettingsLive } from "../serverSettings";
 import { AnalyticsService } from "../telemetry/Services/AnalyticsService";
 import { ProviderUnsupportedError } from "./Errors";
 import { makeClaudeAdapterLive } from "./Layers/ClaudeAdapter";
 import { makeCodexAdapterLive } from "./Layers/CodexAdapter";
 import { makeCursorAdapterLive } from "./Layers/CursorAdapter";
+import { makeDevinAdapterLive } from "./Layers/DevinAdapter";
 import { makeEventNdjsonLogger } from "./Layers/EventNdjsonLogger";
 import { makeGeminiAdapterLive } from "./Layers/GeminiAdapter";
 import { makeKiloAdapterLive, makeOpenCodeAdapterLive } from "./Layers/OpenCodeAdapter";
+import { makeOpenClawAdapterLive } from "./Layers/OpenClawAdapter";
 import { makePiAdapterLive } from "./Layers/PiAdapter";
 import { ProviderAdapterRegistryLive } from "./Layers/ProviderAdapterRegistry";
 import { ProviderDiscoveryServiceLive } from "./Layers/ProviderDiscoveryService";
@@ -25,10 +30,11 @@ import { ProviderSessionRuntimeRepositoryLive } from "../persistence/Layers/Prov
 
 export function makeServerProviderLayer(): Layer.Layer<
   ProviderService | ProviderDiscoveryService | ProviderAdapterRegistry | ProviderSessionDirectory,
-  ProviderUnsupportedError,
+  ProviderUnsupportedError | SecretStoreError,
   | SqlClient.SqlClient
   | ServerConfig
   | FileSystem.FileSystem
+  | Path.Path
   | AnalyticsService
   | ChildProcessSpawner.ChildProcessSpawner
 > {
@@ -56,6 +62,12 @@ export function makeServerProviderLayer(): Layer.Layer<
     const openCodeAdapterLayer = makeOpenCodeAdapterLive(
       nativeEventLogger ? { nativeEventLogger } : undefined,
     );
+    const openClawSettingsLayer = ServerSettingsLive.pipe(
+      Layer.provideMerge(ServerSecretStoreLive),
+    );
+    const openClawAdapterLayer = makeOpenClawAdapterLive().pipe(
+      Layer.provideMerge(openClawSettingsLayer),
+    );
     const kiloAdapterLayer = makeKiloAdapterLive(
       nativeEventLogger ? { nativeEventLogger } : undefined,
     );
@@ -66,14 +78,19 @@ export function makeServerProviderLayer(): Layer.Layer<
       {},
       nativeEventLogger ? { nativeEventLogger } : undefined,
     );
+    const devinAdapterLayer = makeDevinAdapterLive(
+      nativeEventLogger ? { nativeEventLogger } : undefined,
+    );
     const piAdapterLayer = makePiAdapterLive(nativeEventLogger ? { nativeEventLogger } : undefined);
     const adapterRegistryLayer = ProviderAdapterRegistryLive.pipe(
       Layer.provide(codexAdapterLayer),
       Layer.provide(claudeAdapterLayer),
       Layer.provide(cursorAdapterLayer),
+      Layer.provide(devinAdapterLayer),
       Layer.provide(geminiAdapterLayer),
       Layer.provide(kiloAdapterLayer),
       Layer.provide(openCodeAdapterLayer),
+      Layer.provide(openClawAdapterLayer),
       Layer.provide(piAdapterLayer),
       Layer.provideMerge(providerSessionDirectoryLayer),
     );

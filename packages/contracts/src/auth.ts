@@ -22,6 +22,20 @@ export type ServerAuthSessionMethod = typeof ServerAuthSessionMethod.Type;
 export const AuthSessionRole = Schema.Literals(["owner", "client"]);
 export type AuthSessionRole = typeof AuthSessionRole.Type;
 
+export const AuthCapabilityScope = Schema.Literals([
+  "thread:read",
+  "approval:respond",
+  "user_input:respond",
+  "provider_status:read",
+]);
+export type AuthCapabilityScope = typeof AuthCapabilityScope.Type;
+
+export const CapabilityResource = Schema.Struct({
+  type: Schema.Literals(["project", "thread"]),
+  id: TrimmedNonEmptyString,
+});
+export type CapabilityResource = typeof CapabilityResource.Type;
+
 export const ServerAuthDescriptor = Schema.Struct({
   policy: ServerAuthPolicy,
   bootstrapMethods: Schema.Array(ServerAuthBootstrapMethod),
@@ -72,6 +86,8 @@ export const AuthPairingLink = Schema.Struct({
   role: AuthSessionRole,
   subject: TrimmedNonEmptyString,
   label: Schema.optionalKey(TrimmedNonEmptyString),
+  scopes: Schema.optionalKey(Schema.Array(AuthCapabilityScope)),
+  resources: Schema.optionalKey(Schema.Array(CapabilityResource)),
   createdAt: Schema.DateTimeUtcFromString,
   expiresAt: Schema.DateTimeUtcFromString,
 });
@@ -107,6 +123,8 @@ export const AuthClientSession = Schema.Struct({
   lastConnectedAt: Schema.NullOr(Schema.DateTimeUtcFromString),
   connected: Schema.Boolean,
   current: Schema.Boolean,
+  scopes: Schema.optionalKey(Schema.Array(AuthCapabilityScope)),
+  resources: Schema.optionalKey(Schema.Array(CapabilityResource)),
 });
 export type AuthClientSession = typeof AuthClientSession.Type;
 
@@ -160,6 +178,8 @@ export type AuthRevokeClientSessionInput = typeof AuthRevokeClientSessionInput.T
 
 export const AuthCreatePairingCredentialInput = Schema.Struct({
   label: Schema.optionalKey(TrimmedNonEmptyString),
+  scopes: Schema.optionalKey(Schema.Array(AuthCapabilityScope)),
+  resources: Schema.optionalKey(Schema.Array(CapabilityResource)),
 });
 export type AuthCreatePairingCredentialInput = typeof AuthCreatePairingCredentialInput.Type;
 

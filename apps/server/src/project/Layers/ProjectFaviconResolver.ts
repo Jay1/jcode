@@ -38,6 +38,19 @@ const ICON_SOURCE_FILES = [
   "src/index.html",
 ] as const;
 
+const MANIFEST_CANDIDATES = [
+  "manifest.json",
+  "manifest.webmanifest",
+  "public/manifest.json",
+  "public/manifest.webmanifest",
+  "app/manifest.json",
+  "app/manifest.webmanifest",
+  "src/manifest.json",
+  "static/manifest.json",
+] as const;
+
+const MANIFEST_MAX_BYTES = 128 * 1024;
+
 const LINK_ICON_HTML_RE =
   /<link\b(?=[^>]*\brel=["'](?:icon|shortcut icon)["'])(?=[^>]*\bhref=["']([^"'?]+))[^>]*>/i;
 const LINK_ICON_OBJ_RE =
@@ -49,6 +62,52 @@ function extractIconHref(source: string): string | null {
   const objMatch = source.match(LINK_ICON_OBJ_RE);
   if (objMatch?.[1]) return objMatch[1];
   return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function extractManifestIconSrcs(manifestText: string): string[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(manifestText);
+  } catch {
+    return [];
+  }
+  if (!isRecord(parsed) || !Array.isArray(parsed.icons)) {
+    return [];
+  }
+  const icons: Array<{ src: string; score: number }> = [];
+  for (const icon of parsed.icons) {
+    if (isRecord(icon) && typeof icon.src === "string" && icon.src.length > 0) {
+      const ext = icon.src.split(".").pop()?.toLowerCase() ?? "";
+      const type = typeof icon.type === "string" ? icon.type.toLowerCase() : "";
+      const sizes = typeof icon.sizes === "string" ? icon.sizes : "";
+      let score = 0;
+      // Prefer SVG (highest), then PNG, then ICO, then unknown.
+      if (type.includes("svg") || ext === "svg") {
+        score = 3000;
+      } else if (type.includes("png") || ext === "png") {
+        score = 2000;
+      } else if (type.includes("ico") || ext === "ico") {
+        score = 1000;
+      }
+      // Add size bonus: prefer larger icons. "any" gets max bonus.
+      if (sizes === "any") {
+        score += 999;
+      } else if (sizes) {
+        const firstSize = sizes.split(/\s*x\s*/i)[0];
+        const numericSize = Number.parseInt(firstSize ?? "0", 10);
+        if (Number.isFinite(numericSize) && numericSize > 0) {
+          score += Math.min(numericSize, 999);
+        }
+      }
+      icons.push({ src: icon.src, score });
+    }
+  }
+  icons.sort((a, b) => b.score - a.score);
+  return icons.map((icon) => icon.src);
 }
 
 export const makeProjectFaviconResolver = Effect.gen(function* () {
@@ -88,6 +147,36 @@ export const makeProjectFaviconResolver = Effect.gen(function* () {
       const existing = yield* findExistingFile(cwd, [path.join(cwd, candidate)]);
       if (existing) {
         return existing;
+      }
+    }
+
+    for (const manifestFile of MANIFEST_CANDIDATES) {
+      const manifestPath = path.join(cwd, manifestFile);
+      const manifestStat = yield* fileSystem
+        .stat(manifestPath)
+        .pipe(Effect.catch(() => Effect.succeed(null)));
+      if (manifestStat?.type !== "File") {
+        continue;
+      }
+      if (manifestStat.size > MANIFEST_MAX_BYTES) {
+        continue;
+      }
+      const manifestText = yield* fileSystem
+        .readFileString(manifestPath)
+        .pipe(Effect.catch(() => Effect.succeed(null)));
+      if (!manifestText) {
+        continue;
+      }
+      const srcs = extractManifestIconSrcs(manifestText);
+      if (srcs.length === 0) {
+        continue;
+      }
+      const resolved = yield* findExistingFile(
+        cwd,
+        srcs.flatMap((src) => resolveIconHref(cwd, src)),
+      );
+      if (resolved) {
+        return resolved;
       }
     }
 

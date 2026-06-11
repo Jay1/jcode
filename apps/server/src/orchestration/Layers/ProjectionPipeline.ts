@@ -3,6 +3,7 @@ import {
   type ChatAttachment,
   EventId,
   type OrchestrationEvent,
+  type OrchestrationGoal,
   type OrchestrationThreadActivity,
 } from "@jcode/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -736,6 +737,127 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
             runtimeMode: event.payload.runtimeMode,
             interactionMode: event.payload.interactionMode,
             updatedAt: event.payload.createdAt,
+          });
+          return;
+        }
+
+        case "thread.goal-set": {
+          const existingRow = yield* projectionThreadRepository.getById({
+            threadId: event.payload.threadId,
+          });
+          if (Option.isNone(existingRow)) {
+            return;
+          }
+          yield* projectionThreadRepository.upsert({
+            ...existingRow.value,
+            goal: {
+              objective: event.payload.objective,
+              status: "active",
+              createdAt: event.payload.createdAt,
+              updatedAt: event.payload.updatedAt,
+              createdByMessageId: event.payload.createdByMessageId,
+              completedAt: null,
+              lastContinuationTurnId: null,
+              turnCount: 0,
+              blockedReason: null,
+            },
+            updatedAt: event.payload.updatedAt,
+          });
+          return;
+        }
+
+        case "thread.goal-paused": {
+          const existingRow = yield* projectionThreadRepository.getById({
+            threadId: event.payload.threadId,
+          });
+          if (Option.isNone(existingRow) || existingRow.value.goal == null) {
+            return;
+          }
+          const currentGoal = existingRow.value.goal;
+          const goal: OrchestrationGoal = {
+            objective: currentGoal.objective,
+            status: "paused",
+            createdAt: currentGoal.createdAt,
+            updatedAt: event.payload.updatedAt,
+            createdByMessageId: currentGoal.createdByMessageId,
+            completedAt: currentGoal.completedAt,
+            lastContinuationTurnId: currentGoal.lastContinuationTurnId,
+            turnCount: currentGoal.turnCount,
+            blockedReason: event.payload.reason,
+          };
+          yield* projectionThreadRepository.upsert({
+            ...existingRow.value,
+            goal,
+            updatedAt: event.payload.updatedAt,
+          });
+          return;
+        }
+
+        case "thread.goal-resumed": {
+          const existingRow = yield* projectionThreadRepository.getById({
+            threadId: event.payload.threadId,
+          });
+          if (Option.isNone(existingRow) || existingRow.value.goal == null) {
+            return;
+          }
+          const currentGoal = existingRow.value.goal;
+          const goal: OrchestrationGoal = {
+            objective: currentGoal.objective,
+            status: "active",
+            createdAt: currentGoal.createdAt,
+            updatedAt: event.payload.updatedAt,
+            createdByMessageId: currentGoal.createdByMessageId,
+            completedAt: currentGoal.completedAt,
+            lastContinuationTurnId: currentGoal.lastContinuationTurnId,
+            turnCount: currentGoal.turnCount,
+            blockedReason: null,
+          };
+          yield* projectionThreadRepository.upsert({
+            ...existingRow.value,
+            goal,
+            updatedAt: event.payload.updatedAt,
+          });
+          return;
+        }
+
+        case "thread.goal-completed": {
+          const existingRow = yield* projectionThreadRepository.getById({
+            threadId: event.payload.threadId,
+          });
+          if (Option.isNone(existingRow) || existingRow.value.goal == null) {
+            return;
+          }
+          const currentGoal = existingRow.value.goal;
+          const goal: OrchestrationGoal = {
+            objective: currentGoal.objective,
+            status: "completed",
+            createdAt: currentGoal.createdAt,
+            updatedAt: event.payload.updatedAt,
+            createdByMessageId: currentGoal.createdByMessageId,
+            completedAt: event.payload.completedAt,
+            lastContinuationTurnId: currentGoal.lastContinuationTurnId,
+            turnCount: currentGoal.turnCount,
+            blockedReason: currentGoal.blockedReason,
+          };
+          yield* projectionThreadRepository.upsert({
+            ...existingRow.value,
+            goal,
+            updatedAt: event.payload.updatedAt,
+          });
+          return;
+        }
+
+        case "thread.goal-cleared": {
+          const existingRow = yield* projectionThreadRepository.getById({
+            threadId: event.payload.threadId,
+          });
+          if (Option.isNone(existingRow)) {
+            return;
+          }
+          yield* projectionThreadRepository.upsert({
+            ...existingRow.value,
+            goal: null,
+            updatedAt: event.payload.updatedAt,
           });
           return;
         }

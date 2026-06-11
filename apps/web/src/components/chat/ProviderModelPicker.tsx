@@ -35,6 +35,7 @@ import {
   PiIcon,
 } from "../Icons";
 import { cn } from "~/lib/utils";
+import { PlugIcon } from "~/lib/icons";
 import { PickerPanelShell } from "./PickerPanelShell";
 import { PickerTriggerButton } from "./PickerTriggerButton";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -60,9 +61,11 @@ const PROVIDER_ICON_BY_PROVIDER: Record<ProviderPickerKind, Icon> = {
   codex: OpenAI,
   claudeAgent: ClaudeAI,
   cursor: CursorIcon,
+  devin: PlugIcon,
   gemini: Gemini,
   kilo: KiloIcon,
   opencode: OpenCodeIcon,
+  openclaw: PlugIcon,
   pi: PiIcon,
 };
 

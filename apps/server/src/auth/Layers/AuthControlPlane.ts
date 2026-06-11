@@ -40,6 +40,8 @@ export const makeAuthControlPlane = Effect.gen(function* () {
         subject,
         ...(input?.ttl ? { ttl: input.ttl } : {}),
         ...(input?.label ? { label: input.label } : {}),
+        ...(input?.scopes ? { scopes: input.scopes } : {}),
+        ...(input?.resources ? { resources: input.resources } : {}),
       });
       return {
         id: issued.id,
@@ -49,6 +51,8 @@ export const makeAuthControlPlane = Effect.gen(function* () {
         ...(issued.label ? { label: issued.label } : {}),
         createdAt: DateTime.toUtc(createdAt),
         expiresAt: DateTime.toUtc(issued.expiresAt),
+        ...(input?.scopes ? { scopes: input.scopes } : {}),
+        ...(input?.resources ? { resources: input.resources } : {}),
       } satisfies IssuedPairingLink;
     }).pipe(Effect.mapError(toAuthControlPlaneError("Failed to create pairing link.")));
 
@@ -82,6 +86,8 @@ export const makeAuthControlPlane = Effect.gen(function* () {
           deviceType: "bot",
         },
         ...(input?.ttl ? { ttl: input.ttl } : {}),
+        ...(input?.scopes ? { scopes: input.scopes } : {}),
+        ...(input?.resources ? { resources: input.resources } : {}),
       })
       .pipe(
         Effect.flatMap((issued) =>
@@ -94,6 +100,8 @@ export const makeAuthControlPlane = Effect.gen(function* () {
                 subject: input?.subject ?? DEFAULT_SESSION_SUBJECT,
                 client: issued.client,
                 expiresAt: DateTime.toUtc(issued.expiresAt),
+                ...(input?.scopes ? { scopes: input.scopes } : {}),
+                ...(input?.resources ? { resources: input.resources } : {}),
               } satisfies IssuedBearerSession)
             : Effect.fail(
                 new AuthControlPlaneError({

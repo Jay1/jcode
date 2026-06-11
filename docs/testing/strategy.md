@@ -41,6 +41,8 @@ Use the local-safe variants when you need workstation-friendly verification that
 
 These commands are meant to reduce workstation lag, screen flicker, and other application pressure. They do not replace the full CI commands when the change needs merge or release-level confidence.
 
+Web browser test scripts run through `scripts/run-vitest-browser.mjs`, which starts Vitest Browser Mode in a separate process group and cleans up the group on exit or interruption. On non-CI local runs, the script also re-enters `safe-run --profile browser` with conservative defaults (`3G` memory, `150%` CPU, and `192` tasks) before launching Chromium, and refuses to continue if `safe-run` is unavailable. Override those limits with `JCODE_BROWSER_TEST_SAFE_RUN_MEM`, `JCODE_BROWSER_TEST_SAFE_RUN_HIGH`, `JCODE_BROWSER_TEST_SAFE_RUN_CPU`, `JCODE_BROWSER_TEST_SAFE_RUN_TASKS`, or `JCODE_BROWSER_TEST_SAFE_RUN_TIMEOUT`; set `JCODE_BROWSER_TEST_SAFE_RUN=0` only when you intentionally want an unbounded local browser run. Keep browser checks on the `:local` variants during workstation and agent-driven debugging unless you explicitly need CI-level parallelism.
+
 ## Rules
 
 - Add a focused regression before fixing non-trivial bugs.

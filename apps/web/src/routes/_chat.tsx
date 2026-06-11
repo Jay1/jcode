@@ -9,6 +9,7 @@ import {
   resolveAppNavigationState,
 } from "../appNavigation";
 import ShortcutsDialog from "../components/ShortcutsDialog";
+import { InterfaceClock } from "../components/InterfaceClock";
 import { shouldRenderTerminalWorkspace } from "../components/ChatView.logic";
 import ThreadSidebar from "../components/Sidebar";
 import { isElectron } from "../env";
@@ -519,6 +520,10 @@ function ChatRouteLayout() {
       {side === "left" ? sidebarElement : null}
       <Outlet />
       {side === "right" ? sidebarElement : null}
+      <InterfaceClock
+        visible={settings.showInterfaceClock}
+        timestampFormat={settings.timestampFormat}
+      />
     </SidebarProvider>
   );
 }

@@ -31,6 +31,7 @@ const RuntimeEventRawSource = Schema.Literals([
   "acp.cursor.extension",
   "kilo.sdk.event",
   "opencode.sdk.event",
+  "openclaw.gateway.event",
   "pi.sdk.event",
 ]);
 export type RuntimeEventRawSource = typeof RuntimeEventRawSource.Type;
@@ -552,7 +553,7 @@ const AccountUpdatedPayload = Schema.Struct({
 export type AccountUpdatedPayload = typeof AccountUpdatedPayload.Type;
 
 const AccountRateLimitsUpdatedPayload = Schema.Struct({
-  rateLimits: Schema.Unknown,
+  rateLimits: Schema.Record(Schema.String, Schema.Unknown),
 });
 export type AccountRateLimitsUpdatedPayload = typeof AccountRateLimitsUpdatedPayload.Type;
 

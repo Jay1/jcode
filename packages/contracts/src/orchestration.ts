@@ -3,8 +3,10 @@ import {
   ClaudeModelOptions,
   CodexModelOptions,
   CursorModelOptions,
+  DevinModelOptions,
   GeminiModelOptions,
   OpenCodeModelOptions,
+  OpenClawModelOptions,
   PiModelOptions,
 } from "./model";
 import {
@@ -54,9 +56,11 @@ export const ProviderKind = Schema.Literals([
   "codex",
   "claudeAgent",
   "cursor",
+  "devin",
   "gemini",
   "kilo",
   "opencode",
+  "openclaw",
   "pi",
 ]);
 export type ProviderKind = typeof ProviderKind.Type;
@@ -96,6 +100,13 @@ export const CursorModelSelection = Schema.Struct({
 });
 export type CursorModelSelection = typeof CursorModelSelection.Type;
 
+export const DevinModelSelection = Schema.Struct({
+  provider: Schema.Literal("devin"),
+  model: TrimmedNonEmptyString,
+  options: Schema.optional(DevinModelOptions),
+});
+export type DevinModelSelection = typeof DevinModelSelection.Type;
+
 export const GeminiModelSelection = Schema.Struct({
   provider: Schema.Literal("gemini"),
   model: TrimmedNonEmptyString,
@@ -124,13 +135,22 @@ export const PiModelSelection = Schema.Struct({
 });
 export type PiModelSelection = typeof PiModelSelection.Type;
 
+export const OpenClawModelSelection = Schema.Struct({
+  provider: Schema.Literal("openclaw"),
+  model: Schema.Literal("gateway"),
+  options: Schema.optional(OpenClawModelOptions),
+});
+export type OpenClawModelSelection = typeof OpenClawModelSelection.Type;
+
 export const ModelSelection = Schema.Union([
   CodexModelSelection,
   ClaudeModelSelection,
   CursorModelSelection,
+  DevinModelSelection,
   GeminiModelSelection,
   KiloModelSelection,
   OpenCodeModelSelection,
+  OpenClawModelSelection,
   PiModelSelection,
 ]);
 export type ModelSelection = typeof ModelSelection.Type;
@@ -184,8 +204,11 @@ export const OrchestrationMessageSource = Schema.Literals([
   "native",
   "handoff-import",
   "fork-import",
+  "goal-continuation",
 ]);
 export type OrchestrationMessageSource = typeof OrchestrationMessageSource.Type;
+
+export const ORCHESTRATION_GOAL_COMPLETION_SENTINEL = "JCODE_GOAL_COMPLETE";
 
 export const PROVIDER_SEND_TURN_MAX_INPUT_CHARS = 120_000;
 export const PROVIDER_SEND_TURN_MAX_ATTACHMENTS = 8;
@@ -454,6 +477,35 @@ export const OrchestrationThreadPullRequest = Schema.Struct({
 });
 export type OrchestrationThreadPullRequest = typeof OrchestrationThreadPullRequest.Type;
 
+export const ThreadRecap = Schema.Struct({
+  text: TrimmedNonEmptyString,
+  coveredMessageId: Schema.NullOr(MessageId),
+  sourceSignature: Schema.String,
+  generatedAt: IsoDateTime,
+});
+export type ThreadRecap = typeof ThreadRecap.Type;
+
+export const OrchestrationGoalStatus = Schema.Literals([
+  "active",
+  "paused",
+  "completed",
+  "cleared",
+]);
+export type OrchestrationGoalStatus = typeof OrchestrationGoalStatus.Type;
+
+export const OrchestrationGoal = Schema.Struct({
+  objective: TrimmedNonEmptyString,
+  status: OrchestrationGoalStatus,
+  createdAt: IsoDateTime,
+  updatedAt: IsoDateTime,
+  createdByMessageId: Schema.NullOr(MessageId),
+  completedAt: Schema.NullOr(IsoDateTime),
+  lastContinuationTurnId: Schema.NullOr(TurnId),
+  turnCount: NonNegativeInt,
+  blockedReason: Schema.NullOr(TrimmedNonEmptyString),
+});
+export type OrchestrationGoal = typeof OrchestrationGoal.Type;
+
 export const OrchestrationThread = Schema.Struct({
   id: ThreadId,
   projectId: ProjectId,
@@ -515,6 +567,10 @@ export const OrchestrationThread = Schema.Struct({
   activities: Schema.Array(OrchestrationThreadActivity),
   checkpoints: Schema.Array(OrchestrationCheckpointSummary),
   session: Schema.NullOr(OrchestrationSession),
+  recap: Schema.optional(Schema.NullOr(ThreadRecap)).pipe(Schema.withDecodingDefault(() => null)),
+  goal: Schema.optional(Schema.NullOr(OrchestrationGoal)).pipe(
+    Schema.withDecodingDefault(() => null),
+  ),
 });
 export type OrchestrationThread = typeof OrchestrationThread.Type;
 
@@ -574,6 +630,10 @@ export const OrchestrationThreadShell = Schema.Struct({
   ),
   handoff: Schema.NullOr(ThreadHandoff).pipe(Schema.withDecodingDefault(() => null)),
   session: Schema.NullOr(OrchestrationSession),
+  recap: Schema.optional(Schema.NullOr(ThreadRecap)).pipe(Schema.withDecodingDefault(() => null)),
+  goal: Schema.optional(Schema.NullOr(OrchestrationGoal)).pipe(
+    Schema.withDecodingDefault(() => null),
+  ),
 });
 export type OrchestrationThreadShell = typeof OrchestrationThreadShell.Type;
 
@@ -824,6 +884,9 @@ export const ThreadTurnStartCommand = Schema.Struct({
     role: Schema.Literal("user"),
     text: Schema.String,
     attachments: Schema.Array(ChatAttachment),
+    source: Schema.optional(OrchestrationMessageSource).pipe(
+      Schema.withDecodingDefault(() => "native"),
+    ),
     skills: Schema.optional(Schema.Array(ProviderSkillReference)),
     mentions: Schema.optional(Schema.Array(ProviderMentionReference)),
   }),
@@ -851,6 +914,9 @@ const ClientThreadTurnStartCommand = Schema.Struct({
     role: Schema.Literal("user"),
     text: Schema.String,
     attachments: Schema.Array(UploadChatAttachment),
+    source: Schema.optional(OrchestrationMessageSource).pipe(
+      Schema.withDecodingDefault(() => "native"),
+    ),
     skills: Schema.optional(Schema.Array(ProviderSkillReference)),
     mentions: Schema.optional(Schema.Array(ProviderMentionReference)),
   }),
@@ -959,6 +1025,45 @@ const ThreadActivityAppendCommand = Schema.Struct({
   createdAt: IsoDateTime,
 });
 
+const ThreadGoalSetCommand = Schema.Struct({
+  type: Schema.Literal("thread.goal.set"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  objective: TrimmedNonEmptyString,
+  createdByMessageId: Schema.NullOr(MessageId),
+  createdAt: IsoDateTime,
+});
+
+const ThreadGoalPauseCommand = Schema.Struct({
+  type: Schema.Literal("thread.goal.pause"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  reason: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  createdAt: IsoDateTime,
+});
+
+const ThreadGoalResumeCommand = Schema.Struct({
+  type: Schema.Literal("thread.goal.resume"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  createdAt: IsoDateTime,
+});
+
+const ThreadGoalCompleteCommand = Schema.Struct({
+  type: Schema.Literal("thread.goal.complete"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  completedAt: IsoDateTime,
+  createdAt: IsoDateTime,
+});
+
+const ThreadGoalClearCommand = Schema.Struct({
+  type: Schema.Literal("thread.goal.clear"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  createdAt: IsoDateTime,
+});
+
 const DispatchableClientOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
@@ -980,6 +1085,11 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ThreadMessageEditAndResendCommand,
   ThreadActivityAppendCommand,
   ThreadSessionStopCommand,
+  ThreadGoalSetCommand,
+  ThreadGoalPauseCommand,
+  ThreadGoalResumeCommand,
+  ThreadGoalCompleteCommand,
+  ThreadGoalClearCommand,
 ]);
 export type DispatchableClientOrchestrationCommand =
   typeof DispatchableClientOrchestrationCommand.Type;
@@ -1005,6 +1115,11 @@ export const ClientOrchestrationCommand = Schema.Union([
   ThreadMessageEditAndResendCommand,
   ThreadActivityAppendCommand,
   ThreadSessionStopCommand,
+  ThreadGoalSetCommand,
+  ThreadGoalPauseCommand,
+  ThreadGoalResumeCommand,
+  ThreadGoalCompleteCommand,
+  ThreadGoalClearCommand,
 ]);
 export type ClientOrchestrationCommand = typeof ClientOrchestrationCommand.Type;
 
@@ -1133,6 +1248,11 @@ export const OrchestrationEventType = Schema.Literals([
   "thread.proposed-plan-upserted",
   "thread.turn-diff-completed",
   "thread.activity-appended",
+  "thread.goal-set",
+  "thread.goal-paused",
+  "thread.goal-resumed",
+  "thread.goal-completed",
+  "thread.goal-cleared",
 ]);
 export type OrchestrationEventType = typeof OrchestrationEventType.Type;
 
@@ -1395,6 +1515,36 @@ export const ThreadActivityAppendedPayload = Schema.Struct({
   activity: OrchestrationThreadActivity,
 });
 
+export const ThreadGoalSetPayload = Schema.Struct({
+  threadId: ThreadId,
+  objective: TrimmedNonEmptyString,
+  createdByMessageId: Schema.NullOr(MessageId),
+  createdAt: IsoDateTime,
+  updatedAt: IsoDateTime,
+});
+
+export const ThreadGoalPausedPayload = Schema.Struct({
+  threadId: ThreadId,
+  reason: Schema.NullOr(TrimmedNonEmptyString),
+  updatedAt: IsoDateTime,
+});
+
+export const ThreadGoalResumedPayload = Schema.Struct({
+  threadId: ThreadId,
+  updatedAt: IsoDateTime,
+});
+
+export const ThreadGoalCompletedPayload = Schema.Struct({
+  threadId: ThreadId,
+  completedAt: IsoDateTime,
+  updatedAt: IsoDateTime,
+});
+
+export const ThreadGoalClearedPayload = Schema.Struct({
+  threadId: ThreadId,
+  updatedAt: IsoDateTime,
+});
+
 export const OrchestrationEventMetadata = Schema.Struct({
   providerTurnId: Schema.optional(TrimmedNonEmptyString),
   providerItemId: Schema.optional(ProviderItemId),
@@ -1546,6 +1696,31 @@ export const OrchestrationEvent = Schema.Union([
     ...EventBaseFields,
     type: Schema.Literal("thread.activity-appended"),
     payload: ThreadActivityAppendedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("thread.goal-set"),
+    payload: ThreadGoalSetPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("thread.goal-paused"),
+    payload: ThreadGoalPausedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("thread.goal-resumed"),
+    payload: ThreadGoalResumedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("thread.goal-completed"),
+    payload: ThreadGoalCompletedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("thread.goal-cleared"),
+    payload: ThreadGoalClearedPayload,
   }),
 ]);
 export type OrchestrationEvent = typeof OrchestrationEvent.Type;

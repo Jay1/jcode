@@ -14,6 +14,7 @@ import {
   parseComposerSlashInvocationForCommands,
   parseFastSlashCommandAction,
   parseForkSlashCommandArgs,
+  parseGoalSlashCommandAction,
   shouldHideProviderNativeCommandFromComposerMenu,
 } from "./composerSlashCommands";
 
@@ -42,6 +43,10 @@ describe("composerSlashCommands", () => {
       command: "side",
       args: "is this safe?",
     });
+    expect(parseComposerSlashInvocation("/goal Build the thing")).toEqual({
+      command: "goal",
+      args: "Build the thing",
+    });
     expect(parseComposerSlashInvocation("review")).toBeNull();
   });
 
@@ -60,6 +65,19 @@ describe("composerSlashCommands", () => {
     expect(parseFastSlashCommandAction("/fast status")).toBe("status");
     expect(parseFastSlashCommandAction("/fast maybe")).toBe("invalid");
     expect(parseFastSlashCommandAction("/review")).toBeNull();
+  });
+
+  it("parses /goal actions", () => {
+    expect(parseGoalSlashCommandAction("/goal Build the thing")).toEqual({
+      type: "set",
+      objective: "Build the thing",
+    });
+    expect(parseGoalSlashCommandAction("/goal pause")).toEqual({ type: "pause" });
+    expect(parseGoalSlashCommandAction("/goal resume")).toEqual({ type: "resume" });
+    expect(parseGoalSlashCommandAction("/goal clear")).toEqual({ type: "clear" });
+    expect(parseGoalSlashCommandAction("/goal status")).toEqual({ type: "status" });
+    expect(parseGoalSlashCommandAction("/goal")).toEqual({ type: "invalid" });
+    expect(parseGoalSlashCommandAction("/fast")).toBeNull();
   });
 
   it("parses /fork target shorthand only", () => {
@@ -209,7 +227,7 @@ describe("composerSlashCommands", () => {
     expect(shouldHideProviderNativeCommandFromComposerMenu("codex", "status")).toBe(false);
   });
 
-  it("only exposes the app-level /side command for claude", () => {
+  it("keeps app-level /goal and /side commands available for claude", () => {
     expect(
       getAvailableComposerSlashCommands({
         provider: "claudeAgent",
@@ -219,7 +237,7 @@ describe("composerSlashCommands", () => {
         canOfferForkCommand: true,
         canOfferSideCommand: true,
       }),
-    ).toEqual(["side"]);
+    ).toEqual(["goal", "side"]);
   });
 
   it("only offers /compact when Codex compaction is available", () => {
@@ -261,6 +279,7 @@ describe("composerSlashCommands", () => {
       "model",
       "plan",
       "default",
+      "goal",
       "review",
       "fork",
       "side",

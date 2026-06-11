@@ -8,6 +8,18 @@ import { Schema } from "effect";
 export const EnvMode = Schema.Literals(["local", "worktree"]);
 export type EnvMode = typeof EnvMode.Type;
 
+export function resolveRuntimeUsageControlsClassName(input: {
+  showInterfaceClock: boolean;
+  className?: string | undefined;
+}): string | undefined {
+  const classNames = [
+    input.className,
+    input.showInterfaceClock ? "mr-20 sm:mr-24" : undefined,
+  ].filter((className): className is string => Boolean(className));
+
+  return classNames.length > 0 ? classNames.join(" ") : undefined;
+}
+
 export function resolveEffectiveEnvMode(input: {
   activeWorktreePath: string | null;
   hasServerThread: boolean;

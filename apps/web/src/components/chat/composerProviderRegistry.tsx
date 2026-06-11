@@ -30,6 +30,8 @@ import { TraitsMenuContent, TraitsPicker } from "./TraitsPicker";
 import { getComposerTraitSelection, hasVisibleComposerTraitControls } from "./composerTraits";
 import { getRuntimeAwareModelCapabilities } from "./runtimeModelCapabilities";
 
+type ComposerProviderModelOptions = ProviderModelOptions[keyof ProviderModelOptions];
+
 export type ComposerProviderStateInput = {
   provider: ProviderKind;
   model: ModelSlug;
@@ -41,7 +43,7 @@ export type ComposerProviderStateInput = {
 export type ComposerProviderState = {
   provider: ProviderKind;
   promptEffort: string | null;
-  modelOptionsForDispatch: ProviderModelOptions[ProviderKind] | undefined;
+  modelOptionsForDispatch: ComposerProviderModelOptions | undefined;
   composerFrameClassName?: string;
   composerSurfaceClassName?: string;
   modelPickerIconClassName?: string;
@@ -53,7 +55,7 @@ type ProviderTraitRenderInput = {
   runtimeModel?: ProviderModelDescriptor | undefined;
   runtimeModels?: ReadonlyArray<ProviderModelDescriptor> | null | undefined;
   runtimeAgents?: ReadonlyArray<ProviderAgentDescriptor> | null | undefined;
-  modelOptions: ProviderModelOptions[ProviderKind] | undefined;
+  modelOptions: ComposerProviderModelOptions | undefined;
   prompt: string;
   includeFastMode?: boolean;
   onPromptChange: (prompt: string) => void;
@@ -121,7 +123,7 @@ function getProviderStateFromCapabilities(
   const caps = getRuntimeAwareModelCapabilities({ provider, model, runtimeModel });
 
   let rawEffort: string | null = null;
-  let normalizedOptions: ProviderModelOptions[ProviderKind] | undefined;
+  let normalizedOptions: ComposerProviderModelOptions | undefined;
 
   switch (provider) {
     case "codex": {
@@ -240,6 +242,18 @@ function getProviderStateFromCapabilities(
   };
 }
 
+function getOpenClawProviderState(input: ComposerProviderStateInput): ComposerProviderState {
+  return {
+    provider: input.provider,
+    promptEffort: null,
+    modelOptionsForDispatch: undefined,
+  };
+}
+
+function renderNoTraits(): ReactNode {
+  return null;
+}
+
 const composerProviderRegistry: Record<ProviderKind, ProviderRegistryEntry> = {
   codex: {
     getState: (input) => getProviderStateFromCapabilities(input),
@@ -271,10 +285,20 @@ const composerProviderRegistry: Record<ProviderKind, ProviderRegistryEntry> = {
     renderTraitsMenuContent: (input) => renderTraitsMenuContentForProvider("opencode", input),
     renderTraitsPicker: (input) => renderTraitsPickerForProvider("opencode", input),
   },
+  openclaw: {
+    getState: getOpenClawProviderState,
+    renderTraitsMenuContent: renderNoTraits,
+    renderTraitsPicker: renderNoTraits,
+  },
   pi: {
     getState: (input) => getProviderStateFromCapabilities(input),
     renderTraitsMenuContent: (input) => renderTraitsMenuContentForProvider("pi", input),
     renderTraitsPicker: (input) => renderTraitsPickerForProvider("pi", input),
+  },
+  devin: {
+    getState: getOpenClawProviderState,
+    renderTraitsMenuContent: renderNoTraits,
+    renderTraitsPicker: renderNoTraits,
   },
 };
 
@@ -289,7 +313,7 @@ export function renderProviderTraitsMenuContent(input: {
   runtimeModel?: ProviderModelDescriptor | undefined;
   runtimeModels?: ReadonlyArray<ProviderModelDescriptor> | null | undefined;
   runtimeAgents?: ReadonlyArray<ProviderAgentDescriptor> | null | undefined;
-  modelOptions: ProviderModelOptions[ProviderKind] | undefined;
+  modelOptions: ComposerProviderModelOptions | undefined;
   prompt: string;
   includeFastMode?: boolean;
   onPromptChange: (prompt: string) => void;
@@ -321,7 +345,7 @@ export function renderProviderTraitsPicker(input: {
   runtimeModel?: ProviderModelDescriptor | undefined;
   runtimeModels?: ReadonlyArray<ProviderModelDescriptor> | null | undefined;
   runtimeAgents?: ReadonlyArray<ProviderAgentDescriptor> | null | undefined;
-  modelOptions: ProviderModelOptions[ProviderKind] | undefined;
+  modelOptions: ComposerProviderModelOptions | undefined;
   prompt: string;
   includeFastMode?: boolean;
   open?: boolean;

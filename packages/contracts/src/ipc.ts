@@ -60,6 +60,8 @@ import type { FilesystemBrowseInput, FilesystemBrowseResult } from "./filesystem
 import type {
   ServerConfig,
   ServerDiagnosticsResult,
+  ServerGenerateThreadRecapInput,
+  ServerGenerateThreadRecapResult,
   ServerGetEnvironmentResult,
   ServerGetProviderUsageSnapshotInput,
   ServerGetProviderUsageSnapshotResult,
@@ -70,6 +72,8 @@ import type {
   ServerRefreshProvidersResult,
   ServerResetKeybindingInput,
   ServerResetKeybindingsResult,
+  ServerUpdateOpenClawSecretsInput,
+  ServerUpdateOpenClawSecretsResult,
   ServerUpdateSettingsInput,
   ServerUpdateSettingsResult,
   ServerUpsertKeybindingInput,
@@ -438,6 +442,9 @@ export interface NativeApi {
     getEnvironment: () => Promise<ServerGetEnvironmentResult>;
     getSettings: () => Promise<ServerGetSettingsResult>;
     updateSettings: (input: ServerUpdateSettingsInput) => Promise<ServerUpdateSettingsResult>;
+    updateOpenClawSecrets: (
+      input: ServerUpdateOpenClawSecretsInput,
+    ) => Promise<ServerUpdateOpenClawSecretsResult>;
     getAuthSession: () => Promise<AuthSessionState>;
     bootstrapAuth: (input: AuthBootstrapInput) => Promise<AuthBootstrapResult>;
     bootstrapBearerAuth: (input: AuthBootstrapInput) => Promise<AuthBearerBootstrapResult>;
@@ -466,6 +473,9 @@ export interface NativeApi {
     resetAllKeybindings: () => Promise<ServerResetKeybindingsResult>;
     getFirstRunWizardData: () => Promise<FirstRunWizardData>;
     completeFirstRunWizard: (input: CompleteFirstRunWizardInput) => Promise<FirstRunWizardData>;
+    generateThreadRecap: (
+      input: ServerGenerateThreadRecapInput,
+    ) => Promise<ServerGenerateThreadRecapResult>;
   };
   provider: {
     getComposerCapabilities: (

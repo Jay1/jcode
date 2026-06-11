@@ -12,6 +12,8 @@ export const DEFAULT_PROVIDER_ORDER: readonly ProviderKind[] = [
   "gemini",
   "kilo",
   "opencode",
+  "openclaw",
+  "pi",
 ];
 
 const PROVIDER_KIND_SET: ReadonlySet<ProviderKind> = new Set(DEFAULT_PROVIDER_ORDER);

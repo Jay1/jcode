@@ -8,7 +8,7 @@
 | Audience        | Server, web, and package engineers working on project identity, repository context, and language-aware UX                                                   |
 | Scope           | `packages/jcode-linguist`, project language icon detection, and future repository language-profile consumers                                                |
 | Canonical path  | `docs/architecture/jcode-linguist.md`                                                                                                                       |
-| Last reviewed   | 2026-06-04                                                                                                                                                  |
+| Last reviewed   | 2026-06-11                                                                                                                                                  |
 | Review cadence  | Event-driven; review when language definitions, repository scan caps, `.gitattributes` support, project icon metadata, or repository-profile consumers move |
 | Source of truth | `packages/jcode-linguist/src/index.ts` and `apps/server/src/project/Layers/ProjectLanguageIconResolver.ts`                                                  |
 | Verification    | `bun run --cwd packages/jcode-linguist test` plus focused server resolver tests for project icon metadata                                                   |
@@ -48,7 +48,7 @@ The package is private workspace tooling. Like the other private JCode packages,
 4. passes samples into JCode Linguist;
 5. persists the inferred icon metadata through the existing project metadata event path.
 
-The web UI must not scan repositories. It only renders persisted `iconMetadata`.
+The web UI must not scan repositories. It renders persisted `iconMetadata` for language/framework identity and may call the bounded server favicon endpoint for the visible sidebar icon before falling back to that metadata.
 
 ## Scoring Rules
 

@@ -124,6 +124,8 @@ function asObject(value: unknown): Record<string, unknown> | undefined {
   return value as Record<string, unknown>;
 }
 
+const EMPTY_RECORD: Record<string, unknown> = {};
+
 function asString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
@@ -1386,7 +1388,7 @@ function mapToRuntimeEvents(
         type: "account.updated",
         ...runtimeEventBase(event, canonicalThreadId),
         payload: {
-          account: event.payload ?? {},
+          account: asObject(event.payload) ?? EMPTY_RECORD,
         },
       },
     ];
@@ -1398,7 +1400,7 @@ function mapToRuntimeEvents(
         type: "account.rate-limits.updated",
         ...runtimeEventBase(event, canonicalThreadId),
         payload: {
-          rateLimits: event.payload ?? {},
+          rateLimits: asObject(event.payload) ?? EMPTY_RECORD,
         },
       },
     ];

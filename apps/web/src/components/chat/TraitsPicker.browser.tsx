@@ -43,9 +43,11 @@ function ClaudeTraitsPickerHarness(props: {
       codex: [],
       claudeAgent: [],
       cursor: [],
+      devin: [],
       gemini: [],
       kilo: [],
       opencode: [],
+      openclaw: [],
       pi: [],
     },
   });
@@ -572,9 +574,11 @@ function OpenCodeTraitsPickerHarness(props: {
       codex: [],
       claudeAgent: [],
       cursor: [],
+      devin: [],
       gemini: [],
       kilo: [],
       opencode: [],
+      openclaw: [],
       pi: [],
     },
   });

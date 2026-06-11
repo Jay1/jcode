@@ -277,3 +277,44 @@ export function buildThreadTitlePrompt(input: {
     }),
   };
 }
+
+const MAX_RECAP_CHARS = 240;
+const PREFERRED_RECAP_MIN = 150;
+const PREFERRED_RECAP_MAX = 190;
+
+export function buildThreadRecapPrompt(input: {
+  readonly previousRecap?: string;
+  readonly newMaterial: string;
+  readonly currentState?: string;
+}) {
+  const parts: string[] = [];
+
+  parts.push(
+    "You are a JCode thread recap generator. Your job is to produce a concise summary of what is happening in a coding session thread.",
+  );
+  parts.push(
+    `The recap MUST be a single paragraph, ${PREFERRED_RECAP_MIN}-${PREFERRED_RECAP_MAX} characters long.`,
+  );
+  parts.push("Start with the current work area or task. Include the likely next step at the end.");
+  parts.push("Do not use markdown, headers, bullet points, or quotation marks. Plain text only.");
+  parts.push('Do not start with "The user" or "The assistant". Write as a factual status update.');
+  parts.push(`The recap must not exceed ${MAX_RECAP_CHARS} characters.`);
+  parts.push("Return a JSON object with key: recap.");
+
+  if (input.previousRecap) {
+    parts.push(`Previous recap: ${input.previousRecap}`);
+  }
+
+  if (input.currentState) {
+    parts.push(`Current state: ${input.currentState}`);
+  }
+
+  parts.push(`New material:\n${input.newMaterial}`);
+
+  return {
+    prompt: parts.join("\n\n"),
+    outputSchemaJson: Schema.Struct({
+      recap: Schema.String,
+    }),
+  };
+}

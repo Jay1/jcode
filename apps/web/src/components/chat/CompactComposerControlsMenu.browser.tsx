@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
 import { CompactComposerControlsMenu } from "./CompactComposerControlsMenu";
+import { buildModelSelection } from "../../providerModelOptions";
 import { TraitsMenuContent } from "./TraitsPicker";
 import { useComposerDraftStore } from "../../composerDraftStore";
 
@@ -17,12 +18,12 @@ async function mountMenu(props?: {
   prompt?: string;
 }) {
   const threadId = ThreadId.makeUnsafe("thread-compact-menu");
-  const provider = props?.modelSelection?.provider ?? "claudeAgent";
+  const modelSelection = props?.modelSelection;
+  const provider = modelSelection?.provider ?? "claudeAgent";
   const draftsByThreadId = {} as ReturnType<
     typeof useComposerDraftStore.getState
   >["draftsByThreadId"];
-  const model =
-    props?.modelSelection?.model ?? getDefaultModel(provider) ?? getDefaultModel("codex");
+  const model = modelSelection?.model ?? getDefaultModel(provider) ?? getDefaultModel("codex");
 
   draftsByThreadId[threadId] = {
     prompt: props?.prompt ?? "",
@@ -33,11 +34,11 @@ async function mountMenu(props?: {
     terminalContexts: [],
     queuedTurns: [],
     modelSelectionByProvider: {
-      [provider]: {
+      [provider]: buildModelSelection(
         provider,
         model,
-        ...(props?.modelSelection?.options ? { options: props.modelSelection.options } : {}),
-      },
+        modelSelection && "options" in modelSelection ? modelSelection.options : undefined,
+      ),
     },
     activeProvider: provider,
     runtimeMode: null,
@@ -51,7 +52,8 @@ async function mountMenu(props?: {
   const host = document.createElement("div");
   document.body.append(host);
   const onPromptChange = vi.fn();
-  const providerOptions = props?.modelSelection?.options;
+  const providerOptions =
+    modelSelection && "options" in modelSelection ? modelSelection.options : undefined;
   const screen = await render(
     <CompactComposerControlsMenu
       activePlan={props?.activePlan ?? false}

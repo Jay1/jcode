@@ -4,6 +4,7 @@ import { Option, Schema } from "effect";
 import {
   DEFAULT_GIT_TEXT_GENERATION_MODEL,
   DEFAULT_SERVER_SETTINGS,
+  OpenClawAuthMode,
   TrimmedNonEmptyString,
   ProviderKind,
   type ProviderStartOptions,
@@ -23,13 +24,17 @@ import {
   DEFAULT_PROVIDER_ORDER,
   normalizeHiddenProviders,
   normalizeProviderOrder,
+  sameProviderOrder,
 } from "./providerOrdering";
 import { ensureNativeApi } from "./nativeApi";
+import { hydrateThemeFromServer } from "./hooks/useTheme";
 import { serverQueryKeys, serverSettingsQueryOptions } from "./lib/serverReactQuery";
 
 const APP_SETTINGS_STORAGE_KEY = "jcode:app-settings:v1";
 const SERVER_SETTINGS_MIGRATION_STORAGE_KEY = "t3code:server-settings-migrated:v1";
+const SERVER_SETTINGS_V2_MIGRATION_STORAGE_KEY = "jcode:server-settings-migrated:v2";
 const MAX_CUSTOM_MODEL_COUNT = 32;
+const GIT_TEXT_GENERATION_PROVIDERS = new Set<ProviderKind>(["codex", "kilo", "opencode"]);
 export const MAX_CUSTOM_MODEL_LENGTH = 256;
 export const MIN_CHAT_FONT_SIZE_PX = 11;
 export const MAX_CHAT_FONT_SIZE_PX = 18;
@@ -38,6 +43,7 @@ export const DEFAULT_CHAT_FONT_SIZE_PX = 12;
 export const TimestampFormat = Schema.Literals(["locale", "12-hour", "24-hour"]);
 export type TimestampFormat = typeof TimestampFormat.Type;
 export const DEFAULT_TIMESTAMP_FORMAT: TimestampFormat = "locale";
+export const DEFAULT_SHOW_INTERFACE_CLOCK = true;
 export const SidebarSide = Schema.Literals(["left", "right"]);
 export type SidebarSide = typeof SidebarSide.Type;
 export const DEFAULT_SIDEBAR_SIDE: SidebarSide = "left";
@@ -56,12 +62,14 @@ type CustomModelSettingsKey =
   | "customCodexModels"
   | "customClaudeModels"
   | "customCursorModels"
+  | "customDevinModels"
   | "customGeminiModels"
   | "customKiloModels"
   | "customOpenCodeModels"
   | "customPiModels";
+export type CustomModelProviderKind = Exclude<ProviderKind, "openclaw">;
 export type ProviderCustomModelConfig = {
-  provider: ProviderKind;
+  provider: CustomModelProviderKind;
   settingsKey: CustomModelSettingsKey;
   defaultSettingsKey: CustomModelSettingsKey;
   title: string;
@@ -74,9 +82,11 @@ const BUILT_IN_MODEL_SLUGS_BY_PROVIDER: Record<ProviderKind, ReadonlySet<string>
   codex: new Set(getModelOptions("codex").map((option) => option.slug)),
   claudeAgent: new Set(getModelOptions("claudeAgent").map((option) => option.slug)),
   cursor: new Set(getModelOptions("cursor").map((option) => option.slug)),
+  devin: new Set(getModelOptions("devin").map((option) => option.slug)),
   gemini: new Set(getModelOptions("gemini").map((option) => option.slug)),
   kilo: new Set(getModelOptions("kilo").map((option) => option.slug)),
   opencode: new Set(getModelOptions("opencode").map((option) => option.slug)),
+  openclaw: new Set(["gateway"]),
   pi: new Set(getModelOptions("pi").map((option) => option.slug)),
 };
 
@@ -116,6 +126,11 @@ export const AppSettingsSchema = Schema.Struct({
   openCodeServerPassword: Schema.String.check(Schema.isMaxLength(4096)).pipe(
     withDefaults(() => ""),
   ),
+  openClawGatewayUrl: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
+  openClawEnabled: Schema.Boolean.pipe(withDefaults(() => true)),
+  openClawAuthMode: OpenClawAuthMode.pipe(withDefaults(() => "none" as const)),
+  openClawHasSecret: Schema.Boolean.pipe(withDefaults(() => false)),
+  openClawPaired: Schema.Boolean.pipe(withDefaults(() => false)),
   defaultThreadEnvMode: EnvMode.pipe(withDefaults(() => "local" as const satisfies EnvMode)),
   confirmThreadDelete: Schema.Boolean.pipe(withDefaults(() => true)),
   confirmThreadArchive: Schema.Boolean.pipe(withDefaults(() => false)),
@@ -133,9 +148,11 @@ export const AppSettingsSchema = Schema.Struct({
     withDefaults(() => DEFAULT_SIDEBAR_THREAD_SORT_ORDER),
   ),
   timestampFormat: TimestampFormat.pipe(withDefaults(() => DEFAULT_TIMESTAMP_FORMAT)),
+  showInterfaceClock: Schema.Boolean.pipe(withDefaults(() => DEFAULT_SHOW_INTERFACE_CLOCK)),
   customCodexModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customClaudeModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customCursorModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
+  customDevinModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customGeminiModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customKiloModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customOpenCodeModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
@@ -172,7 +189,7 @@ export interface AppModelOption extends ProviderModelOption {
 const DEFAULT_APP_SETTINGS = AppSettingsSchema.makeUnsafe({});
 let serverSettingsMigrationInFlight = false;
 
-const PROVIDER_CUSTOM_MODEL_CONFIG: Record<ProviderKind, ProviderCustomModelConfig> = {
+const PROVIDER_CUSTOM_MODEL_CONFIG: Record<CustomModelProviderKind, ProviderCustomModelConfig> = {
   codex: {
     provider: "codex",
     settingsKey: "customCodexModels",
@@ -236,6 +253,15 @@ const PROVIDER_CUSTOM_MODEL_CONFIG: Record<ProviderKind, ProviderCustomModelConf
     placeholder: "provider/model",
     example: "anthropic/claude-sonnet-4-5",
   },
+  devin: {
+    provider: "devin",
+    settingsKey: "customDevinModels",
+    defaultSettingsKey: "customDevinModels",
+    title: "Devin",
+    description: "Save additional Devin model slugs for the picker and provider runtime.",
+    placeholder: "provider/model",
+    example: "devin/devin-auto",
+  },
 };
 
 export const MODEL_PROVIDER_SETTINGS = Object.values(PROVIDER_CUSTOM_MODEL_CONFIG);
@@ -284,6 +310,7 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
     customCodexModels: normalizeCustomModelSlugs(settings.customCodexModels, "codex"),
     customClaudeModels: normalizeCustomModelSlugs(settings.customClaudeModels, "claudeAgent"),
     customCursorModels: normalizeCustomModelSlugs(settings.customCursorModels, "cursor"),
+    customDevinModels: normalizeCustomModelSlugs(settings.customDevinModels, "devin"),
     customGeminiModels: normalizeCustomModelSlugs(settings.customGeminiModels, "gemini"),
     customKiloModels: normalizeCustomModelSlugs(settings.customKiloModels, "kilo"),
     customOpenCodeModels: normalizeCustomModelSlugs(settings.customOpenCodeModels, "opencode"),
@@ -295,6 +322,9 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
 }
 
 export function serverSettingsToAppSettings(settings: ServerSettings): Partial<AppSettings> {
+  const allProviders = Object.keys(settings.providers) as Array<ProviderKind>;
+  const hiddenProviders = allProviders.filter((p) => settings.providers[p]?.enabled === false);
+
   return {
     addProjectBaseDirectory: settings.addProjectBaseDirectory,
     claudeBinaryPath: settings.providers.claudeAgent.binaryPath,
@@ -312,17 +342,40 @@ export function serverSettingsToAppSettings(settings: ServerSettings): Partial<A
     openCodeBinaryPath: settings.providers.opencode.binaryPath,
     openCodeServerPassword: settings.providers.opencode.serverPassword,
     openCodeServerUrl: settings.providers.opencode.serverUrl,
+    openClawAuthMode: settings.providers.openclaw.authMode,
+    openClawEnabled: settings.providers.openclaw.enabled,
+    openClawGatewayUrl: settings.providers.openclaw.gatewayUrl,
+    openClawHasSecret: settings.providers.openclaw.hasSecret,
+    openClawPaired: settings.providers.openclaw.paired,
     piAgentDir: settings.providers.pi.agentDir,
     piBinaryPath: settings.providers.pi.binaryPath,
     customCodexModels: settings.providers.codex.customModels,
     customClaudeModels: settings.providers.claudeAgent.customModels,
     customCursorModels: settings.providers.cursor.customModels,
+    customDevinModels: settings.providers.devin.customModels,
     customGeminiModels: settings.providers.gemini.customModels,
     customKiloModels: settings.providers.kilo.customModels,
     customOpenCodeModels: settings.providers.opencode.customModels,
     customPiModels: settings.providers.pi.customModels,
     textGenerationProvider: settings.textGenerationModelSelection.provider,
     textGenerationModel: settings.textGenerationModelSelection.model,
+    chatFontSizePx: settings.chatFontSizePx,
+    chatCodeFontFamily: settings.chatCodeFontFamily,
+    uiFontFamily: settings.uiFontFamily,
+    enableNativeFontSmoothing: settings.enableNativeFontSmoothing,
+    timestampFormat: settings.timestampFormat,
+    sidebarSide: settings.sidebarSide,
+    sidebarProjectSortOrder: settings.sidebarProjectSortOrder,
+    sidebarThreadSortOrder: settings.sidebarThreadSortOrder,
+    confirmThreadDelete: settings.confirmThreadDelete,
+    confirmThreadArchive: settings.confirmThreadArchive,
+    confirmTerminalTabClose: settings.confirmTerminalTabClose,
+    diffWordWrap: settings.diffWordWrap,
+    enableTaskCompletionToasts: settings.enableTaskCompletionToasts,
+    enableSystemTaskCompletionNotifications: settings.enableSystemTaskCompletionNotifications,
+    defaultProvider: settings.defaultProvider,
+    hiddenProviders,
+    ...(settings.providerOrder ? { providerOrder: settings.providerOrder } : {}),
   };
 }
 
@@ -331,7 +384,7 @@ function resolveTextGenerationProvider(input: {
   readonly model?: string | null;
 }): ProviderKind {
   if (input.provider) {
-    return input.provider;
+    return GIT_TEXT_GENERATION_PROVIDERS.has(input.provider) ? input.provider : "codex";
   }
   const model = input.model;
   return model?.includes("/") ? "opencode" : "codex";
@@ -448,6 +501,19 @@ export function appSettingsPatchToServerSettingsPatch(
     };
   }
   if (
+    hasOwn(patch, "openClawGatewayUrl") ||
+    hasOwn(patch, "openClawAuthMode") ||
+    hasOwn(patch, "openClawEnabled")
+  ) {
+    providers.openclaw = {
+      ...(hasOwn(patch, "openClawEnabled") ? { enabled: patch.openClawEnabled ?? true } : {}),
+      ...(hasOwn(patch, "openClawGatewayUrl")
+        ? { gatewayUrl: patch.openClawGatewayUrl ?? "" }
+        : {}),
+      ...(hasOwn(patch, "openClawAuthMode") ? { authMode: patch.openClawAuthMode ?? "none" } : {}),
+    };
+  }
+  if (
     hasOwn(patch, "piAgentDir") ||
     hasOwn(patch, "piBinaryPath") ||
     hasOwn(patch, "customPiModels")
@@ -459,9 +525,85 @@ export function appSettingsPatchToServerSettingsPatch(
     };
   }
 
+  if (hasOwn(patch, "customDevinModels")) {
+    providers.devin = {
+      ...(hasOwn(patch, "customDevinModels")
+        ? { customModels: patch.customDevinModels ?? [] }
+        : {}),
+    };
+  }
+
+  // hiddenProviders → per-provider enabled
+  if (hasOwn(patch, "hiddenProviders")) {
+    const hiddenSet = new Set(patch.hiddenProviders ?? []);
+    const allKinds = new Set<ProviderKind>([
+      ...DEFAULT_PROVIDER_ORDER,
+      ...(patch.hiddenProviders ?? []),
+    ]);
+    for (const kind of allKinds) {
+      const existing = providers[kind];
+      providers[kind] = { ...existing, enabled: !hiddenSet.has(kind) };
+    }
+  }
+
   if (Object.keys(providers).length > 0) {
     serverPatch.providers = providers;
   }
+
+  // UI preference scalar fields
+  if (hasOwn(patch, "chatFontSizePx")) {
+    serverPatch.chatFontSizePx = normalizeChatFontSizePx(patch.chatFontSizePx);
+  }
+  if (hasOwn(patch, "chatCodeFontFamily")) {
+    serverPatch.chatCodeFontFamily = patch.chatCodeFontFamily ?? "";
+  }
+  if (hasOwn(patch, "uiFontFamily")) {
+    serverPatch.uiFontFamily = patch.uiFontFamily ?? "";
+  }
+  if (hasOwn(patch, "enableNativeFontSmoothing")) {
+    serverPatch.enableNativeFontSmoothing = Boolean(patch.enableNativeFontSmoothing);
+  }
+  if (hasOwn(patch, "timestampFormat")) {
+    serverPatch.timestampFormat = patch.timestampFormat ?? DEFAULT_TIMESTAMP_FORMAT;
+  }
+  if (hasOwn(patch, "sidebarSide")) {
+    serverPatch.sidebarSide = patch.sidebarSide ?? DEFAULT_SIDEBAR_SIDE;
+  }
+  if (hasOwn(patch, "sidebarProjectSortOrder")) {
+    serverPatch.sidebarProjectSortOrder =
+      patch.sidebarProjectSortOrder ?? DEFAULT_SIDEBAR_PROJECT_SORT_ORDER;
+  }
+  if (hasOwn(patch, "sidebarThreadSortOrder")) {
+    serverPatch.sidebarThreadSortOrder =
+      patch.sidebarThreadSortOrder ?? DEFAULT_SIDEBAR_THREAD_SORT_ORDER;
+  }
+  if (hasOwn(patch, "confirmThreadDelete")) {
+    serverPatch.confirmThreadDelete = Boolean(patch.confirmThreadDelete);
+  }
+  if (hasOwn(patch, "confirmThreadArchive")) {
+    serverPatch.confirmThreadArchive = Boolean(patch.confirmThreadArchive);
+  }
+  if (hasOwn(patch, "confirmTerminalTabClose")) {
+    serverPatch.confirmTerminalTabClose = Boolean(patch.confirmTerminalTabClose);
+  }
+  if (hasOwn(patch, "diffWordWrap")) {
+    serverPatch.diffWordWrap = Boolean(patch.diffWordWrap);
+  }
+  if (hasOwn(patch, "enableTaskCompletionToasts")) {
+    serverPatch.enableTaskCompletionToasts = Boolean(patch.enableTaskCompletionToasts);
+  }
+  if (hasOwn(patch, "enableSystemTaskCompletionNotifications")) {
+    serverPatch.enableSystemTaskCompletionNotifications = Boolean(
+      patch.enableSystemTaskCompletionNotifications,
+    );
+  }
+  if (hasOwn(patch, "defaultProvider")) {
+    serverPatch.defaultProvider = patch.defaultProvider ?? "codex";
+  }
+  if (hasOwn(patch, "providerOrder")) {
+    serverPatch.providerOrder = normalizeProviderOrder(patch.providerOrder ?? []);
+  }
+
   return serverPatch;
 }
 
@@ -489,6 +631,9 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
     "openCodeBinaryPath",
     "openCodeServerPassword",
     "openCodeServerUrl",
+    "openClawAuthMode",
+    "openClawEnabled",
+    "openClawGatewayUrl",
     "piAgentDir",
     "piBinaryPath",
     "textGenerationModel",
@@ -503,6 +648,7 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
     "customCodexModels",
     "customClaudeModels",
     "customCursorModels",
+    "customDevinModels",
     "customGeminiModels",
     "customKiloModels",
     "customOpenCodeModels",
@@ -516,26 +662,68 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
   return appSettingsPatchToServerSettingsPatch(patch);
 }
 
+function buildV2ServerSettingsMigrationPatch(settings: AppSettings): ServerSettingsPatch {
+  const patch: Partial<Mutable<AppSettings>> = {};
+  const defaults = DEFAULT_APP_SETTINGS;
+
+  for (const key of [
+    "chatFontSizePx",
+    "chatCodeFontFamily",
+    "uiFontFamily",
+    "enableNativeFontSmoothing",
+    "timestampFormat",
+    "sidebarSide",
+    "sidebarProjectSortOrder",
+    "sidebarThreadSortOrder",
+    "confirmThreadDelete",
+    "confirmThreadArchive",
+    "confirmTerminalTabClose",
+    "diffWordWrap",
+    "enableTaskCompletionToasts",
+    "enableSystemTaskCompletionNotifications",
+    "defaultProvider",
+  ] as const) {
+    if (settings[key] !== defaults[key]) {
+      patch[key] = settings[key] as never;
+    }
+  }
+
+  if (!sameProviderOrder(settings.providerOrder, defaults.providerOrder)) {
+    patch.providerOrder = settings.providerOrder;
+  }
+  if (settings.hiddenProviders.length > 0) {
+    patch.hiddenProviders = settings.hiddenProviders;
+  }
+
+  const themeRaw = globalThis.localStorage?.getItem("jcode:theme");
+  if (themeRaw) {
+    const serverPatch = appSettingsPatchToServerSettingsPatch(patch);
+    return { ...serverPatch, themeState: themeRaw };
+  }
+
+  return appSettingsPatchToServerSettingsPatch(patch);
+}
+
 export function normalizeStoredAppSettings(settings: AppSettings): AppSettings {
   return normalizeAppSettings(settings);
 }
 
 export function getCustomModelsForProvider(
   settings: Pick<AppSettings, CustomModelSettingsKey>,
-  provider: ProviderKind,
+  provider: CustomModelProviderKind,
 ): readonly string[] {
   return settings[PROVIDER_CUSTOM_MODEL_CONFIG[provider].settingsKey];
 }
 
 export function getDefaultCustomModelsForProvider(
   defaults: Pick<AppSettings, CustomModelSettingsKey>,
-  provider: ProviderKind,
+  provider: CustomModelProviderKind,
 ): readonly string[] {
   return defaults[PROVIDER_CUSTOM_MODEL_CONFIG[provider].defaultSettingsKey];
 }
 
 export function patchCustomModels(
-  provider: ProviderKind,
+  provider: CustomModelProviderKind,
   models: string[],
 ): Partial<Pick<AppSettings, CustomModelSettingsKey>> {
   return {
@@ -550,9 +738,11 @@ export function getCustomModelsByProvider(
     codex: getCustomModelsForProvider(settings, "codex"),
     claudeAgent: getCustomModelsForProvider(settings, "claudeAgent"),
     cursor: getCustomModelsForProvider(settings, "cursor"),
+    devin: getCustomModelsForProvider(settings, "devin"),
     gemini: getCustomModelsForProvider(settings, "gemini"),
     kilo: getCustomModelsForProvider(settings, "kilo"),
     opencode: getCustomModelsForProvider(settings, "opencode"),
+    openclaw: [],
     pi: getCustomModelsForProvider(settings, "pi"),
   };
 }
@@ -636,7 +826,11 @@ export function getGitTextGenerationModelOptions(
   const selectedProvider =
     settings.textGenerationProvider ??
     resolveTextGenerationProvider(selectedModel !== undefined ? { model: selectedModel } : {});
-  if (selectedModel && !seen.has(`${selectedProvider}:${selectedModel}`)) {
+  if (
+    selectedModel &&
+    GIT_TEXT_GENERATION_PROVIDERS.has(selectedProvider) &&
+    !seen.has(`${selectedProvider}:${selectedModel}`)
+  ) {
     deduped.push({
       provider: selectedProvider,
       slug: selectedModel,
@@ -668,9 +862,11 @@ export function getCustomModelOptionsByProvider(
     codex: getAppModelOptions("codex", customModelsByProvider.codex),
     claudeAgent: getAppModelOptions("claudeAgent", customModelsByProvider.claudeAgent),
     cursor: getAppModelOptions("cursor", customModelsByProvider.cursor),
+    devin: getAppModelOptions("devin", customModelsByProvider.devin),
     gemini: getAppModelOptions("gemini", customModelsByProvider.gemini),
     kilo: getAppModelOptions("kilo", customModelsByProvider.kilo),
     opencode: getAppModelOptions("opencode", customModelsByProvider.opencode),
+    openclaw: [],
     pi: getAppModelOptions("pi", customModelsByProvider.pi),
   };
 }
@@ -691,6 +887,7 @@ export function getProviderStartOptions(
     | "openCodeBinaryPath"
     | "openCodeServerPassword"
     | "openCodeServerUrl"
+    | "openClawGatewayUrl"
     | "piAgentDir"
     | "piBinaryPath"
   >,
@@ -786,8 +983,12 @@ export function getCustomBinaryPathForProvider(
       return settings.kiloBinaryPath;
     case "opencode":
       return settings.openCodeBinaryPath;
+    case "openclaw":
+      return "";
     case "pi":
       return settings.piBinaryPath;
+    case "devin":
+      return "";
   }
 }
 
@@ -856,6 +1057,44 @@ export function useAppSettings() {
         serverSettingsMigrationInFlight = false;
       });
   }, [localSettings, queryClient, serverSettingsQuery.data]);
+
+  useEffect(() => {
+    if (!serverSettingsQuery.data || serverSettingsMigrationInFlight) {
+      return;
+    }
+    if (globalThis.localStorage?.getItem(SERVER_SETTINGS_V2_MIGRATION_STORAGE_KEY) === "1") {
+      return;
+    }
+
+    const migrationPatch = buildV2ServerSettingsMigrationPatch(localSettings);
+    if (isServerSettingsPatchEmpty(migrationPatch)) {
+      globalThis.localStorage?.setItem(SERVER_SETTINGS_V2_MIGRATION_STORAGE_KEY, "1");
+      return;
+    }
+
+    serverSettingsMigrationInFlight = true;
+    void ensureNativeApi()
+      .server.updateSettings(migrationPatch)
+      .then((nextSettings) => {
+        queryClient.setQueryData(serverQueryKeys.settings(), nextSettings);
+        globalThis.localStorage?.setItem(SERVER_SETTINGS_V2_MIGRATION_STORAGE_KEY, "1");
+      })
+      .catch(() => {
+        void queryClient.invalidateQueries({ queryKey: serverQueryKeys.settings() });
+      })
+      .finally(() => {
+        serverSettingsMigrationInFlight = false;
+      });
+  }, [localSettings, queryClient, serverSettingsQuery.data]);
+
+  const themeHydratedRef = useRef(false);
+  useEffect(() => {
+    if (themeHydratedRef.current || !serverSettingsQuery.data?.themeState) {
+      return;
+    }
+    themeHydratedRef.current = true;
+    hydrateThemeFromServer(serverSettingsQuery.data.themeState);
+  }, [serverSettingsQuery.data]);
 
   const updateSettings = useCallback(
     (patch: Partial<AppSettings>) => {

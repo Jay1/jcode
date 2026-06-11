@@ -6,6 +6,7 @@
 import {
   type EditorId,
   type ProjectScript,
+  type OrchestrationGoal,
   PROVIDER_DISPLAY_NAMES,
   type ProviderKind,
   type ResolvedKeybindingsConfig,
@@ -19,7 +20,15 @@ import { HiMiniArrowsPointingOut } from "react-icons/hi2";
 import { TbExchange, TbLayoutSidebarRight } from "react-icons/tb";
 import type { ThreadPrimarySurface } from "../../types";
 import GitActionsControl from "../GitActionsControl";
-import { AppsIcon, ArrowRightIcon, GlobeIcon, PlusIcon, TerminalIcon, XIcon } from "~/lib/icons";
+import {
+  AppsIcon,
+  ArrowRightIcon,
+  GlobeIcon,
+  ListTodoIcon,
+  PlusIcon,
+  TerminalIcon,
+  XIcon,
+} from "~/lib/icons";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
@@ -39,6 +48,7 @@ import { gitWorkingTreeDiffQueryOptions } from "~/lib/gitReactQuery";
 import { summarizePatchStats } from "~/lib/diffRendering";
 import { useRepoDiffScopeStore } from "~/repoDiffScopeStore";
 import { resolveChatHeaderThreadIconKind } from "./ChatHeader.logic";
+import { GoalIndicator } from "./GoalIndicator";
 
 /** Width (px) below which collapsible header controls fold into the ellipsis menu. */
 const HEADER_COMPACT_BREAKPOINT = 480;
@@ -71,6 +81,8 @@ interface ChatHeaderProps {
   handoffActionTargetProviders: ReadonlyArray<ProviderKind>;
   handoffBadgeSourceProvider: ProviderKind | null;
   handoffBadgeTargetProvider: ProviderKind | null;
+  threadRecapOpen: boolean;
+  goal?: OrchestrationGoal | null | undefined;
   browserOpen: boolean;
   gitCwd: string | null;
   showGitActions?: boolean;
@@ -95,10 +107,36 @@ interface ChatHeaderProps {
   onToggleTerminal: () => void;
   onToggleDiff: () => void;
   onToggleBrowser: () => void;
+  onToggleThreadRecap: () => void;
   onCreateHandoff: (targetProvider: ProviderKind) => void;
   onNavigateToThread: (threadId: ThreadId) => void;
   onRenameThread: () => void;
   onCloseThreadPane?: () => void;
+}
+
+function renderProviderIcon(provider: ProviderKind | null, className: string) {
+  if (provider === "claudeAgent") {
+    return <ClaudeAI className={cn("text-foreground", className)} />;
+  }
+  if (provider === "cursor") {
+    return <CursorIcon className={cn("text-foreground", className)} />;
+  }
+  if (provider === "gemini") {
+    return <Gemini className={cn("text-foreground", className)} />;
+  }
+  if (provider === "kilo") {
+    return <KiloIcon className={cn("text-muted-foreground/70", className)} />;
+  }
+  if (provider === "opencode") {
+    return <OpenCodeIcon className={cn("text-muted-foreground/70", className)} />;
+  }
+  if (provider === "pi") {
+    return <PiIcon className={cn("text-foreground", className)} />;
+  }
+  if (provider === "codex") {
+    return <OpenAI className={cn("text-muted-foreground/75", className)} />;
+  }
+  return <FiGitBranch className={className} />;
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -126,6 +164,8 @@ export const ChatHeader = memo(function ChatHeader({
   handoffActionTargetProviders,
   handoffBadgeSourceProvider,
   handoffBadgeTargetProvider,
+  threadRecapOpen,
+  goal,
   browserOpen,
   gitCwd,
   showGitActions = true,
@@ -142,6 +182,7 @@ export const ChatHeader = memo(function ChatHeader({
   onToggleTerminal,
   onToggleDiff,
   onToggleBrowser,
+  onToggleThreadRecap,
   onCreateHandoff,
   onNavigateToThread,
   onRenameThread,
@@ -177,31 +218,6 @@ export const ChatHeader = memo(function ChatHeader({
     observer.observe(el);
     return () => observer.disconnect();
   }, [isSplitPane]);
-
-  const renderProviderIcon = (provider: ProviderKind | null, className: string) => {
-    if (provider === "claudeAgent") {
-      return <ClaudeAI className={cn("text-foreground", className)} />;
-    }
-    if (provider === "cursor") {
-      return <CursorIcon className={cn("text-foreground", className)} />;
-    }
-    if (provider === "gemini") {
-      return <Gemini className={cn("text-foreground", className)} />;
-    }
-    if (provider === "kilo") {
-      return <KiloIcon className={cn("text-muted-foreground/70", className)} />;
-    }
-    if (provider === "opencode") {
-      return <OpenCodeIcon className={cn("text-muted-foreground/70", className)} />;
-    }
-    if (provider === "pi") {
-      return <PiIcon className={cn("text-foreground", className)} />;
-    }
-    if (provider === "codex") {
-      return <OpenAI className={cn("text-muted-foreground/75", className)} />;
-    }
-    return <FiGitBranch className={className} />;
-  };
 
   return (
     <div ref={headerRef} className="flex min-w-0 flex-1 items-center gap-2">
@@ -306,6 +322,7 @@ export const ChatHeader = memo(function ChatHeader({
                   <TooltipPopup side="bottom">{handoffBadgeLabel}</TooltipPopup>
                 </Tooltip>
               ) : null}
+              <GoalIndicator goal={goal} className="max-sm:max-w-[9rem]" />
             </div>
           </div>
         </div>
@@ -347,6 +364,31 @@ export const ChatHeader = memo(function ChatHeader({
               ))}
             </MenuPopup>
           </Menu>
+        ) : null}
+        {!isDisposableThread && !hideHandoffControls ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Toggle
+                  size="xs"
+                  variant="outline"
+                  className={cn(
+                    "shrink-0 border-(--app-chrome-control-border) bg-(--app-chrome-control-bg) text-(--app-chrome-control-fg) not-disabled:before:shadow-none dark:not-disabled:before:shadow-none [:hover,[data-pressed]]:bg-(--app-chrome-control-hover-bg) [:hover,[data-pressed]]:text-(--app-chrome-control-hover-fg) dark:[:hover,[data-pressed]]:bg-(--app-chrome-control-hover-bg) data-pressed:bg-(--app-chrome-control-active-bg)",
+                    compact ? "gap-1" : "gap-1.5",
+                  )}
+                  aria-label={threadRecapOpen ? "Hide recap" : "Show recap"}
+                  pressed={threadRecapOpen}
+                  onPressedChange={(_pressed) => onToggleThreadRecap()}
+                >
+                  <ListTodoIcon className="size-3.5 shrink-0" />
+                  {!compact ? <span className="truncate font-normal">Recap</span> : null}
+                </Toggle>
+              }
+            />
+            <TooltipPopup side="bottom">
+              {threadRecapOpen ? "Hide recap" : "Show recap"}
+            </TooltipPopup>
+          </Tooltip>
         ) : null}
         {/* Keep one shared project-actions controller mounted so both inline and
             compact header menus open the same dialog/state machine. */}

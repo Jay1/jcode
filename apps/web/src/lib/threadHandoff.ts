@@ -8,6 +8,7 @@ import {
   type ThreadHandoffImportedMessage,
 } from "@jcode/contracts";
 import { getDefaultModel } from "@jcode/shared/model";
+import { buildModelSelection } from "../providerModelOptions";
 import { type Thread } from "../types";
 import { stripEmbeddedAssistantSelections } from "./assistantSelections";
 import { randomUUID } from "./utils";
@@ -19,6 +20,7 @@ const HANDOFF_PROVIDER_ORDER: ReadonlyArray<ProviderKind> = [
   "gemini",
   "kilo",
   "opencode",
+  "openclaw",
   "pi",
 ];
 const IMPORTABLE_THREAD_ACTIVITY_KINDS = new Set([
@@ -33,7 +35,11 @@ function isImportableThreadMessage(
 ): message is Thread["messages"][number] & {
   role: "user" | "assistant";
 } {
-  return (message.role === "user" || message.role === "assistant") && message.streaming === false;
+  return (
+    (message.role === "user" || message.role === "assistant") &&
+    message.streaming === false &&
+    message.source !== "goal-continuation"
+  );
 }
 
 function isImportableThreadActivity(
@@ -154,6 +160,10 @@ export function resolveThreadHandoffModelSelection(input: {
     return input.targetProvider !== "kilo" || selection.model.startsWith("kilo/");
   };
 
+  if (input.targetProvider === "openclaw") {
+    return buildModelSelection("openclaw", "gateway");
+  }
+
   const stickySelection = input.stickyModelSelectionByProvider[input.targetProvider];
   if (isCompatibleSelection(stickySelection)) {
     return stickySelection;
@@ -165,8 +175,5 @@ export function resolveThreadHandoffModelSelection(input: {
   if (!defaultModel) {
     throw new Error("Select a Pi model before handing off to Pi.");
   }
-  return {
-    provider: input.targetProvider,
-    model: defaultModel,
-  };
+  return buildModelSelection(input.targetProvider, defaultModel);
 }

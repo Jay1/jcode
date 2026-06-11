@@ -1,4 +1,10 @@
-import { AuthSessionId, type AuthClientMetadata, type AuthClientSession } from "@jcode/contracts";
+import {
+  AuthSessionId,
+  type AuthCapabilityScope,
+  type AuthClientMetadata,
+  type AuthClientSession,
+  type CapabilityResource,
+} from "@jcode/contracts";
 import * as Crypto from "node:crypto";
 import {
   Clock,
@@ -44,6 +50,10 @@ const SessionClaims = Schema.Struct({
   sub: Schema.String,
   role: Schema.Literals(["owner", "client"]),
   method: Schema.Literals(["browser-session-cookie", "bearer-session-token"]),
+  scopes: Schema.optional(Schema.Array(Schema.String)),
+  resources: Schema.optional(
+    Schema.Array(Schema.Struct({ type: Schema.String, id: Schema.String })),
+  ),
   iat: Schema.Number,
   exp: Schema.Number,
 });
@@ -186,6 +196,8 @@ export const makeSessionCredentialService = Effect.gen(function* () {
         sub: input?.subject ?? "browser",
         role: input?.role ?? "client",
         method: input?.method ?? "browser-session-cookie",
+        ...(input?.scopes ? { scopes: input.scopes } : {}),
+        ...(input?.resources ? { resources: input.resources } : {}),
         iat: DateTime.toEpochMillis(issuedAt),
         exp: DateTime.toEpochMillis(expiresAt),
       };
@@ -256,6 +268,18 @@ export const makeSessionCredentialService = Effect.gen(function* () {
       if (Option.isNone(row)) return yield* toSessionCredentialError("Unknown session token.");
       if (row.value.revokedAt !== null)
         return yield* toSessionCredentialError("Session token revoked.");
+      const scopes = Array.isArray(claims.scopes)
+        ? claims.scopes.filter((s): s is AuthCapabilityScope => typeof s === "string")
+        : undefined;
+      const resources = Array.isArray(claims.resources)
+        ? claims.resources.filter(
+            (r): r is CapabilityResource =>
+              typeof r === "object" &&
+              r !== null &&
+              typeof r.type === "string" &&
+              typeof r.id === "string",
+          )
+        : undefined;
       return {
         sessionId: claims.sid,
         token,
@@ -264,6 +288,8 @@ export const makeSessionCredentialService = Effect.gen(function* () {
         expiresAt: DateTime.makeUnsafe(claims.exp),
         subject: claims.sub,
         role: claims.role,
+        ...(scopes !== undefined ? { scopes } : {}),
+        ...(resources !== undefined ? { resources } : {}),
       } satisfies VerifiedSession;
     }).pipe(
       Effect.mapError((cause) =>

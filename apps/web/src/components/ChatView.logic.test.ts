@@ -78,6 +78,16 @@ describe("voice helpers", () => {
         createdAt: "2026-05-02T10:01:00.000Z",
         completedAt: "2026-05-02T10:01:00.000Z",
       },
+      {
+        id: "message-goal-continuation" as never,
+        role: "user",
+        text: "Continue the hidden persistent goal",
+        turnId: null,
+        streaming: false,
+        source: "goal-continuation",
+        createdAt: "2026-05-02T10:02:00.000Z",
+        completedAt: "2026-05-02T10:02:00.000Z",
+      },
     ] as const;
 
     expect(filterSidechatTranscriptMessages(messages, true).map((message) => message.id)).toEqual([

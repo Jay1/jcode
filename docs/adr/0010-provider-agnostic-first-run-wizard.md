@@ -1,4 +1,4 @@
-# ADR 0006: Provider-Agnostic First-Run Wizard
+# ADR 0010: Provider-Agnostic First-Run Wizard
 
 | Field           | Value                                                                                                                                                 |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -7,7 +7,7 @@
 | Owner           | Engineering                                                                                                                                           |
 | Audience        | Maintainers, reviewers, and automation agents                                                                                                         |
 | Scope           | First-run setup experience for JCode desktop, covering provider detection, selection, and runtime provisioning                                        |
-| Canonical path  | `docs/adr/0006-provider-agnostic-first-run-wizard.md`                                                                                                 |
+| Canonical path  | `docs/adr/0010-provider-agnostic-first-run-wizard.md`                                                                                                 |
 | Last reviewed   | 2026-06-07                                                                                                                                            |
 | Review cadence  | Event-driven; review if JCode changes provider abstraction or adds hosted provider support                                                            |
 | Source of truth | `apps/web/src/routes/_chat.settings.tsx`, `packages/contracts/src/providerDiscovery.ts`, `apps/server/src/provider/providerMaintenance.ts`, `apps/server/src/provider/opencodeRuntime.ts` |
@@ -51,7 +51,7 @@ On a clean Windows machine where no providers are detected, the wizard must:
 1. Show all providers with "needs setup" status.
 2. Highlight OpenCode as the only provider offering a managed install ("Install for me").
 3. For other providers, show a brief instruction ("Install X and restart JCode" or "Enter your API key").
-4. If the user picks OpenCode, the managed download pipeline from ADR 0005 activates.
+4. If the user picks OpenCode, the managed download pipeline from ADR 0009 activates.
 
 ### OpenCode-Only Managed Scope
 

@@ -57,15 +57,38 @@ import {
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
 
-const PROVIDERS: readonly ProviderKind[] = [
+type SkillLibraryDiscoveryProvider = Exclude<ProviderKind, "openclaw">;
+
+type SkillLibraryDiscoveryProviderMap<T> = Record<SkillLibraryDiscoveryProvider, T>;
+
+export function buildSkillLibraryProviderQueryMap<T>(
+  queries: SkillLibraryDiscoveryProviderMap<T>,
+): SkillLibraryDiscoveryProviderMap<T> {
+  return queries;
+}
+
+export function buildSkillLibraryProviderStatusMap<T>(
+  statuses: SkillLibraryDiscoveryProviderMap<T>,
+): SkillLibraryDiscoveryProviderMap<T> {
+  return statuses;
+}
+
+const PROVIDERS: readonly SkillLibraryDiscoveryProvider[] = [
   "codex",
   "claudeAgent",
   "cursor",
+  "devin",
   "gemini",
   "kilo",
   "opencode",
   "pi",
 ];
+
+function isSkillLibraryDiscoveryProvider(
+  provider: SkillLibraryProviderFilter,
+): provider is SkillLibraryDiscoveryProvider {
+  return provider !== "all" && provider !== "openclaw";
+}
 
 const MAX_COLLAPSED_PROVIDER_ROWS = 48;
 
@@ -495,6 +518,7 @@ export function SkillLibrarySettingsPanel() {
   const codexCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("codex"));
   const claudeCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("claudeAgent"));
   const cursorCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("cursor"));
+  const devinCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("devin"));
   const geminiCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("gemini"));
   const kiloCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("kilo"));
   const openCodeCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("opencode"));
@@ -505,6 +529,7 @@ export function SkillLibrarySettingsPanel() {
       codex: codexCapabilitiesQuery.data,
       claudeAgent: claudeCapabilitiesQuery.data,
       cursor: cursorCapabilitiesQuery.data,
+      devin: devinCapabilitiesQuery.data,
       gemini: geminiCapabilitiesQuery.data,
       kilo: kiloCapabilitiesQuery.data,
       opencode: openCodeCapabilitiesQuery.data,
@@ -514,6 +539,7 @@ export function SkillLibrarySettingsPanel() {
       claudeCapabilitiesQuery.data,
       codexCapabilitiesQuery.data,
       cursorCapabilitiesQuery.data,
+      devinCapabilitiesQuery.data,
       geminiCapabilitiesQuery.data,
       kiloCapabilitiesQuery.data,
       openCodeCapabilitiesQuery.data,
@@ -526,9 +552,11 @@ export function SkillLibrarySettingsPanel() {
       codex: supportsSkillDiscovery(codexCapabilitiesQuery.data),
       claudeAgent: supportsSkillDiscovery(claudeCapabilitiesQuery.data),
       cursor: supportsSkillDiscovery(cursorCapabilitiesQuery.data),
+      devin: false,
       gemini: supportsSkillDiscovery(geminiCapabilitiesQuery.data),
       kilo: supportsSkillDiscovery(kiloCapabilitiesQuery.data),
       opencode: supportsSkillDiscovery(openCodeCapabilitiesQuery.data),
+      openclaw: false,
       pi: supportsSkillDiscovery(piCapabilitiesQuery.data),
     }),
     [
@@ -614,21 +642,32 @@ export function SkillLibrarySettingsPanel() {
       enabled: providerCanListSkills.pi,
     }),
   );
+  const devinSkillsQuery = useQuery(
+    providerSkillsQueryOptions({
+      provider: "devin",
+      cwd: discoveryCwd,
+      query: "",
+      enabled: providerCanListSkills.devin,
+    }),
+  );
 
   const skillQueries = useMemo(
-    () => ({
-      codex: codexSkillsQuery,
-      claudeAgent: claudeSkillsQuery,
-      cursor: cursorSkillsQuery,
-      gemini: geminiSkillsQuery,
-      kilo: kiloSkillsQuery,
-      opencode: openCodeSkillsQuery,
-      pi: piSkillsQuery,
-    }),
+    () =>
+      buildSkillLibraryProviderQueryMap({
+        codex: codexSkillsQuery,
+        claudeAgent: claudeSkillsQuery,
+        cursor: cursorSkillsQuery,
+        devin: devinSkillsQuery,
+        gemini: geminiSkillsQuery,
+        kilo: kiloSkillsQuery,
+        opencode: openCodeSkillsQuery,
+        pi: piSkillsQuery,
+      }),
     [
       claudeSkillsQuery,
       codexSkillsQuery,
       cursorSkillsQuery,
+      devinSkillsQuery,
       geminiSkillsQuery,
       kiloSkillsQuery,
       openCodeSkillsQuery,
@@ -659,7 +698,12 @@ export function SkillLibrarySettingsPanel() {
   );
   const groupedFilteredRows = useMemo(
     () =>
-      (providerFilter === "all" ? PROVIDERS : [providerFilter]).map((provider) => ({
+      (providerFilter === "all"
+        ? PROVIDERS
+        : isSkillLibraryDiscoveryProvider(providerFilter)
+          ? [providerFilter]
+          : []
+      ).map((provider) => ({
         provider,
         rows: filteredRows.filter((row) => row.provider === provider),
       })),
@@ -684,15 +728,17 @@ export function SkillLibrarySettingsPanel() {
   const isSkillLoading = activeProviders.some((provider) => skillQueries[provider].isLoading);
 
   const providerStatus = useMemo(
-    () => ({
-      codex: { capability: codexCapabilitiesQuery, skills: codexSkillsQuery },
-      claudeAgent: { capability: claudeCapabilitiesQuery, skills: claudeSkillsQuery },
-      cursor: { capability: cursorCapabilitiesQuery, skills: cursorSkillsQuery },
-      gemini: { capability: geminiCapabilitiesQuery, skills: geminiSkillsQuery },
-      kilo: { capability: kiloCapabilitiesQuery, skills: kiloSkillsQuery },
-      opencode: { capability: openCodeCapabilitiesQuery, skills: openCodeSkillsQuery },
-      pi: { capability: piCapabilitiesQuery, skills: piSkillsQuery },
-    }),
+    () =>
+      buildSkillLibraryProviderStatusMap({
+        codex: { capability: codexCapabilitiesQuery, skills: codexSkillsQuery },
+        claudeAgent: { capability: claudeCapabilitiesQuery, skills: claudeSkillsQuery },
+        cursor: { capability: cursorCapabilitiesQuery, skills: cursorSkillsQuery },
+        devin: { capability: devinCapabilitiesQuery, skills: devinSkillsQuery },
+        gemini: { capability: geminiCapabilitiesQuery, skills: geminiSkillsQuery },
+        kilo: { capability: kiloCapabilitiesQuery, skills: kiloSkillsQuery },
+        opencode: { capability: openCodeCapabilitiesQuery, skills: openCodeSkillsQuery },
+        pi: { capability: piCapabilitiesQuery, skills: piSkillsQuery },
+      }),
     [
       claudeCapabilitiesQuery,
       claudeSkillsQuery,
@@ -700,6 +746,8 @@ export function SkillLibrarySettingsPanel() {
       codexSkillsQuery,
       cursorCapabilitiesQuery,
       cursorSkillsQuery,
+      devinCapabilitiesQuery,
+      devinSkillsQuery,
       geminiCapabilitiesQuery,
       geminiSkillsQuery,
       kiloCapabilitiesQuery,

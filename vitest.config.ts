@@ -19,16 +19,6 @@ export default defineConfig({
           maxConcurrency: 2,
           minWorkers: 1,
           maxWorkers: 2,
-          poolOptions: {
-            threads: {
-              maxThreads: 2,
-              minThreads: 1,
-            },
-            forks: {
-              maxForks: 2,
-              minForks: 1,
-            },
-          },
         }
       : {}),
     coverage: {
