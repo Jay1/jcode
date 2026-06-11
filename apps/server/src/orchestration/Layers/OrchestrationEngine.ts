@@ -44,6 +44,12 @@ import {
 import { ProjectLanguageIconResolver } from "../../project/Services/ProjectLanguageIconResolver.ts";
 
 const ORCHESTRATION_DISPATCH_TIMEOUT_MS = 45_000;
+const STARTUP_PROJECT_ICON_METADATA_BACKFILL_LIMIT = 20;
+const AUTOMATIC_PROJECT_ICON_COMMAND_PREFIXES = [
+  "project-icon-detect:",
+  "project-icon-backfill:",
+  "project-icon-refresh:",
+] as const;
 
 type CommandExecutionState = "queued" | "in-flight" | "abandoned";
 type DispatchTimeoutDecision = { kind: "abandon" } | { kind: "wait" };
@@ -91,6 +97,29 @@ function isProjectMetadataEvent(
   );
 }
 
+function isAutomaticProjectIconCommandId(commandId: OrchestrationEvent["commandId"]): boolean {
+  if (commandId === null) {
+    return false;
+  }
+  return AUTOMATIC_PROJECT_ICON_COMMAND_PREFIXES.some((prefix) => commandId.startsWith(prefix));
+}
+
+function sameProjectIconMetadata(
+  left: OrchestrationReadModel["projects"][number]["iconMetadata"],
+  right: OrchestrationReadModel["projects"][number]["iconMetadata"],
+): boolean {
+  return left?.iconId === right?.iconId && left?.label === right?.label;
+}
+
+function makeProjectIconRefreshCommandId(input: {
+  readonly commandIdPrefix: string;
+  readonly projectId: ProjectId;
+  readonly currentIconMetadata: OrchestrationReadModel["projects"][number]["iconMetadata"];
+}): CommandId {
+  const currentIconId = input.currentIconMetadata?.iconId ?? "none";
+  return CommandId.makeUnsafe(`${input.commandIdPrefix}:${input.projectId}:${currentIconId}`);
+}
+
 const makeOrchestrationEngine = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const eventStore = yield* OrchestrationEventStore;
@@ -108,6 +137,31 @@ const makeOrchestrationEngine = Effect.gen(function* () {
   const deferredProjectionScope = yield* Scope.make("sequential");
   const projectIconDetectionScope = yield* Scope.make("sequential");
   const missingProjectIconBackfillScheduled = yield* Ref.make(false);
+  const automaticallyDetectedProjectIconMetadataProjectIds = new Set<ProjectId>();
+
+  const recordProjectIconMetadataProvenance = (event: OrchestrationEvent): void => {
+    if (event.type === "project.deleted") {
+      automaticallyDetectedProjectIconMetadataProjectIds.delete(event.payload.projectId);
+      return;
+    }
+    if (event.type === "project.created") {
+      if (event.payload.iconMetadata !== null) {
+        if (isAutomaticProjectIconCommandId(event.commandId)) {
+          automaticallyDetectedProjectIconMetadataProjectIds.add(event.payload.projectId);
+        } else {
+          automaticallyDetectedProjectIconMetadataProjectIds.delete(event.payload.projectId);
+        }
+      }
+      return;
+    }
+    if (event.type === "project.meta-updated" && event.payload.iconMetadata !== undefined) {
+      if (isAutomaticProjectIconCommandId(event.commandId)) {
+        automaticallyDetectedProjectIconMetadataProjectIds.add(event.payload.projectId);
+      } else {
+        automaticallyDetectedProjectIconMetadataProjectIds.delete(event.payload.projectId);
+      }
+    }
+  };
 
   const makeCommandTimeoutError = (command: OrchestrationCommand) =>
     new OrchestrationCommandTimeoutError({
@@ -166,6 +220,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
     readonly projectId: ProjectId;
     readonly workspaceRoot: string;
     readonly commandIdPrefix: string;
+    readonly refreshExistingAutomaticMetadata?: boolean;
   }) {
     yield* projectLanguageIconResolver.resolveMetadata(input.workspaceRoot).pipe(
       Effect.flatMap((iconMetadata) => {
@@ -173,12 +228,26 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           return Effect.void;
         }
         const project = readModel.projects.find((entry) => entry.id === input.projectId);
-        if (!project || project.deletedAt !== null || project.iconMetadata !== null) {
+        if (!project || project.deletedAt !== null) {
+          return Effect.void;
+        }
+        if (
+          project.iconMetadata !== null &&
+          (!input.refreshExistingAutomaticMetadata ||
+            !automaticallyDetectedProjectIconMetadataProjectIds.has(input.projectId))
+        ) {
+          return Effect.void;
+        }
+        if (sameProjectIconMetadata(project.iconMetadata, iconMetadata)) {
           return Effect.void;
         }
         return enqueueInternalCommand({
           type: "project.meta.update",
-          commandId: CommandId.makeUnsafe(`${input.commandIdPrefix}:${input.projectId}`),
+          commandId: makeProjectIconRefreshCommandId({
+            commandIdPrefix: input.commandIdPrefix,
+            projectId: input.projectId,
+            currentIconMetadata: project.iconMetadata,
+          }),
           projectId: input.projectId,
           iconMetadata,
         }).pipe(Effect.asVoid);
@@ -205,16 +274,23 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       return;
     }
 
-    const projectsNeedingIconMetadata = readModel.projects.filter(
-      (project) => project.deletedAt === null && project.iconMetadata === null,
-    );
+    const projectsNeedingIconMetadata = readModel.projects
+      .filter(
+        (project) =>
+          project.deletedAt === null &&
+          (project.iconMetadata === null ||
+            automaticallyDetectedProjectIconMetadataProjectIds.has(project.id)),
+      )
+      .slice(0, STARTUP_PROJECT_ICON_METADATA_BACKFILL_LIMIT);
     yield* Effect.forEach(
       projectsNeedingIconMetadata,
       (project) =>
         scheduleProjectIconMetadataDetection({
           projectId: project.id,
           workspaceRoot: project.workspaceRoot,
-          commandIdPrefix: "project-icon-backfill",
+          commandIdPrefix:
+            project.iconMetadata === null ? "project-icon-backfill" : "project-icon-refresh",
+          refreshExistingAutomaticMetadata: project.iconMetadata !== null,
         }),
       { concurrency: 1 },
     ).pipe(Effect.forkIn(projectIconDetectionScope), Effect.asVoid);
@@ -433,6 +509,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       readModel = nextReadModel;
 
       for (const persistedEvent of persistedEvents) {
+        recordProjectIconMetadataProvenance(persistedEvent);
         yield* PubSub.publish(eventPubSub, persistedEvent);
       }
     });
@@ -597,6 +674,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         { concurrency: 1 },
       );
       for (const event of committedCommand.committedEvents) {
+        recordProjectIconMetadataProvenance(event);
         yield* PubSub.publish(eventPubSub, event);
       }
       yield* Deferred.succeed(envelope.result, { sequence: committedCommand.lastSequence });
@@ -727,6 +805,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
   // bootstrap in-memory read model from event store
   yield* Stream.runForEach(eventStore.readAll(), (event) =>
     Effect.gen(function* () {
+      recordProjectIconMetadataProvenance(event);
       readModel = yield* projectEvent(readModel, event);
     }),
   );

@@ -18,7 +18,7 @@ describe("ProjectSidebarIcon", () => {
     expect(markup).toContain('data-project-icon-id="typescript"');
     expect(markup).toContain("<svg");
     expect(markup).toContain("#3178C6");
-    expect(markup).not.toContain("project-favicon");
+    expect(markup).toContain('data-project-favicon-preferred="true"');
   });
 
   it("renders accessible branded Vue project icons", () => {

@@ -101,6 +101,60 @@ function waitForProjectIconMetadata(engine: OrchestrationEngineShape, projectId:
   });
 }
 
+function waitForProjectIconMetadataValue(
+  engine: OrchestrationEngineShape,
+  projectId: ProjectId,
+  expected: ProjectIconMetadata,
+) {
+  return Effect.gen(function* () {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const current = yield* engine.getReadModel();
+      const project = current.projects.find((entry) => entry.id === projectId);
+      if (
+        project?.iconMetadata?.iconId === expected.iconId &&
+        project.iconMetadata.label === expected.label
+      ) {
+        return current;
+      }
+      yield* Effect.sleep("100 millis");
+    }
+    return yield* engine.getReadModel();
+  });
+}
+
+function makePersistentOrchestrationRuntime(input: {
+  readonly dbPath: string;
+  readonly prefix: string;
+  readonly resolveProjectIconMetadata?: (cwd: string) => Effect.Effect<ProjectIconMetadata | null>;
+}) {
+  const ServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
+    prefix: input.prefix,
+  });
+  const projectLanguageIconResolverLayer = input.resolveProjectIconMetadata
+    ? Layer.succeed(ProjectLanguageIconResolver, {
+        resolveMetadata: input.resolveProjectIconMetadata,
+      } satisfies typeof ProjectLanguageIconResolver.Service)
+    : NoopProjectLanguageIconResolverLayer;
+  const orchestrationLayer = OrchestrationEngineLive.pipe(
+    Layer.provide(OrchestrationProjectionPipelineLive),
+    Layer.provide(OrchestrationEventStoreLive),
+    Layer.provide(OrchestrationCommandReceiptRepositoryLive),
+    Layer.provide(projectLanguageIconResolverLayer),
+    Layer.provideMerge(makeSqlitePersistenceLive(input.dbPath)),
+    Layer.provideMerge(ServerConfigLayer),
+    Layer.provideMerge(NodeServices.layer),
+  );
+  return ManagedRuntime.make(orchestrationLayer);
+}
+
+function makePersistentEventStoreRuntime(dbPath: string) {
+  const seedLayer = OrchestrationEventStoreLive.pipe(
+    Layer.provideMerge(makeSqlitePersistenceLive(dbPath)),
+    Layer.provideMerge(NodeServices.layer),
+  );
+  return ManagedRuntime.make(seedLayer);
+}
+
 describe("OrchestrationEngine", () => {
   it("returns deterministic read models for repeated reads", async () => {
     const createdAt = now();
@@ -382,6 +436,363 @@ describe("OrchestrationEngine", () => {
       expect(maxActiveResolveCount).toBe(1);
       await runtime.runPromise(Effect.sleep("25 millis"));
       expect(resolveCount).toBe(2);
+      await runtime.dispose();
+    } finally {
+      fs.rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  it("refreshes stale automatic project icon metadata when the engine starts", async () => {
+    const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "jcode-engine-icon-refresh-"));
+    const dbPath = path.join(rootDir, "state.sqlite");
+    let resolveCount = 0;
+    const projectId = asProjectId("project-icon-refresh");
+    const refreshedMetadata = { iconId: "vue", label: "Vue" } satisfies ProjectIconMetadata;
+
+    try {
+      const seedLayer = OrchestrationEventStoreLive.pipe(
+        Layer.provideMerge(makeSqlitePersistenceLive(dbPath)),
+        Layer.provideMerge(NodeServices.layer),
+      );
+      const seedRuntime = ManagedRuntime.make(seedLayer);
+      await seedRuntime.runPromise(
+        Effect.gen(function* () {
+          const eventStore = yield* OrchestrationEventStore;
+          const createdAt = now();
+          yield* eventStore.append({
+            type: "project.created",
+            eventId: EventId.makeUnsafe("evt-project-icon-refresh-create"),
+            aggregateKind: "project",
+            aggregateId: projectId,
+            occurredAt: createdAt,
+            commandId: CommandId.makeUnsafe("cmd-project-icon-refresh-create"),
+            causationEventId: null,
+            correlationId: CommandId.makeUnsafe("cmd-project-icon-refresh-create"),
+            metadata: {},
+            payload: {
+              projectId,
+              title: "Refresh Project",
+              workspaceRoot: "/tmp/project-icon-refresh",
+              defaultModelSelection: null,
+              scripts: [],
+              createdAt,
+              updatedAt: createdAt,
+            },
+          });
+          yield* eventStore.append({
+            type: "project.meta-updated",
+            eventId: EventId.makeUnsafe("evt-project-icon-refresh-auto"),
+            aggregateKind: "project",
+            aggregateId: projectId,
+            occurredAt: createdAt,
+            commandId: CommandId.makeUnsafe(`project-icon-detect:${projectId}`),
+            causationEventId: null,
+            correlationId: CommandId.makeUnsafe(`project-icon-detect:${projectId}`),
+            metadata: {},
+            payload: {
+              projectId,
+              iconMetadata: {
+                iconId: "typescript",
+                label: "TypeScript",
+              },
+              updatedAt: createdAt,
+            },
+          });
+        }),
+      );
+      await seedRuntime.dispose();
+
+      const ServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
+        prefix: "t3-orchestration-engine-icon-refresh-",
+      });
+      const projectLanguageIconResolverLayer = Layer.succeed(ProjectLanguageIconResolver, {
+        resolveMetadata: () =>
+          Effect.sync(() => {
+            resolveCount += 1;
+            return refreshedMetadata;
+          }),
+      } satisfies typeof ProjectLanguageIconResolver.Service);
+      const orchestrationLayer = OrchestrationEngineLive.pipe(
+        Layer.provide(OrchestrationProjectionPipelineLive),
+        Layer.provide(OrchestrationEventStoreLive),
+        Layer.provide(OrchestrationCommandReceiptRepositoryLive),
+        Layer.provide(projectLanguageIconResolverLayer),
+        Layer.provideMerge(makeSqlitePersistenceLive(dbPath)),
+        Layer.provideMerge(ServerConfigLayer),
+        Layer.provideMerge(NodeServices.layer),
+      );
+      const runtime = ManagedRuntime.make(orchestrationLayer);
+      const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
+
+      const readModel = await runtime.runPromise(
+        waitForProjectIconMetadataValue(engine, projectId, refreshedMetadata),
+      );
+
+      expect(readModel.projects).toContainEqual(
+        expect.objectContaining({
+          id: projectId,
+          iconMetadata: refreshedMetadata,
+        }),
+      );
+      expect(resolveCount).toBe(1);
+      const events = await runtime.runPromise(
+        Stream.runCollect(engine.readEvents(0)).pipe(
+          Effect.map((chunk): OrchestrationEvent[] => Array.from(chunk)),
+        ),
+      );
+      expect(events.map((event) => event.type)).toEqual([
+        "project.created",
+        "project.meta-updated",
+        "project.meta-updated",
+      ]);
+      await runtime.dispose();
+    } finally {
+      fs.rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  it("refreshes stale automatic project icon metadata more than once across restarts", async () => {
+    const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "jcode-engine-icon-repeat-refresh-"));
+    const dbPath = path.join(rootDir, "state.sqlite");
+    const projectId = asProjectId("project-icon-repeat-refresh");
+    const vueMetadata = { iconId: "vue", label: "Vue" } satisfies ProjectIconMetadata;
+    const reactMetadata = { iconId: "react", label: "React" } satisfies ProjectIconMetadata;
+
+    try {
+      const seedRuntime = makePersistentEventStoreRuntime(dbPath);
+      await seedRuntime.runPromise(
+        Effect.gen(function* () {
+          const eventStore = yield* OrchestrationEventStore;
+          const createdAt = now();
+          yield* eventStore.append({
+            type: "project.created",
+            eventId: EventId.makeUnsafe("evt-project-icon-repeat-create"),
+            aggregateKind: "project",
+            aggregateId: projectId,
+            occurredAt: createdAt,
+            commandId: CommandId.makeUnsafe("cmd-project-icon-repeat-create"),
+            causationEventId: null,
+            correlationId: CommandId.makeUnsafe("cmd-project-icon-repeat-create"),
+            metadata: {},
+            payload: {
+              projectId,
+              title: "Repeat Refresh Project",
+              workspaceRoot: "/tmp/project-icon-repeat-refresh",
+              defaultModelSelection: null,
+              scripts: [],
+              createdAt,
+              updatedAt: createdAt,
+            },
+          });
+          yield* eventStore.append({
+            type: "project.meta-updated",
+            eventId: EventId.makeUnsafe("evt-project-icon-repeat-auto"),
+            aggregateKind: "project",
+            aggregateId: projectId,
+            occurredAt: createdAt,
+            commandId: CommandId.makeUnsafe(`project-icon-detect:${projectId}`),
+            causationEventId: null,
+            correlationId: CommandId.makeUnsafe(`project-icon-detect:${projectId}`),
+            metadata: {},
+            payload: {
+              projectId,
+              iconMetadata: { iconId: "typescript", label: "TypeScript" },
+              updatedAt: createdAt,
+            },
+          });
+        }),
+      );
+      await seedRuntime.dispose();
+
+      const firstRuntime = makePersistentOrchestrationRuntime({
+        dbPath,
+        prefix: "t3-orchestration-engine-icon-repeat-first-",
+        resolveProjectIconMetadata: () => Effect.succeed(vueMetadata),
+      });
+      const firstEngine = await firstRuntime.runPromise(Effect.service(OrchestrationEngineService));
+      await firstRuntime.runPromise(
+        waitForProjectIconMetadataValue(firstEngine, projectId, vueMetadata),
+      );
+      await firstRuntime.dispose();
+
+      const secondRuntime = makePersistentOrchestrationRuntime({
+        dbPath,
+        prefix: "t3-orchestration-engine-icon-repeat-second-",
+        resolveProjectIconMetadata: () => Effect.succeed(reactMetadata),
+      });
+      const secondEngine = await secondRuntime.runPromise(
+        Effect.service(OrchestrationEngineService),
+      );
+      const readModel = await secondRuntime.runPromise(
+        waitForProjectIconMetadataValue(secondEngine, projectId, reactMetadata),
+      );
+
+      expect(readModel.projects).toContainEqual(
+        expect.objectContaining({ id: projectId, iconMetadata: reactMetadata }),
+      );
+      const events = await secondRuntime.runPromise(
+        Stream.runCollect(secondEngine.readEvents(0)).pipe(
+          Effect.map((chunk): OrchestrationEvent[] => Array.from(chunk)),
+        ),
+      );
+      expect(events.map((event) => event.type)).toEqual([
+        "project.created",
+        "project.meta-updated",
+        "project.meta-updated",
+        "project.meta-updated",
+      ]);
+      await secondRuntime.dispose();
+    } finally {
+      fs.rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves persisted manual project icon metadata when the engine starts", async () => {
+    const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "jcode-engine-icon-manual-refresh-"));
+    const dbPath = path.join(rootDir, "state.sqlite");
+    const projectId = asProjectId("project-icon-manual-refresh");
+    let resolveCount = 0;
+
+    try {
+      const seedRuntime = makePersistentEventStoreRuntime(dbPath);
+      await seedRuntime.runPromise(
+        Effect.gen(function* () {
+          const eventStore = yield* OrchestrationEventStore;
+          const createdAt = now();
+          yield* eventStore.append({
+            type: "project.created",
+            eventId: EventId.makeUnsafe("evt-project-icon-manual-create"),
+            aggregateKind: "project",
+            aggregateId: projectId,
+            occurredAt: createdAt,
+            commandId: CommandId.makeUnsafe("cmd-project-icon-manual-create"),
+            causationEventId: null,
+            correlationId: CommandId.makeUnsafe("cmd-project-icon-manual-create"),
+            metadata: {},
+            payload: {
+              projectId,
+              title: "Manual Icon Project",
+              workspaceRoot: "/tmp/project-icon-manual-refresh",
+              defaultModelSelection: null,
+              scripts: [],
+              createdAt,
+              updatedAt: createdAt,
+            },
+          });
+          yield* eventStore.append({
+            type: "project.meta-updated",
+            eventId: EventId.makeUnsafe("evt-project-icon-manual-update"),
+            aggregateKind: "project",
+            aggregateId: projectId,
+            occurredAt: createdAt,
+            commandId: CommandId.makeUnsafe("cmd-project-icon-manual-update"),
+            causationEventId: null,
+            correlationId: CommandId.makeUnsafe("cmd-project-icon-manual-update"),
+            metadata: {},
+            payload: {
+              projectId,
+              iconMetadata: { iconId: "vue", label: "Vue" },
+              updatedAt: createdAt,
+            },
+          });
+        }),
+      );
+      await seedRuntime.dispose();
+
+      const runtime = makePersistentOrchestrationRuntime({
+        dbPath,
+        prefix: "t3-orchestration-engine-icon-manual-",
+        resolveProjectIconMetadata: () =>
+          Effect.sync(() => {
+            resolveCount += 1;
+            return { iconId: "typescript", label: "TypeScript" } satisfies ProjectIconMetadata;
+          }),
+      });
+      const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
+      await runtime.runPromise(Effect.sleep("150 millis"));
+      const readModel = await runtime.runPromise(engine.getReadModel());
+
+      expect(resolveCount).toBe(0);
+      expect(readModel.projects).toContainEqual(
+        expect.objectContaining({
+          id: projectId,
+          iconMetadata: { iconId: "vue", label: "Vue" },
+        }),
+      );
+      await runtime.dispose();
+    } finally {
+      fs.rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  it("caps startup project icon metadata backfill work", async () => {
+    const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "jcode-engine-icon-cap-"));
+    const dbPath = path.join(rootDir, "state.sqlite");
+    let resolveCount = 0;
+    const cappedProjectCount = 20;
+
+    try {
+      const seedRuntime = makePersistentEventStoreRuntime(dbPath);
+      await seedRuntime.runPromise(
+        Effect.gen(function* () {
+          const eventStore = yield* OrchestrationEventStore;
+          const createdAt = now();
+          for (let index = 0; index <= cappedProjectCount; index += 1) {
+            const projectId = asProjectId(`project-icon-cap-${index}`);
+            yield* eventStore.append({
+              type: "project.created",
+              eventId: EventId.makeUnsafe(`evt-project-icon-cap-create-${index}`),
+              aggregateKind: "project",
+              aggregateId: projectId,
+              occurredAt: createdAt,
+              commandId: CommandId.makeUnsafe(`cmd-project-icon-cap-create-${index}`),
+              causationEventId: null,
+              correlationId: CommandId.makeUnsafe(`cmd-project-icon-cap-create-${index}`),
+              metadata: {},
+              payload: {
+                projectId,
+                title: `Cap Project ${index}`,
+                workspaceRoot: `/tmp/project-icon-cap-${index}`,
+                defaultModelSelection: null,
+                scripts: [],
+                createdAt,
+                updatedAt: createdAt,
+              },
+            });
+          }
+        }),
+      );
+      await seedRuntime.dispose();
+
+      const runtime = makePersistentOrchestrationRuntime({
+        dbPath,
+        prefix: "t3-orchestration-engine-icon-cap-",
+        resolveProjectIconMetadata: () =>
+          Effect.sync(() => {
+            resolveCount += 1;
+            return { iconId: "typescript", label: "TypeScript" } satisfies ProjectIconMetadata;
+          }),
+      });
+      const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
+      const readModel = await runtime.runPromise(
+        waitForProjectIconMetadata(engine, asProjectId("project-icon-cap-19")),
+      );
+      await runtime.runPromise(Effect.sleep("150 millis"));
+      const current = await runtime.runPromise(engine.getReadModel());
+
+      expect(resolveCount).toBe(cappedProjectCount);
+      expect(readModel.projects).toContainEqual(
+        expect.objectContaining({
+          id: asProjectId("project-icon-cap-19"),
+          iconMetadata: { iconId: "typescript", label: "TypeScript" },
+        }),
+      );
+      expect(current.projects).toContainEqual(
+        expect.objectContaining({
+          id: asProjectId("project-icon-cap-20"),
+          iconMetadata: null,
+        }),
+      );
       await runtime.dispose();
     } finally {
       fs.rmSync(rootDir, { recursive: true, force: true });

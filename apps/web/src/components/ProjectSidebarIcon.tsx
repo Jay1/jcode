@@ -26,6 +26,8 @@ type ProjectIconArtwork = {
   color: string;
 };
 
+type FaviconProbeState = "unknown" | "present" | "absent";
+
 const PROJECT_ICON_ARTWORK: Record<ProjectIconId, ProjectIconArtwork> = {
   go: { icon: SiGo, color: "#00ADD8" },
   javascript: { icon: SiJavascript, color: "#F7DF1E" },
@@ -89,19 +91,13 @@ export function ProjectSidebarIcon({
   const FolderGlyph = expanded ? HiOutlineFolderOpen : FolderClosed;
 
   if (iconMetadata) {
-    const artwork = PROJECT_ICON_ARTWORK[iconMetadata.iconId];
-    const Icon = artwork.icon;
-
     return (
-      <span
-        aria-label={`${iconMetadata.label} project icon`}
-        className={`${className} inline-flex shrink-0 items-center justify-center`}
-        data-project-icon-id={iconMetadata.iconId}
-        style={{ color: artwork.color }}
-        title={iconMetadata.label}
-      >
-        <Icon aria-hidden="true" className="size-[94%]" focusable="false" />
-      </span>
+      <ProjectPreferredFaviconIcon
+        className={className}
+        faviconSrc={faviconSrc}
+        FolderGlyph={FolderGlyph}
+        iconMetadata={iconMetadata}
+      />
     );
   }
 
@@ -115,6 +111,97 @@ export function ProjectSidebarIcon({
   );
 }
 
+function ProjectLanguageIcon({
+  className,
+  iconMetadata,
+  preferFavicon = false,
+}: {
+  className: string;
+  iconMetadata: ProjectIconMetadata;
+  preferFavicon?: boolean;
+}) {
+  const artwork = PROJECT_ICON_ARTWORK[iconMetadata.iconId];
+  const Icon = artwork.icon;
+
+  return (
+    <span
+      aria-label={`${iconMetadata.label} project icon`}
+      className={`${className} inline-flex shrink-0 items-center justify-center`}
+      data-project-favicon-preferred={preferFavicon ? "true" : undefined}
+      data-project-icon-id={iconMetadata.iconId}
+      role="img"
+      style={{ color: artwork.color }}
+      title={iconMetadata.label}
+    >
+      <Icon aria-hidden="true" className="size-[94%]" focusable="false" />
+    </span>
+  );
+}
+
+function ProjectPreferredFaviconIcon({
+  className,
+  faviconSrc,
+  FolderGlyph,
+  iconMetadata,
+}: {
+  className: string;
+  faviconSrc: string;
+  FolderGlyph: typeof HiOutlineFolderOpen;
+  iconMetadata: ProjectIconMetadata;
+}) {
+  const [faviconState, setFaviconState] = useState<FaviconProbeState>(() => {
+    const cached = projectFaviconPresence.get(faviconSrc);
+    return cached === true ? "present" : cached === false ? "absent" : "unknown";
+  });
+
+  useEffect(() => {
+    const cached = projectFaviconPresence.get(faviconSrc);
+    if (cached !== undefined) {
+      setFaviconState(cached ? "present" : "absent");
+      return;
+    }
+    setFaviconState("unknown");
+
+    let cancelled = false;
+    const image = new Image();
+    const handleLoad = () => {
+      projectFaviconPresence.set(faviconSrc, true);
+      if (!cancelled) {
+        setFaviconState("present");
+      }
+    };
+    const handleError = () => {
+      projectFaviconPresence.set(faviconSrc, false);
+      if (!cancelled) {
+        setFaviconState("absent");
+      }
+    };
+
+    image.addEventListener("load", handleLoad);
+    image.addEventListener("error", handleError);
+    image.src = faviconSrc;
+
+    return () => {
+      cancelled = true;
+      image.removeEventListener("load", handleLoad);
+      image.removeEventListener("error", handleError);
+    };
+  }, [faviconSrc]);
+
+  if (faviconState === "present") {
+    return (
+      <ProjectFolderIcon
+        className={className}
+        faviconSrc={faviconSrc}
+        FolderGlyph={FolderGlyph}
+        onFaviconError={() => setFaviconState("absent")}
+      />
+    );
+  }
+
+  return <ProjectLanguageIcon className={className} iconMetadata={iconMetadata} preferFavicon />;
+}
+
 /**
  * Owns the fallback folder icon box so percentage-sized glyphs and favicon
  * badges stay constrained inside the sidebar project header.
@@ -123,10 +210,12 @@ function ProjectFolderIcon({
   className,
   faviconSrc,
   FolderGlyph,
+  onFaviconError,
 }: {
   className: string;
   faviconSrc: string;
   FolderGlyph: typeof HiOutlineFolderOpen;
+  onFaviconError?: () => void;
 }) {
   const [hasFavicon, setHasFavicon] = useState<boolean>(
     () => projectFaviconPresence.get(faviconSrc) === true,
@@ -134,9 +223,12 @@ function ProjectFolderIcon({
 
   // Probe with Image() so Electron/file-origin behaves like the actual visible <img>.
   useEffect(() => {
-    if (projectFaviconPresence.has(faviconSrc)) {
+    const cached = projectFaviconPresence.get(faviconSrc);
+    if (cached !== undefined) {
+      setHasFavicon(cached);
       return;
     }
+    setHasFavicon(false);
 
     let cancelled = false;
     const image = new Image();
@@ -180,6 +272,7 @@ function ProjectFolderIcon({
           onError={() => {
             projectFaviconPresence.set(faviconSrc, false);
             setHasFavicon(false);
+            onFaviconError?.();
           }}
         />
       ) : null}
