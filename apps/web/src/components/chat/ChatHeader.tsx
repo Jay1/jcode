@@ -378,7 +378,7 @@ export const ChatHeader = memo(function ChatHeader({
                   )}
                   aria-label={threadRecapOpen ? "Hide recap" : "Show recap"}
                   pressed={threadRecapOpen}
-                  onPressedChange={() => onToggleThreadRecap()}
+                  onPressedChange={(_pressed) => onToggleThreadRecap()}
                 >
                   <ListTodoIcon className="size-3.5 shrink-0" />
                   {!compact ? <span className="truncate font-normal">Recap</span> : null}

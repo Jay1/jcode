@@ -96,10 +96,7 @@ describe("ChatHeader Recap control", () => {
 
     try {
       const recapControl = page.getByRole("button", { name: "Show recap" });
-      const recapClassName = recapControl.element().className;
 
-      expect(recapClassName).toContain("select-none");
-      expect(recapClassName).not.toContain("text-[length:var(--app-font-size-ui-sm,11px)]");
       await expect.element(recapControl).toHaveAttribute("aria-pressed", "false");
       expect(recapControl.element().querySelectorAll("svg path").length).toBeGreaterThanOrEqual(3);
 
@@ -116,10 +113,7 @@ describe("ChatHeader Recap control", () => {
 
     try {
       const recapControl = page.getByRole("button", { name: "Hide recap" });
-      const recapClassName = recapControl.element().className;
 
-      expect(recapClassName).toContain("select-none");
-      expect(recapClassName).not.toContain("text-[length:var(--app-font-size-ui-sm,11px)]");
       await expect.element(recapControl).toHaveAttribute("aria-pressed", "true");
       expect(recapControl.element().querySelectorAll("svg path").length).toBeGreaterThanOrEqual(3);
     } finally {

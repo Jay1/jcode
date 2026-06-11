@@ -104,6 +104,7 @@ describe("ChatHeader recap control", () => {
     expect(markup).toMatch(/aria-label="Show recap"[^>]*select-none/u);
     expect(markup).toContain('aria-label="Show recap"');
     expect(markup).toContain('aria-pressed="false"');
+    expect(markup).toContain('d="M13 5h8"');
     expect(markup).not.toContain("tabler-icon-refresh");
     expect(markup).toContain("Recap");
   });
@@ -115,6 +116,7 @@ describe("ChatHeader recap control", () => {
     expect(markup).toContain('aria-label="Hide recap"');
     expect(markup).toContain('aria-pressed="true"');
     expect(markup).toContain('data-pressed=""');
+    expect(markup).toContain('d="M13 5h8"');
     expect(markup).not.toContain("tabler-icon-refresh");
   });
 });
