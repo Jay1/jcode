@@ -57,6 +57,7 @@ const HOMEASSIST_WORKSPACE_ROOT = `${HOME_DIR}/homeassist`;
 const NOW_ISO = "2026-03-04T12:00:00.000Z";
 const BASE_TIME_MS = Date.parse(NOW_ISO);
 const ATTACHMENT_SVG = "<svg xmlns='http://www.w3.org/2000/svg' width='120' height='300'></svg>";
+// Keep in sync with the non-editing user-message wrapper class in MessagesTimeline: max-w-[80%].
 const USER_MESSAGE_BUBBLE_WIDTH_RATIO = 0.8;
 let attachmentResponseDelayMs = 0;
 
