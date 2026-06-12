@@ -373,14 +373,14 @@ export const ChatHeader = memo(function ChatHeader({
                   size="xs"
                   variant="outline"
                   className={cn(
-                    "shrink-0 border-(--app-chrome-control-border) bg-(--app-chrome-control-bg) text-(--app-chrome-control-fg) not-disabled:before:shadow-none dark:not-disabled:before:shadow-none [:hover,[data-pressed]]:bg-(--app-chrome-control-hover-bg) [:hover,[data-pressed]]:text-(--app-chrome-control-hover-fg) dark:[:hover,[data-pressed]]:bg-(--app-chrome-control-hover-bg) data-pressed:bg-(--app-chrome-control-active-bg)",
+                    "shrink-0 border-(--app-chrome-control-border) bg-(--app-chrome-control-bg) px-[calc(--spacing(2)-1px)] text-[length:var(--app-font-size-ui-sm,11px)] text-(--app-chrome-control-fg) not-disabled:before:shadow-none dark:not-disabled:before:shadow-none [:hover,[data-pressed]]:bg-(--app-chrome-control-hover-bg) [:hover,[data-pressed]]:text-(--app-chrome-control-hover-fg) dark:[:hover,[data-pressed]]:bg-(--app-chrome-control-hover-bg) data-pressed:bg-(--app-chrome-control-active-bg) sm:text-[length:var(--app-font-size-ui-xs,10px)]",
                     compact ? "gap-1" : "gap-1.5",
                   )}
                   aria-label={threadRecapOpen ? "Hide recap" : "Show recap"}
                   pressed={threadRecapOpen}
                   onPressedChange={(_pressed) => onToggleThreadRecap()}
                 >
-                  <ListTodoIcon className="size-3.5 shrink-0" />
+                  <ListTodoIcon className="size-3 shrink-0 opacity-75" />
                   {!compact ? <span className="truncate font-normal">Recap</span> : null}
                 </Toggle>
               }
