@@ -612,7 +612,7 @@ export const ProviderRuntimeBootstrapSnapshot = Schema.Struct({
   provider: Schema.Literal("opencode"),
   lane: OpenCodeRuntimeBootstrapLane,
   state: OpenCodeRuntimeBootstrapState,
-  serviceName: Schema.optional(Schema.Literal("jcode-opencode.service")),
+  serviceName: Schema.optional(TrimmedNonEmptyString),
   binaryPath: Schema.optional(TrimmedNonEmptyString),
   serverUrl: Schema.optional(TrimmedNonEmptyString),
   profileId: Schema.optional(TrimmedNonEmptyString),

@@ -9,6 +9,7 @@ import {
   WsRpcGroup,
 } from "./rpc";
 import { WS_METHODS } from "./ws";
+import { ProviderRuntimeBootstrapSnapshot } from "./providerDiscovery";
 
 describe("WS RPC contracts", () => {
   it("exports the additive Effect RPC group", () => {
@@ -41,6 +42,18 @@ describe("WS RPC contracts", () => {
     expect(WsRpcGroup.requests.get(WS_METHODS.providerRepairRuntime)).toBe(
       WsProviderRepairRuntimeRpc,
     );
+  });
+
+  it("accepts provider runtime bootstrap snapshots with custom service names", () => {
+    const decoded = Schema.decodeUnknownSync(ProviderRuntimeBootstrapSnapshot)({
+      provider: "opencode",
+      lane: "wsl-service",
+      state: "error",
+      serviceName: "jcode-opencode-dev.service",
+      checkedAt: "2026-06-11T12:00:00.000Z",
+    });
+
+    expect(decoded.serviceName).toBe("jcode-opencode-dev.service");
   });
 
   it("preserves typed voice transcription auth-expired details", () => {
