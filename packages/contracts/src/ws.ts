@@ -78,6 +78,8 @@ import {
   ProviderListCommandsInput,
   ProviderGetRuntimeHealthInput,
   ProviderGetComposerCapabilitiesInput,
+  ProviderRuntimeBootstrapInput,
+  ProviderRuntimeBootstrapStatusInput,
   ProviderListPluginsInput,
   ProviderListModelsInput,
   ProviderListAgentsInput,
@@ -167,6 +169,9 @@ export const WS_METHODS = {
   // Provider discovery
   providerGetComposerCapabilities: "provider.getComposerCapabilities",
   providerGetRuntimeHealth: "provider.getRuntimeHealth",
+  providerGetRuntimeBootstrapStatus: "provider.getRuntimeBootstrapStatus",
+  providerBootstrapRuntime: "provider.bootstrapRuntime",
+  providerRepairRuntime: "provider.repairRuntime",
   providerCompactThread: "provider.compactThread",
   providerListCommands: "provider.listCommands",
   providerListSkills: "provider.listSkills",
@@ -285,6 +290,9 @@ const WebSocketRequestBody = Schema.Union([
   // Provider discovery
   tagRequestBody(WS_METHODS.providerGetComposerCapabilities, ProviderGetComposerCapabilitiesInput),
   tagRequestBody(WS_METHODS.providerGetRuntimeHealth, ProviderGetRuntimeHealthInput),
+  tagRequestBody(WS_METHODS.providerGetRuntimeBootstrapStatus, ProviderRuntimeBootstrapStatusInput),
+  tagRequestBody(WS_METHODS.providerBootstrapRuntime, ProviderRuntimeBootstrapInput),
+  tagRequestBody(WS_METHODS.providerRepairRuntime, ProviderRuntimeBootstrapInput),
   tagRequestBody(WS_METHODS.providerCompactThread, ProviderCompactThreadInput),
   tagRequestBody(WS_METHODS.providerListCommands, ProviderListCommandsInput),
   tagRequestBody(WS_METHODS.providerListSkills, ProviderListSkillsInput),
