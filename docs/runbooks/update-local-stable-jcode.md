@@ -8,9 +8,9 @@
 | Audience        | JCode maintainers and local coding agents                                               |
 | Scope           | Promote the latest GitHub `main` into Jay's local stable JCode service                  |
 | Canonical path  | `docs/runbooks/update-local-stable-jcode.md`                                            |
-| Last reviewed   | 2026-05-31                                                                              |
+| Last reviewed   | 2026-06-11                                                                              |
 | Review cadence  | Event-driven; review when `jcup`, `jcu`, or JCode service wiring changes                |
-| Source of truth | `/home/jay/.local/bin/jcode-stable-update`, `jcup`, `jcu`, `jcs`, `jcr`                 |
+| Source of truth | `/home/jay/.local/bin/jcode-stable-update`, `jcup`, `jcu`, `jcs`, `jcr`, local services |
 | Verification    | `jcup`, `jcup --fast`, `jcu main --dry-run`, `jcu main`, `jcs`, local HTTP smoke checks |
 
 ## Purpose
@@ -19,9 +19,18 @@ Use this when Jay says something like:
 
 > Update my local stable JCode with the new stuff on GitHub.
 
+This is Jay's local stable service runbook, not a general installation guide for
+other JCode operators.
+
 The live service does **not** run from the dev repo at
 `/home/jay/code/jcode`. It runs from the stable checkout at
 `/home/jay/code/jcode-stable`.
+
+The live local shape is a two-service setup: `jcode.service` serves the JCode
+headless server from the stable checkout, while `jcode-opencode.service` serves
+the external OpenCode runtime on loopback for JCode's configured runtime profile.
+For service topology, safe inspection commands, auth boundary notes, and runtime
+rollback guidance, see [Local OpenCode Runtime Service](local-opencode-runtime.md).
 
 The daily-driver promotion command is:
 
@@ -36,7 +45,7 @@ the important checks, updates the stable checkout, builds, typechecks, restarts
 JCode, runs local smoke checks, records the promotion, and rolls back if a
 post-checkout failure happens.
 
-## Quick Prompt For The JCode LLM
+## Jay-Only Quick Prompt For The JCode LLM
 
 ```text
 Update Jay's local stable JCode from the latest GitHub main.
@@ -148,6 +157,33 @@ preflight and smoke checks without writing a new promotion record.
    - service status;
    - smoke-check result;
    - any failure, rollback, or manual follow-up.
+
+## OpenCode Runtime Upgrade Risk
+
+The stable JCode promotion flow checks that `jcode-opencode.service` is active
+and that the loopback OpenCode endpoint responds. It does not prove that a new
+OpenCode binary is compatible with every provider operation. Treat OpenCode
+runtime changes as their own operational risk.
+
+Before upgrading the OpenCode runtime used by `jcode-opencode.service`:
+
+- [ ] Record the current OpenCode binary path, version, and service status.
+- [ ] Do not replace the pinned runtime service binary blindly.
+- [ ] Check the OpenCode upstream server docs, config docs, changelog, and
+      release notes before upgrading.
+- [ ] Validate config precedence assumptions, especially that
+      `OPENCODE_CONFIG_CONTENT` is not replacing the real OpenCode profile.
+- [ ] Validate server mode assumptions, including `opencode serve`, loopback
+      hostname, port, and any HTTP auth settings.
+- [ ] Restart only `jcode-opencode.service` first where possible.
+- [ ] Smoke the OpenCode endpoint, then smoke JCode provider behavior through the
+      JCode app.
+- [ ] Roll back by restoring the prior pinned runtime path or package and
+      restarting `jcode-opencode.service`.
+
+Do not assert OpenCode version compatibility from a JCode promotion alone. Use
+the runtime checklist in [Local OpenCode Runtime Service](local-opencode-runtime.md)
+for the detailed inspection and rollback flow.
 
 ## Optional Dev Repo Sync
 
