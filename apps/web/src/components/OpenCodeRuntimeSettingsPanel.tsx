@@ -1,7 +1,7 @@
-import type { OpenCodeRuntimeHealth } from "@jcode/contracts";
+import type { OpenCodeRuntimeHealth, ProviderRuntimeBootstrapSnapshot } from "@jcode/contracts";
 import { useCallback, useEffect, useState } from "react";
 
-import { Loader2Icon, RefreshCwIcon } from "../lib/icons";
+import { DownloadIcon, Loader2Icon, RefreshCwIcon, WrenchIcon } from "../lib/icons";
 import { ensureNativeApi } from "../nativeApi";
 import { Button } from "./ui/button";
 import { toastManager } from "./ui/toast";
@@ -29,9 +29,29 @@ function capabilityLine(
   return `${label}: ${summary.count}`;
 }
 
+function bootstrapStatusClassName(state: ProviderRuntimeBootstrapSnapshot["state"]): string {
+  switch (state) {
+    case "ready":
+      return "text-emerald-500";
+    case "installing":
+    case "starting":
+      return "text-amber-500";
+    case "error":
+      return "text-destructive";
+    case "notInstalled":
+    case "unsupported":
+      return "text-muted-foreground";
+  }
+}
+
 export function OpenCodeRuntimeSettingsPanel() {
   const [health, setHealth] = useState<OpenCodeRuntimeHealth | null>(null);
+  const [bootstrapStatus, setBootstrapStatus] = useState<ProviderRuntimeBootstrapSnapshot | null>(
+    null,
+  );
   const [isChecking, setIsChecking] = useState(false);
+  const [isBootstrapping, setIsBootstrapping] = useState(false);
+  const [bootstrapAction, setBootstrapAction] = useState<"install" | "repair" | null>(null);
 
   const checkRuntime = useCallback(async (forceRefresh = false) => {
     setIsChecking(true);
@@ -52,11 +72,65 @@ export function OpenCodeRuntimeSettingsPanel() {
     }
   }, []);
 
+  const checkBootstrapStatus = useCallback(async () => {
+    try {
+      const result = await ensureNativeApi().provider.getRuntimeBootstrapStatus({
+        provider: "opencode",
+      });
+      setBootstrapStatus(result);
+    } catch (error) {
+      toastManager.add({
+        type: "error",
+        title: "OpenCode runtime bootstrap status failed",
+        description: (error as Error).message,
+      });
+    }
+  }, []);
+
   useEffect(() => {
-    void checkRuntime(false);
+    void Promise.all([checkRuntime(false), checkBootstrapStatus()]);
+  }, [checkBootstrapStatus, checkRuntime]);
+
+  const installRuntime = useCallback(async () => {
+    setIsBootstrapping(true);
+    setBootstrapAction("install");
+    try {
+      const result = await ensureNativeApi().provider.bootstrapRuntime({ provider: "opencode" });
+      setBootstrapStatus(result);
+      await checkRuntime(true);
+    } catch (error) {
+      toastManager.add({
+        type: "error",
+        title: "OpenCode runtime install failed",
+        description: (error as Error).message,
+      });
+    } finally {
+      setIsBootstrapping(false);
+      setBootstrapAction(null);
+    }
+  }, [checkRuntime]);
+
+  const repairRuntime = useCallback(async () => {
+    setIsBootstrapping(true);
+    setBootstrapAction("repair");
+    try {
+      const result = await ensureNativeApi().provider.repairRuntime({ provider: "opencode" });
+      setBootstrapStatus(result);
+      await checkRuntime(true);
+    } catch (error) {
+      toastManager.add({
+        type: "error",
+        title: "OpenCode runtime repair failed",
+        description: (error as Error).message,
+      });
+    } finally {
+      setIsBootstrapping(false);
+      setBootstrapAction(null);
+    }
   }, [checkRuntime]);
 
   const status = health?.status ?? "unknown";
+  const bootstrapMessage = bootstrapStatus?.message ?? null;
 
   return (
     <div className="mt-4 rounded-lg border border-border/70 bg-muted/15 px-3 py-3">
@@ -74,21 +148,67 @@ export function OpenCodeRuntimeSettingsPanel() {
             </div>
           ) : null}
         </div>
-        <Button
-          type="button"
-          size="xs"
-          variant="outline"
-          disabled={isChecking}
-          onClick={() => void checkRuntime(true)}
-        >
-          {isChecking ? (
-            <Loader2Icon className="size-3.5 animate-spin" />
-          ) : (
-            <RefreshCwIcon className="size-3.5" />
-          )}
-          Check
-        </Button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {bootstrapStatus?.state === "notInstalled" ? (
+            <Button
+              type="button"
+              size="xs"
+              variant="outline"
+              disabled={isBootstrapping}
+              onClick={() => void installRuntime()}
+            >
+              {bootstrapAction === "install" ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : (
+                <DownloadIcon className="size-3.5" />
+              )}
+              Install OpenCode runtime
+            </Button>
+          ) : null}
+          {bootstrapStatus?.state === "error" ? (
+            <Button
+              type="button"
+              size="xs"
+              variant="outline"
+              disabled={isBootstrapping}
+              onClick={() => void repairRuntime()}
+            >
+              {bootstrapAction === "repair" ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : (
+                <WrenchIcon className="size-3.5" />
+              )}
+              Repair runtime
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            size="xs"
+            variant="outline"
+            disabled={isChecking}
+            onClick={() => void checkRuntime(true)}
+          >
+            {isChecking ? (
+              <Loader2Icon className="size-3.5 animate-spin" />
+            ) : (
+              <RefreshCwIcon className="size-3.5" />
+            )}
+            Check
+          </Button>
+        </div>
       </div>
+
+      {bootstrapStatus ? (
+        <div className="mt-3 border-t border-border/70 pt-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className={bootstrapStatusClassName(bootstrapStatus.state)}>
+              Bootstrap: {bootstrapStatus.state}
+            </span>
+            {bootstrapStatus.serviceName ? <span>{bootstrapStatus.serviceName}</span> : null}
+          </div>
+          {bootstrapMessage ? <div className="mt-1">{bootstrapMessage}</div> : null}
+        </div>
+      ) : null}
 
       {health ? (
         <div className="mt-3 grid gap-1 border-t border-border/70 pt-3 text-xs text-muted-foreground sm:grid-cols-2">
