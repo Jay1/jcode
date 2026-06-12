@@ -112,6 +112,9 @@ import type {
   ProviderComposerCapabilities,
   ProviderGetComposerCapabilitiesInput,
   ProviderGetRuntimeHealthInput,
+  ProviderRuntimeBootstrapInput,
+  ProviderRuntimeBootstrapSnapshot,
+  ProviderRuntimeBootstrapStatusInput,
   ProviderListAgentsInput,
   ProviderListAgentsResult,
   ProviderListCommandsInput,
@@ -479,6 +482,15 @@ export interface NativeApi {
       input: ProviderGetComposerCapabilitiesInput,
     ) => Promise<ProviderComposerCapabilities>;
     getRuntimeHealth: (input: ProviderGetRuntimeHealthInput) => Promise<OpenCodeRuntimeHealth>;
+    getRuntimeBootstrapStatus: (
+      input: ProviderRuntimeBootstrapStatusInput,
+    ) => Promise<ProviderRuntimeBootstrapSnapshot>;
+    bootstrapRuntime: (
+      input: ProviderRuntimeBootstrapInput,
+    ) => Promise<ProviderRuntimeBootstrapSnapshot>;
+    repairRuntime: (
+      input: ProviderRuntimeBootstrapInput,
+    ) => Promise<ProviderRuntimeBootstrapSnapshot>;
     compactThread: (input: ProviderCompactThreadInput) => Promise<void>;
     listCommands: (input: ProviderListCommandsInput) => Promise<ProviderListCommandsResult>;
     listSkills: (input: ProviderListSkillsInput) => Promise<ProviderListSkillsResult>;
