@@ -128,9 +128,12 @@ Suggested generated artifacts:
 
 ```text
 ~/.local/share/jcode/runtime/opencode/opencode
-~/.local/bin/jcode-opencode-start
+~/.local/share/jcode/runtime/opencode/jcode-opencode-start
 ~/.config/systemd/user/jcode-opencode.service
 ```
+
+Older manual deployments may use `~/.local/bin/jcode-opencode-start`; the
+Settings bootstrap keeps its generated helper with the runtime state instead.
 
 The installer should run:
 
@@ -276,7 +279,7 @@ Required documentation updates:
 The docs should include concrete examples but remain portable:
 
 ```text
-~/.local/bin/jcode-opencode-start
+~/.local/share/jcode/runtime/opencode/jcode-opencode-start
 ~/.config/systemd/user/jcode-opencode.service
 http://127.0.0.1:4096/
 ```

@@ -335,11 +335,13 @@ describe("openCodeRuntimeBootstrap", () => {
 
   it("renders a loopback-only user service", () => {
     const unit = renderJcodeOpenCodeServiceUnit({
-      startScriptPath: "/home/alice/.local/bin/jcode-opencode-start",
+      startScriptPath: "/home/alice/.local/share/jcode/runtime/opencode/jcode-opencode-start",
     });
 
     expect(unit).toContain("Description=JCode external OpenCode runtime");
-    expect(unit).toContain("ExecStart=/home/alice/.local/bin/jcode-opencode-start");
+    expect(unit).toContain(
+      "ExecStart=/home/alice/.local/share/jcode/runtime/opencode/jcode-opencode-start",
+    );
     expect(unit).not.toContain("0.0.0.0");
   });
 
@@ -884,7 +886,7 @@ Include these concrete portable paths:
 
 ```text
 ~/.local/share/jcode/runtime/opencode/opencode
-~/.local/bin/jcode-opencode-start
+~/.local/share/jcode/runtime/opencode/jcode-opencode-start
 ~/.config/systemd/user/jcode-opencode.service
 http://127.0.0.1:4096/
 ```
