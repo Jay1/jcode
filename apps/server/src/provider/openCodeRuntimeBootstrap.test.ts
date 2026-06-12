@@ -252,11 +252,11 @@ describe("openCodeRuntimeBootstrap", () => {
 
   it("renders a loopback-only user service unit", () => {
     const unit = renderJcodeOpenCodeServiceUnit({
-      startScriptPath: "/home/alice/.local/bin/jcode-opencode-start",
+      startScriptPath: START_SCRIPT_PATH,
     });
 
     expect(unit).toContain("Description=JCode external OpenCode runtime");
-    expect(unit).toContain("ExecStart=/home/alice/.local/bin/jcode-opencode-start");
+    expect(unit).toContain(`ExecStart=${START_SCRIPT_PATH}`);
     expect(unit).not.toContain("0.0.0.0");
   });
 
@@ -380,10 +380,11 @@ describe("openCodeRuntimeBootstrap", () => {
     );
 
     expect(redacted).not.toContain("abc");
-    expect(redacted).not.toContain("secret");
+    expect(redacted).not.toContain("password=secret");
     expect(redacted).not.toContain("user:pass");
     expect(redacted).toContain("token=<redacted>");
     expect(redacted).toContain("password=<redacted>");
+    expect(redacted).toContain("client_secret=<redacted>");
   });
 
   it("gets bootstrap status through the injected probe adapter", async () => {
@@ -509,6 +510,9 @@ describe("openCodeRuntimeBootstrap", () => {
     );
     await expect(
       bootstrapWslOpenCodeRuntime(adapter, { provider: "opencode" }),
-    ).rejects.not.toThrow("secret");
+    ).rejects.not.toThrow("password=secret");
+    await expect(
+      bootstrapWslOpenCodeRuntime(adapter, { provider: "opencode" }),
+    ).rejects.not.toThrow("client_secret=hidden");
   });
 });

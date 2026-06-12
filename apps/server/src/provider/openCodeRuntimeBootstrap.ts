@@ -154,25 +154,14 @@ export function detectWslOpenCodeBootstrapStatus(
     });
   }
 
-  if (!input.profileReachable) {
-    return snapshot({
-      checkedAt: input.now,
-      state: "error",
-      serviceName: JCODE_OPENCODE_SERVICE_NAME,
-      binaryPath: input.binaryPath,
-      serverUrl,
-      profileId: WSL_OPENCODE_PROFILE_ID,
-      message: `${JCODE_OPENCODE_SERVICE_NAME} is active but the OpenCode runtime is unreachable.`,
-    });
-  }
-
   return snapshot({
     checkedAt: input.now,
-    state: "ready",
+    state: "error",
     serviceName: JCODE_OPENCODE_SERVICE_NAME,
     binaryPath: input.binaryPath,
     serverUrl,
     profileId: WSL_OPENCODE_PROFILE_ID,
+    message: `${JCODE_OPENCODE_SERVICE_NAME} is active but the OpenCode runtime is unreachable.`,
   });
 }
 
@@ -283,7 +272,7 @@ export function upsertWslOpenCodeRuntimeProfile(
 
 export function redactBootstrapMessage(message: string): string {
   return message
-    .replace(/\b(client_secret)=([^\s&]+)/gi, "client_<redacted>=<redacted>")
+    .replace(/\b(client_secret)=([^\s&]+)/gi, "$1=<redacted>")
     .replace(/\b(token|password)=([^\s&]+)/gi, "$1=<redacted>")
     .replace(/(https?:\/\/)[^\s/@:]+:[^\s/@]+@/gi, "$1<redacted>@");
 }
