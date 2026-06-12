@@ -105,7 +105,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
   {
     id: "connections",
     group: "jcode",
-    label: "Connections",
+    label: "Host & Coupling",
     description: "Pair browsers and remote backends.",
     icon: GlobeIcon,
     eyebrow: "Network access",

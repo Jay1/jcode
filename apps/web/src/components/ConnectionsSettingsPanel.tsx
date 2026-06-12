@@ -316,7 +316,7 @@ export function ConnectionsSettingsPanel() {
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">Connections</h2>
+            <h2 className="text-lg font-semibold">Host &amp; Coupling</h2>
             <p className="text-sm text-muted-foreground">
               Pair browsers and saved remote backends with this JCode instance.
             </p>
