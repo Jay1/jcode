@@ -38,6 +38,12 @@ const PROVIDER_CREDENTIAL_SPECS: ReadonlyArray<ProviderCredentialSpec> = [
     configDirs: [],
   },
   {
+    provider: "devin",
+    binaryName: "devin",
+    envVars: ["DEVIN_API_KEY"],
+    configDirs: [],
+  },
+  {
     provider: "gemini",
     binaryName: "gemini",
     envVars: ["GOOGLE_API_KEY", "GEMINI_API_KEY"],
@@ -54,6 +60,12 @@ const PROVIDER_CREDENTIAL_SPECS: ReadonlyArray<ProviderCredentialSpec> = [
     binaryName: "opencode",
     envVars: [],
     configDirs: [".config/opencode"],
+  },
+  {
+    provider: "openclaw",
+    binaryName: "openclaw",
+    envVars: [],
+    configDirs: [],
   },
   {
     provider: "pi",

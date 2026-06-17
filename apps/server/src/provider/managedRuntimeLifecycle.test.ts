@@ -1,16 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
+import * as NodeServices from "@effect/platform-node/NodeServices";
 
-import { Data, Effect, Layer, Ref, Exit } from "effect";
+import { Data, Deferred, Effect, Fiber, FileSystem, Layer, Path, Ref, Exit, Scope } from "effect";
+import { FetchHttpClient, HttpClient } from "effect/unstable/http";
 
-import type { ManagedSidecarSnapshot } from "@jcode/contracts";
+import type { ManagedSidecarSnapshot, ManagedSidecarStartRequest } from "@jcode/contracts";
 
 import {
   generateSidecarPassword,
+  makeManagedSidecarLifecycle,
+  managedSidecarOpenCodeLaunchOptions,
   ManagedSidecarError,
   type ManagedSidecarLifecycleShape,
 } from "./managedRuntimeLifecycle.ts";
 
 import { OpenCodeRuntime, type OpenCodeRuntimeShape } from "./opencodeRuntime.ts";
+
+vi.mock("./managedRuntimeDownload.ts", () => ({
+  downloadManagedRuntime: Effect.succeed({ binaryPath: "/tmp/jcode-test-runtime/opencode" }),
+  resolveManagedRuntimeDir: Effect.succeed("/tmp/jcode-test-runtime"),
+  verifyManagedRuntimeBinary: vi.fn(() =>
+    Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),
+  ),
+}));
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -18,6 +30,7 @@ import { OpenCodeRuntime, type OpenCodeRuntimeShape } from "./opencodeRuntime.ts
 
 const FAKE_BINARY_PATH = "/tmp/jcode-test-runtime/opencode";
 const FAKE_SERVER_URL = "http://127.0.0.1:9999";
+const ProductionTestLayer = Layer.merge(NodeServices.layer, FetchHttpClient.layer);
 
 const makeMockRuntime = (overrides?: Partial<OpenCodeRuntimeShape>): OpenCodeRuntimeShape =>
   ({
@@ -35,6 +48,17 @@ class TestOpenCodeRuntimeError extends Data.TaggedError("OpenCodeRuntimeError")<
   readonly detail: string;
 }> {}
 
+const runEffectTest = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>): Promise<A> =>
+  Effect.runPromise(Effect.scoped(effect));
+
+const runProductionLifecycleTest = <A, E>(
+  effect: Effect.Effect<
+    A,
+    E,
+    Scope.Scope | FileSystem.FileSystem | Path.Path | HttpClient.HttpClient
+  >,
+): Promise<A> => Effect.runPromise(effect.pipe(Effect.scoped, Effect.provide(ProductionTestLayer)));
+
 // ---------------------------------------------------------------------------
 // Test lifecycle factory
 // ---------------------------------------------------------------------------
@@ -48,13 +72,15 @@ function makeTestLifecycle(mockRuntime: OpenCodeRuntimeShape) {
 
     const getSnapshot = () => Ref.get(stateRef);
 
-    const startManagedRuntime = (_request?: Readonly<{ readonly forceDownload?: boolean }>) =>
+    const startManagedRuntime = (_request?: ManagedSidecarStartRequest) =>
       Effect.gen(function* () {
         yield* updateState({ state: "starting" });
         const password = generateSidecarPassword();
         const server = yield* mockRuntime.startOpenCodeServerProcess({
           binaryPath: FAKE_BINARY_PATH,
           configMode: "generated",
+          serverPassword: password,
+          ...managedSidecarOpenCodeLaunchOptions("/tmp/jcode-test-runtime"),
         });
         const snapshot: ManagedSidecarSnapshot = {
           state: "ready",
@@ -159,30 +185,36 @@ describe("ManagedSidecarError", () => {
 
 describe("lifecycle state transitions", () => {
   it("starts in idle state", () =>
-    Effect.gen(function* () {
-      const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
-      const status = yield* lifecycle.getManagedRuntimeStatus();
-      expect(status.state).toBe("idle");
-    }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))));
+    runEffectTest(
+      Effect.gen(function* () {
+        const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
+        const status = yield* lifecycle.getManagedRuntimeStatus();
+        expect(status.state).toBe("idle");
+      }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))),
+    ));
 
   it("transitions to ready after successful start", () =>
-    Effect.gen(function* () {
-      const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
-      const result = yield* lifecycle.startManagedRuntime();
-      expect(result.state).toBe("ready");
-      expect(result.serverUrl).toBe(FAKE_SERVER_URL);
-      expect(result.serverPassword).toBeTruthy();
-    }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))));
+    runEffectTest(
+      Effect.gen(function* () {
+        const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
+        const result = yield* lifecycle.startManagedRuntime();
+        expect(result.state).toBe("ready");
+        expect(result.serverUrl).toBe(FAKE_SERVER_URL);
+        expect(result.serverPassword).toBeTruthy();
+      }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))),
+    ));
 
   it("transitions back to idle after stop", () =>
-    Effect.gen(function* () {
-      const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
-      yield* lifecycle.startManagedRuntime();
-      const stopped = yield* lifecycle.stopManagedRuntime();
-      expect(stopped.state).toBe("idle");
-      const status = yield* lifecycle.getManagedRuntimeStatus();
-      expect(status.state).toBe("idle");
-    }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))));
+    runEffectTest(
+      Effect.gen(function* () {
+        const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
+        yield* lifecycle.startManagedRuntime();
+        const stopped = yield* lifecycle.stopManagedRuntime();
+        expect(stopped.state).toBe("idle");
+        const status = yield* lifecycle.getManagedRuntimeStatus();
+        expect(status.state).toBe("idle");
+      }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))),
+    ));
 });
 
 // ---------------------------------------------------------------------------
@@ -191,41 +223,158 @@ describe("lifecycle state transitions", () => {
 
 describe("startManagedRuntime", () => {
   it("generates a fresh server password on each start", () =>
-    Effect.gen(function* () {
-      const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
-      const first = yield* lifecycle.startManagedRuntime();
-      yield* lifecycle.stopManagedRuntime();
-      const second = yield* lifecycle.startManagedRuntime();
-      expect(first.serverPassword).toBeTruthy();
-      expect(second.serverPassword).toBeTruthy();
-      expect(first.serverPassword).not.toBe(second.serverPassword);
-    }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))));
+    runEffectTest(
+      Effect.gen(function* () {
+        const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
+        const first = yield* lifecycle.startManagedRuntime();
+        yield* lifecycle.stopManagedRuntime();
+        const second = yield* lifecycle.startManagedRuntime();
+        expect(first.serverPassword).toBeTruthy();
+        expect(second.serverPassword).toBeTruthy();
+        expect(first.serverPassword).not.toBe(second.serverPassword);
+      }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))),
+    ));
 
-  it("uses configMode generated when spawning", () =>
-    Effect.gen(function* () {
-      const startFn = vi.fn(() =>
-        Effect.succeed({
-          url: FAKE_SERVER_URL,
-          exitCode: Effect.succeed(0),
-        }),
-      );
-      const mock = makeMockRuntime({
-        startOpenCodeServerProcess: startFn,
-      });
-      const lifecycle = yield* makeTestLifecycle(mock);
-      yield* lifecycle.startManagedRuntime();
+  it("passes generated config mode and password when spawning", () =>
+    runEffectTest(
+      Effect.gen(function* () {
+        const startFn = vi.fn<OpenCodeRuntimeShape["startOpenCodeServerProcess"]>(() =>
+          Effect.succeed({
+            url: FAKE_SERVER_URL,
+            exitCode: Effect.succeed(0),
+          }),
+        );
+        const mock = makeMockRuntime({
+          startOpenCodeServerProcess: startFn,
+        });
+        const lifecycle = yield* makeTestLifecycle(mock);
+        yield* lifecycle.startManagedRuntime();
 
-      expect(startFn).toHaveBeenCalledTimes(1);
-      const callArgs = startFn.mock.calls[0]![0] as Record<string, unknown>;
-      expect(callArgs["configMode"]).toBe("generated");
-    }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))));
+        expect(startFn).toHaveBeenCalledTimes(1);
+        const callArgs = startFn.mock.calls[0]?.[0];
+        expect(callArgs).toEqual(
+          expect.objectContaining({
+            configMode: "generated",
+            serverPassword: expect.any(String),
+          }),
+        );
+        expect(callArgs?.serverPassword).toBeTruthy();
+      }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))),
+    ));
+
+  it("builds isolated config and data directories for managed sidecar launch", () => {
+    expect(managedSidecarOpenCodeLaunchOptions("/tmp/jcode-test-runtime")).toEqual({
+      xdgConfigHome: "/tmp/jcode-test-runtime/config",
+      extraEnv: {
+        XDG_DATA_HOME: "/tmp/jcode-test-runtime/data",
+      },
+    });
+  });
 
   it("returns binaryPath in the snapshot", () =>
-    Effect.gen(function* () {
-      const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
-      const result = yield* lifecycle.startManagedRuntime();
-      expect(result.binaryPath).toBeTruthy();
-    }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))));
+    runEffectTest(
+      Effect.gen(function* () {
+        const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
+        const result = yield* lifecycle.startManagedRuntime();
+        expect(result.binaryPath).toBeTruthy();
+      }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))),
+    ));
+
+  it("serializes overlapping starts so only one process spawn runs at a time", () =>
+    runProductionLifecycleTest(
+      Effect.gen(function* () {
+        const firstStartEntered = yield* Deferred.make<void>();
+        const releaseFirstStart = yield* Deferred.make<void>();
+        let inFlightStarts = 0;
+        let maxInFlightStarts = 0;
+        let startCount = 0;
+        const runtime = makeMockRuntime({
+          startOpenCodeServerProcess: vi.fn(() =>
+            Effect.gen(function* () {
+              startCount += 1;
+              const processId = `process-${startCount}`;
+              inFlightStarts += 1;
+              maxInFlightStarts = Math.max(maxInFlightStarts, inFlightStarts);
+              if (startCount === 1) {
+                yield* Deferred.succeed(firstStartEntered, undefined);
+                yield* Deferred.await(releaseFirstStart);
+              }
+              inFlightStarts -= 1;
+              return {
+                url: `${FAKE_SERVER_URL}/${processId}`,
+                exitCode: Effect.succeed(0),
+              };
+            }),
+          ),
+        });
+        const lifecycle = yield* makeManagedSidecarLifecycle.pipe(
+          Effect.provide(Layer.succeed(OpenCodeRuntime, runtime)),
+        );
+
+        const firstStart = yield* lifecycle.startManagedRuntime().pipe(Effect.forkChild);
+        yield* Deferred.await(firstStartEntered);
+        const secondStart = yield* lifecycle.startManagedRuntime().pipe(Effect.forkChild);
+        yield* Effect.sleep("25 millis");
+        yield* Deferred.succeed(releaseFirstStart, undefined);
+
+        yield* Fiber.join(firstStart);
+        const secondResult = yield* Fiber.join(secondStart);
+        const status = yield* lifecycle.getManagedRuntimeStatus();
+
+        expect(maxInFlightStarts).toBe(1);
+        expect(secondResult.state).toBe("ready");
+        expect(status.state).toBe("ready");
+      }),
+    ));
+
+  it("does not expose stale ready credentials while a forced download start is starting", () =>
+    runProductionLifecycleTest(
+      Effect.gen(function* () {
+        const secondStartEntered = yield* Deferred.make<void>();
+        const releaseSecondStart = yield* Deferred.make<void>();
+        let startCount = 0;
+        const runtime = makeMockRuntime({
+          startOpenCodeServerProcess: vi.fn(() =>
+            Effect.gen(function* () {
+              startCount += 1;
+              const processId = `process-${startCount}`;
+              if (startCount === 2) {
+                yield* Deferred.succeed(secondStartEntered, undefined);
+                yield* Deferred.await(releaseSecondStart);
+              }
+              return {
+                url: `${FAKE_SERVER_URL}/${processId}`,
+                exitCode: Effect.succeed(0),
+              };
+            }),
+          ),
+        });
+        const lifecycle = yield* makeManagedSidecarLifecycle.pipe(
+          Effect.provide(Layer.succeed(OpenCodeRuntime, runtime)),
+        );
+
+        const first = yield* lifecycle.startManagedRuntime();
+        expect(first.state).toBe("ready");
+        expect(first.serverUrl).toBe(`${FAKE_SERVER_URL}/process-1`);
+        expect(first.serverPassword).toBeTruthy();
+
+        const secondStart = yield* lifecycle
+          .startManagedRuntime({ forceDownload: true })
+          .pipe(Effect.forkChild);
+        yield* Deferred.await(secondStartEntered);
+
+        const transient = yield* lifecycle.getManagedRuntimeStatus();
+        expect(transient.state).toBe("starting");
+        expect(transient.serverUrl).toBeUndefined();
+        expect(transient.serverPassword).toBeUndefined();
+
+        yield* Deferred.succeed(releaseSecondStart, undefined);
+        const second = yield* Fiber.join(secondStart);
+        expect(second.state).toBe("ready");
+        expect(second.serverUrl).toBe(`${FAKE_SERVER_URL}/process-2`);
+        expect(second.serverPassword).toBeTruthy();
+      }),
+    ));
 });
 
 // ---------------------------------------------------------------------------
@@ -234,11 +383,52 @@ describe("startManagedRuntime", () => {
 
 describe("stopManagedRuntime", () => {
   it("returns idle when already idle", () =>
-    Effect.gen(function* () {
-      const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
-      const result = yield* lifecycle.stopManagedRuntime();
-      expect(result.state).toBe("idle");
-    }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))));
+    runEffectTest(
+      Effect.gen(function* () {
+        const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
+        const result = yield* lifecycle.stopManagedRuntime();
+        expect(result.state).toBe("idle");
+      }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))),
+    ));
+
+  it("closes the running sidecar process resource", () => {
+    const finalizedProcesses: string[] = [];
+    let startCount = 0;
+    const runtime = makeMockRuntime({
+      startOpenCodeServerProcess: vi.fn(() =>
+        Effect.gen(function* () {
+          startCount += 1;
+          const processId = `process-${startCount}`;
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              finalizedProcesses.push(processId);
+            }),
+          );
+          return {
+            url: `${FAKE_SERVER_URL}/${processId}`,
+            exitCode: Effect.succeed(0),
+          };
+        }),
+      ),
+    });
+
+    return runProductionLifecycleTest(
+      Effect.gen(function* () {
+        const lifecycle = yield* makeManagedSidecarLifecycle.pipe(
+          Effect.provide(Layer.succeed(OpenCodeRuntime, runtime)),
+        );
+
+        yield* lifecycle.startManagedRuntime();
+        expect(finalizedProcesses).toEqual([]);
+
+        yield* lifecycle.stopManagedRuntime();
+        expect(finalizedProcesses).toEqual(["process-1"]);
+
+        yield* lifecycle.stopManagedRuntime();
+        expect(finalizedProcesses).toEqual(["process-1"]);
+      }),
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -247,20 +437,65 @@ describe("stopManagedRuntime", () => {
 
 describe("restartManagedRuntime", () => {
   it("generates a new password on restart (no reuse)", () =>
-    Effect.gen(function* () {
-      const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
-      const first = yield* lifecycle.startManagedRuntime();
-      const restarted = yield* lifecycle.restartManagedRuntime();
-      expect(restarted.serverPassword).toBeTruthy();
-      expect(restarted.serverPassword).not.toBe(first.serverPassword);
-    }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))));
+    runEffectTest(
+      Effect.gen(function* () {
+        const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
+        const first = yield* lifecycle.startManagedRuntime();
+        const restarted = yield* lifecycle.restartManagedRuntime();
+        expect(restarted.serverPassword).toBeTruthy();
+        expect(restarted.serverPassword).not.toBe(first.serverPassword);
+      }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))),
+    ));
 
   it("returns to ready state after restart", () =>
-    Effect.gen(function* () {
-      const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
-      const restarted = yield* lifecycle.restartManagedRuntime();
-      expect(restarted.state).toBe("ready");
-    }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))));
+    runEffectTest(
+      Effect.gen(function* () {
+        const lifecycle = yield* makeTestLifecycle(makeMockRuntime());
+        const restarted = yield* lifecycle.restartManagedRuntime();
+        expect(restarted.state).toBe("ready");
+      }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))),
+    ));
+
+  it("closes only the old sidecar process resource before returning the replacement", () => {
+    const finalizedProcesses: string[] = [];
+    let startCount = 0;
+    const runtime = makeMockRuntime({
+      startOpenCodeServerProcess: vi.fn(() =>
+        Effect.gen(function* () {
+          startCount += 1;
+          const processId = `process-${startCount}`;
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              finalizedProcesses.push(processId);
+            }),
+          );
+          return {
+            url: `${FAKE_SERVER_URL}/${processId}`,
+            exitCode: Effect.succeed(0),
+          };
+        }),
+      ),
+    });
+
+    return runProductionLifecycleTest(
+      Effect.gen(function* () {
+        const lifecycle = yield* makeManagedSidecarLifecycle.pipe(
+          Effect.provide(Layer.succeed(OpenCodeRuntime, runtime)),
+        );
+
+        const first = yield* lifecycle.startManagedRuntime();
+        expect(first.serverUrl).toBe(`${FAKE_SERVER_URL}/process-1`);
+        expect(finalizedProcesses).toEqual([]);
+
+        const restarted = yield* lifecycle.restartManagedRuntime();
+        expect(restarted.serverUrl).toBe(`${FAKE_SERVER_URL}/process-2`);
+        expect(finalizedProcesses).toEqual(["process-1"]);
+
+        yield* lifecycle.stopManagedRuntime();
+        expect(finalizedProcesses).toEqual(["process-1", "process-2"]);
+      }),
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -269,52 +504,56 @@ describe("restartManagedRuntime", () => {
 
 describe("error handling", () => {
   it("transitions to error state on spawn failure", () =>
-    Effect.gen(function* () {
-      const failingMock = makeMockRuntime({
-        startOpenCodeServerProcess: vi.fn(() =>
-          Effect.fail(
-            new TestOpenCodeRuntimeError({
-              operation: "startOpenCodeServerProcess",
-              detail: "spawn failed",
-            }),
-          ),
-        ),
-      });
-      const lifecycle = yield* makeTestLifecycle(failingMock);
-      const exit = yield* Effect.exit(lifecycle.startManagedRuntime());
-      expect(Exit.isFailure(exit)).toBe(true);
-
-      const status = yield* lifecycle.getManagedRuntimeStatus();
-      expect(status.state).toBe("error");
-      expect(status.error).toContain("spawn failed");
-    }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))));
-
-  it("does not reuse password after a failed start", () =>
-    Effect.gen(function* () {
-      let callCount = 0;
-      const failThenSucceed = makeMockRuntime({
-        startOpenCodeServerProcess: vi.fn(() => {
-          callCount++;
-          if (callCount === 1) {
-            return Effect.fail(
+    runEffectTest(
+      Effect.gen(function* () {
+        const failingMock = makeMockRuntime({
+          startOpenCodeServerProcess: vi.fn(() =>
+            Effect.fail(
               new TestOpenCodeRuntimeError({
                 operation: "startOpenCodeServerProcess",
-                detail: "first attempt fails",
+                detail: "spawn failed",
               }),
-            );
-          }
-          return Effect.succeed({
-            url: FAKE_SERVER_URL,
-            exitCode: Effect.succeed(0),
-          });
-        }),
-      });
-      const lifecycle = yield* makeTestLifecycle(failThenSucceed);
+            ),
+          ),
+        });
+        const lifecycle = yield* makeTestLifecycle(failingMock);
+        const exit = yield* Effect.exit(lifecycle.startManagedRuntime());
+        expect(Exit.isFailure(exit)).toBe(true);
 
-      yield* Effect.flip(lifecycle.startManagedRuntime());
+        const status = yield* lifecycle.getManagedRuntimeStatus();
+        expect(status.state).toBe("error");
+        expect(status.error).toContain("spawn failed");
+      }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))),
+    ));
 
-      const success = yield* lifecycle.startManagedRuntime();
-      expect(success.state).toBe("ready");
-      expect(success.serverPassword).toBeTruthy();
-    }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))));
+  it("does not reuse password after a failed start", () =>
+    runEffectTest(
+      Effect.gen(function* () {
+        let callCount = 0;
+        const failThenSucceed = makeMockRuntime({
+          startOpenCodeServerProcess: vi.fn(() => {
+            callCount++;
+            if (callCount === 1) {
+              return Effect.fail(
+                new TestOpenCodeRuntimeError({
+                  operation: "startOpenCodeServerProcess",
+                  detail: "first attempt fails",
+                }),
+              );
+            }
+            return Effect.succeed({
+              url: FAKE_SERVER_URL,
+              exitCode: Effect.succeed(0),
+            });
+          }),
+        });
+        const lifecycle = yield* makeTestLifecycle(failThenSucceed);
+
+        yield* Effect.flip(lifecycle.startManagedRuntime());
+
+        const success = yield* lifecycle.startManagedRuntime();
+        expect(success.state).toBe("ready");
+        expect(success.serverPassword).toBeTruthy();
+      }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))),
+    ));
 });

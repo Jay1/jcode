@@ -5,6 +5,7 @@ import type {
   ServerSettings,
   ServerSettingsPatch,
 } from "@jcode/contracts";
+import path from "node:path";
 
 const EMPTY_CAPABILITY_ARRAYS = {
   skillRoots: [] as readonly string[],
@@ -19,15 +20,44 @@ const EMPTY_CAPABILITY_ARRAYS = {
   capabilityPolicy: "warn" as const,
 };
 
-function makeManagedProfile(snapshot: ManagedSidecarSnapshot): OpenCodeRuntimeProfile {
+function trimTrailingSeparators(path: string): string {
+  return path.replace(/[\\/]+$/, "");
+}
+
+export function managedOpenCodeProfileDirs(managedRuntimeDir: string): {
+  readonly opencodeConfigDir: string;
+  readonly opencodeDataDir: string;
+} {
+  const root = trimTrailingSeparators(managedRuntimeDir.trim());
+  return {
+    opencodeConfigDir: `${root}/config`,
+    opencodeDataDir: `${root}/data`,
+  };
+}
+
+export function managedOpenCodeBinaryPath(managedRuntimeDir: string): string {
+  const root = trimTrailingSeparators(managedRuntimeDir.trim());
+  return path.join(root, process.platform === "win32" ? "opencode.exe" : "opencode");
+}
+
+function makeManagedProfile(
+  snapshot: ManagedSidecarSnapshot,
+  managedRuntimeDir?: string,
+): OpenCodeRuntimeProfile {
+  const managedDirs = managedRuntimeDir?.trim()
+    ? managedOpenCodeProfileDirs(managedRuntimeDir)
+    : undefined;
   return {
     id: "managed-opencode-sidecar",
     label: "Managed OpenCode (sidecar)",
     provider: "opencode",
     mode: "managed",
     configMode: "generated",
-    binaryPath: snapshot.binaryPath ?? undefined,
+    binaryPath:
+      snapshot.binaryPath ??
+      (managedRuntimeDir?.trim() ? managedOpenCodeBinaryPath(managedRuntimeDir) : undefined),
     serverUrl: snapshot.serverUrl ?? undefined,
+    ...(managedDirs ? managedDirs : {}),
     ...EMPTY_CAPABILITY_ARRAYS,
   };
 }
@@ -47,6 +77,7 @@ function makeExternalProfile(snapshot: ManagedSidecarSnapshot): OpenCodeRuntimeP
 export interface AutoCreateProfileInput {
   readonly sidecarSnapshot: ManagedSidecarSnapshot;
   readonly existingConfigDetected: boolean;
+  readonly managedRuntimeDir?: string;
   readonly settings: ServerSettings;
 }
 
@@ -61,7 +92,7 @@ export function autoCreateManagedRuntimeProfile(
 ): AutoCreateProfileResult {
   const desiredProfile = input.existingConfigDetected
     ? makeExternalProfile(input.sidecarSnapshot)
-    : makeManagedProfile(input.sidecarSnapshot);
+    : makeManagedProfile(input.sidecarSnapshot, input.managedRuntimeDir);
 
   const existingProfile = input.settings.providers.opencode.runtimeProfiles.find(
     (p) => p.id === desiredProfile.id,

@@ -40,6 +40,12 @@ import {
 } from "./git";
 import { KeybindingRule } from "./keybindings";
 import {
+  CompleteFirstRunWizardInput,
+  FirstRunWizardData,
+  FirstRunState,
+  SkipFirstRunWizardInput,
+} from "./firstRunWizard";
+import {
   ClientOrchestrationCommand,
   ORCHESTRATION_WS_METHODS,
   OrchestrationEvent,
@@ -50,6 +56,12 @@ import {
   OrchestrationThreadStreamItem,
 } from "./orchestration";
 import { ProviderCompactThreadInput } from "./provider";
+import {
+  ManagedSidecarDiagnostics,
+  ManagedSidecarHealthCheck,
+  ManagedSidecarRepairRequest,
+  ManagedSidecarRepairResult,
+} from "./managedRuntimeHealth";
 import {
   ProviderGetComposerCapabilitiesInput,
   ProviderComposerCapabilities,
@@ -520,6 +532,24 @@ export const WsServerResetAllKeybindingsRpc = Rpc.make(WS_METHODS.serverResetAll
   error: WsRpcError,
 });
 
+export const WsServerGetFirstRunWizardDataRpc = Rpc.make(WS_METHODS.serverGetFirstRunWizardData, {
+  payload: Schema.Struct({}),
+  success: FirstRunWizardData,
+  error: WsRpcError,
+});
+
+export const WsServerCompleteFirstRunWizardRpc = Rpc.make(WS_METHODS.serverCompleteFirstRunWizard, {
+  payload: CompleteFirstRunWizardInput,
+  success: FirstRunState,
+  error: WsRpcError,
+});
+
+export const WsServerSkipFirstRunRpc = Rpc.make(WS_METHODS.serverSkipFirstRun, {
+  payload: SkipFirstRunWizardInput,
+  success: FirstRunState,
+  error: WsRpcError,
+});
+
 export const WsSubscribeServerLifecycleRpc = Rpc.make(WS_METHODS.subscribeServerLifecycle, {
   payload: Schema.Struct({}),
   success: ServerLifecycleStreamEvent,
@@ -572,6 +602,30 @@ export const WsProviderGetRuntimeHealthRpc = Rpc.make(WS_METHODS.providerGetRunt
   success: OpenCodeRuntimeHealth,
   error: WsRpcError,
 });
+
+export const WsProviderGetManagedSidecarHealthRpc = Rpc.make(
+  WS_METHODS.providerGetManagedSidecarHealth,
+  {
+    payload: Schema.Struct({}),
+    success: ManagedSidecarHealthCheck,
+    error: WsRpcError,
+  },
+);
+
+export const WsProviderRepairManagedSidecarRpc = Rpc.make(WS_METHODS.providerRepairManagedSidecar, {
+  payload: ManagedSidecarRepairRequest,
+  success: ManagedSidecarRepairResult,
+  error: WsRpcError,
+});
+
+export const WsProviderExportManagedSidecarDiagnosticsRpc = Rpc.make(
+  WS_METHODS.providerExportManagedSidecarDiagnostics,
+  {
+    payload: Schema.Struct({}),
+    success: ManagedSidecarDiagnostics,
+    error: WsRpcError,
+  },
+);
 
 export const WsProviderCompactThreadRpc = Rpc.make(WS_METHODS.providerCompactThread, {
   payload: ProviderCompactThreadInput,
@@ -700,6 +754,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerUpsertKeybindingRpc,
   WsServerResetKeybindingRpc,
   WsServerResetAllKeybindingsRpc,
+  WsServerGetFirstRunWizardDataRpc,
+  WsServerCompleteFirstRunWizardRpc,
+  WsServerSkipFirstRunRpc,
   WsSubscribeServerLifecycleRpc,
   WsSubscribeServerConfigRpc,
   WsSubscribeServerProviderStatusesRpc,
@@ -707,6 +764,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribeAuthAccessRpc,
   WsProviderGetComposerCapabilitiesRpc,
   WsProviderGetRuntimeHealthRpc,
+  WsProviderGetManagedSidecarHealthRpc,
+  WsProviderRepairManagedSidecarRpc,
+  WsProviderExportManagedSidecarDiagnosticsRpc,
   WsProviderCompactThreadRpc,
   WsProviderListCommandsRpc,
   WsProviderListSkillsRpc,

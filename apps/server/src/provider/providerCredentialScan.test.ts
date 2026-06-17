@@ -124,7 +124,7 @@ describe("scanAllProviders", () => {
         homeDir: tempDir,
       });
 
-      assert.strictEqual(result.providers.length, 7);
+      assert.strictEqual(result.providers.length, 9);
       for (const p of result.providers) {
         assert.strictEqual(p.hasBinary, false, `${p.provider} should have no binary`);
         assert.strictEqual(p.status, "not-installed", `${p.provider} should be not-installed`);
@@ -264,14 +264,16 @@ describe("scanAllProviders", () => {
 });
 
 describe("PROVIDER_CREDENTIAL_SPECS", () => {
-  it("covers all 7 providers", () => {
+  it("covers all provider discovery kinds", () => {
     const providers = PROVIDER_CREDENTIAL_SPECS.map((s) => s.provider);
     assert.deepStrictEqual(providers.sort(), [
       "claudeAgent",
       "codex",
       "cursor",
+      "devin",
       "gemini",
       "kilo",
+      "openclaw",
       "opencode",
       "pi",
     ]);

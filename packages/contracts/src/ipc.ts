@@ -81,7 +81,11 @@ import type {
   ServerVoiceTranscriptionInput,
   ServerVoiceTranscriptionResult,
 } from "./server";
-import type { CompleteFirstRunWizardInput, FirstRunWizardData } from "./firstRunWizard";
+import type {
+  CompleteFirstRunWizardInput,
+  FirstRunState,
+  FirstRunWizardData,
+} from "./firstRunWizard";
 import type {
   TerminalClearInput,
   TerminalCloseInput,
@@ -136,6 +140,12 @@ import type {
   OpenCodeRuntimeHealth,
 } from "./providerDiscovery";
 import type { ProviderCompactThreadInput } from "./provider";
+import type {
+  ManagedSidecarDiagnostics,
+  ManagedSidecarHealthCheck,
+  ManagedSidecarRepairRequest,
+  ManagedSidecarRepairResult,
+} from "./managedRuntimeHealth";
 
 export interface ContextMenuItem<T extends string = string> {
   id: T;
@@ -472,7 +482,8 @@ export interface NativeApi {
     resetKeybinding: (input: ServerResetKeybindingInput) => Promise<ServerResetKeybindingsResult>;
     resetAllKeybindings: () => Promise<ServerResetKeybindingsResult>;
     getFirstRunWizardData: () => Promise<FirstRunWizardData>;
-    completeFirstRunWizard: (input: CompleteFirstRunWizardInput) => Promise<FirstRunWizardData>;
+    completeFirstRunWizard: (input: CompleteFirstRunWizardInput) => Promise<FirstRunState>;
+    skipFirstRun: () => Promise<FirstRunState>;
     generateThreadRecap: (
       input: ServerGenerateThreadRecapInput,
     ) => Promise<ServerGenerateThreadRecapResult>;
@@ -482,6 +493,11 @@ export interface NativeApi {
       input: ProviderGetComposerCapabilitiesInput,
     ) => Promise<ProviderComposerCapabilities>;
     getRuntimeHealth: (input: ProviderGetRuntimeHealthInput) => Promise<OpenCodeRuntimeHealth>;
+    getManagedSidecarHealth: () => Promise<ManagedSidecarHealthCheck>;
+    repairManagedSidecar: (
+      input: ManagedSidecarRepairRequest,
+    ) => Promise<ManagedSidecarRepairResult>;
+    exportManagedSidecarDiagnostics: () => Promise<ManagedSidecarDiagnostics>;
     compactThread: (input: ProviderCompactThreadInput) => Promise<void>;
     listCommands: (input: ProviderListCommandsInput) => Promise<ProviderListCommandsResult>;
     listSkills: (input: ProviderListSkillsInput) => Promise<ProviderListSkillsResult>;

@@ -79,7 +79,7 @@ Backend auth follows the existing server auth model:
 - The JCode server process runs under the Windows user account.
 - WSL commands execute as the default WSL user via `wsl.exe -d <distro>`. No separate auth is required — WSL inherits the Windows user's access via the WSL bridge.
 - For backends with their own auth (future SSH, Docker), introduce `BackendAuthProvider` — a service that acquires credentials for a backend. `local` and `wsl` use a no-op provider.
-- Capability token scopes (ADR 0005) apply at the JCode server level, not per-backend. A client with `thread:read` can observe threads on any backend the server can reach.
+- Capability token scopes (ADR 0008) apply at the JCode server level, not per-backend. A client with `thread:read` can observe threads on any backend the server can reach.
 
 ### 5. Transport Layer
 
@@ -146,7 +146,7 @@ User-visible mode transitions:
 - Multiple WSL distributions supported simultaneously (Ubuntu + Debian in parallel).
 - Per-project routing avoids the "global WSL mode" UX trap — some projects can be on the host, others in WSL.
 - Transport abstraction is reusable for future SSH/Docker backends.
-- Backend model composes with existing auth (ADR 0005) and scope (ADR 0006) systems without changes.
+- Backend model composes with existing auth (ADR 0008) and scope (ADR 0006) systems without changes.
 
 **Negative:**
 

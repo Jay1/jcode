@@ -75,6 +75,7 @@ import {
   ServerVoiceTranscriptionInput,
 } from "./server";
 import { CompleteFirstRunWizardInput, SkipFirstRunWizardInput } from "./firstRunWizard";
+import { ManagedSidecarRepairRequest } from "./managedRuntimeHealth";
 import {
   ProviderListCommandsInput,
   ProviderGetRuntimeHealthInput,
@@ -171,6 +172,9 @@ export const WS_METHODS = {
   // Provider discovery
   providerGetComposerCapabilities: "provider.getComposerCapabilities",
   providerGetRuntimeHealth: "provider.getRuntimeHealth",
+  providerGetManagedSidecarHealth: "provider.getManagedSidecarHealth",
+  providerRepairManagedSidecar: "provider.repairManagedSidecar",
+  providerExportManagedSidecarDiagnostics: "provider.exportManagedSidecarDiagnostics",
   providerCompactThread: "provider.compactThread",
   providerListCommands: "provider.listCommands",
   providerListSkills: "provider.listSkills",
@@ -292,6 +296,9 @@ const WebSocketRequestBody = Schema.Union([
   // Provider discovery
   tagRequestBody(WS_METHODS.providerGetComposerCapabilities, ProviderGetComposerCapabilitiesInput),
   tagRequestBody(WS_METHODS.providerGetRuntimeHealth, ProviderGetRuntimeHealthInput),
+  tagRequestBody(WS_METHODS.providerGetManagedSidecarHealth, Schema.Struct({})),
+  tagRequestBody(WS_METHODS.providerRepairManagedSidecar, ManagedSidecarRepairRequest),
+  tagRequestBody(WS_METHODS.providerExportManagedSidecarDiagnostics, Schema.Struct({})),
   tagRequestBody(WS_METHODS.providerCompactThread, ProviderCompactThreadInput),
   tagRequestBody(WS_METHODS.providerListCommands, ProviderListCommandsInput),
   tagRequestBody(WS_METHODS.providerListSkills, ProviderListSkillsInput),

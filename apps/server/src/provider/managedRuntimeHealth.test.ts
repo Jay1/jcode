@@ -1,6 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import { FetchHttpClient } from "effect/unstable/http";
 import { describe, expect, it, vi } from "vitest";
-import { Effect, Scope } from "effect";
+import { Effect, Layer, Scope } from "effect";
 
 import type { ManagedSidecarSnapshot } from "@jcode/contracts";
 
@@ -25,6 +26,9 @@ vi.mock("./managedRuntimeDownload.ts", () => ({
 }));
 
 const mockVerify = vi.mocked(managedRuntimeDownload.verifyManagedRuntimeBinary);
+const TestLayer = Layer.merge(NodeServices.layer, FetchHttpClient.layer);
+const successfulServerProbe = () => Effect.succeed(true);
+const failedServerProbe = () => Effect.succeed(false);
 
 const READY_SNAPSHOT: ManagedSidecarSnapshot = Object.freeze({
   state: "ready",
@@ -104,9 +108,10 @@ describe("checkManagedSidecarHealth", () => {
     );
 
     const result = await Effect.runPromise(
-      checkManagedSidecarHealth({ sidecarSnapshot: READY_SNAPSHOT }).pipe(
-        Effect.provide(NodeServices.layer),
-      ),
+      checkManagedSidecarHealth({
+        sidecarSnapshot: READY_SNAPSHOT,
+        serverProbe: successfulServerProbe,
+      }).pipe(Effect.provide(TestLayer)),
     );
 
     expect(result.status).toBe("healthy");
@@ -116,12 +121,52 @@ describe("checkManagedSidecarHealth", () => {
     expect(result.checkedAt).toBeTruthy();
   });
 
+  it("returns degraded when ready server probe fails", async () => {
+    mockVerify.mockReturnValueOnce(
+      Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),
+    );
+
+    const result = await Effect.runPromise(
+      checkManagedSidecarHealth({
+        sidecarSnapshot: READY_SNAPSHOT,
+        serverProbe: failedServerProbe,
+      }).pipe(Effect.provide(TestLayer)),
+    );
+
+    expect(result.status).toBe("degraded");
+    expect(result.serverReachable).toBe(false);
+  });
+
+  it("authenticates the default server probe with the managed sidecar password", async () => {
+    mockVerify.mockReturnValueOnce(
+      Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),
+    );
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as Response);
+
+    const result = await Effect.runPromise(
+      checkManagedSidecarHealth({ sidecarSnapshot: READY_SNAPSHOT }).pipe(
+        Effect.provide(TestLayer),
+      ),
+    );
+
+    expect(result.status).toBe("healthy");
+    expect(fetchSpy).toHaveBeenCalledWith(
+      READY_SNAPSHOT.serverUrl,
+      expect.objectContaining({
+        headers: {
+          Authorization: `Basic ${Buffer.from("opencode:test-password", "utf8").toString("base64")}`,
+        },
+        method: "GET",
+      }),
+    );
+  });
+
   it("returns unhealthy when ready with missing binary", async () => {
     const snapshot: ManagedSidecarSnapshot = { state: "ready", serverUrl: "http://127.0.0.1:9999" };
 
     const result = await Effect.runPromise(
-      checkManagedSidecarHealth({ sidecarSnapshot: snapshot }).pipe(
-        Effect.provide(NodeServices.layer),
+      checkManagedSidecarHealth({ sidecarSnapshot: snapshot, serverProbe: failedServerProbe }).pipe(
+        Effect.provide(TestLayer),
       ),
     );
 
@@ -133,7 +178,7 @@ describe("checkManagedSidecarHealth", () => {
   it("returns unhealthy with error message when in error state", async () => {
     const result = await Effect.runPromise(
       checkManagedSidecarHealth({ sidecarSnapshot: ERROR_SNAPSHOT }).pipe(
-        Effect.provide(NodeServices.layer),
+        Effect.provide(TestLayer),
       ),
     );
 
@@ -144,9 +189,7 @@ describe("checkManagedSidecarHealth", () => {
 
   it("returns not_running when idle", async () => {
     const result = await Effect.runPromise(
-      checkManagedSidecarHealth({ sidecarSnapshot: IDLE_SNAPSHOT }).pipe(
-        Effect.provide(NodeServices.layer),
-      ),
+      checkManagedSidecarHealth({ sidecarSnapshot: IDLE_SNAPSHOT }).pipe(Effect.provide(TestLayer)),
     );
 
     expect(result.status).toBe("not_running");
@@ -156,7 +199,7 @@ describe("checkManagedSidecarHealth", () => {
   it("returns degraded when downloading (transient)", async () => {
     const result = await Effect.runPromise(
       checkManagedSidecarHealth({ sidecarSnapshot: DOWNLOADING_SNAPSHOT }).pipe(
-        Effect.provide(NodeServices.layer),
+        Effect.provide(TestLayer),
       ),
     );
 
@@ -168,9 +211,7 @@ describe("checkManagedSidecarHealth", () => {
     const snapshot: ManagedSidecarSnapshot = { state: "stopping" };
 
     const result = await Effect.runPromise(
-      checkManagedSidecarHealth({ sidecarSnapshot: snapshot }).pipe(
-        Effect.provide(NodeServices.layer),
-      ),
+      checkManagedSidecarHealth({ sidecarSnapshot: snapshot }).pipe(Effect.provide(TestLayer)),
     );
 
     expect(result.status).toBe("not_running");
@@ -188,14 +229,83 @@ describe("repairManagedSidecar", () => {
 
     const result = await Effect.runPromise(
       Scope.provide(
-        repairManagedSidecar({ sidecarSnapshot: IDLE_SNAPSHOT, lifecycle }),
+        repairManagedSidecar({
+          lifecycle,
+          serverProbe: successfulServerProbe,
+        }),
         scope,
-      ).pipe(Effect.provide(NodeServices.layer)),
+      ).pipe(Effect.provide(TestLayer)),
     );
 
     expect(result.success).toBe(true);
     expect(lifecycle.stopManagedRuntime).toHaveBeenCalledOnce();
     expect(lifecycle.startManagedRuntime).toHaveBeenCalledOnce();
+  });
+
+  it("returns failed repair when the restarted sidecar is still unreachable", async () => {
+    mockVerify.mockReturnValue(
+      Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),
+    );
+
+    const lifecycle = makeMockLifecycle();
+    const scope = await Effect.runPromise(Scope.make());
+
+    const result = await Effect.runPromise(
+      Scope.provide(
+        repairManagedSidecar({
+          lifecycle,
+          serverProbe: failedServerProbe,
+        }),
+        scope,
+      ).pipe(Effect.provide(TestLayer)),
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.health.status).toBe("degraded");
+    expect(result.health.serverReachable).toBe(false);
+  });
+
+  it("calls startManagedRuntime with forceDownload by default during repair", async () => {
+    mockVerify.mockReturnValue(
+      Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),
+    );
+
+    const lifecycle = makeMockLifecycle();
+    const scope = await Effect.runPromise(Scope.make());
+
+    await Effect.runPromise(
+      Scope.provide(
+        repairManagedSidecar({
+          lifecycle,
+          serverProbe: successfulServerProbe,
+        }),
+        scope,
+      ).pipe(Effect.provide(TestLayer)),
+    );
+
+    expect(lifecycle.startManagedRuntime).toHaveBeenCalledWith({ forceDownload: true });
+  });
+
+  it("ignores explicit forceRedownload false because repair must re-download", async () => {
+    mockVerify.mockReturnValue(
+      Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),
+    );
+
+    const lifecycle = makeMockLifecycle();
+    const scope = await Effect.runPromise(Scope.make());
+
+    await Effect.runPromise(
+      Scope.provide(
+        repairManagedSidecar({
+          lifecycle,
+          forceRedownload: false,
+          serverProbe: successfulServerProbe,
+        }),
+        scope,
+      ).pipe(Effect.provide(TestLayer)),
+    );
+
+    expect(lifecycle.startManagedRuntime).toHaveBeenCalledWith({ forceDownload: true });
   });
 
   it("calls startManagedRuntime with forceDownload when forceRedownload is true", async () => {
@@ -209,12 +319,12 @@ describe("repairManagedSidecar", () => {
     await Effect.runPromise(
       Scope.provide(
         repairManagedSidecar({
-          sidecarSnapshot: IDLE_SNAPSHOT,
           lifecycle,
           forceRedownload: true,
+          serverProbe: successfulServerProbe,
         }),
         scope,
-      ).pipe(Effect.provide(NodeServices.layer)),
+      ).pipe(Effect.provide(TestLayer)),
     );
 
     expect(lifecycle.startManagedRuntime).toHaveBeenCalledWith({ forceDownload: true });
@@ -235,9 +345,12 @@ describe("repairManagedSidecar", () => {
 
     const result = await Effect.runPromise(
       Scope.provide(
-        repairManagedSidecar({ sidecarSnapshot: IDLE_SNAPSHOT, lifecycle }),
+        repairManagedSidecar({
+          lifecycle,
+          serverProbe: failedServerProbe,
+        }),
         scope,
-      ).pipe(Effect.provide(NodeServices.layer)),
+      ).pipe(Effect.provide(TestLayer)),
     );
 
     expect(result.success).toBe(false);
@@ -246,22 +359,88 @@ describe("repairManagedSidecar", () => {
 });
 
 describe("exportManagedSidecarDiagnostics", () => {
-  it("returns full diagnostics bundle with correct shape", async () => {
+  interface DesiredManagedSidecarDiagnosticsInput {
+    sidecarSnapshot: ManagedSidecarSnapshot;
+    serverProbe?: typeof successfulServerProbe;
+    binaryVersionProbe?: () => Effect.Effect<string, never, never>;
+    logCollector?: () => Effect.Effect<ReadonlyArray<string>, never, never>;
+  }
+
+  it("includes collected binary version and logs", async () => {
+    mockVerify.mockReturnValueOnce(
+      Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),
+    );
+    const diagnosticsInput: DesiredManagedSidecarDiagnosticsInput = {
+      sidecarSnapshot: READY_SNAPSHOT,
+      serverProbe: successfulServerProbe,
+      binaryVersionProbe: () => Effect.succeed("opencode 1.3.17"),
+      logCollector: () => Effect.succeed(["line-1", "line-2"]),
+    };
+
+    const result = await Effect.runPromise(
+      exportManagedSidecarDiagnostics(diagnosticsInput).pipe(Effect.provide(TestLayer)),
+    );
+
+    expect(result.binaryVersion).toBe("opencode 1.3.17");
+    expect(result.logs).toEqual(["line-1", "line-2"]);
+  });
+
+  it("limits collected logs to the diagnostics log cap", async () => {
+    mockVerify.mockReturnValueOnce(
+      Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),
+    );
+    const collectedLogs = Array.from({ length: 20 }, (_, index) => `line-${index + 1}`);
+    const diagnosticsInput: DesiredManagedSidecarDiagnosticsInput = {
+      sidecarSnapshot: READY_SNAPSHOT,
+      serverProbe: successfulServerProbe,
+      binaryVersionProbe: () => Effect.succeed("opencode 1.3.17"),
+      logCollector: () => Effect.succeed(collectedLogs),
+    };
+
+    const result = await Effect.runPromise(
+      exportManagedSidecarDiagnostics(diagnosticsInput).pipe(Effect.provide(TestLayer)),
+    );
+
+    expect(result.logs).toHaveLength(10);
+    expect(result.logs).toEqual(collectedLogs.slice(0, 10));
+  });
+
+  it("redacts sidecar password from diagnostics", async () => {
     mockVerify.mockReturnValueOnce(
       Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),
     );
 
     const result = await Effect.runPromise(
-      exportManagedSidecarDiagnostics({ sidecarSnapshot: READY_SNAPSHOT }).pipe(
-        Effect.provide(NodeServices.layer),
-      ),
+      exportManagedSidecarDiagnostics({
+        sidecarSnapshot: READY_SNAPSHOT,
+        serverProbe: successfulServerProbe,
+      }).pipe(Effect.provide(TestLayer)),
     );
 
-    expect(result.generatedAt).toBeTruthy();
-    expect(result.health).toBeDefined();
-    expect(result.health.status).toBe("healthy");
-    expect(result.platform).toBeDefined();
-    expect(result.sidecarSnapshot).toBe(READY_SNAPSHOT);
+    expect(Object.hasOwn(result.sidecarSnapshot, "serverPassword")).toBe(false);
+    expect(JSON.stringify(result)).not.toContain("test-password");
+  });
+
+  it("redacts sidecar password from diagnostic error and log text", async () => {
+    mockVerify.mockReturnValueOnce(
+      Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),
+    );
+
+    const result = await Effect.runPromise(
+      exportManagedSidecarDiagnostics({
+        sidecarSnapshot: {
+          ...READY_SNAPSHOT,
+          error: "failed with test-password",
+        },
+        serverProbe: successfulServerProbe,
+        binaryVersionProbe: () => Effect.succeed("opencode 1.3.17"),
+        logCollector: () => Effect.succeed(["stdout test-password", "safe line"]),
+      }).pipe(Effect.provide(TestLayer)),
+    );
+
+    expect(JSON.stringify(result)).not.toContain("test-password");
+    expect(result.logs).toEqual(["stdout [redacted]", "safe line"]);
+    expect(result.sidecarSnapshot.error).toBe("failed with [redacted]");
   });
 
   it("populates platform info from process globals", async () => {
@@ -270,9 +449,10 @@ describe("exportManagedSidecarDiagnostics", () => {
     );
 
     const result = await Effect.runPromise(
-      exportManagedSidecarDiagnostics({ sidecarSnapshot: READY_SNAPSHOT }).pipe(
-        Effect.provide(NodeServices.layer),
-      ),
+      exportManagedSidecarDiagnostics({
+        sidecarSnapshot: READY_SNAPSHOT,
+        serverProbe: successfulServerProbe,
+      }).pipe(Effect.provide(TestLayer)),
     );
 
     expect(result.platform.os).toBe(process.platform);

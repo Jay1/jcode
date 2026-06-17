@@ -10,15 +10,17 @@ import { CheckIcon, Loader2Icon, TriangleAlertIcon, XIcon } from "../lib/icons";
 import { ensureNativeApi } from "../nativeApi";
 import { Button } from "./ui/button";
 
-const FIRST_RUN_QUERY_KEY = ["server", "firstRunWizard"] as const;
+export const FIRST_RUN_WIZARD_QUERY_KEY = ["server", "firstRunWizard"] as const;
 
 const PROVIDER_DISPLAY_NAMES: Record<ProviderDiscoveryKind, string> = {
   codex: "Codex",
   claudeAgent: "Claude",
   cursor: "Cursor",
+  devin: "Devin",
   gemini: "Gemini",
   kilo: "Kilo",
   opencode: "OpenCode",
+  openclaw: "OpenClaw",
   pi: "Pi",
 };
 
@@ -48,6 +50,14 @@ function statusBadge(status: ProviderScanResult["status"]) {
   }
 }
 
+function isProviderSelectable(result: ProviderScanResult) {
+  return (
+    result.status === "ready" ||
+    result.status === "needs-config" ||
+    (result.provider === "opencode" && result.status === "not-installed")
+  );
+}
+
 function ProviderCard({
   result,
   selected,
@@ -57,10 +67,11 @@ function ProviderCard({
   selected: boolean;
   onSelect: (provider: ProviderDiscoveryKind) => void;
 }) {
-  const isSelectable = result.status === "ready" || result.status === "needs-config";
+  const isSelectable = isProviderSelectable(result);
   return (
     <button
       type="button"
+      aria-pressed={selected}
       disabled={!isSelectable}
       onClick={() => onSelect(result.provider)}
       className={[
@@ -76,9 +87,7 @@ function ProviderCard({
         <span className="text-sm font-medium text-foreground">
           {PROVIDER_DISPLAY_NAMES[result.provider]}
         </span>
-        {result.version && (
-          <span className="text-xs text-muted-foreground">v{result.version}</span>
-        )}
+        {result.version && <span className="text-xs text-muted-foreground">v{result.version}</span>}
       </div>
       {statusBadge(result.status)}
     </button>
@@ -98,13 +107,18 @@ function ProviderSelectionStep({
   providers,
   onComplete,
   onSkip,
+  completePending,
+  skipPending,
 }: {
-  providers: ProviderScanResult[];
+  providers: readonly ProviderScanResult[];
   onComplete: (provider: ProviderDiscoveryKind | undefined) => void;
   onSkip: () => void;
+  completePending: boolean;
+  skipPending: boolean;
 }) {
   const [selected, setSelected] = useState<ProviderDiscoveryKind | null>(null);
   const readyProviders = providers.filter((p) => p.status === "ready");
+  const actionPending = completePending || skipPending;
 
   const handleSelect = useCallback(
     (provider: ProviderDiscoveryKind) => {
@@ -140,11 +154,18 @@ function ProviderSelectionStep({
       </div>
 
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={onSkip}>
+        <Button variant="ghost" size="sm" disabled={actionPending} onClick={onSkip}>
           Skip for now
         </Button>
-        <Button size="sm" disabled={!selected} onClick={handleConfirm}>
-          Continue
+        <Button size="sm" disabled={!selected || actionPending} onClick={handleConfirm}>
+          {completePending ? (
+            <>
+              <Loader2Icon className="size-3.5 animate-spin" />
+              Completing...
+            </>
+          ) : (
+            "Continue"
+          )}
         </Button>
       </div>
     </div>
@@ -167,23 +188,31 @@ export function FirstRunWizard() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: FIRST_RUN_QUERY_KEY,
+    queryKey: FIRST_RUN_WIZARD_QUERY_KEY,
     queryFn: async () => {
       const api = ensureNativeApi();
       return api.server.getFirstRunWizardData();
     },
-    staleTime: 0,
+    staleTime: 15_000,
   });
 
   const completeMutation = useMutation({
     mutationFn: async (provider: ProviderDiscoveryKind | undefined) => {
       const api = ensureNativeApi();
-      return api.server.completeFirstRunWizard(
-        provider ? { provider } : {},
-      );
+      return api.server.completeFirstRunWizard(provider ? { provider } : {});
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: FIRST_RUN_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: FIRST_RUN_WIZARD_QUERY_KEY });
+    },
+  });
+
+  const skipMutation = useMutation({
+    mutationFn: async () => {
+      const api = ensureNativeApi();
+      return api.server.skipFirstRun();
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: FIRST_RUN_WIZARD_QUERY_KEY });
     },
   });
 
@@ -207,7 +236,7 @@ export function FirstRunWizard() {
             variant="outline"
             size="sm"
             onClick={() =>
-              void queryClient.refetchQueries({ queryKey: FIRST_RUN_QUERY_KEY })
+              void queryClient.refetchQueries({ queryKey: FIRST_RUN_WIZARD_QUERY_KEY })
             }
           >
             Retry
@@ -242,7 +271,7 @@ export function FirstRunWizard() {
   };
 
   const handleSkip = () => {
-    completeMutation.mutate(undefined);
+    skipMutation.mutate();
   };
 
   return (
@@ -258,6 +287,8 @@ export function FirstRunWizard() {
           providers={wizardData.scanResults.providers}
           onComplete={handleComplete}
           onSkip={handleSkip}
+          completePending={completeMutation.isPending}
+          skipPending={skipMutation.isPending}
         />
       </div>
     </div>

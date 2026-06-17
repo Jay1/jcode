@@ -1,6 +1,7 @@
 import "../index.css";
 
 import {
+  AuthHttpRoutes,
   DEFAULT_SERVER_SETTINGS,
   EventId,
   MessageId,
@@ -8,6 +9,8 @@ import {
   ProjectId,
   ThreadId,
   TurnId,
+  type AuthSessionState,
+  type FirstRunWizardData,
   type OrchestrationEvent,
   type OrchestrationReadModel,
   type OrchestrationShellStreamEvent,
@@ -22,6 +25,7 @@ import {
 import { RouterProvider, createMemoryHistory } from "@tanstack/react-router";
 import { HttpResponse, http } from "msw";
 import { setupWorker } from "msw/browser";
+import { page } from "vitest/browser";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
@@ -40,6 +44,8 @@ const NOW_ISO = "2026-03-04T12:00:00.000Z";
 interface TestFixture {
   snapshot: OrchestrationReadModel;
   serverConfig: ServerConfig;
+  firstRunWizardData: FirstRunWizardData;
+  authSession: AuthSessionState;
   welcome: WsWelcomePayload;
 }
 
@@ -70,6 +76,41 @@ function createBaseServerConfig(): ServerConfig {
       },
     ],
     availableEditors: [],
+  };
+}
+
+function createFirstRunWizardData(
+  overrides?: Partial<Pick<FirstRunWizardData, "currentStep" | "state">>,
+): FirstRunWizardData {
+  return {
+    state: { completed: false, skipped: false, ...overrides?.state },
+    currentStep: overrides?.currentStep ?? "select-provider",
+    scanResults: {
+      scannedAt: NOW_ISO,
+      providers: [
+        {
+          provider: "opencode",
+          status: "not-installed",
+          hasCredentials: false,
+          hasBinary: false,
+          credentials: [],
+        },
+      ],
+    },
+  };
+}
+
+function createAuthenticatedSession(): AuthSessionState {
+  return {
+    authenticated: true,
+    auth: {
+      policy: "loopback-browser",
+      bootstrapMethods: ["one-time-token"],
+      sessionMethods: ["browser-session-cookie"],
+      sessionCookieName: "browser-session-cookie",
+    },
+    role: "owner",
+    sessionMethod: "browser-session-cookie",
   };
 }
 
@@ -146,6 +187,11 @@ function buildFixture(): TestFixture {
   return {
     snapshot: createSnapshot(),
     serverConfig: createBaseServerConfig(),
+    firstRunWizardData: createFirstRunWizardData({
+      currentStep: "complete",
+      state: { completed: true, skipped: false, completedAt: NOW_ISO },
+    }),
+    authSession: createAuthenticatedSession(),
     welcome: {
       cwd: "/repo/project",
       projectName: "Project",
@@ -236,6 +282,9 @@ function resolveWsRpc(tag: string, body?: unknown): unknown {
   if (tag === WS_METHODS.serverGetSettings) {
     return DEFAULT_SERVER_SETTINGS;
   }
+  if (tag === WS_METHODS.serverGetFirstRunWizardData) {
+    return fixture.firstRunWizardData;
+  }
   if (tag === WS_METHODS.serverGetEnvironment) {
     return {
       environmentId: "test-browser",
@@ -306,6 +355,7 @@ function resolveWsRpc(tag: string, body?: unknown): unknown {
 const worker = setupWorker(
   http.get("*/attachments/:attachmentId", () => new HttpResponse(null, { status: 204 })),
   http.get("*/api/project-favicon", () => new HttpResponse(null, { status: 204 })),
+  http.get(`*${AuthHttpRoutes.session.pathname}`, () => HttpResponse.json(fixture.authSession)),
 );
 
 function installTransportDriver(): void {
@@ -363,6 +413,7 @@ function installTransportDriver(): void {
 }
 
 async function mountApp(options?: {
+  initialPath?: string;
   routeThreadId?: ThreadId;
   waitForThreadId?: ThreadId | null;
 }): Promise<{ cleanup: () => Promise<void> }> {
@@ -376,7 +427,8 @@ async function mountApp(options?: {
   document.body.append(host);
 
   const routeThreadId = options?.routeThreadId ?? THREAD_ID;
-  const router = getRouter(createMemoryHistory({ initialEntries: [`/${routeThreadId}`] }));
+  const initialPath = options?.initialPath ?? `/${routeThreadId}`;
+  const router = getRouter(createMemoryHistory({ initialEntries: [initialPath] }));
   const screen = await render(<RouterProvider router={router} />, { container: host });
 
   await vi.waitFor(
@@ -432,8 +484,8 @@ describe("EventRouter scoped orchestration sync", () => {
     });
   });
 
-  afterAll(async () => {
-    await worker.stop();
+  afterAll(() => {
+    worker.stop();
   });
 
   beforeEach(() => {
@@ -489,6 +541,48 @@ describe("EventRouter scoped orchestration sync", () => {
     __resetWsNativeApiForTests();
     delete window.__T3_WS_TRANSPORT_TEST_DRIVER__;
     document.body.innerHTML = "";
+  });
+
+  it("shows the first-run wizard instead of the routed workspace when authenticated setup is incomplete", async () => {
+    fixture.firstRunWizardData = createFirstRunWizardData();
+    const mounted = await mountApp();
+
+    try {
+      await expect.element(page.getByText("Welcome to JCode")).toBeVisible();
+      await expect.element(page.getByText("Choose a provider")).toBeVisible();
+      expect(document.body.textContent).not.toContain("hello");
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("renders routed children normally when authenticated setup is complete", async () => {
+    fixture.firstRunWizardData = createFirstRunWizardData({
+      currentStep: "complete",
+      state: { completed: true, skipped: false, completedAt: NOW_ISO },
+    });
+    const mounted = await mountApp();
+
+    try {
+      await expect.element(page.getByText("hello")).toBeVisible();
+      expect(document.body.textContent).not.toContain("Welcome to JCode");
+      expect(document.body.textContent).not.toContain("Choose a provider");
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("does not block the pair route with the first-run wizard", async () => {
+    fixture.firstRunWizardData = createFirstRunWizardData();
+    const mounted = await mountApp({ initialPath: "/pair", waitForThreadId: null });
+
+    try {
+      await expect.element(page.getByRole("button", { name: "Pair client" })).toBeVisible();
+      expect(document.body.textContent).not.toContain("Welcome to JCode");
+      expect(document.body.textContent).not.toContain("Choose a provider");
+    } finally {
+      await mounted.cleanup();
+    }
   });
 
   it("drops duplicate thread events after the thread snapshot sequence advances", async () => {

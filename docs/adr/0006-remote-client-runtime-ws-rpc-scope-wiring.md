@@ -6,7 +6,7 @@
 
 ## Context
 
-ADR 0005 defined scoped capability tokens for remote clients and wired the first HTTP route guard. The WS RPC layer — where real-time cockpit interactions happen — has no scope checks. Any authenticated session (owner or client) can access all ~65 WS RPC methods, including thread reading, approval responding, git operations, terminal commands, and project writes.
+ADR 0008 defined scoped capability tokens for remote clients and wired the first HTTP route guard. The WS RPC layer — where real-time cockpit interactions happen — has no scope checks. Any authenticated session (owner or client) can access all ~65 WS RPC methods, including thread reading, approval responding, git operations, terminal commands, and project writes.
 
 Remote clients with scoped tokens should only access methods matching their granted scopes. Owner sessions must continue to bypass all checks with zero overhead.
 
@@ -28,7 +28,7 @@ Wire scope guards into the WS RPC layer using a hybrid approach:
    - `provider_status:read` → serverGetConfig, subscribeServerProviderStatuses
    - All other methods remain ungated (available to any authenticated session) or owner-only (enforced by `withCommandScope` rejecting non-owner clients for unrecognized command types)
 
-4. **Owner bypass**: Owner sessions have `scopes: undefined`. The `requireScope` guard (from ADR 0005) returns immediately for undefined scopes — zero overhead on owner WebSocket connections.
+4. **Owner bypass**: Owner sessions have `scopes: undefined`. The `requireScope` guard (from ADR 0008) returns immediately for undefined scopes — zero overhead on owner WebSocket connections.
 
 ## Scope Mapping Reference
 
@@ -45,4 +45,4 @@ Wire scope guards into the WS RPC layer using a hybrid approach:
 - Owner sessions are completely unaffected — all guards bypass when `scopes` is undefined.
 - Client sessions without the required scope get `WsRpcError` with a clear message.
 - Unguarded methods (git, terminal, project write, etc.) remain available to any authenticated session. Remote clients are always created with explicit scopes by an owner, so unguarded methods are not exposed to remote client sessions — only to owner sessions that connect without a scoped token.
-- Resource scoping (project/thread ID filtering) is deferred to a later slice; see [ADR 0005](0005-scoped-remote-client-capability-tokens.md) for the scoped token design.
+- Resource scoping (project/thread ID filtering) is deferred to a later slice; see [ADR 0008](0008-scoped-remote-client-capability-tokens.md) for the scoped token design.

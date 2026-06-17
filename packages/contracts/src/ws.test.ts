@@ -167,6 +167,62 @@ it.effect("accepts provider search skills catalog requests", () =>
   }),
 );
 
+it.effect("accepts managed sidecar health requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-managed-health-1",
+      body: {
+        _tag: WS_METHODS.providerGetManagedSidecarHealth,
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.providerGetManagedSidecarHealth);
+  }),
+);
+
+it.effect("accepts managed sidecar repair requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-managed-repair-1",
+      body: {
+        _tag: WS_METHODS.providerRepairManagedSidecar,
+        forceRedownload: true,
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.providerRepairManagedSidecar);
+    if (parsed.body._tag === WS_METHODS.providerRepairManagedSidecar) {
+      assert.strictEqual(parsed.body.forceRedownload, true);
+    }
+  }),
+);
+
+it.effect("accepts managed sidecar diagnostics requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-managed-diagnostics-1",
+      body: {
+        _tag: WS_METHODS.providerExportManagedSidecarDiagnostics,
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.providerExportManagedSidecarDiagnostics);
+  }),
+);
+
+it.effect("accepts first-run wizard skip requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-first-run-skip-1",
+      body: {
+        _tag: WS_METHODS.serverSkipFirstRun,
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.serverSkipFirstRun);
+  }),
+);
+
 it.effect("accepts typed websocket push envelopes with sequence", () =>
   Effect.gen(function* () {
     const parsed = yield* decode(WsResponse, {

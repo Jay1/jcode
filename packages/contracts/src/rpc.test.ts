@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { Schema } from "effect";
 
-import { WsRpcError, WsRpcGroup } from "./rpc";
+import {
+  WsServerSkipFirstRunRpc,
+  WsProviderExportManagedSidecarDiagnosticsRpc,
+  WsProviderGetManagedSidecarHealthRpc,
+  WsProviderRepairManagedSidecarRpc,
+  WsRpcError,
+  WsRpcGroup,
+} from "./rpc";
 
 describe("WS RPC contracts", () => {
   it("exports the additive Effect RPC group", () => {
@@ -10,6 +17,16 @@ describe("WS RPC contracts", () => {
 
   it("uses a schema-backed transport error", () => {
     expect(new WsRpcError({ message: "failed" }).message).toBe("failed");
+  });
+
+  it("exports managed sidecar provider RPCs", () => {
+    expect(WsProviderGetManagedSidecarHealthRpc).toBeDefined();
+    expect(WsProviderRepairManagedSidecarRpc).toBeDefined();
+    expect(WsProviderExportManagedSidecarDiagnosticsRpc).toBeDefined();
+  });
+
+  it("exports the first-run skip RPC", () => {
+    expect(WsServerSkipFirstRunRpc).toBeDefined();
   });
 
   it("preserves typed voice transcription auth-expired details", () => {

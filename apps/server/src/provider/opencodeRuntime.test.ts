@@ -46,6 +46,16 @@ describe("buildOpenCodeServerProcessEnv", () => {
     expect(env.HOME).toBe("/tmp/jcode-home");
     expect(env.XDG_CONFIG_HOME).toBe("/tmp/jcode-config");
   });
+
+  it("passes server auth credentials through environment variables", () => {
+    const env = buildOpenCodeServerProcessEnv({
+      serverPassword: "managed-secret",
+      baseEnv: { PATH: "/bin" },
+    });
+
+    expect(env.OPENCODE_SERVER_USERNAME).toBe("opencode");
+    expect(env.OPENCODE_SERVER_PASSWORD).toBe("managed-secret");
+  });
 });
 
 describe("parseOpenCodeCliModelsOutput", () => {

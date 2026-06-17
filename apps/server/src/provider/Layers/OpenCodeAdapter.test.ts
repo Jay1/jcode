@@ -1,16 +1,21 @@
-import { ThreadId } from "@jcode/contracts";
+import { ThreadId, type ManagedSidecarSnapshot } from "@jcode/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import type { Model, OpencodeClient, Part, Provider } from "@opencode-ai/sdk/v2";
 import { Effect, Fiber, Layer, Stream } from "effect";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 import { ServerConfig } from "../../config.ts";
+import { ServerSettingsService } from "../../serverSettings.ts";
 import {
   type OpenCodeCliModelDescriptor,
   OpenCodeRuntimeError,
   type OpenCodeInventory,
   type OpenCodeRuntimeShape,
 } from "../opencodeRuntime.ts";
+import {
+  ManagedSidecarLifecycle,
+  type ManagedSidecarLifecycleShape,
+} from "../managedRuntimeLifecycle.ts";
 import { OpenCodeAdapter } from "../Services/OpenCodeAdapter.ts";
 import {
   flattenOpenCodeCliModels,
@@ -114,8 +119,11 @@ function createMockOpenCodeRuntime(options?: {
     data: Array<{ info: Record<string, unknown>; parts: Part[] }>;
   }>;
   readonly session?: Record<string, unknown>;
+  readonly connectedServerExternal?: boolean;
 }) {
   const abortCalls: Array<{ sessionID: string }> = [];
+  const clientCalls: Array<Parameters<OpenCodeRuntimeShape["createOpenCodeSdkClient"]>[0]> = [];
+  const connectCalls: Array<Parameters<OpenCodeRuntimeShape["connectToOpenCodeServer"]>[0]> = [];
   const createCalls: Array<Record<string, unknown>> = [];
   const promptCalls: Array<Record<string, unknown>> = [];
   const emptySubscription = {
@@ -177,14 +185,19 @@ function createMockOpenCodeRuntime(options?: {
 
   const runtime: OpenCodeRuntimeShape = {
     startOpenCodeServerProcess: () => unexpectedOperation("startOpenCodeServerProcess"),
-    connectToOpenCodeServer: () =>
-      Effect.succeed({
-        url: "http://127.0.0.1:4099",
+    connectToOpenCodeServer: (input) => {
+      connectCalls.push(input);
+      return Effect.succeed({
+        url: input.serverUrl ?? "http://127.0.0.1:4099",
         exitCode: null,
-        external: true,
-      }),
+        external: options?.connectedServerExternal ?? true,
+      });
+    },
     runOpenCodeCommand: () => unexpectedOperation("runOpenCodeCommand"),
-    createOpenCodeSdkClient: () => client as unknown as OpencodeClient,
+    createOpenCodeSdkClient: (input) => {
+      clientCalls.push(input);
+      return client as unknown as OpencodeClient;
+    },
     loadOpenCodeInventory: () =>
       Effect.succeed(
         options?.inventory ?? {
@@ -197,7 +210,40 @@ function createMockOpenCodeRuntime(options?: {
     loadOpenCodeCredentialProviderIDs: () => Effect.succeed([]),
   };
 
-  return { abortCalls, createCalls, promptCalls, runtime };
+  return { abortCalls, clientCalls, connectCalls, createCalls, promptCalls, runtime };
+}
+
+const READY_MANAGED_SIDECAR: ManagedSidecarSnapshot = Object.freeze({
+  state: "ready",
+  binaryPath: "/managed/ready/opencode",
+  serverUrl: "http://127.0.0.1:45454",
+  serverPassword: "ready-sidecar-password",
+});
+
+function createMockManagedSidecarLifecycle(input?: {
+  readonly initialSnapshot?: ManagedSidecarSnapshot;
+  readonly readySnapshot?: ManagedSidecarSnapshot;
+}) {
+  let currentSnapshot: ManagedSidecarSnapshot = input?.initialSnapshot ?? READY_MANAGED_SIDECAR;
+  const readySnapshot = input?.readySnapshot ?? READY_MANAGED_SIDECAR;
+  const lifecycle = {
+    startManagedRuntime: vi.fn<ManagedSidecarLifecycleShape["startManagedRuntime"]>(() => {
+      currentSnapshot = readySnapshot;
+      return Effect.succeed(currentSnapshot);
+    }),
+    stopManagedRuntime: vi.fn<ManagedSidecarLifecycleShape["stopManagedRuntime"]>(() => {
+      currentSnapshot = { state: "idle" };
+      return Effect.succeed(currentSnapshot);
+    }),
+    restartManagedRuntime: vi.fn<ManagedSidecarLifecycleShape["restartManagedRuntime"]>(() => {
+      currentSnapshot = readySnapshot;
+      return Effect.succeed(currentSnapshot);
+    }),
+    getManagedRuntimeStatus: vi.fn<ManagedSidecarLifecycleShape["getManagedRuntimeStatus"]>(() =>
+      Effect.succeed(currentSnapshot),
+    ),
+  } satisfies ManagedSidecarLifecycleShape;
+  return lifecycle;
 }
 
 function createSubscribedEventQueue() {
@@ -1406,6 +1452,374 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
       },
       agent: "build",
       title: "JCode thread-model-pin",
+    });
+  });
+
+  it("starts idle managed profiles through the shared lifecycle before connecting the SDK client", async () => {
+    const runtime = createMockOpenCodeRuntime();
+    const lifecycle = createMockManagedSidecarLifecycle({ initialSnapshot: { state: "idle" } });
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-managed-lifecycle"),
+          runtimeMode: "full-access",
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerSettingsService.layerTest({
+                providers: {
+                  opencode: {
+                    activeRuntimeProfileId: "managed-opencode-sidecar",
+                    runtimeProfiles: [
+                      {
+                        id: "managed-opencode-sidecar",
+                        label: "Managed profile",
+                        provider: "opencode",
+                        mode: "managed",
+                        configMode: "generated",
+                        binaryPath: "/managed/profile/opencode",
+                        cwdDefault: "/managed/workspace",
+                        opencodeConfigDir: "/managed/config",
+                        opencodeDataDir: "/managed/data",
+                        skillRoots: [],
+                        pluginRoots: [],
+                        requiredCommands: [],
+                        requiredSkills: [],
+                        requiredPlugins: [],
+                        requiredAgents: [],
+                        requiredModels: [],
+                        requiredEnv: [],
+                        requirements: [],
+                        capabilityPolicy: "warn",
+                      },
+                    ],
+                  },
+                },
+              }),
+            ),
+            Layer.provideMerge(Layer.succeed(ManagedSidecarLifecycle, lifecycle)),
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(lifecycle.getManagedRuntimeStatus).toHaveBeenCalledOnce();
+    expect(lifecycle.startManagedRuntime).toHaveBeenCalledOnce();
+    expect(runtime.connectCalls).toHaveLength(0);
+    expect(runtime.clientCalls[0]).toMatchObject({
+      baseUrl: READY_MANAGED_SIDECAR.serverUrl,
+      directory: "/managed/workspace",
+      serverPassword: READY_MANAGED_SIDECAR.serverPassword,
+    });
+  });
+
+  it("uses ready managed lifecycle status without restarting the sidecar", async () => {
+    const runtime = createMockOpenCodeRuntime();
+    const lifecycle = createMockManagedSidecarLifecycle({
+      initialSnapshot: READY_MANAGED_SIDECAR,
+    });
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-managed-lifecycle-ready"),
+          runtimeMode: "full-access",
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerSettingsService.layerTest({
+                providers: {
+                  opencode: {
+                    activeRuntimeProfileId: "managed-opencode-sidecar",
+                    runtimeProfiles: [
+                      {
+                        id: "managed-opencode-sidecar",
+                        label: "Managed profile",
+                        provider: "opencode",
+                        mode: "managed",
+                        configMode: "generated",
+                        binaryPath: "/managed/profile/opencode",
+                        cwdDefault: "/managed/workspace",
+                        opencodeConfigDir: "/managed/config",
+                        opencodeDataDir: "/managed/data",
+                        skillRoots: [],
+                        pluginRoots: [],
+                        requiredCommands: [],
+                        requiredSkills: [],
+                        requiredPlugins: [],
+                        requiredAgents: [],
+                        requiredModels: [],
+                        requiredEnv: [],
+                        requirements: [],
+                        capabilityPolicy: "warn",
+                      },
+                    ],
+                  },
+                },
+              }),
+            ),
+            Layer.provideMerge(Layer.succeed(ManagedSidecarLifecycle, lifecycle)),
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(lifecycle.getManagedRuntimeStatus).toHaveBeenCalledOnce();
+    expect(lifecycle.startManagedRuntime).not.toHaveBeenCalled();
+    expect(runtime.connectCalls).toHaveLength(0);
+    expect(runtime.clientCalls[0]).toMatchObject({
+      baseUrl: READY_MANAGED_SIDECAR.serverUrl,
+      directory: "/managed/workspace",
+      serverPassword: READY_MANAGED_SIDECAR.serverPassword,
+    });
+  });
+
+  it("keeps external OpenCode profiles on their explicit server connection", async () => {
+    const runtime = createMockOpenCodeRuntime();
+    const lifecycle = createMockManagedSidecarLifecycle({ initialSnapshot: { state: "idle" } });
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-external-runtime-profile"),
+          runtimeMode: "full-access",
+          cwd: "/request/workspace",
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerSettingsService.layerTest({
+                providers: {
+                  opencode: {
+                    activeRuntimeProfileId: "external-profile",
+                    serverPassword: "external-password",
+                    runtimeProfiles: [
+                      {
+                        id: "external-profile",
+                        label: "External profile",
+                        provider: "opencode",
+                        mode: "external",
+                        configMode: "inherit",
+                        binaryPath: "/external/bin/opencode",
+                        serverUrl: "http://127.0.0.1:9999",
+                        cwdDefault: "/external/workspace",
+                        skillRoots: [],
+                        pluginRoots: [],
+                        requiredCommands: [],
+                        requiredSkills: [],
+                        requiredPlugins: [],
+                        requiredAgents: [],
+                        requiredModels: [],
+                        requiredEnv: [],
+                        requirements: [],
+                        capabilityPolicy: "warn",
+                      },
+                    ],
+                  },
+                },
+              }),
+            ),
+            Layer.provideMerge(Layer.succeed(ManagedSidecarLifecycle, lifecycle)),
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(lifecycle.getManagedRuntimeStatus).not.toHaveBeenCalled();
+    expect(lifecycle.startManagedRuntime).not.toHaveBeenCalled();
+    expect(runtime.connectCalls).toHaveLength(1);
+    expect(runtime.connectCalls[0]).toMatchObject({
+      serverUrl: "http://127.0.0.1:9999",
+      serverPassword: "external-password",
+      cwd: "/request/workspace",
+    });
+    expect(runtime.clientCalls[0]).toMatchObject({
+      baseUrl: "http://127.0.0.1:9999",
+      directory: "/request/workspace",
+      serverPassword: "external-password",
+    });
+    expect(runtime.createCalls[0]).toMatchObject({
+      title: "JCode thread-external-runtime-profile",
+    });
+  });
+
+  it("uses the active OpenCode runtime profile when starting sessions", async () => {
+    const runtime = createMockOpenCodeRuntime();
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-active-runtime-profile"),
+          runtimeMode: "full-access",
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerSettingsService.layerTest({
+                providers: {
+                  opencode: {
+                    activeRuntimeProfileId: "managed-profile",
+                    serverPassword: "profile-password",
+                    runtimeProfiles: [
+                      {
+                        id: "external-profile",
+                        label: "External profile",
+                        provider: "opencode",
+                        mode: "external",
+                        configMode: "inherit",
+                        binaryPath: "/external/bin/opencode",
+                        serverUrl: "http://127.0.0.1:9999",
+                        skillRoots: [],
+                        pluginRoots: [],
+                        requiredCommands: [],
+                        requiredSkills: [],
+                        requiredPlugins: [],
+                        requiredAgents: [],
+                        requiredModels: [],
+                        requiredEnv: [],
+                        requirements: [],
+                        capabilityPolicy: "warn",
+                      },
+                      {
+                        id: "managed-profile",
+                        label: "Managed profile",
+                        provider: "opencode",
+                        mode: "managed",
+                        configMode: "generated",
+                        binaryPath: "/managed/bin/opencode",
+                        cwdDefault: "/managed/workspace",
+                        opencodeConfigDir: "/managed/config",
+                        opencodeDataDir: "/managed/data",
+                        skillRoots: [],
+                        pluginRoots: [],
+                        requiredCommands: [],
+                        requiredSkills: [],
+                        requiredPlugins: [],
+                        requiredAgents: [],
+                        requiredModels: [],
+                        requiredEnv: [],
+                        requirements: [],
+                        capabilityPolicy: "warn",
+                      },
+                    ],
+                  },
+                },
+              }),
+            ),
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(runtime.connectCalls[0]).toMatchObject({
+      binaryPath: "/managed/bin/opencode",
+      configMode: "generated",
+      xdgConfigHome: "/managed/config",
+      extraEnv: { XDG_DATA_HOME: "/managed/data" },
+      cwd: "/managed/workspace",
+      serverPassword: "profile-password",
+    });
+    expect(runtime.connectCalls[0]).not.toHaveProperty("serverUrl");
+    expect(runtime.clientCalls[0]).toMatchObject({
+      directory: "/managed/workspace",
+      serverPassword: "profile-password",
+    });
+  });
+
+  it("passes the active managed runtime profile password to spawned SDK clients", async () => {
+    const runtime = createMockOpenCodeRuntime({ connectedServerExternal: false });
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-managed-spawned-password"),
+          runtimeMode: "full-access",
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerSettingsService.layerTest({
+                providers: {
+                  opencode: {
+                    activeRuntimeProfileId: "managed-profile",
+                    serverPassword: "profile-password",
+                    runtimeProfiles: [
+                      {
+                        id: "managed-profile",
+                        label: "Managed profile",
+                        provider: "opencode",
+                        mode: "managed",
+                        configMode: "generated",
+                        binaryPath: "/managed/bin/opencode",
+                        cwdDefault: "/managed/workspace",
+                        opencodeConfigDir: "/managed/config",
+                        opencodeDataDir: "/managed/data",
+                        skillRoots: [],
+                        pluginRoots: [],
+                        requiredCommands: [],
+                        requiredSkills: [],
+                        requiredPlugins: [],
+                        requiredAgents: [],
+                        requiredModels: [],
+                        requiredEnv: [],
+                        requirements: [],
+                        capabilityPolicy: "warn",
+                      },
+                    ],
+                  },
+                },
+              }),
+            ),
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(runtime.connectCalls[0]).toMatchObject({
+      serverPassword: "profile-password",
+    });
+    expect(runtime.clientCalls[0]).toMatchObject({
+      baseUrl: "http://127.0.0.1:4099",
+      directory: "/managed/workspace",
+      serverPassword: "profile-password",
     });
   });
 

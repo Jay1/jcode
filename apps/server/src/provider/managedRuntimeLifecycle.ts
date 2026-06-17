@@ -4,8 +4,10 @@
 // Depends on: managedRuntimeDownload, opencodeRuntime, @jcode/contracts, effect
 
 import type { ManagedSidecarSnapshot, ManagedSidecarStartRequest } from "@jcode/contracts";
-import { Data, Effect, Layer, Path, Ref, Scope, ServiceMap } from "effect";
+import { Data, Effect, Exit, FileSystem, Layer, Path, Ref, Scope, ServiceMap } from "effect";
+import * as Semaphore from "effect/Semaphore";
 import * as Crypto from "node:crypto";
+import { HttpClient } from "effect/unstable/http";
 
 import {
   downloadManagedRuntime,
@@ -34,6 +36,19 @@ export class ManagedSidecarError extends Data.TaggedError("ManagedSidecarError")
 // ---------------------------------------------------------------------------
 
 export const generateSidecarPassword = (): string => Crypto.randomBytes(24).toString("base64url");
+
+export function managedSidecarOpenCodeLaunchOptions(managedRuntimeDir: string): {
+  readonly xdgConfigHome: string;
+  readonly extraEnv: Readonly<Record<string, string>>;
+} {
+  const root = managedRuntimeDir.replace(/[\\/]+$/, "");
+  return {
+    xdgConfigHome: `${root}/config`,
+    extraEnv: {
+      XDG_DATA_HOME: `${root}/data`,
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Idle snapshot
@@ -69,39 +84,80 @@ export interface ManagedSidecarLifecycleShape {
 
 export const makeManagedSidecarLifecycle = Effect.gen(function* () {
   const stateRef = yield* Ref.make<ManagedSidecarSnapshot>(IDLE_SNAPSHOT);
+  const runningProcessScopeRef = yield* Ref.make<Scope.Scope | null>(null);
+  const lifecycleMutex = yield* Semaphore.make(1);
+  const fileSystem = yield* FileSystem.FileSystem;
+  const pathService = yield* Path.Path;
+  const httpClient = yield* HttpClient.HttpClient;
   const runtime = yield* OpenCodeRuntime;
 
+  const omitReadyOnlyFieldsWhenNotReady = (
+    snapshot: ManagedSidecarSnapshot,
+  ): ManagedSidecarSnapshot => {
+    if (snapshot.state === "ready") {
+      return snapshot;
+    }
+
+    const {
+      serverUrl: _serverUrl,
+      serverPassword: _serverPassword,
+      ...transientSnapshot
+    } = snapshot;
+    return transientSnapshot;
+  };
+
+  const provideManagedRuntimeServices = <A, E>(
+    effect: Effect.Effect<A, E, FileSystem.FileSystem | Path.Path | HttpClient.HttpClient>,
+  ): Effect.Effect<A, E> =>
+    effect.pipe(
+      Effect.provideService(FileSystem.FileSystem, fileSystem),
+      Effect.provideService(Path.Path, pathService),
+      Effect.provideService(HttpClient.HttpClient, httpClient),
+    );
+
   const updateState = (patch: Partial<ManagedSidecarSnapshot>) =>
-    Ref.update(stateRef, (prev) => ({ ...prev, ...patch }));
+    Ref.update(stateRef, (prev) => omitReadyOnlyFieldsWhenNotReady({ ...prev, ...patch }));
 
   const getSnapshot = () => Ref.get(stateRef);
+
+  const closeRunningProcessScope = Effect.gen(function* () {
+    const runningProcessScope = yield* Ref.get(runningProcessScopeRef);
+    if (runningProcessScope === null) {
+      return;
+    }
+    yield* Ref.set(runningProcessScopeRef, null);
+    yield* Scope.close(runningProcessScope, Exit.void);
+  });
+
+  yield* Effect.addFinalizer(() => closeRunningProcessScope);
 
   // -----------------------------------------------------------------------
   // startManagedRuntime
   // -----------------------------------------------------------------------
 
-  const startManagedRuntime = (request?: ManagedSidecarStartRequest) =>
+  const startManagedRuntimeUnlocked = (request?: ManagedSidecarStartRequest) =>
     Effect.gen(function* () {
       const forceDownload = request?.forceDownload ?? false;
 
+      yield* closeRunningProcessScope;
       yield* updateState({ state: "downloading" });
 
-      const validation = yield* verifyManagedRuntimeBinary().pipe(
-        Effect.catchTag("PlatformError", (err) =>
-          Effect.fail(
+      const validation = yield* provideManagedRuntimeServices(verifyManagedRuntimeBinary()).pipe(
+        Effect.mapError(
+          (err) =>
             new ManagedSidecarError({
               stage: "verify",
               message: `Failed to verify managed runtime binary: ${String(err)}`,
               cause: err,
             }),
-          ),
         ),
       );
 
+      const path = pathService;
       let binaryPath: string;
 
       if (!validation.exists || !validation.valid || forceDownload) {
-        const downloadResult = yield* downloadManagedRuntime.pipe(
+        const downloadResult = yield* provideManagedRuntimeServices(downloadManagedRuntime).pipe(
           Effect.mapError(
             (err) =>
               new ManagedSidecarError({
@@ -113,7 +169,7 @@ export const makeManagedSidecarLifecycle = Effect.gen(function* () {
         );
         binaryPath = downloadResult.binaryPath;
       } else {
-        const runtimeDir = yield* resolveManagedRuntimeDir.pipe(
+        const runtimeDir = yield* provideManagedRuntimeServices(resolveManagedRuntimeDir).pipe(
           Effect.mapError(
             (err) =>
               new ManagedSidecarError({
@@ -123,7 +179,6 @@ export const makeManagedSidecarLifecycle = Effect.gen(function* () {
               }),
           ),
         );
-        const path = yield* Path.Path;
         const binaryName = process.platform === "win32" ? "opencode.exe" : "opencode";
         binaryPath = path.join(runtimeDir, binaryName);
       }
@@ -131,23 +186,36 @@ export const makeManagedSidecarLifecycle = Effect.gen(function* () {
       yield* updateState({ state: "starting", binaryPath });
 
       const password = generateSidecarPassword();
+      const processScope = yield* Scope.make();
 
-      const server: OpenCodeServerProcess = yield* runtime
-        .startOpenCodeServerProcess({
-          binaryPath,
-          cliSpec: OPENCODE_CLI_SPEC,
-          configMode: "generated",
-        })
-        .pipe(
-          Effect.mapError(
-            (err) =>
-              new ManagedSidecarError({
-                stage: "spawn",
-                message: `Failed to start managed sidecar: ${err.detail}`,
-                cause: err,
-              }),
+      const server: OpenCodeServerProcess = yield* Scope.provide(
+        runtime
+          .startOpenCodeServerProcess({
+            binaryPath,
+            cliSpec: OPENCODE_CLI_SPEC,
+            configMode: "generated",
+            serverPassword: password,
+            ...managedSidecarOpenCodeLaunchOptions(path.dirname(binaryPath)),
+          })
+          .pipe(
+            Effect.mapError(
+              (err) =>
+                new ManagedSidecarError({
+                  stage: "spawn",
+                  message: `Failed to start managed sidecar: ${err.detail}`,
+                  cause: err,
+                }),
+            ),
           ),
-        );
+        processScope,
+      ).pipe(
+        Effect.catch((err) =>
+          Effect.gen(function* () {
+            yield* Scope.close(processScope, Exit.void);
+            return yield* Effect.fail(err);
+          }),
+        ),
+      );
 
       const snapshot: ManagedSidecarSnapshot = {
         state: "ready",
@@ -157,6 +225,7 @@ export const makeManagedSidecarLifecycle = Effect.gen(function* () {
       };
 
       yield* Ref.set(stateRef, snapshot);
+      yield* Ref.set(runningProcessScopeRef, processScope);
 
       return snapshot;
     }).pipe(
@@ -171,11 +240,17 @@ export const makeManagedSidecarLifecycle = Effect.gen(function* () {
       ),
     );
 
+  const startManagedRuntime = (request?: ManagedSidecarStartRequest) =>
+    lifecycleMutex.withPermits(1)(startManagedRuntimeUnlocked(request));
+
   // -----------------------------------------------------------------------
   // stopManagedRuntime
   // -----------------------------------------------------------------------
 
-  const stopManagedRuntime = (): Effect.Effect<ManagedSidecarSnapshot, ManagedSidecarError> =>
+  const stopManagedRuntimeUnlocked = (): Effect.Effect<
+    ManagedSidecarSnapshot,
+    ManagedSidecarError
+  > =>
     Effect.gen(function* () {
       const current = yield* getSnapshot();
 
@@ -184,21 +259,27 @@ export const makeManagedSidecarLifecycle = Effect.gen(function* () {
       }
 
       yield* updateState({ state: "stopping" });
+      yield* closeRunningProcessScope;
 
       yield* Ref.set(stateRef, IDLE_SNAPSHOT);
 
       return IDLE_SNAPSHOT;
     });
 
+  const stopManagedRuntime = (): Effect.Effect<ManagedSidecarSnapshot, ManagedSidecarError> =>
+    lifecycleMutex.withPermits(1)(stopManagedRuntimeUnlocked());
+
   // -----------------------------------------------------------------------
   // restartManagedRuntime
   // -----------------------------------------------------------------------
 
   const restartManagedRuntime = () =>
-    Effect.gen(function* () {
-      yield* stopManagedRuntime();
-      return yield* startManagedRuntime();
-    });
+    lifecycleMutex.withPermits(1)(
+      Effect.gen(function* () {
+        yield* stopManagedRuntimeUnlocked();
+        return yield* startManagedRuntimeUnlocked();
+      }),
+    );
 
   // -----------------------------------------------------------------------
   // getManagedRuntimeStatus
@@ -211,7 +292,7 @@ export const makeManagedSidecarLifecycle = Effect.gen(function* () {
     stopManagedRuntime,
     restartManagedRuntime,
     getManagedRuntimeStatus,
-  };
+  } satisfies ManagedSidecarLifecycleShape;
 });
 
 // ---------------------------------------------------------------------------

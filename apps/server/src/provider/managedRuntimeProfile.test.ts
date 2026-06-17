@@ -19,6 +19,10 @@ const READY_SNAPSHOT: ManagedSidecarSnapshot = Object.freeze({
   serverPassword: "s3cret",
 });
 
+const IDLE_SNAPSHOT: ManagedSidecarSnapshot = Object.freeze({
+  state: "idle",
+});
+
 const EMPTY_SETTINGS: ServerSettings = DEFAULT_SERVER_SETTINGS;
 
 function settingsWithProfiles(
@@ -45,6 +49,7 @@ describe("autoCreateManagedRuntimeProfile", () => {
     const result = autoCreateManagedRuntimeProfile({
       sidecarSnapshot: READY_SNAPSHOT,
       existingConfigDetected: false,
+      managedRuntimeDir: "/var/lib/jcode/managed-opencode",
       settings: EMPTY_SETTINGS,
     });
 
@@ -56,6 +61,8 @@ describe("autoCreateManagedRuntimeProfile", () => {
     expect(result.profile.configMode).toBe("generated");
     expect(result.profile.binaryPath).toBe("/opt/jcode/opencode-sidecar");
     expect(result.profile.serverUrl).toBe("http://127.0.0.1:42001");
+    expect(result.profile.opencodeConfigDir).toBe("/var/lib/jcode/managed-opencode/config");
+    expect(result.profile.opencodeDataDir).toBe("/var/lib/jcode/managed-opencode/data");
     expect(result.profile.capabilityPolicy).toBe("warn");
     expect(result.activeProfileId).toBe("managed-opencode-sidecar");
   });
@@ -115,10 +122,34 @@ describe("autoCreateManagedRuntimeProfile", () => {
     const result = autoCreateManagedRuntimeProfile({
       sidecarSnapshot: READY_SNAPSHOT,
       existingConfigDetected: false,
+      managedRuntimeDir: "/var/lib/jcode/managed-opencode",
       settings: EMPTY_SETTINGS,
     });
 
     expect(result.profile.configMode).toBe("generated");
+  });
+
+  it("sets isolated OpenCode config and data directories for managed sidecar", () => {
+    const result = autoCreateManagedRuntimeProfile({
+      sidecarSnapshot: READY_SNAPSHOT,
+      existingConfigDetected: false,
+      managedRuntimeDir: "/var/lib/jcode/managed-opencode",
+      settings: EMPTY_SETTINGS,
+    });
+
+    expect(result.profile.opencodeConfigDir).toBe("/var/lib/jcode/managed-opencode/config");
+    expect(result.profile.opencodeDataDir).toBe("/var/lib/jcode/managed-opencode/data");
+  });
+
+  it("uses the managed runtime binary path when clean discovery has no binary", () => {
+    const result = autoCreateManagedRuntimeProfile({
+      sidecarSnapshot: IDLE_SNAPSHOT,
+      existingConfigDetected: false,
+      managedRuntimeDir: "/var/lib/jcode/managed-opencode",
+      settings: EMPTY_SETTINGS,
+    });
+
+    expect(result.profile.binaryPath).toBe("/var/lib/jcode/managed-opencode/opencode");
   });
 
   it("sets configMode to inherit for external with existing config", () => {

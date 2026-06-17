@@ -1,5 +1,6 @@
 import type { OpenCodeRuntimeProfile, OpenCodeRuntimeConfigMode } from "@jcode/contracts";
 import type { ServerSettings } from "@jcode/contracts";
+import * as Crypto from "node:crypto";
 
 import type { OpenCodeCompatibleCliSpec } from "./opencodeRuntime.ts";
 
@@ -17,6 +18,7 @@ export interface OpenCodeRuntimeConnectionConfig {
   readonly configMode: OpenCodeRuntimeConfigMode;
   readonly homePath?: string;
   readonly xdgConfigHome?: string;
+  readonly extraEnv?: Readonly<Record<string, string>>;
   readonly cwd?: string;
 }
 
@@ -30,6 +32,10 @@ function fallbackBinaryPath(
   defaultBinaryPath: string,
 ): string {
   return trimToNull(settings.binaryPath) ?? defaultBinaryPath;
+}
+
+function generateManagedRuntimePassword(): string {
+  return Crypto.randomBytes(24).toString("base64url");
 }
 
 export function resolveOpenCodeRuntimeProfile(input: {
@@ -113,6 +119,11 @@ export function resolveOpenCodeRuntimeConnectionConfig(input: {
   const binaryPath = trimToNull(profile.binaryPath) ?? input.defaultBinaryPath;
   const cwd = trimToNull(input.cwd) ?? trimToNull(profile.cwdDefault);
   const serverUrl = trimToNull(profile.serverUrl);
+  const serverPassword =
+    trimToNull(input.resolved.serverPassword) ??
+    (profile.mode === "managed" ? generateManagedRuntimePassword() : null);
+  const xdgConfigHome = trimToNull(profile.opencodeConfigDir) ?? trimToNull(profile.configHome);
+  const xdgDataHome = trimToNull(profile.opencodeDataDir);
   return {
     binaryPath,
     cliSpec: input.cliSpec,
@@ -121,10 +132,11 @@ export function resolveOpenCodeRuntimeConnectionConfig(input: {
         ? { serverUrl }
         : {}
       : {}),
-    ...(input.resolved.serverPassword ? { serverPassword: input.resolved.serverPassword } : {}),
+    ...(serverPassword ? { serverPassword } : {}),
     configMode: profile.configMode,
     ...(profile.homePath ? { homePath: profile.homePath } : {}),
-    ...(profile.configHome ? { xdgConfigHome: profile.configHome } : {}),
+    ...(xdgConfigHome ? { xdgConfigHome } : {}),
+    ...(xdgDataHome ? { extraEnv: { XDG_DATA_HOME: xdgDataHome } } : {}),
     ...(cwd ? { cwd } : {}),
   };
 }

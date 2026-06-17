@@ -30,7 +30,7 @@ The first remote client runtime capability set should be observe-and-approve: vi
 
 Remote clients should authenticate through owner-issued capability tokens with explicit scopes, such as reading selected thread state, responding to approvals, or answering user-input requests. Remote client runtime work must not reuse the dev automation access grant, which is limited to trusted loopback browser automation.
 
-ADR 0005 (Accepted) defines the scope model: four v1 capability scopes (`thread:read`, `approval:respond`, `user_input:respond`, `provider_status:read`), optional resource scoping by project or thread ID, scopes stored directly on `AuthClientSession` and `AuthPairingLink` (not a separate table or JWT claims), owner sessions implicitly hold all scopes, and scope checks use the `requireScope` guard function. The first guarded route is `/api/auth/clients` (requires `provider_status:read`).
+ADR 0008 (Accepted) defines the scoped remote-client capability token model: four v1 capability scopes (`thread:read`, `approval:respond`, `user_input:respond`, `provider_status:read`), optional resource scoping by project or thread ID, scopes stored directly on `AuthClientSession` and `AuthPairingLink` (not a separate table or JWT claims), owner sessions implicitly hold all scopes, and scope checks use the `requireScope` guard function. ADR 0006 wires those scopes into WS RPC guards.
 
 The scoped remote client auth model changes the Server Auth Boundary and should be captured in an ADR before implementation begins.
 
@@ -212,7 +212,7 @@ ADR 0007 (Proposed) defines the design-only first slice. Key decisions:
 - Project-to-backend routing is path-based (WSL `\\wsl$\` paths detected at project-open time) with user override in `.jcode/settings.json`. Threads inherit their project's backend.
 - Backend lifecycle: unknown → probing → healthy → degraded → removed, with periodic health checks for WSL backends via `wsl.exe`.
 - Transport abstraction: `BackendTransport` interface with `LocalTransport` (direct spawn) and `WslTransport` (spawn via `wsl.exe -d <distro>`). Path translation via `BackendPathResolver`.
-- Auth bootstrap uses the existing server auth model (ADR 0005 scopes apply at server level, not per-backend). WSL requires no separate auth — `wsl.exe` inherits the Windows user.
+- Auth bootstrap uses the existing server auth model (ADR 0008 capability scopes apply at server level, not per-backend). WSL requires no separate auth — `wsl.exe` inherits the Windows user.
 - Failure states: degraded backends trigger reconnect banners, terminated distributions show migration prompts, no global "WSL mode" toggle.
 
 ### Project Identity

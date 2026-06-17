@@ -15,7 +15,7 @@
 import { Schema } from "effect";
 
 import { IsoDateTime, NonNegativeInt } from "./baseSchemas";
-import { ManagedSidecarSnapshot, ManagedSidecarState } from "./managedRuntimeLifecycle";
+import { ManagedSidecarState } from "./managedRuntimeLifecycle";
 
 // ---------------------------------------------------------------------------
 // Health status
@@ -68,6 +68,14 @@ export type ManagedSidecarRepairResult = typeof ManagedSidecarRepairResult.Type;
 // Diagnostics
 // ---------------------------------------------------------------------------
 
+export const ManagedSidecarDiagnosticsSnapshot = Schema.Struct({
+  state: ManagedSidecarState,
+  binaryPath: Schema.optional(Schema.String),
+  serverUrl: Schema.optional(Schema.String),
+  error: Schema.optional(Schema.String),
+}).annotate({ parseOptions: { onExcessProperty: "error" } });
+export type ManagedSidecarDiagnosticsSnapshot = typeof ManagedSidecarDiagnosticsSnapshot.Type;
+
 export const ManagedSidecarDiagnostics = Schema.Struct({
   generatedAt: IsoDateTime,
   health: ManagedSidecarHealthCheck,
@@ -76,7 +84,8 @@ export const ManagedSidecarDiagnostics = Schema.Struct({
     arch: Schema.String,
     nodeVersion: Schema.String,
   }),
-  binaryVersion: Schema.optional(Schema.String),
-  sidecarSnapshot: ManagedSidecarSnapshot,
+  binaryVersion: Schema.String,
+  logs: Schema.Array(Schema.String),
+  sidecarSnapshot: ManagedSidecarDiagnosticsSnapshot,
 });
 export type ManagedSidecarDiagnostics = typeof ManagedSidecarDiagnostics.Type;
