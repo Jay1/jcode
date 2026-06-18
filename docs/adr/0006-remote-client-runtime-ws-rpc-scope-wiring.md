@@ -26,7 +26,7 @@ Wire scope guards into the WS RPC layer using a hybrid approach:
    - `approval:respond` → dispatchCommand with type `thread.approval.respond`
    - `user_input:respond` → dispatchCommand with type `thread.user-input.respond`
    - `provider_status:read` → serverGetConfig, subscribeServerProviderStatuses
-   - All other methods remain ungated (available to any authenticated session) or owner-only (enforced by `withCommandScope` rejecting non-owner clients for unrecognized command types)
+   - All other methods remain owner-only, either through explicit owner guards or `withCommandScope` rejecting non-owner clients for unrecognized command types
 
 4. **Owner bypass**: Owner sessions have `scopes: undefined`. The `requireScope` guard (from ADR 0008) returns immediately for undefined scopes — zero overhead on owner WebSocket connections.
 
@@ -44,5 +44,5 @@ Wire scope guards into the WS RPC layer using a hybrid approach:
 - Remote clients with appropriate scopes can observe thread state, respond to approvals/user-input, and read provider status via WebSocket — enabling mobile/remote approval companions.
 - Owner sessions are completely unaffected — all guards bypass when `scopes` is undefined.
 - Client sessions without the required scope get `WsRpcError` with a clear message.
-- Unguarded methods (git, terminal, project write, etc.) remain available to any authenticated session. Remote clients are always created with explicit scopes by an owner, so unguarded methods are not exposed to remote client sessions — only to owner sessions that connect without a scoped token.
+- Methods outside the explicit v1 scopes remain owner-only. Remote clients with scoped tokens can use only methods guarded by their granted scopes.
 - Resource scoping (project/thread ID filtering) is deferred to a later slice; see [ADR 0008](0008-scoped-remote-client-capability-tokens.md) for the scoped token design.

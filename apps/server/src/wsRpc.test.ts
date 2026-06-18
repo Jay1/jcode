@@ -248,13 +248,20 @@ describe("managed sidecar wsRpc adapters", () => {
   it("keeps privileged WS RPC handlers owner-only for scoped client sessions", async () => {
     await expectWsRpcHandlerOwnerGuarded("ORCHESTRATION_WS_METHODS.importThread");
     await expectWsRpcHandlerOwnerGuarded("ORCHESTRATION_WS_METHODS.repairState");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.projectsListDirectories");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.projectsSearchEntries");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.projectsSearchLocalEntries");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.projectsWriteFile");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.filesystemBrowse");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.shellOpenInEditor");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitStatus");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitReadWorkingTreeDiff");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitSummarizeDiff");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitPull");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitRunStackedAction");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitResolvePullRequest");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitPreparePullRequestThread");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitListBranches");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitCreateWorktree");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitCreateDetachedWorktree");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitRemoveWorktree");
@@ -262,6 +269,7 @@ describe("managed sidecar wsRpc adapters", () => {
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitCheckout");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitStashAndCheckout");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitStashDrop");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitStashInfo");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitRemoveIndexLock");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitInit");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.gitHandoffThread");
@@ -272,12 +280,23 @@ describe("managed sidecar wsRpc adapters", () => {
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.terminalRestart");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.terminalClose");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.subscribeTerminalEvents");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.serverGetEnvironment");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.serverListWorktrees");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.subscribeServerLifecycle");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.serverUpdateProvider");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.serverTranscribeVoice");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerGetComposerCapabilities");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerCompactThread");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerListCommands");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerListSkills");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerInstallSkill");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerUninstallSkill");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerSetSkillEnabled");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerSearchSkillsCatalog");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerListPlugins");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerReadPlugin");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerListModels");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerListAgents");
   });
 
   it("keeps observable WS RPC handlers limited to explicit scopes", async () => {

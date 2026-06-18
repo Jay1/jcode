@@ -776,12 +776,18 @@ export const makeWsRpcLayer = () =>
           withScopeStream("thread:read", orchestrationEngine.streamDomainEvents),
 
         [WS_METHODS.projectsListDirectories]: (input) =>
-          rpcEffect(
-            workspaceEntries.listDirectories(input),
-            "Failed to list workspace directories",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              workspaceEntries.listDirectories(input),
+              "Failed to list workspace directories",
+            ),
           ),
         [WS_METHODS.projectsSearchEntries]: (input) =>
-          rpcEffect(workspaceEntries.search(input), "Failed to search workspace entries"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(workspaceEntries.search(input), "Failed to search workspace entries"),
+          ),
         [WS_METHODS.projectsSearchLocalEntries]: (input) =>
           withCurrentSession(
             requireOwnerWsRpcAccess,
@@ -804,11 +810,20 @@ export const makeWsRpcLayer = () =>
           ),
 
         [WS_METHODS.gitStatus]: (input) =>
-          rpcEffect(gitStatusBroadcaster.getStatus(input), "Failed to read git status"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(gitStatusBroadcaster.getStatus(input), "Failed to read git status"),
+          ),
         [WS_METHODS.gitReadWorkingTreeDiff]: (input) =>
-          rpcEffect(gitManager.readWorkingTreeDiff(input), "Failed to read working tree diff"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(gitManager.readWorkingTreeDiff(input), "Failed to read working tree diff"),
+          ),
         [WS_METHODS.gitSummarizeDiff]: (input) =>
-          rpcEffect(gitManager.summarizeDiff(input), "Failed to summarize diff"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(gitManager.summarizeDiff(input), "Failed to summarize diff"),
+          ),
         [WS_METHODS.gitPull]: (input) =>
           withCurrentSession(
             requireOwnerWsRpcAccess,
@@ -839,7 +854,10 @@ export const makeWsRpcLayer = () =>
             ),
           ),
         [WS_METHODS.gitResolvePullRequest]: (input) =>
-          rpcEffect(gitManager.resolvePullRequest(input), "Failed to resolve pull request"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(gitManager.resolvePullRequest(input), "Failed to resolve pull request"),
+          ),
         [WS_METHODS.gitPreparePullRequestThread]: (input) =>
           withCurrentSession(
             requireOwnerWsRpcAccess,
@@ -851,7 +869,10 @@ export const makeWsRpcLayer = () =>
             ),
           ),
         [WS_METHODS.gitListBranches]: (input) =>
-          rpcEffect(git.listBranches(input), "Failed to list branches"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(git.listBranches(input), "Failed to list branches"),
+          ),
         [WS_METHODS.gitCreateWorktree]: (input) =>
           withCurrentSession(
             requireOwnerWsRpcAccess,
@@ -913,7 +934,10 @@ export const makeWsRpcLayer = () =>
             ),
           ),
         [WS_METHODS.gitStashInfo]: (input) =>
-          rpcEffect(git.stashInfo(input), "Failed to read stash"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(git.stashInfo(input), "Failed to read stash"),
+          ),
         [WS_METHODS.gitRemoveIndexLock]: (input) =>
           withCurrentSession(
             requireOwnerWsRpcAccess,
@@ -985,7 +1009,10 @@ export const makeWsRpcLayer = () =>
             rpcEffect(loadServerConfig, "Failed to load server config"),
           ),
         [WS_METHODS.serverGetEnvironment]: () =>
-          rpcEffect(serverEnvironment.getDescriptor, "Failed to load server environment"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(serverEnvironment.getDescriptor, "Failed to load server environment"),
+          ),
         [WS_METHODS.serverGetSettings]: () =>
           withCurrentSession(
             requireOwnerWsRpcAccess,
@@ -1036,7 +1063,8 @@ export const makeWsRpcLayer = () =>
                     }),
             ),
           ),
-        [WS_METHODS.serverListWorktrees]: () => Effect.succeed({ worktrees: [] }),
+        [WS_METHODS.serverListWorktrees]: () =>
+          withCurrentSession(requireOwnerWsRpcAccess, Effect.succeed({ worktrees: [] })),
         [WS_METHODS.serverGetProviderUsageSnapshot]: (input) =>
           withScope(
             "provider_status:read",
@@ -1222,25 +1250,28 @@ export const makeWsRpcLayer = () =>
             ),
           ),
         [WS_METHODS.subscribeServerLifecycle]: () =>
-          Stream.concat(
-            Stream.fromEffect(
-              lifecycleEvents.snapshot.pipe(
-                Effect.map((snapshot) =>
-                  Array.from(snapshot.events).toSorted(
-                    (left, right) => left.sequence - right.sequence,
+          withCurrentSessionStream(
+            requireOwnerWsRpcAccess,
+            Stream.concat(
+              Stream.fromEffect(
+                lifecycleEvents.snapshot.pipe(
+                  Effect.map((snapshot) =>
+                    Array.from(snapshot.events).toSorted(
+                      (left, right) => left.sequence - right.sequence,
+                    ),
                   ),
                 ),
+              ).pipe(Stream.flatMap(Stream.fromIterable)),
+              lifecycleEvents.stream,
+            ).pipe(
+              Stream.map(
+                (event): ServerLifecycleStreamEvent =>
+                  event.type === "welcome"
+                    ? { type: "welcome", payload: event.payload }
+                    : event.type === "ready"
+                      ? { type: "ready", payload: event.payload }
+                      : { type: "maintenance", payload: event.payload },
               ),
-            ).pipe(Stream.flatMap(Stream.fromIterable)),
-            lifecycleEvents.stream,
-          ).pipe(
-            Stream.map(
-              (event): ServerLifecycleStreamEvent =>
-                event.type === "welcome"
-                  ? { type: "welcome", payload: event.payload }
-                  : event.type === "ready"
-                    ? { type: "ready", payload: event.payload }
-                    : { type: "maintenance", payload: event.payload },
             ),
           ),
         [WS_METHODS.subscribeServerConfig]: () =>
@@ -1369,9 +1400,12 @@ export const makeWsRpcLayer = () =>
           ),
 
         [WS_METHODS.providerGetComposerCapabilities]: (input) =>
-          rpcEffect(
-            providerDiscoveryService.getComposerCapabilities(input),
-            "Failed to get composer capabilities",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              providerDiscoveryService.getComposerCapabilities(input),
+              "Failed to get composer capabilities",
+            ),
           ),
         [WS_METHODS.providerGetRuntimeHealth]: (input) =>
           withCurrentSession(
@@ -1418,9 +1452,15 @@ export const makeWsRpcLayer = () =>
             rpcEffect(providerService.compactThread(input), "Failed to compact thread"),
           ),
         [WS_METHODS.providerListCommands]: (input) =>
-          rpcEffect(providerDiscoveryService.listCommands(input), "Failed to list commands"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.listCommands(input), "Failed to list commands"),
+          ),
         [WS_METHODS.providerListSkills]: (input) =>
-          rpcEffect(providerDiscoveryService.listSkills(input), "Failed to list skills"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.listSkills(input), "Failed to list skills"),
+          ),
         [WS_METHODS.providerInstallSkill]: (input) =>
           withCurrentSession(
             requireOwnerWsRpcAccess,
@@ -1440,18 +1480,33 @@ export const makeWsRpcLayer = () =>
             ),
           ),
         [WS_METHODS.providerSearchSkillsCatalog]: (input) =>
-          rpcEffect(
-            providerDiscoveryService.searchSkillsCatalog(input),
-            "Failed to search skills catalog",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              providerDiscoveryService.searchSkillsCatalog(input),
+              "Failed to search skills catalog",
+            ),
           ),
         [WS_METHODS.providerListPlugins]: (input) =>
-          rpcEffect(providerDiscoveryService.listPlugins(input), "Failed to list plugins"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.listPlugins(input), "Failed to list plugins"),
+          ),
         [WS_METHODS.providerReadPlugin]: (input) =>
-          rpcEffect(providerDiscoveryService.readPlugin(input), "Failed to read plugin"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.readPlugin(input), "Failed to read plugin"),
+          ),
         [WS_METHODS.providerListModels]: (input) =>
-          rpcEffect(providerDiscoveryService.listModels(input), "Failed to list models"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.listModels(input), "Failed to list models"),
+          ),
         [WS_METHODS.providerListAgents]: (input) =>
-          rpcEffect(providerDiscoveryService.listAgents(input), "Failed to list agents"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.listAgents(input), "Failed to list agents"),
+          ),
       });
     }),
   );
