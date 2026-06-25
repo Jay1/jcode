@@ -66,6 +66,9 @@ import {
   ProviderGetComposerCapabilitiesInput,
   ProviderComposerCapabilities,
   ProviderGetRuntimeHealthInput,
+  ProviderRuntimeBootstrapInput,
+  ProviderRuntimeBootstrapSnapshot,
+  ProviderRuntimeBootstrapStatusInput,
   ProviderListAgentsInput,
   ProviderListAgentsResult,
   ProviderListCommandsInput,
@@ -612,6 +615,15 @@ export const WsProviderGetManagedSidecarHealthRpc = Rpc.make(
   },
 );
 
+export const WsProviderGetRuntimeBootstrapStatusRpc = Rpc.make(
+  WS_METHODS.providerGetRuntimeBootstrapStatus,
+  {
+    payload: ProviderRuntimeBootstrapStatusInput,
+    success: ProviderRuntimeBootstrapSnapshot,
+    error: WsRpcError,
+  },
+);
+
 export const WsProviderRepairManagedSidecarRpc = Rpc.make(WS_METHODS.providerRepairManagedSidecar, {
   payload: ManagedSidecarRepairRequest,
   success: ManagedSidecarRepairResult,
@@ -626,6 +638,18 @@ export const WsProviderExportManagedSidecarDiagnosticsRpc = Rpc.make(
     error: WsRpcError,
   },
 );
+
+export const WsProviderBootstrapRuntimeRpc = Rpc.make(WS_METHODS.providerBootstrapRuntime, {
+  payload: ProviderRuntimeBootstrapInput,
+  success: ProviderRuntimeBootstrapSnapshot,
+  error: WsRpcError,
+});
+
+export const WsProviderRepairRuntimeRpc = Rpc.make(WS_METHODS.providerRepairRuntime, {
+  payload: ProviderRuntimeBootstrapInput,
+  success: ProviderRuntimeBootstrapSnapshot,
+  error: WsRpcError,
+});
 
 export const WsProviderCompactThreadRpc = Rpc.make(WS_METHODS.providerCompactThread, {
   payload: ProviderCompactThreadInput,
@@ -767,6 +791,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsProviderGetManagedSidecarHealthRpc,
   WsProviderRepairManagedSidecarRpc,
   WsProviderExportManagedSidecarDiagnosticsRpc,
+  WsProviderGetRuntimeBootstrapStatusRpc,
+  WsProviderBootstrapRuntimeRpc,
+  WsProviderRepairRuntimeRpc,
   WsProviderCompactThreadRpc,
   WsProviderListCommandsRpc,
   WsProviderListSkillsRpc,

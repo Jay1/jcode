@@ -117,6 +117,9 @@ import type {
   ProviderComposerCapabilities,
   ProviderGetComposerCapabilitiesInput,
   ProviderGetRuntimeHealthInput,
+  ProviderRuntimeBootstrapInput,
+  ProviderRuntimeBootstrapSnapshot,
+  ProviderRuntimeBootstrapStatusInput,
   ProviderListAgentsInput,
   ProviderListAgentsResult,
   ProviderListCommandsInput,
@@ -498,6 +501,15 @@ export interface NativeApi {
       input: ManagedSidecarRepairRequest,
     ) => Promise<ManagedSidecarRepairResult>;
     exportManagedSidecarDiagnostics: () => Promise<ManagedSidecarDiagnostics>;
+    getRuntimeBootstrapStatus: (
+      input: ProviderRuntimeBootstrapStatusInput,
+    ) => Promise<ProviderRuntimeBootstrapSnapshot>;
+    bootstrapRuntime: (
+      input: ProviderRuntimeBootstrapInput,
+    ) => Promise<ProviderRuntimeBootstrapSnapshot>;
+    repairRuntime: (
+      input: ProviderRuntimeBootstrapInput,
+    ) => Promise<ProviderRuntimeBootstrapSnapshot>;
     compactThread: (input: ProviderCompactThreadInput) => Promise<void>;
     listCommands: (input: ProviderListCommandsInput) => Promise<ProviderListCommandsResult>;
     listSkills: (input: ProviderListSkillsInput) => Promise<ProviderListSkillsResult>;

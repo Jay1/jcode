@@ -709,24 +709,30 @@ export function createWsNativeApi(): NativeApi {
     },
     provider: {
       getComposerCapabilities: (input) =>
-        requestWs(WS_METHODS.providerGetComposerCapabilities, input),
-      getRuntimeHealth: (input) => requestWs(WS_METHODS.providerGetRuntimeHealth, input),
+        transport.request(WS_METHODS.providerGetComposerCapabilities, input),
+      getRuntimeHealth: (input) => transport.request(WS_METHODS.providerGetRuntimeHealth, input),
       getManagedSidecarHealth: () =>
-        requestWs(WS_METHODS.providerGetManagedSidecarHealth, undefined),
-      repairManagedSidecar: (input) => requestWs(WS_METHODS.providerRepairManagedSidecar, input),
+        transport.request(WS_METHODS.providerGetManagedSidecarHealth, undefined),
+      repairManagedSidecar: (input) =>
+        transport.request(WS_METHODS.providerRepairManagedSidecar, input),
       exportManagedSidecarDiagnostics: () =>
-        requestWs(WS_METHODS.providerExportManagedSidecarDiagnostics, undefined),
-      compactThread: (input) => requestWs(WS_METHODS.providerCompactThread, input),
-      listCommands: (input) => requestWs(WS_METHODS.providerListCommands, input),
-      listSkills: (input) => requestWs(WS_METHODS.providerListSkills, input),
-      installSkill: (input) => requestWs(WS_METHODS.providerInstallSkill, input),
-      uninstallSkill: (input) => requestWs(WS_METHODS.providerUninstallSkill, input),
-      setSkillEnabled: (input) => requestWs(WS_METHODS.providerSetSkillEnabled, input),
-      searchSkillsCatalog: (input) => requestWs(WS_METHODS.providerSearchSkillsCatalog, input),
-      listPlugins: (input) => requestWs(WS_METHODS.providerListPlugins, input),
-      readPlugin: (input) => requestWs(WS_METHODS.providerReadPlugin, input),
-      listModels: (input) => requestWs(WS_METHODS.providerListModels, input),
-      listAgents: (input) => requestWs(WS_METHODS.providerListAgents, input),
+        transport.request(WS_METHODS.providerExportManagedSidecarDiagnostics, undefined),
+      getRuntimeBootstrapStatus: (input) =>
+        transport.request(WS_METHODS.providerGetRuntimeBootstrapStatus, input),
+      bootstrapRuntime: (input) => transport.request(WS_METHODS.providerBootstrapRuntime, input),
+      repairRuntime: (input) => transport.request(WS_METHODS.providerRepairRuntime, input),
+      compactThread: (input) => transport.request(WS_METHODS.providerCompactThread, input),
+      listCommands: (input) => transport.request(WS_METHODS.providerListCommands, input),
+      listSkills: (input) => transport.request(WS_METHODS.providerListSkills, input),
+      installSkill: (input) => transport.request(WS_METHODS.providerInstallSkill, input),
+      uninstallSkill: (input) => transport.request(WS_METHODS.providerUninstallSkill, input),
+      setSkillEnabled: (input) => transport.request(WS_METHODS.providerSetSkillEnabled, input),
+      searchSkillsCatalog: (input) =>
+        transport.request(WS_METHODS.providerSearchSkillsCatalog, input),
+      listPlugins: (input) => transport.request(WS_METHODS.providerListPlugins, input),
+      readPlugin: (input) => transport.request(WS_METHODS.providerReadPlugin, input),
+      listModels: (input) => transport.request(WS_METHODS.providerListModels, input),
+      listAgents: (input) => transport.request(WS_METHODS.providerListAgents, input),
     },
     orchestration: {
       getSnapshot: () =>

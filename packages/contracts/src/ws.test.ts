@@ -253,6 +253,52 @@ it.effect("accepts first-run wizard completion requests", () =>
   }),
 );
 
+it.effect("accepts provider runtime bootstrap status requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-runtime-bootstrap-status-1",
+      body: {
+        _tag: WS_METHODS.providerGetRuntimeBootstrapStatus,
+        provider: "opencode",
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.providerGetRuntimeBootstrapStatus);
+  }),
+);
+
+it.effect("accepts provider runtime bootstrap requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-runtime-bootstrap-1",
+      body: {
+        _tag: WS_METHODS.providerBootstrapRuntime,
+        provider: "opencode",
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.providerBootstrapRuntime);
+  }),
+);
+
+it.effect("accepts provider runtime repair requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-runtime-repair-1",
+      body: {
+        _tag: WS_METHODS.providerRepairRuntime,
+        provider: "opencode",
+        forceReinstall: true,
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.providerRepairRuntime);
+    if (parsed.body._tag === WS_METHODS.providerRepairRuntime) {
+      assert.strictEqual(parsed.body.forceReinstall, true);
+    }
+  }),
+);
+
 it.effect("accepts typed websocket push envelopes with sequence", () =>
   Effect.gen(function* () {
     const parsed = yield* decode(WsResponse, {

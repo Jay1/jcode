@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { realpathSync } from "node:fs";
+import { createServer } from "node:net";
 
 import {
   type AuthAccessStreamEvent,
@@ -8,6 +9,10 @@ import {
   AuthSessionId,
   type CompleteFirstRunWizardInput,
   type ManagedSidecarRepairRequest,
+  type OpenCodeRuntimeProfile,
+  type ProviderRuntimeBootstrapInput,
+  type ProviderRuntimeBootstrapSnapshot,
+  type ProviderRuntimeBootstrapStatusInput,
   MessageId,
   ORCHESTRATION_WS_METHODS,
   type ServerGenerateThreadRecapInput,
@@ -42,6 +47,7 @@ import {
 } from "effect";
 import { HttpRouter, HttpServerRequest } from "effect/unstable/http";
 import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
+import { ChildProcessSpawner } from "effect/unstable/process";
 
 import { authErrorResponse, makeEffectAuthRequest } from "./auth/http";
 import { BootstrapCredentialService } from "./auth/Services/BootstrapCredentialService";
@@ -87,6 +93,15 @@ import {
   type ManagedSidecarLifecycleShape,
 } from "./provider/managedRuntimeLifecycle";
 import { checkOpenCodeRuntimeHealth } from "./provider/openCodeRuntimeHealth";
+import {
+  JCODE_OPENCODE_SERVICE_NAME,
+  bootstrapWslOpenCodeRuntime,
+  getWslOpenCodeRuntimeBootstrapStatus,
+  makeWslOpenCodeBootstrapPaths,
+  repairWslOpenCodeRuntime,
+  upsertWslOpenCodeRuntimeProfile,
+  type WslOpenCodeBootstrapAdapter,
+} from "./provider/openCodeRuntimeBootstrap";
 import { applyOpenClawSecretUpdate } from "./provider/openclawSecretUpdate";
 import { getProviderUsageSnapshot } from "./providerUsageSnapshot";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment";
@@ -99,6 +114,42 @@ import { WorkspaceFileSystem } from "./workspace/Services/WorkspaceFileSystem";
 
 const MAX_DIAGNOSTIC_CHILD_PROCESSES = 80;
 const MAX_DIAGNOSTIC_ARGS_CHARS = 500;
+
+function execFileText(file: string, args: readonly string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(file, [...args], { maxBuffer: 2 * 1024 * 1024 }, (error, stdout) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(stdout);
+    });
+  });
+}
+
+async function commandSucceeds(file: string, args: readonly string[]): Promise<boolean> {
+  try {
+    await execFileText(file, args);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isLoopbackPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = createServer();
+    server.once("error", () => {
+      resolve(false);
+    });
+    server.once("listening", () => {
+      server.close(() => {
+        resolve(true);
+      });
+    });
+    server.listen(port, "127.0.0.1");
+  });
+}
 
 type CurrentRpcAuthSessionShape = AuthenticatedSession | null;
 
@@ -350,6 +401,7 @@ export const requireManagedSidecarDiagnosticsRpcAccess = (
 export const makeWsRpcLayer = () =>
   WsRpcGroup.toLayer(
     Effect.gen(function* () {
+      const childProcessSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
       const checkpointDiffQuery = yield* CheckpointDiffQuery;
       const bootstrapCredentials = yield* BootstrapCredentialService;
       const config = yield* ServerConfig;
@@ -396,6 +448,194 @@ export const makeWsRpcLayer = () =>
             ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
           });
         }).pipe(Effect.provide(OpenCodeRuntimeLive));
+
+      const runtimeBootstrapPaths = makeWslOpenCodeBootstrapPaths({
+        homeDir: config.homeDir,
+        runtimeDir: path.join(config.homeDir, ".local", "share", "jcode", "runtime", "opencode"),
+      });
+      const runtimeBootstrapServiceUnitDir = path.dirname(runtimeBootstrapPaths.serviceUnitPath);
+
+      const resolveBootstrapOpenCodeBinary = async (_forceReinstall: boolean): Promise<string> => {
+        const settings = await Effect.runPromise(serverSettings.getSettings);
+        const configuredBinary =
+          settings.providers.opencode.binaryPath.trim() || OPENCODE_CLI_SPEC.defaultBinaryPath;
+
+        if (configuredBinary.includes("/")) {
+          const exists = await Effect.runPromise(
+            fileSystem.exists(configuredBinary).pipe(Effect.orElseSucceed(() => false)),
+          );
+          if (!exists) {
+            throw new Error(`OpenCode binary not found at ${configuredBinary}.`);
+          }
+          return configuredBinary;
+        }
+
+        const stdout = await execFileText("sh", [
+          "-lc",
+          'command -v "$1"',
+          "jcode-opencode-resolve",
+          configuredBinary,
+        ]).catch(() => "");
+        const resolved = stdout.trim().split(/\r?\n/u)[0]?.trim();
+        if (resolved) {
+          return resolved;
+        }
+
+        throw new Error(`OpenCode binary '${configuredBinary}' was not found on PATH.`);
+      };
+
+      const smokeBootstrapOpenCodeRuntime = async (serverUrl: string): Promise<void> => {
+        const binaryPath = await resolveBootstrapOpenCodeBinary(false);
+        await Effect.runPromise(
+          Effect.scoped(
+            Effect.gen(function* () {
+              const runtime = yield* OpenCodeRuntime;
+              yield* runtime.connectToOpenCodeServer({
+                binaryPath,
+                cliSpec: OPENCODE_CLI_SPEC,
+                serverUrl,
+                timeoutMs: 5_000,
+              });
+            }),
+          ).pipe(
+            Effect.provide(OpenCodeRuntimeLive),
+            Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, childProcessSpawner),
+          ),
+        );
+      };
+
+      const writeBootstrapFile = (filePath: string, contents: string) =>
+        Effect.runPromise(
+          fileSystem
+            .makeDirectory(path.dirname(filePath), { recursive: true })
+            .pipe(Effect.andThen(fileSystem.writeFileString(filePath, contents))),
+        );
+
+      const runtimeBootstrapAdapter: WslOpenCodeBootstrapAdapter = {
+        paths: runtimeBootstrapPaths,
+        now: () => new Date().toISOString(),
+        getProbe: async () => {
+          const [osRelease, userSystemdAvailable, serviceExists, serviceActive, binaryPath] =
+            await Promise.all([
+              Effect.runPromise(
+                fileSystem
+                  .readFileString("/proc/sys/kernel/osrelease")
+                  .pipe(Effect.catch(() => Effect.succeed(""))),
+              ),
+              commandSucceeds("systemctl", ["--user", "show-environment"]),
+              commandSucceeds("systemctl", ["--user", "cat", JCODE_OPENCODE_SERVICE_NAME]),
+              commandSucceeds("systemctl", [
+                "--user",
+                "is-active",
+                "--quiet",
+                JCODE_OPENCODE_SERVICE_NAME,
+              ]),
+              resolveBootstrapOpenCodeBinary(false).catch(() => null),
+            ]);
+          const profileReachable = await smokeBootstrapOpenCodeRuntime(
+            runtimeBootstrapPaths.serverUrl,
+          )
+            .then(() => true)
+            .catch(() => false);
+          const portAvailable = profileReachable
+            ? true
+            : await isLoopbackPortAvailable(runtimeBootstrapPaths.port);
+
+          return {
+            now: new Date().toISOString(),
+            platform: process.platform,
+            osRelease,
+            env: process.env,
+            userSystemdAvailable,
+            serviceExists,
+            serviceActive,
+            binaryPath,
+            portAvailable,
+            profileReachable,
+            serverUrl: runtimeBootstrapPaths.serverUrl,
+          };
+        },
+        ensureRuntimeDirectory: () =>
+          Effect.runPromise(
+            fileSystem
+              .makeDirectory(runtimeBootstrapPaths.runtimeDir, { recursive: true })
+              .pipe(
+                Effect.andThen(
+                  fileSystem.makeDirectory(runtimeBootstrapServiceUnitDir, { recursive: true }),
+                ),
+              ),
+          ),
+        resolveOpenCodeBinary: resolveBootstrapOpenCodeBinary,
+        writeExecutableFile: (filePath, contents) =>
+          writeBootstrapFile(filePath, contents).then(() =>
+            Effect.runPromise(fileSystem.chmod(filePath, 0o755)),
+          ),
+        writeFile: writeBootstrapFile,
+        systemctlUser: (args) =>
+          execFileText("systemctl", ["--user", ...args]).then(() => undefined),
+        smokeRuntime: smokeBootstrapOpenCodeRuntime,
+      };
+
+      const getOpenCodeRuntimeBootstrapStatus = (
+        _input: ProviderRuntimeBootstrapStatusInput,
+      ): Effect.Effect<ProviderRuntimeBootstrapSnapshot, unknown> =>
+        Effect.tryPromise({
+          try: () => getWslOpenCodeRuntimeBootstrapStatus(runtimeBootstrapAdapter),
+          catch: (cause) => cause,
+        });
+
+      const persistOpenCodeRuntimeProfile = (profile: OpenCodeRuntimeProfile) =>
+        Effect.gen(function* () {
+          const settings = yield* serverSettings.getSettings;
+          const runtimeProfiles = upsertWslOpenCodeRuntimeProfile(
+            settings.providers.opencode.runtimeProfiles,
+            profile,
+          );
+          yield* serverSettings.updateSettings({
+            providers: {
+              opencode: {
+                serverUrl: profile.serverUrl ?? "",
+                runtimeProfiles,
+                activeRuntimeProfileId: profile.id,
+              },
+            },
+          });
+        });
+
+      const applyRuntimeBootstrapResult = (result: {
+        readonly snapshot: ProviderRuntimeBootstrapSnapshot;
+        readonly profile: OpenCodeRuntimeProfile;
+      }) => persistOpenCodeRuntimeProfile(result.profile).pipe(Effect.as(result.snapshot));
+
+      const bootstrapOpenCodeRuntime = (
+        input: ProviderRuntimeBootstrapInput,
+      ): Effect.Effect<ProviderRuntimeBootstrapSnapshot, unknown> =>
+        getOpenCodeRuntimeBootstrapStatus(input).pipe(
+          Effect.flatMap((status) => {
+            if (status.state === "unsupported") {
+              return Effect.succeed(status);
+            }
+            return Effect.tryPromise({
+              try: () => bootstrapWslOpenCodeRuntime(runtimeBootstrapAdapter, input),
+              catch: (cause) => cause,
+            }).pipe(Effect.flatMap(applyRuntimeBootstrapResult));
+          }),
+        );
+
+      const repairOpenCodeRuntime = (
+        input: ProviderRuntimeBootstrapInput,
+      ): Effect.Effect<ProviderRuntimeBootstrapSnapshot, unknown> =>
+        getOpenCodeRuntimeBootstrapStatus(input).pipe(
+          Effect.flatMap((status) => {
+            if (status.state === "unsupported") {
+              return Effect.succeed(status);
+            }
+            return Effect.tryPromise({
+              try: () => repairWslOpenCodeRuntime(runtimeBootstrapAdapter, input),
+              catch: (cause) => cause,
+            }).pipe(Effect.flatMap(applyRuntimeBootstrapResult));
+          }),
+        );
 
       const canonicalizeProjectWorkspaceRoot = Effect.fnUntraced(function* (
         workspaceRoot: string,
@@ -653,6 +893,30 @@ export const makeWsRpcLayer = () =>
             }
           }),
         );
+
+      const requireOwnerSession: Effect.Effect<void, WsRpcError> = Effect.serviceOption(
+        CurrentRpcAuthSession,
+      ).pipe(
+        Effect.flatMap((sessionOpt) => {
+          const session = Option.getOrNull(sessionOpt);
+          if (!session) {
+            return Effect.fail(new WsRpcError({ message: "Authentication required" }));
+          }
+          if (session.role === "owner") {
+            return Effect.void;
+          }
+          return Effect.fail(
+            new WsRpcError({
+              message: "Insufficient permissions: this operation requires owner role",
+            }),
+          );
+        }),
+      );
+
+      const ownerOnly = <A, E, R>(
+        effect: Effect.Effect<A, E, R>,
+      ): Effect.Effect<A, E | WsRpcError, R> =>
+        requireOwnerSession.pipe(Effect.flatMap(() => effect));
 
       return WsRpcGroup.of({
         [ORCHESTRATION_WS_METHODS.dispatchCommand]: (command) =>
@@ -1446,6 +1710,15 @@ export const makeWsRpcLayer = () =>
               "Failed to export managed sidecar diagnostics",
             ),
           ),
+        [WS_METHODS.providerGetRuntimeBootstrapStatus]: (input) =>
+          rpcEffect(
+            getOpenCodeRuntimeBootstrapStatus(input),
+            "Failed to get runtime bootstrap status",
+          ),
+        [WS_METHODS.providerBootstrapRuntime]: (input) =>
+          rpcEffect(ownerOnly(bootstrapOpenCodeRuntime(input)), "Failed to bootstrap runtime"),
+        [WS_METHODS.providerRepairRuntime]: (input) =>
+          rpcEffect(ownerOnly(repairOpenCodeRuntime(input)), "Failed to repair runtime"),
         [WS_METHODS.providerCompactThread]: (input) =>
           withCurrentSession(
             requireOwnerWsRpcAccess,

@@ -6,12 +6,15 @@ import type {
   ManagedSidecarRepairResult,
   NativeApi,
   OpenCodeRuntimeHealth,
+  ProviderRuntimeBootstrapSnapshot,
 } from "@jcode/contracts";
 import { page } from "vitest/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
 import { OpenCodeRuntimeSettingsPanel } from "./OpenCodeRuntimeSettingsPanel";
+
+const NOW = "2026-06-11T12:00:00.000Z";
 
 const RUNTIME_HEALTH: OpenCodeRuntimeHealth = {
   provider: "opencode",
@@ -30,7 +33,7 @@ const RUNTIME_HEALTH: OpenCodeRuntimeHealth = {
     models: { count: 1, slugs: ["openai/gpt-5.5"] },
   },
   mismatches: [],
-  checkedAt: "2026-06-07T12:00:00.000Z",
+  checkedAt: NOW,
 };
 
 const SIDECAR_HEALTH: ManagedSidecarHealthCheck = {
@@ -66,11 +69,24 @@ const SIDECAR_DIAGNOSTICS: ManagedSidecarDiagnostics = {
   },
 };
 
+let bootstrapStatus: ProviderRuntimeBootstrapSnapshot;
+
 const providerApi = {
   getRuntimeHealth: vi.fn(async () => RUNTIME_HEALTH),
   getManagedSidecarHealth: vi.fn(async () => SIDECAR_HEALTH),
   repairManagedSidecar: vi.fn(async () => SIDECAR_REPAIR),
   exportManagedSidecarDiagnostics: vi.fn(async () => SIDECAR_DIAGNOSTICS),
+  getRuntimeBootstrapStatus: vi.fn(async () => bootstrapStatus),
+  bootstrapRuntime: vi.fn(async () => ({
+    ...bootstrapStatus,
+    state: "ready" as const,
+    message: "OpenCode runtime is ready.",
+  })),
+  repairRuntime: vi.fn(async () => ({
+    ...bootstrapStatus,
+    state: "ready" as const,
+    message: "OpenCode runtime is ready.",
+  })),
 };
 
 const nativeApi = {
@@ -82,10 +98,20 @@ const originalRevokeObjectUrl = URL.revokeObjectURL;
 
 describe("OpenCodeRuntimeSettingsPanel", () => {
   beforeEach(() => {
+    bootstrapStatus = {
+      provider: "opencode",
+      lane: "wsl-service",
+      state: "notInstalled",
+      checkedAt: NOW,
+      message: "OpenCode runtime is not installed.",
+    };
     providerApi.getRuntimeHealth.mockClear();
     providerApi.getManagedSidecarHealth.mockClear();
     providerApi.repairManagedSidecar.mockClear();
     providerApi.exportManagedSidecarDiagnostics.mockClear();
+    providerApi.getRuntimeBootstrapStatus.mockClear();
+    providerApi.bootstrapRuntime.mockClear();
+    providerApi.repairRuntime.mockClear();
     providerApi.getRuntimeHealth.mockResolvedValue(RUNTIME_HEALTH);
     providerApi.getManagedSidecarHealth.mockResolvedValue(SIDECAR_HEALTH);
     providerApi.repairManagedSidecar.mockResolvedValue(SIDECAR_REPAIR);
@@ -176,6 +202,84 @@ describe("OpenCodeRuntimeSettingsPanel", () => {
       .element(page.getByRole("alert"))
       .toHaveTextContent("Sidecar health check failed: sidecar unavailable");
     await expect.element(page.getByRole("button", { name: "Check sidecar health" })).toBeEnabled();
+
+    await screen.unmount();
+  });
+
+  it("shows install when runtime bootstrap status is not installed", async () => {
+    const screen = await render(<OpenCodeRuntimeSettingsPanel />);
+
+    await vi.waitFor(() => {
+      expect(providerApi.getRuntimeBootstrapStatus).toHaveBeenCalledWith({
+        provider: "opencode",
+      });
+      expect(document.body.textContent).toContain("OpenCode runtime is not installed.");
+    });
+
+    await page.getByRole("button", { name: "Install OpenCode runtime" }).click();
+
+    await vi.waitFor(() => {
+      expect(providerApi.bootstrapRuntime).toHaveBeenCalledWith({ provider: "opencode" });
+      expect(providerApi.getRuntimeHealth).toHaveBeenCalledWith({
+        provider: "opencode",
+        forceRefresh: true,
+      });
+      expect(document.body.textContent).toContain("OpenCode runtime is ready.");
+    });
+
+    await screen.unmount();
+  });
+
+  it("shows repair when runtime bootstrap status is error", async () => {
+    bootstrapStatus = {
+      provider: "opencode",
+      lane: "wsl-service",
+      state: "error",
+      serviceName: "jcode-opencode.service",
+      message: "Service stopped.",
+      checkedAt: NOW,
+    };
+
+    const screen = await render(<OpenCodeRuntimeSettingsPanel />);
+
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("Service stopped.");
+    });
+
+    await page.getByRole("button", { name: "Repair runtime" }).click();
+
+    await vi.waitFor(() => {
+      expect(providerApi.repairRuntime).toHaveBeenCalledWith({ provider: "opencode" });
+      expect(providerApi.getRuntimeHealth).toHaveBeenCalledWith({
+        provider: "opencode",
+        forceRefresh: true,
+      });
+      expect(document.body.textContent).toContain("OpenCode runtime is ready.");
+    });
+
+    await screen.unmount();
+  });
+
+  it("shows unsupported status without install or repair actions", async () => {
+    bootstrapStatus = {
+      provider: "opencode",
+      lane: "wsl-service",
+      state: "unsupported",
+      message: "WSL bootstrap is only available on Windows hosts.",
+      checkedAt: NOW,
+    };
+
+    const screen = await render(<OpenCodeRuntimeSettingsPanel />);
+
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain(
+        "WSL bootstrap is only available on Windows hosts.",
+      );
+      expect(document.body.textContent).not.toContain("Install OpenCode runtime");
+      expect(document.body.textContent).not.toContain("Repair runtime");
+      expect(providerApi.bootstrapRuntime).not.toHaveBeenCalled();
+      expect(providerApi.repairRuntime).not.toHaveBeenCalled();
+    });
 
     await screen.unmount();
   });

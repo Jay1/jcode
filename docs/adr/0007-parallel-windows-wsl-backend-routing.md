@@ -8,6 +8,8 @@
 
 JCode runs on macOS and Linux today. Windows users who develop inside WSL need JCode to run tooling (git, shell, provider CLI) inside the WSL Linux environment while the cockpit UI and desktop shell run on the Windows host. The two OS environments share a single machine but have different filesystem roots, process namespaces, and shell environments.
 
+The Settings-native WSL OpenCode runtime bootstrap is a narrower provider-runtime service lane. It can create or repair `jcode-opencode.service` and activate an external OpenCode runtime profile inside the current WSL environment, but it does not implement the project-to-backend routing model described in this ADR.
+
 The existing `ServerEnvironment` service describes one environment per JCode server: a single `ExecutionEnvironmentDescriptor` with one `environmentId`, one `platform.os`, one `cwd`, and one label. Process spawning (`processRunner.ts`), terminal PTY management (`terminal/`), git operations (`git/`), and the provider runtime (`codexAppServerManager.ts`) all assume they run in a single local OS.
 
 The CONTEXT.md decision states: "It should route each project or thread to the backend where its workspace lives rather than treating Windows and WSL as mutually exclusive global modes." The first slice is design-only: define project-to-backend routing, backend lifecycle, auth bootstrap, failure states, and user-visible mode transitions before implementation.

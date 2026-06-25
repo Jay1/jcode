@@ -584,3 +584,40 @@ export const ProviderGetRuntimeHealthInput = Schema.Struct({
   forceRefresh: Schema.optional(Schema.Boolean),
 });
 export type ProviderGetRuntimeHealthInput = typeof ProviderGetRuntimeHealthInput.Type;
+
+export const OpenCodeRuntimeBootstrapLane = Schema.Literal("wsl-service");
+export type OpenCodeRuntimeBootstrapLane = typeof OpenCodeRuntimeBootstrapLane.Type;
+
+export const OpenCodeRuntimeBootstrapState = Schema.Literals([
+  "unsupported",
+  "notInstalled",
+  "installing",
+  "starting",
+  "ready",
+  "error",
+]);
+export type OpenCodeRuntimeBootstrapState = typeof OpenCodeRuntimeBootstrapState.Type;
+
+export const ProviderRuntimeBootstrapStatusInput = Schema.Struct({
+  provider: Schema.Literal("opencode"),
+});
+export type ProviderRuntimeBootstrapStatusInput = typeof ProviderRuntimeBootstrapStatusInput.Type;
+
+export const ProviderRuntimeBootstrapInput = Schema.Struct({
+  provider: Schema.Literal("opencode"),
+  forceReinstall: Schema.optional(Schema.Boolean),
+});
+export type ProviderRuntimeBootstrapInput = typeof ProviderRuntimeBootstrapInput.Type;
+
+export const ProviderRuntimeBootstrapSnapshot = Schema.Struct({
+  provider: Schema.Literal("opencode"),
+  lane: OpenCodeRuntimeBootstrapLane,
+  state: OpenCodeRuntimeBootstrapState,
+  serviceName: Schema.optional(TrimmedNonEmptyString),
+  binaryPath: Schema.optional(TrimmedNonEmptyString),
+  serverUrl: Schema.optional(TrimmedNonEmptyString),
+  profileId: Schema.optional(TrimmedNonEmptyString),
+  message: Schema.optional(Schema.String.check(Schema.isMaxLength(4096))),
+  checkedAt: TrimmedNonEmptyString,
+});
+export type ProviderRuntimeBootstrapSnapshot = typeof ProviderRuntimeBootstrapSnapshot.Type;
