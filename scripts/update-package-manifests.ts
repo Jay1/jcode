@@ -17,6 +17,7 @@ import {
 } from "./generate-winget-manifest.ts";
 
 const DEFAULT_REPOSITORY = "Jay1/jcode";
+const INSTALLER_DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 
 export interface UpdatePackageManifestsOptions {
   readonly outputDir?: string;
@@ -61,7 +62,9 @@ export async function updatePackageManifests(
   const outputDir = options.outputDir ?? "packaging";
 
   const installerUrl = buildWindowsInstallerUrl(repository, options.version);
-  const response = await fetchFn(installerUrl);
+  const response = await fetchFn(installerUrl, {
+    signal: AbortSignal.timeout(INSTALLER_DOWNLOAD_TIMEOUT_MS),
+  });
   if (!response.ok) {
     throw new Error(
       `Failed to download Windows installer from ${installerUrl}: ${response.status} ${response.statusText}`,

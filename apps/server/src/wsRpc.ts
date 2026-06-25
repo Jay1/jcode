@@ -117,7 +117,7 @@ export function resolveLocalLegacyWsAuthSession(input: {
   readonly authToken: string | undefined;
   readonly legacyToken: string | null;
 }): AuthenticatedSession | null {
-  return !input.authToken || input.legacyToken === input.authToken
+  return input.authToken !== undefined && input.legacyToken === input.authToken
     ? LOCAL_LEGACY_OWNER_AUTH_SESSION
     : null;
 }

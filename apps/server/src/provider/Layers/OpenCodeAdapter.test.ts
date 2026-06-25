@@ -1757,6 +1757,80 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
     });
   });
 
+  it("keeps a managed runtime profile on an explicit provider server URL without starting the sidecar", async () => {
+    const runtime = createMockOpenCodeRuntime();
+    const lifecycle = createMockManagedSidecarLifecycle({ initialSnapshot: { state: "idle" } });
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-managed-provider-server-url"),
+          runtimeMode: "full-access",
+          providerOptions: {
+            opencode: { serverUrl: "http://127.0.0.1:7777" },
+          },
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerSettingsService.layerTest({
+                providers: {
+                  opencode: {
+                    activeRuntimeProfileId: "managed-profile",
+                    runtimeProfiles: [
+                      {
+                        id: "managed-profile",
+                        label: "Managed profile",
+                        provider: "opencode",
+                        mode: "managed",
+                        configMode: "generated",
+                        binaryPath: "/managed/bin/opencode",
+                        cwdDefault: "/managed/workspace",
+                        opencodeConfigDir: "/managed/config",
+                        opencodeDataDir: "/managed/data",
+                        skillRoots: [],
+                        pluginRoots: [],
+                        requiredCommands: [],
+                        requiredSkills: [],
+                        requiredPlugins: [],
+                        requiredAgents: [],
+                        requiredModels: [],
+                        requiredEnv: [],
+                        requirements: [],
+                        capabilityPolicy: "warn",
+                      },
+                    ],
+                  },
+                },
+              }),
+            ),
+            Layer.provideMerge(Layer.succeed(ManagedSidecarLifecycle, lifecycle)),
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(lifecycle.getManagedRuntimeStatus).not.toHaveBeenCalled();
+    expect(lifecycle.startManagedRuntime).not.toHaveBeenCalled();
+    expect(runtime.connectCalls[0]).toMatchObject({
+      serverUrl: "http://127.0.0.1:7777",
+      binaryPath: "/managed/bin/opencode",
+    });
+    expect(runtime.connectCalls[0]).not.toHaveProperty("serverPassword");
+    expect(runtime.clientCalls[0]).toMatchObject({
+      baseUrl: "http://127.0.0.1:7777",
+      directory: "/managed/workspace",
+    });
+    expect(runtime.clientCalls[0]).not.toHaveProperty("serverPassword");
+  });
+
   it("passes the active managed runtime profile password to spawned SDK clients", async () => {
     const runtime = createMockOpenCodeRuntime({ connectedServerExternal: false });
 

@@ -223,6 +223,36 @@ it.effect("accepts first-run wizard skip requests", () =>
   }),
 );
 
+it.effect("accepts first-run wizard data requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-get-wizard-data-1",
+      body: {
+        _tag: WS_METHODS.serverGetFirstRunWizardData,
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.serverGetFirstRunWizardData);
+  }),
+);
+
+it.effect("accepts first-run wizard completion requests", () =>
+  Effect.gen(function* () {
+    const parsed = yield* decode(WebSocketRequest, {
+      id: "req-complete-wizard-1",
+      body: {
+        _tag: WS_METHODS.serverCompleteFirstRunWizard,
+        provider: "opencode",
+      },
+    });
+
+    assert.strictEqual(parsed.body._tag, WS_METHODS.serverCompleteFirstRunWizard);
+    if (parsed.body._tag === WS_METHODS.serverCompleteFirstRunWizard) {
+      assert.strictEqual(parsed.body.provider, "opencode");
+    }
+  }),
+);
+
 it.effect("accepts typed websocket push envelopes with sequence", () =>
   Effect.gen(function* () {
     const parsed = yield* decode(WsResponse, {

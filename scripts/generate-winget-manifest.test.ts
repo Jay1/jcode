@@ -4,6 +4,7 @@ import {
   createWingetInstallerManifest,
   createWingetLocaleManifest,
   createWingetVersionManifest,
+  repositoryToWingetId,
 } from "./generate-winget-manifest.ts";
 
 describe("generate-winget-manifest", () => {
@@ -92,5 +93,9 @@ describe("generate-winget-manifest", () => {
         version: "0.0.50",
       }),
     ).toThrow(/Invalid GitHub repository slug/);
+  });
+
+  it("rejects invalid repository slugs when deriving Winget IDs directly", () => {
+    expect(() => repositoryToWingetId("bad slug")).toThrow(/Invalid GitHub repository slug/);
   });
 });

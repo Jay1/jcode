@@ -12,6 +12,10 @@ import { Schema } from "effect";
 import { ProviderDiscoveryKind } from "./providerDiscovery";
 import { ProviderScanAllResult } from "./providerScan";
 
+const IsoTimestampString = Schema.String.check(
+  Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/),
+);
+
 // ---------------------------------------------------------------------------
 // First-run state
 // ---------------------------------------------------------------------------
@@ -19,7 +23,7 @@ import { ProviderScanAllResult } from "./providerScan";
 export const FirstRunState = Schema.Struct({
   completed: Schema.Boolean,
   selectedProvider: Schema.optional(ProviderDiscoveryKind),
-  completedAt: Schema.optional(Schema.String),
+  completedAt: Schema.optional(IsoTimestampString),
   skipped: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
 });
 export type FirstRunState = typeof FirstRunState.Type;

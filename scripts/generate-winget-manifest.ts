@@ -121,6 +121,9 @@ const WINGET_ID = "Jay1.JCode";
 export function repositoryToWingetId(repository: string): string {
   if (repository === DEFAULT_REPOSITORY) return WINGET_ID;
   const [owner, repo] = repository.split("/");
+  if (!owner || !repo || repository.split("/").length !== 2) {
+    throw new Error(`Invalid GitHub repository slug: ${repository}`);
+  }
   const pascalRepo = repo.slice(0, 1).toUpperCase() + repo.slice(1);
   return `${owner}.${pascalRepo}`;
 }

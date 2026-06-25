@@ -1,4 +1,5 @@
 import type { ProviderDiscoveryKind } from "@jcode/contracts";
+import nodePath from "node:path";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -77,10 +78,19 @@ const PROVIDER_CREDENTIAL_SPECS: ReadonlyArray<ProviderCredentialSpec> = [
 
 const WINDOWS_EXECUTABLE_EXTENSIONS = ["", ".exe", ".cmd", ".bat"] as const;
 
+function dequotePathEntry(entry: string): string {
+  const trimmed = entry.trim();
+  if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
 interface ScanProviderOptions {
   readonly env?: NodeJS.ProcessEnv;
   readonly platform?: NodeJS.Platform;
   readonly homeDir?: string;
+  readonly binaryExists?: (path: string) => Effect.Effect<boolean, never, never>;
 }
 
 const checkEnvVarCredentials = (
@@ -130,11 +140,18 @@ const resolveBinaryPath = (
   FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
-    const fileSystem = yield* FileSystem.FileSystem;
     const platform = options.platform ?? process.platform;
     const pathEnv = (options.env?.PATH ?? process.env.PATH ?? "").trim();
     const separator = platform === "win32" ? ";" : ":";
-    const pathEntries = pathEnv.split(separator).filter(Boolean);
+    const pathEntries = pathEnv.split(separator).map(dequotePathEntry).filter(Boolean);
+    const joinPath = platform === "win32" ? nodePath.win32.join : nodePath.posix.join;
+    const binaryExists =
+      options.binaryExists ??
+      ((fullPath: string) =>
+        Effect.gen(function* () {
+          const fileSystem = yield* FileSystem.FileSystem;
+          return yield* fileSystem.exists(fullPath).pipe(Effect.orElseSucceed(() => false));
+        }));
     const executableCandidates =
       platform === "win32"
         ? WINDOWS_EXECUTABLE_EXTENSIONS.map((ext) => `${binaryName}${ext}`)
@@ -142,8 +159,8 @@ const resolveBinaryPath = (
 
     for (const entry of pathEntries) {
       for (const candidate of executableCandidates) {
-        const fullPath = `${entry}/${candidate}`;
-        const exists = yield* fileSystem.exists(fullPath).pipe(Effect.orElseSucceed(() => false));
+        const fullPath = joinPath(entry, candidate);
+        const exists = yield* binaryExists(fullPath);
         if (exists) {
           return { found: true, path: fullPath } as const;
         }

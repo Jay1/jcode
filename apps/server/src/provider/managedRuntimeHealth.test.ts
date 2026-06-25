@@ -265,7 +265,7 @@ describe("repairManagedSidecar", () => {
     expect(result.health.serverReachable).toBe(false);
   });
 
-  it("calls startManagedRuntime with forceDownload by default during repair", async () => {
+  it("calls startManagedRuntime without forceDownload by default during repair", async () => {
     mockVerify.mockReturnValue(
       Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),
     );
@@ -283,10 +283,10 @@ describe("repairManagedSidecar", () => {
       ).pipe(Effect.provide(TestLayer)),
     );
 
-    expect(lifecycle.startManagedRuntime).toHaveBeenCalledWith({ forceDownload: true });
+    expect(lifecycle.startManagedRuntime).toHaveBeenCalledWith({ forceDownload: false });
   });
 
-  it("ignores explicit forceRedownload false because repair must re-download", async () => {
+  it("honors explicit forceRedownload false during repair", async () => {
     mockVerify.mockReturnValue(
       Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),
     );
@@ -305,7 +305,7 @@ describe("repairManagedSidecar", () => {
       ).pipe(Effect.provide(TestLayer)),
     );
 
-    expect(lifecycle.startManagedRuntime).toHaveBeenCalledWith({ forceDownload: true });
+    expect(lifecycle.startManagedRuntime).toHaveBeenCalledWith({ forceDownload: false });
   });
 
   it("calls startManagedRuntime with forceDownload when forceRedownload is true", async () => {

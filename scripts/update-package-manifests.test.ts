@@ -15,8 +15,9 @@ describe("update-package-manifests", () => {
   it("downloads the installer, computes SHA-256, and generates Scoop + Winget manifests", async () => {
     const fakeExe = new Uint8Array([0x4d, 0x5a, 0x90, 0x00]);
 
-    const mockFetch = async (url: string | URL | Request) => {
+    const mockFetch = async (url: string | URL | Request, init?: RequestInit) => {
       const urlStr = typeof url === "string" ? url : url.toString();
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
       if (urlStr.includes("JCode-0.0.50-x64.exe")) {
         return new Response(fakeExe, { status: 200 });
       }
@@ -62,7 +63,10 @@ describe("update-package-manifests", () => {
   });
 
   it("throws on failed download", async () => {
-    const mockFetch = async () => new Response("not found", { status: 404 });
+    const mockFetch = async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
+      return new Response("not found", { status: 404 });
+    };
 
     await expect(
       updatePackageManifests(
@@ -78,8 +82,9 @@ describe("update-package-manifests", () => {
 
   it("uses a custom repository when provided", async () => {
     const fakeExe = new Uint8Array([0x4d, 0x5a]);
-    const mockFetch = async (url: string | URL | Request) => {
+    const mockFetch = async (url: string | URL | Request, init?: RequestInit) => {
       const urlStr = typeof url === "string" ? url : url.toString();
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
       if (urlStr.includes("MyOrg/my-app")) {
         return new Response(fakeExe, { status: 200 });
       }

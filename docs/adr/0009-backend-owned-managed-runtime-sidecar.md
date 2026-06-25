@@ -21,7 +21,7 @@ JCode packages a web UI, local server, and desktop shell. The Windows turnkey re
 
 The backend server owns the managed provider sidecar lifecycle. The desktop shell owns the updater and the first-run trigger UI.
 
-This aligns with existing code. `opencodeRuntime.ts` already has `startOpenCodeServerProcess` using Effect's `ChildProcess` from `effect/unstable/process` (not raw Node `child_process`). This is architecturally significant: Effect's process spawner integrates with the Effect runtime's fiber cancellation and structured concurrency semantics. The server also has runtime profiles with `managed`, `external`, and `remote` modes, health checks in `openCodeRuntimeHealth.ts` (459 lines, exports `checkOpenCodeRuntimeHealth` with states: `unknown`, `checking`, `healthy`, `degraded`, `unreachable`, `misconfigured`), and provider session dispatch. The desktop shell's role is limited to: triggering setup on first launch, rendering UI, handling Electron lifecycle events, and managing JCode application updates.
+This aligns with existing code. `opencodeRuntime.ts` already has `startOpenCodeServerProcess` using Effect's `ChildProcess` from `effect/unstable/process` (not raw Node `child_process`). This is architecturally significant: Effect's process spawner integrates with the Effect runtime's fiber cancellation and structured concurrency semantics. The server also has runtime profiles with `managed`, `external`, and `remote` modes, health checks in `openCodeRuntimeHealth.ts` with states such as `unknown`, `checking`, `healthy`, `degraded`, `unreachable`, and `misconfigured`, and provider session dispatch. The desktop shell's role is limited to: triggering setup on first launch, rendering UI, handling Electron lifecycle events, and managing JCode application updates.
 
 ### Health Gate and Version Pairing (PRD Decision 10)
 
@@ -64,7 +64,7 @@ JCode provisions, verifies, starts, and repairs the managed runtime without aski
 
 ### configMode Default (PRD Decision 13)
 
-`startOpenCodeServerProcess` currently defaults `configMode` to `"inherit"` (line 805 of `opencodeRuntime.ts`). For managed runtimes on clean Windows installs, the server must pass `configMode: "generated"` so the managed OpenCode instance gets an isolated configuration directory (`opencodeConfigDir`, `opencodeDataDir` from the runtime profile). The `"inherit"` default is correct for users who already have an OpenCode configuration and connect via `external` mode. The managed runtime profile creation code (Slice 6) must explicitly set `configMode: "generated"`.
+`startOpenCodeServerProcess` in `opencodeRuntime.ts` defaults `configMode` to `"inherit"`. For managed runtimes on clean Windows installs, the server must pass `configMode: "generated"` so the managed OpenCode instance gets an isolated configuration directory (`opencodeConfigDir`, `opencodeDataDir` from the runtime profile). The `"inherit"` default is correct for users who already have an OpenCode configuration and connect via `external` mode. The managed runtime profile creation code (Slice 6) must explicitly set `configMode: "generated"`.
 
 ## Consequences
 

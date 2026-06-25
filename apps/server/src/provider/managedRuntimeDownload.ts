@@ -111,6 +111,7 @@ const GitHubReleaseApiResponse = Schema.Struct({
       name: Schema.String,
       browser_download_url: Schema.String,
       size: Schema.Number,
+      digest: Schema.optional(Schema.String),
     }),
   ),
 });
@@ -159,6 +160,7 @@ export const fetchLatestOpenCodeRelease = Effect.gen(function* () {
     name: asset.name,
     browserDownloadUrl: asset.browser_download_url,
     size: asset.size,
+    ...(asset.digest ? { digest: asset.digest } : {}),
   }));
 
   return {
@@ -255,12 +257,16 @@ export const downloadManagedRuntime = Effect.gen(function* () {
 
   const actualHash = yield* computeFileSha256(tempPath);
 
-  if (asset.digest && asset.digest !== actualHash) {
+  const expectedDigest = asset.digest?.startsWith("sha256:")
+    ? asset.digest.slice("sha256:".length)
+    : asset.digest;
+
+  if (expectedDigest && expectedDigest !== actualHash) {
     yield* fs.remove(tempPath).pipe(Effect.orDie);
     yield* Effect.fail(
       new ManagedRuntimeDownloadError({
         stage: "verify",
-        message: `SHA-256 mismatch: expected ${asset.digest}, got ${actualHash}`,
+        message: `SHA-256 mismatch: expected ${expectedDigest}, got ${actualHash}`,
       }),
     );
     return undefined as never;
@@ -322,11 +328,14 @@ export const verifyManagedRuntimeBinary = (expectedSha256?: string, binaryPath?:
   Effect.gen(function* () {
     const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;
-    const runtimeDir = yield* resolveManagedRuntimeDir;
-
-    const platform = detectManagedRuntimePlatform();
-    const binaryName = platform === "win-x64" ? "opencode.exe" : "opencode";
-    const resolvedPath = binaryPath ?? path.join(runtimeDir, binaryName);
+    const resolvedPath =
+      binaryPath ??
+      (yield* Effect.gen(function* () {
+        const runtimeDir = yield* resolveManagedRuntimeDir;
+        const platform = detectManagedRuntimePlatform();
+        const binaryName = platform === "win-x64" ? "opencode.exe" : "opencode";
+        return path.join(runtimeDir, binaryName);
+      }));
 
     const exists = yield* fs.exists(resolvedPath).pipe(Effect.orDie);
 

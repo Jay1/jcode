@@ -402,7 +402,7 @@ jobs:
   finalize:
     name: Finalize release
     if: ${{ vars.JCODE_FINALIZE_RELEASE == '1' }}
-    needs: [preflight, release]
+    needs: [preflight, release, update_package_manifests]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

@@ -8,7 +8,7 @@
 | Audience        | Engineers, reviewers, maintainers, and automation agents                                                         |
 | Scope           | Durable architecture decisions for JCode boundaries, runtime posture, release strategy, and provider integration |
 | Canonical path  | `docs/adr/README.md`                                                                                             |
-| Last reviewed   | 2026-06-05                                                                                                       |
+| Last reviewed   | 2026-06-19                                                                                                       |
 | Review cadence  | Event-driven; add or update ADRs when a decision changes how future work should be done                          |
 | Source of truth | ADR files, linked architecture docs, and runtime source                                                          |
 | Verification    | Cross-check ADR claims against current source and tests before relying on them                                   |

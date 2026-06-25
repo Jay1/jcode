@@ -307,7 +307,7 @@ describe("FirstRunWizard", () => {
           serverApi.completeFirstRunWizard.mock.calls.length,
       ).toBeGreaterThan(0);
     });
-    expect(serverApi.completeFirstRunWizard).not.toHaveBeenCalledWith({});
+    expect(serverApi.completeFirstRunWizard).not.toHaveBeenCalled();
     expect(serverApi.skipFirstRun).toHaveBeenCalledTimes(1);
 
     await screen.unmount();

@@ -108,6 +108,36 @@ describe("resolveBinaryPath", () => {
 
       assert.strictEqual(result.found, false);
     }).pipe(Effect.provide(NodeServices.layer)));
+
+  it("uses Windows PATH separators and executable extensions", () =>
+    Effect.gen(function* () {
+      const expectedPath = "C:\\Tools\\opencode.exe";
+      const result = yield* resolveBinaryPath("opencode", {
+        env: { PATH: "C:\\Missing;C:\\Tools" },
+        platform: "win32",
+        binaryExists: (path) => Effect.succeed(path === expectedPath),
+      });
+
+      assert.strictEqual(result.found, true);
+      if (result.found) {
+        assert.strictEqual(result.path, expectedPath);
+      }
+    }).pipe(Effect.provide(NodeServices.layer)));
+
+  it("dequotes Windows PATH entries before resolving executables", () =>
+    Effect.gen(function* () {
+      const expectedPath = "C:\\Program Files\\OpenCode\\opencode.cmd";
+      const result = yield* resolveBinaryPath("opencode", {
+        env: { PATH: '"C:\\Program Files\\OpenCode";C:\\Other' },
+        platform: "win32",
+        binaryExists: (path) => Effect.succeed(path === expectedPath),
+      });
+
+      assert.strictEqual(result.found, true);
+      if (result.found) {
+        assert.strictEqual(result.path, expectedPath);
+      }
+    }).pipe(Effect.provide(NodeServices.layer)));
 });
 
 describe("scanAllProviders", () => {

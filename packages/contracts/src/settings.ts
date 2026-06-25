@@ -3,7 +3,7 @@ import { TrimmedString } from "./baseSchemas";
 import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "./model";
 import { ModelSelection, ProviderKind, ThreadEnvironmentMode } from "./orchestration";
 import { OpenCodeRuntimeProfile } from "./providerDiscovery";
-import { FirstRunState } from "./firstRunWizard";
+import { DEFAULT_FIRST_RUN_STATE, FirstRunState } from "./firstRunWizard";
 
 const StringSetting = TrimmedString.check(Schema.isMaxLength(4096));
 const CustomModels = Schema.Array(Schema.String.check(Schema.isMaxLength(256))).pipe(
@@ -117,9 +117,7 @@ export const ServerSettings = Schema.Struct({
     pi: PiServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     devin: DevinServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   }).pipe(Schema.withDecodingDefault(() => ({}))),
-  firstRun: FirstRunState.pipe(
-    Schema.withDecodingDefault(() => ({ completed: false, skipped: false })),
-  ),
+  firstRun: FirstRunState.pipe(Schema.withDecodingDefault(() => DEFAULT_FIRST_RUN_STATE)),
   chatFontSizePx: Schema.Number.pipe(Schema.withDecodingDefault(() => 12)),
   chatCodeFontFamily: Schema.String.check(Schema.isMaxLength(256)).pipe(
     Schema.withDecodingDefault(() => ""),

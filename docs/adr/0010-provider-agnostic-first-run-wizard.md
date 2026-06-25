@@ -11,11 +11,11 @@
 | Last reviewed   | 2026-06-07                                                                                                                                            |
 | Review cadence  | Event-driven; review if JCode changes provider abstraction or adds hosted provider support                                                            |
 | Source of truth | `apps/web/src/routes/_chat.settings.tsx`, `packages/contracts/src/providerDiscovery.ts`, `apps/server/src/provider/providerMaintenance.ts`, `apps/server/src/provider/opencodeRuntime.ts` |
-| Verification    | Wizard detects all 7 ProviderDiscoveryKind providers; credential-first detection checks API keys and config dirs before PATH binaries; OpenCode is the only provider with managed download in v1 |
+| Verification    | Wizard detects all 9 ProviderDiscoveryKind providers; provider readiness uses `ready`, `needs-config`, and `not-installed` states; OpenCode is the only provider with managed download in v1 |
 
 ## Context
 
-The Windows turnkey release PRD initially described a first-run wizard focused on installing and configuring OpenCode. However, JCode supports seven providers (`codex`, `claudeAgent`, `cursor`, `gemini`, `kilo`, `opencode`, `pi` — from `ProviderDiscoveryKind` in `providerDiscovery.ts`), and the codebase default provider is `codex` (`DEFAULT_PROVIDER_KIND="codex"` in `orchestration.ts` line 76), not opencode. Forcing an OpenCode install on every user, including those who already have Codex or Claude configured, creates unnecessary friction and ignores existing provider infrastructure.
+The Windows turnkey release PRD initially described a first-run wizard focused on installing and configuring OpenCode. However, JCode supports nine providers (`codex`, `claudeAgent`, `cursor`, `devin`, `gemini`, `kilo`, `opencode`, `openclaw`, `pi` — from `ProviderDiscoveryKind` in `providerDiscovery.ts`), and the codebase default provider is `codex`, not opencode. Forcing an OpenCode install on every user, including those who already have Codex or Claude configured, creates unnecessary friction and ignores existing provider infrastructure.
 
 ## Decision
 
@@ -23,16 +23,16 @@ The first-run wizard is provider-agnostic. It detects installed providers, prese
 
 ### Credential-First Detection Strategy (PRD Decision 9)
 
-Provider detection uses a credential-first, binary-second strategy. This is architecturally important because credentials alone are sufficient for API-based providers (codex, claudeAgent, gemini, cursor), while binary-only detection misses users who have API keys configured but no local binary:
+Provider detection uses a credential-first, binary-second strategy. This is architecturally important because it can explain whether a provider is missing credentials, a PATH binary, or both:
 
 1. **Check provider credentials**: API keys in environment variables, config directories (e.g., OpenCode's `~/.config/opencode/`), and stored credentials.
 2. **Check provider binaries on PATH**: Use existing `providerMaintenance.ts` binary discovery which handles Windows `.exe/.cmd/.bat` extensions.
-3. **Present three states per provider**: "ready" (credentials and/or binary present), "needs credentials" (binary only), "needs setup" (neither).
+3. **Present three states per provider**: `ready` when credentials and binary are both present, `needs-config` when a binary is present but credentials are missing, and `not-installed` when the binary is missing.
 
 ### Detection Source Files
 
 - `providerMaintenance.ts`: Binary detection, install source detection (`npm`, `bun`, `cargo`, `system`), version checking.
-- `providerDiscovery.ts`: `ProviderDiscoveryKind` enum (7 providers), `OpenCodeRuntimeProfile` schema, `ProviderRuntimeMode` (`managed` | `external` | `remote`).
+- `providerDiscovery.ts`: `ProviderDiscoveryKind` schema (9 providers), `OpenCodeRuntimeProfile` schema, `ProviderRuntimeMode` (`managed` | `external` | `remote`).
 - `opencodeRuntime.ts`: `startOpenCodeServerProcess` for managed runtime spawn; relevant because the wizard triggers this for OpenCode managed installs.
 
 ### Wizard Flow
@@ -69,7 +69,7 @@ On a clean Windows machine where no providers are detected, the wizard must:
 - The settings UI should eventually offer "Install runtime" per provider, but this is post-MVP.
 - The wizard must handle the case where no providers are detected (clean machine) gracefully by showing all options with setup instructions.
 - Provider selection is stored in settings and can be changed later.
-- Credential-first detection means the wizard can surface "ready" providers even when no binary is on PATH, which is the common case for API-based providers.
+- Credential-first detection means the wizard can distinguish credential presence from binary presence while only surfacing `ready` when both are available.
 
 ## Implementing Issues
 
@@ -82,4 +82,4 @@ Slice 2 builds the detection backend. Slice 3 builds the wizard UI that consumes
 
 ## Alternatives Considered
 
-**OpenCode-only wizard (original PRD).** Would be simpler to build but ignores the multi-provider reality of JCode, creates a worse UX for non-OpenCode users (who would be forced through an unnecessary install), and would need to be redesigned when adding other providers later. The codebase already has the infrastructure to detect 7 providers; not using it would be a waste.
+**OpenCode-only wizard (original PRD).** Would be simpler to build but ignores the multi-provider reality of JCode, creates a worse UX for non-OpenCode users (who would be forced through an unnecessary install), and would need to be redesigned when adding other providers later. The codebase already has the infrastructure to detect 9 providers; not using it would be a waste.

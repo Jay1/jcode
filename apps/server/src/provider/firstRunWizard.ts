@@ -109,10 +109,10 @@ export const completeFirstRunWizard = (
     const currentSettings = yield* settings.getSettings;
     const scanResults = options.scanResults ?? (yield* scanAllProviders());
     const openCodeScan = findOpenCodeScanResult(scanResults);
-    const managedRuntimeDir = yield* resolveManagedRuntimeDir;
     const existingConfigDetected = openCodeScan?.hasCredentials ?? false;
     const cleanManagedFirstRun =
       openCodeScan?.hasCredentials === false && openCodeScan.hasBinary === false;
+    const managedRuntimeDir = existingConfigDetected ? undefined : yield* resolveManagedRuntimeDir;
     const sidecarSnapshot =
       cleanManagedFirstRun && options.managedSidecarLifecycle
         ? yield* options.managedSidecarLifecycle.startManagedRuntime({ forceDownload: true })
@@ -120,7 +120,7 @@ export const completeFirstRunWizard = (
     const profileResult = autoCreateManagedRuntimeProfile({
       sidecarSnapshot,
       existingConfigDetected,
-      managedRuntimeDir,
+      ...(managedRuntimeDir ? { managedRuntimeDir } : {}),
       settings: currentSettings,
     });
 

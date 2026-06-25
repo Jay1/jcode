@@ -234,9 +234,7 @@ describe("managed sidecar wsRpc adapters", () => {
   });
 
   it("maps local legacy WebSocket access to an owner-equivalent RPC session", () => {
-    expect(
-      resolveLocalLegacyWsAuthSession({ authToken: undefined, legacyToken: null }),
-    ).toMatchObject({ role: "owner", subject: "local-legacy-websocket" });
+    expect(resolveLocalLegacyWsAuthSession({ authToken: undefined, legacyToken: null })).toBeNull();
     expect(
       resolveLocalLegacyWsAuthSession({ authToken: "local-token", legacyToken: "local-token" }),
     ).toMatchObject({ role: "owner", subject: "local-legacy-websocket" });

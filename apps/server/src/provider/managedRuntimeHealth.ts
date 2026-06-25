@@ -220,17 +220,21 @@ export const repairManagedSidecar = (input: {
       .stopManagedRuntime()
       .pipe(Effect.catchTag("ManagedSidecarError", () => Effect.void));
 
-    const startResult = yield* lifecycle.startManagedRuntime({ forceDownload: true }).pipe(
-      Effect.mapError((err) =>
-        err instanceof ManagedSidecarError
-          ? err
-          : new ManagedSidecarError({
-              stage: "repair",
-              message: String(err),
-              cause: err,
-            }),
-      ),
-    );
+    const startResult = yield* lifecycle
+      .startManagedRuntime({
+        forceDownload: input.forceRedownload ?? false,
+      })
+      .pipe(
+        Effect.mapError((err) =>
+          err instanceof ManagedSidecarError
+            ? err
+            : new ManagedSidecarError({
+                stage: "repair",
+                message: String(err),
+                cause: err,
+              }),
+        ),
+      );
 
     const health = yield* checkManagedSidecarHealth({
       sidecarSnapshot: startResult,

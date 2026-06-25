@@ -3758,10 +3758,13 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             adapterConfig.defaultBinaryPath;
           const providerServerUrl = providerOptions?.serverUrl?.trim();
           const providerServerPassword = providerOptions?.serverPassword?.trim();
-          const profileServerUrl = configuredConnection?.serverUrl;
-          const profileServerPassword = configuredConnection?.serverPassword;
+          const profileServerUrl = resolvedRuntimeProfile?.profile.serverUrl?.trim();
+          const profileServerPassword = resolvedRuntimeProfile?.serverPassword?.trim();
           const serverUrl = providerServerUrl || profileServerUrl;
-          const serverPassword = providerServerPassword || profileServerPassword;
+          const explicitServerPassword = providerServerPassword || profileServerPassword;
+          const serverPassword =
+            explicitServerPassword ||
+            (serverUrl ? undefined : configuredConnection?.serverPassword);
           const directory = input.cwd ?? configuredConnection?.cwd ?? serverConfig.cwd;
           const initialParsedModel =
             input.modelSelection?.provider === adapterConfig.provider
@@ -3785,8 +3788,8 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             provider === "opencode" &&
             resolvedRuntimeProfile?.profile.mode === "managed" &&
             !providerOptions?.binaryPath?.trim() &&
-            !(providerServerUrl && providerServerPassword) &&
-            !(profileServerUrl && profileServerPassword);
+            !(providerServerUrl || providerServerPassword) &&
+            !(profileServerUrl || profileServerPassword);
 
           const resumedSessionId = extractResumeSessionId(input.resumeCursor);
 

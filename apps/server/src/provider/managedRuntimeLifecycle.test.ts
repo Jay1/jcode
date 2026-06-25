@@ -530,30 +530,36 @@ describe("error handling", () => {
     runEffectTest(
       Effect.gen(function* () {
         let callCount = 0;
+        const startMock = vi.fn<OpenCodeRuntimeShape["startOpenCodeServerProcess"]>(() => {
+          callCount++;
+          if (callCount === 1) {
+            return Effect.fail(
+              new TestOpenCodeRuntimeError({
+                operation: "startOpenCodeServerProcess",
+                detail: "first attempt fails",
+              }),
+            );
+          }
+          return Effect.succeed({
+            url: FAKE_SERVER_URL,
+            exitCode: Effect.succeed(0),
+          });
+        });
         const failThenSucceed = makeMockRuntime({
-          startOpenCodeServerProcess: vi.fn(() => {
-            callCount++;
-            if (callCount === 1) {
-              return Effect.fail(
-                new TestOpenCodeRuntimeError({
-                  operation: "startOpenCodeServerProcess",
-                  detail: "first attempt fails",
-                }),
-              );
-            }
-            return Effect.succeed({
-              url: FAKE_SERVER_URL,
-              exitCode: Effect.succeed(0),
-            });
-          }),
+          startOpenCodeServerProcess: startMock,
         });
         const lifecycle = yield* makeTestLifecycle(failThenSucceed);
 
         yield* Effect.flip(lifecycle.startManagedRuntime());
 
         const success = yield* lifecycle.startManagedRuntime();
+        const firstPassword = startMock.mock.calls[0]?.[0].serverPassword;
+        const secondPassword = startMock.mock.calls[1]?.[0].serverPassword;
         expect(success.state).toBe("ready");
         expect(success.serverPassword).toBeTruthy();
+        expect(firstPassword).toBeTruthy();
+        expect(secondPassword).toBeTruthy();
+        expect(secondPassword).not.toBe(firstPassword);
       }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))),
     ));
 });
