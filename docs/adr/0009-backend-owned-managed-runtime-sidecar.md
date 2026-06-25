@@ -1,16 +1,16 @@
 # ADR 0009: Backend-Owned Managed Runtime Sidecar
 
-| Field           | Value                                                                                                                          |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Status          | Accepted                                                                                                                       |
-| Type            | Architecture decision record                                                                                                   |
-| Owner           | Engineering                                                                                                                    |
-| Audience        | Maintainers, reviewers, and automation agents                                                                                  |
-| Scope           | Runtime process ownership for managed provider sidecars in JCode desktop mode                                                  |
-| Canonical path  | `docs/adr/0009-backend-owned-managed-runtime-sidecar.md`                                                                       |
-| Last reviewed   | 2026-06-07                                                                                                                     |
-| Review cadence  | Event-driven; review if JCode adds a remote/hosted mode or changes provider runtime boundaries                                 |
-| Source of truth | `apps/server/src/provider/opencodeRuntime.ts`, `apps/server/src/provider/openCodeRuntimeHealth.ts`, `packages/contracts/src/providerDiscovery.ts` |
+| Field           | Value                                                                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Status          | Accepted                                                                                                                                                     |
+| Type            | Architecture decision record                                                                                                                                 |
+| Owner           | Engineering                                                                                                                                                  |
+| Audience        | Maintainers, reviewers, and automation agents                                                                                                                |
+| Scope           | Runtime process ownership for managed provider sidecars in JCode desktop mode                                                                                |
+| Canonical path  | `docs/adr/0009-backend-owned-managed-runtime-sidecar.md`                                                                                                     |
+| Last reviewed   | 2026-06-07                                                                                                                                                   |
+| Review cadence  | Event-driven; review if JCode adds a remote/hosted mode or changes provider runtime boundaries                                                               |
+| Source of truth | `apps/server/src/provider/opencodeRuntime.ts`, `apps/server/src/provider/openCodeRuntimeHealth.ts`, `packages/contracts/src/providerDiscovery.ts`            |
 | Verification    | Managed runtime spawns via server-side Effect ChildProcess; health checks gate desktop readiness; managed profiles are OpenCode-specific in contracts schema |
 
 ## Context
@@ -81,12 +81,12 @@ JCode provisions, verifies, starts, and repairs the managed runtime without aski
 
 ## Implementing Issues
 
-| Slice | Issue | Title | Implements |
-|-------|-------|-------|------------|
-| 4 | #72 | Managed OpenCode download and verify | Post-Install Download Pipeline (D7) |
-| 5 | #83 | Backend-owned managed OpenCode sidecar lifecycle | Core decision (D6), Fresh Password (D11), Health Gate (D10) |
-| 6 | #81 | Managed runtime profile auto-creation | configMode Default (D13), Runtime Profiles Visible (D5) |
-| 7 | #85 | Runtime health, repair, and diagnostics export | Health Gate repair flow (D10), Native First (D3) |
+| Slice   | Issue   | Title                                            | Implements                                                  |
+| ------- | ------- | ------------------------------------------------ | ----------------------------------------------------------- |
+| 4       | #72     | Managed OpenCode download and verify             | Post-Install Download Pipeline (D7)                         |
+| 5       | #83     | Backend-owned managed OpenCode sidecar lifecycle | Core decision (D6), Fresh Password (D11), Health Gate (D10) |
+| 6       | #81     | Managed runtime profile auto-creation            | configMode Default (D13), Runtime Profiles Visible (D5)     |
+| 7       | #85     | Runtime health, repair, and diagnostics export   | Health Gate repair flow (D10), Native First (D3)            |
 
 Slices 4 and 5 are the primary implementation. Slice 6 extends the profile model. Slice 7 adds the repair loop.
 

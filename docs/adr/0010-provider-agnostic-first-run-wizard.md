@@ -1,16 +1,16 @@
 # ADR 0010: Provider-Agnostic First-Run Wizard
 
-| Field           | Value                                                                                                                                                 |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Status          | Accepted                                                                                                                                              |
-| Type            | Architecture decision record                                                                                                                          |
-| Owner           | Engineering                                                                                                                                           |
-| Audience        | Maintainers, reviewers, and automation agents                                                                                                         |
-| Scope           | First-run setup experience for JCode desktop, covering provider detection, selection, and runtime provisioning                                        |
-| Canonical path  | `docs/adr/0010-provider-agnostic-first-run-wizard.md`                                                                                                 |
-| Last reviewed   | 2026-06-07                                                                                                                                            |
-| Review cadence  | Event-driven; review if JCode changes provider abstraction or adds hosted provider support                                                            |
-| Source of truth | `apps/web/src/routes/_chat.settings.tsx`, `packages/contracts/src/providerDiscovery.ts`, `apps/server/src/provider/providerMaintenance.ts`, `apps/server/src/provider/opencodeRuntime.ts` |
+| Field           | Value                                                                                                                                                                                        |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Status          | Accepted                                                                                                                                                                                     |
+| Type            | Architecture decision record                                                                                                                                                                 |
+| Owner           | Engineering                                                                                                                                                                                  |
+| Audience        | Maintainers, reviewers, and automation agents                                                                                                                                                |
+| Scope           | First-run setup experience for JCode desktop, covering provider detection, selection, and runtime provisioning                                                                               |
+| Canonical path  | `docs/adr/0010-provider-agnostic-first-run-wizard.md`                                                                                                                                        |
+| Last reviewed   | 2026-06-07                                                                                                                                                                                   |
+| Review cadence  | Event-driven; review if JCode changes provider abstraction or adds hosted provider support                                                                                                   |
+| Source of truth | `apps/web/src/routes/_chat.settings.tsx`, `packages/contracts/src/providerDiscovery.ts`, `apps/server/src/provider/providerMaintenance.ts`, `apps/server/src/provider/opencodeRuntime.ts`    |
 | Verification    | Wizard detects all 9 ProviderDiscoveryKind providers; provider readiness uses `ready`, `needs-config`, and `not-installed` states; OpenCode is the only provider with managed download in v1 |
 
 ## Context
@@ -73,10 +73,10 @@ On a clean Windows machine where no providers are detected, the wizard must:
 
 ## Implementing Issues
 
-| Slice | Issue | Title | Implements |
-|-------|-------|-------|------------|
-| 2 | #73 | Credential-first provider scanning | Credential-First Detection (D9) |
-| 3 | #84 | Provider-agnostic first-run wizard | Core decision (D8), wizard flow |
+| Slice   | Issue   | Title                              | Implements                      |
+| ------- | ------- | ---------------------------------- | ------------------------------- |
+| 2       | #73     | Credential-first provider scanning | Credential-First Detection (D9) |
+| 3       | #84     | Provider-agnostic first-run wizard | Core decision (D8), wizard flow |
 
 Slice 2 builds the detection backend. Slice 3 builds the wizard UI that consumes it.
 
