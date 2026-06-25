@@ -2326,13 +2326,14 @@ describe("ChatView timeline estimator parity (full app)", () => {
           ) as HTMLButtonElement | null,
         "Unable to find Run Lint button.",
       );
+      const requestStartIndex = wsRequests.length;
       runButton.click();
 
       await vi.waitFor(
         () => {
-          const openRequest = wsRequests.find(
-            (request) => request._tag === WS_METHODS.terminalOpen,
-          );
+          const openRequest = wsRequests
+            .slice(requestStartIndex)
+            .find((request) => request._tag === WS_METHODS.terminalOpen);
           expect(openRequest).toMatchObject({
             _tag: WS_METHODS.terminalOpen,
             threadId: THREAD_ID,
@@ -2348,9 +2349,9 @@ describe("ChatView timeline estimator parity (full app)", () => {
 
       await vi.waitFor(
         () => {
-          const writeRequest = wsRequests.find(
-            (request) => request._tag === WS_METHODS.terminalWrite,
-          );
+          const writeRequest = wsRequests
+            .slice(requestStartIndex)
+            .find((request) => request._tag === WS_METHODS.terminalWrite);
           expect(writeRequest).toMatchObject({
             _tag: WS_METHODS.terminalWrite,
             threadId: THREAD_ID,
@@ -2404,13 +2405,14 @@ describe("ChatView timeline estimator parity (full app)", () => {
           ) as HTMLButtonElement | null,
         "Unable to find Run Test button.",
       );
+      const requestStartIndex = wsRequests.length;
       runButton.click();
 
       await vi.waitFor(
         () => {
-          const openRequest = wsRequests.find(
-            (request) => request._tag === WS_METHODS.terminalOpen,
-          );
+          const openRequest = wsRequests
+            .slice(requestStartIndex)
+            .find((request) => request._tag === WS_METHODS.terminalOpen);
           expect(openRequest).toMatchObject({
             _tag: WS_METHODS.terminalOpen,
             threadId: THREAD_ID,
