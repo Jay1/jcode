@@ -7,6 +7,7 @@ import {
   MessageId,
   ORCHESTRATION_WS_METHODS,
   type GitListBranchesResult,
+  type FirstRunWizardData,
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
   type OrchestrationThread,
@@ -72,6 +73,7 @@ interface WsRequestEnvelope {
 interface TestFixture {
   snapshot: OrchestrationReadModel;
   serverConfig: ServerConfig;
+  firstRunWizardData: FirstRunWizardData;
   gitListBranchesResult?: GitListBranchesResult;
   welcome: WsWelcomePayload;
 }
@@ -158,6 +160,30 @@ function createBaseServerConfig(): ServerConfig {
       },
     ],
     availableEditors: [],
+  };
+}
+
+function createCompletedFirstRunWizardData(): FirstRunWizardData {
+  return {
+    state: {
+      completed: true,
+      completedAt: NOW_ISO,
+      selectedProvider: "codex",
+      skipped: false,
+    },
+    currentStep: "complete",
+    scanResults: {
+      scannedAt: NOW_ISO,
+      providers: [
+        {
+          provider: "codex",
+          status: "ready",
+          hasCredentials: true,
+          hasBinary: true,
+          credentials: [],
+        },
+      ],
+    },
   };
 }
 
@@ -481,6 +507,7 @@ function buildFixture(snapshot: OrchestrationReadModel): TestFixture {
   return {
     snapshot,
     serverConfig: createBaseServerConfig(),
+    firstRunWizardData: createCompletedFirstRunWizardData(),
     welcome: {
       cwd: "/repo/project",
       projectName: "Project",
@@ -893,6 +920,9 @@ function resolveWsRpc(body: WsRequestEnvelope["body"]): unknown {
   }
   if (tag === WS_METHODS.serverGetSettings) {
     return DEFAULT_SERVER_SETTINGS;
+  }
+  if (tag === WS_METHODS.serverGetFirstRunWizardData) {
+    return fixture.firstRunWizardData;
   }
   if (tag === WS_METHODS.serverGetEnvironment) {
     return {
