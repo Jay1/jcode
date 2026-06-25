@@ -577,7 +577,6 @@ function getThreadDetailFromFixtureSnapshot(threadId: ThreadId): OrchestrationTh
 function addThreadToSnapshot(
   snapshot: OrchestrationReadModel,
   threadId: ThreadId,
-  overrides?: Partial<OrchestrationThread>,
 ): OrchestrationReadModel {
   return {
     ...snapshot,
@@ -594,9 +593,9 @@ function addThreadToSnapshot(
         },
         interactionMode: "default",
         runtimeMode: "full-access",
-        envMode: overrides?.envMode ?? "local",
-        branch: overrides?.branch ?? "main",
-        worktreePath: overrides?.worktreePath ?? null,
+        envMode: "local",
+        branch: "main",
+        worktreePath: null,
         latestTurn: null,
         createdAt: NOW_ISO,
         updatedAt: NOW_ISO,
@@ -2386,22 +2385,15 @@ describe("ChatView timeline estimator parity (full app)", () => {
 
     const mounted = await mountChatView({
       viewport: DEFAULT_VIEWPORT,
-      snapshot: withProjectScripts(
-        addThreadToSnapshot(createDraftOnlySnapshot(), THREAD_ID, {
-          branch: "feature/draft",
-          envMode: "worktree",
-          worktreePath: "/repo/worktrees/feature-draft",
-        }),
-        [
-          {
-            id: "test",
-            name: "Test",
-            command: "bun run test",
-            icon: "test",
-            runOnWorktreeCreate: false,
-          },
-        ],
-      ),
+      snapshot: withProjectScripts(createDraftOnlySnapshot(), [
+        {
+          id: "test",
+          name: "Test",
+          command: "bun run test",
+          icon: "test",
+          runOnWorktreeCreate: false,
+        },
+      ]),
     });
 
     try {

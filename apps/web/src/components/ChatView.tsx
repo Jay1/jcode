@@ -2869,7 +2869,6 @@ export default function ChatView({
     voiceProviderStatus?.voiceTranscriptionAvailable !== false;
   const showVoiceNotesControl = canRenderVoiceNotes || isVoiceRecording || isVoiceTranscribing;
   const activeProjectCwd = activeProject?.cwd ?? null;
-  const activeThreadWorktreePath = activeThread?.worktreePath ?? null;
   const hasNativeUserMessages = useMemo(
     () =>
       activeThread?.messages.some(
@@ -2883,9 +2882,9 @@ export default function ChatView({
       project: {
         cwd: activeProjectCwd,
       },
-      worktreePath: activeThreadWorktreePath,
+      worktreePath: resolvedThreadWorktreePath,
     });
-  }, [activeProjectCwd, activeThreadWorktreePath]);
+  }, [activeProjectCwd, resolvedThreadWorktreePath]);
   // Default true while loading to avoid toolbar flicker.
   const isGitRepo = branchesQuery.data?.isRepo ?? true;
   const terminalToggleShortcutLabel = useMemo(
