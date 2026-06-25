@@ -1711,9 +1711,12 @@ export const makeWsRpcLayer = () =>
             ),
           ),
         [WS_METHODS.providerGetRuntimeBootstrapStatus]: (input) =>
-          rpcEffect(
-            getOpenCodeRuntimeBootstrapStatus(input),
-            "Failed to get runtime bootstrap status",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              getOpenCodeRuntimeBootstrapStatus(input),
+              "Failed to get runtime bootstrap status",
+            ),
           ),
         [WS_METHODS.providerBootstrapRuntime]: (input) =>
           rpcEffect(ownerOnly(bootstrapOpenCodeRuntime(input)), "Failed to bootstrap runtime"),
