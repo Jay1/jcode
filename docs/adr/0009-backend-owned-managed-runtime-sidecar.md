@@ -81,12 +81,12 @@ JCode provisions, verifies, starts, and repairs the managed runtime without aski
 
 ## Implementing Issues
 
-| Slice   | Issue   | Title                                            | Implements                                                  |
-| ------- | ------- | ------------------------------------------------ | ----------------------------------------------------------- |
-| 4       | #72     | Managed OpenCode download and verify             | Post-Install Download Pipeline (D7)                         |
-| 5       | #83     | Backend-owned managed OpenCode sidecar lifecycle | Core decision (D6), Fresh Password (D11), Health Gate (D10) |
-| 6       | #81     | Managed runtime profile auto-creation            | configMode Default (D13), Runtime Profiles Visible (D5)     |
-| 7       | #85     | Runtime health, repair, and diagnostics export   | Health Gate repair flow (D10), Native First (D3)            |
+| Slice | Issue | Title                                            | Implements                                                  |
+| ----- | ----- | ------------------------------------------------ | ----------------------------------------------------------- |
+| 4     | #72   | Managed OpenCode download and verify             | Post-Install Download Pipeline (D7)                         |
+| 5     | #83   | Backend-owned managed OpenCode sidecar lifecycle | Core decision (D6), Fresh Password (D11), Health Gate (D10) |
+| 6     | #81   | Managed runtime profile auto-creation            | configMode Default (D13), Runtime Profiles Visible (D5)     |
+| 7     | #85   | Runtime health, repair, and diagnostics export   | Health Gate repair flow (D10), Native First (D3)            |
 
 Slices 4 and 5 are the primary implementation. Slice 6 extends the profile model. Slice 7 adds the repair loop.
 

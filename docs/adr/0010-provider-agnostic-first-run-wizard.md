@@ -73,10 +73,10 @@ On a clean Windows machine where no providers are detected, the wizard must:
 
 ## Implementing Issues
 
-| Slice   | Issue   | Title                              | Implements                      |
-| ------- | ------- | ---------------------------------- | ------------------------------- |
-| 2       | #73     | Credential-first provider scanning | Credential-First Detection (D9) |
-| 3       | #84     | Provider-agnostic first-run wizard | Core decision (D8), wizard flow |
+| Slice | Issue | Title                              | Implements                      |
+| ----- | ----- | ---------------------------------- | ------------------------------- |
+| 2     | #73   | Credential-first provider scanning | Credential-First Detection (D9) |
+| 3     | #84   | Provider-agnostic first-run wizard | Core decision (D8), wizard flow |
 
 Slice 2 builds the detection backend. Slice 3 builds the wizard UI that consumes it.
 
