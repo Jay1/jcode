@@ -1,5 +1,6 @@
 import {
   PROVIDER_DISPLAY_NAMES,
+  type FirstRunWizardData,
   ThreadId,
   type OrchestrationEvent,
   type OrchestrationShellSnapshot,
@@ -23,6 +24,7 @@ import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Throttler } from "@tanstack/react-pacer";
 
 import { APP_DISPLAY_NAME } from "../branding";
+import { FIRST_RUN_WIZARD_QUERY_KEY, FirstRunWizard } from "../components/FirstRunWizard";
 import ShortcutsDialog from "../components/ShortcutsDialog";
 import WhatsNewDialog from "../components/WhatsNewDialog";
 import { useWhatsNew } from "../whatsNew/useWhatsNew";
@@ -143,11 +145,45 @@ function RootRouteView() {
           <TaskCompletionNotifications />
           <ProviderUpdateNotifications />
           <DesktopProjectBootstrap />
-          <Outlet />
+          <FirstRunOutletGate>
+            <Outlet />
+          </FirstRunOutletGate>
         </AuthSessionGate>
       </AnchoredToastProvider>
     </ToastProvider>
   );
+}
+
+function shouldShowFirstRunWizard(data: FirstRunWizardData | undefined): boolean {
+  if (!data) return false;
+  return !data.state.completed && !data.state.skipped && data.currentStep !== "complete";
+}
+
+function FirstRunOutletGate({ children }: { readonly children: React.ReactNode }) {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const firstRunQuery = useQuery({
+    queryKey: FIRST_RUN_WIZARD_QUERY_KEY,
+    enabled: pathname !== "/pair",
+    staleTime: 15_000,
+    queryFn: async () => {
+      const api = ensureNativeApi();
+      return api.server.getFirstRunWizardData();
+    },
+  });
+
+  if (pathname === "/pair") {
+    return <>{children}</>;
+  }
+
+  if (shouldShowFirstRunWizard(firstRunQuery.data)) {
+    return <FirstRunWizard />;
+  }
+
+  if (firstRunQuery.isLoading) {
+    return null;
+  }
+
+  return <>{children}</>;
 }
 
 function AuthSessionGate({ children }: { readonly children: React.ReactNode }) {

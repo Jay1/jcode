@@ -1,4 +1,5 @@
 import { Effect, FileSystem, Layer, Path } from "effect";
+import { HttpClient } from "effect/unstable/http";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
@@ -27,14 +28,20 @@ import { ProviderDiscoveryService } from "./Services/ProviderDiscoveryService";
 import { ProviderService } from "./Services/ProviderService";
 import { ProviderSessionDirectory } from "./Services/ProviderSessionDirectory";
 import { ProviderSessionRuntimeRepositoryLive } from "../persistence/Layers/ProviderSessionRuntime";
+import { ManagedSidecarLifecycle, ManagedSidecarLifecycleLive } from "./managedRuntimeLifecycle";
 
 export function makeServerProviderLayer(): Layer.Layer<
-  ProviderService | ProviderDiscoveryService | ProviderAdapterRegistry | ProviderSessionDirectory,
+  | ProviderService
+  | ProviderDiscoveryService
+  | ProviderAdapterRegistry
+  | ProviderSessionDirectory
+  | ManagedSidecarLifecycle,
   ProviderUnsupportedError | SecretStoreError,
   | SqlClient.SqlClient
   | ServerConfig
   | FileSystem.FileSystem
   | Path.Path
+  | HttpClient.HttpClient
   | AnalyticsService
   | ChildProcessSpawner.ChildProcessSpawner
 > {
@@ -106,6 +113,7 @@ export function makeServerProviderLayer(): Layer.Layer<
       providerDiscoveryLayer,
       adapterRegistryLayer,
       providerSessionDirectoryLayer,
+      ManagedSidecarLifecycleLive,
     );
   }).pipe(Layer.unwrap);
 }

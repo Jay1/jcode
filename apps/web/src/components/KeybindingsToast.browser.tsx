@@ -2,6 +2,7 @@ import "../index.css";
 
 import {
   DEFAULT_SERVER_SETTINGS,
+  type FirstRunWizardData,
   ORCHESTRATION_WS_METHODS,
   type MessageId,
   type OrchestrationReadModel,
@@ -33,6 +34,7 @@ const NOW_ISO = "2026-03-04T12:00:00.000Z";
 interface TestFixture {
   snapshot: OrchestrationReadModel;
   serverConfig: ServerConfig;
+  firstRunWizardData: FirstRunWizardData;
   welcome: WsWelcomePayload;
 }
 
@@ -56,6 +58,30 @@ function createBaseServerConfig(): ServerConfig {
       },
     ],
     availableEditors: [],
+  };
+}
+
+function createCompletedFirstRunWizardData(): FirstRunWizardData {
+  return {
+    state: {
+      completed: true,
+      completedAt: NOW_ISO,
+      selectedProvider: "codex",
+      skipped: false,
+    },
+    currentStep: "complete",
+    scanResults: {
+      scannedAt: NOW_ISO,
+      providers: [
+        {
+          provider: "codex",
+          status: "ready",
+          hasCredentials: true,
+          hasBinary: true,
+          credentials: [],
+        },
+      ],
+    },
   };
 }
 
@@ -131,6 +157,7 @@ function buildFixture(): TestFixture {
   return {
     snapshot: createMinimalSnapshot(),
     serverConfig: createBaseServerConfig(),
+    firstRunWizardData: createCompletedFirstRunWizardData(),
     welcome: {
       cwd: "/repo/project",
       projectName: "Project",
@@ -209,6 +236,9 @@ function resolveWsRpc(tag: string): unknown {
   }
   if (tag === WS_METHODS.serverGetSettings) {
     return DEFAULT_SERVER_SETTINGS;
+  }
+  if (tag === WS_METHODS.serverGetFirstRunWizardData) {
+    return fixture.firstRunWizardData;
   }
   if (tag === WS_METHODS.serverGetEnvironment) {
     return {

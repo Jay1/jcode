@@ -7,7 +7,7 @@ import { Schema } from "effect";
 import { NonNegativeInt, TrimmedNonEmptyString } from "./baseSchemas";
 import { ProviderOptionDescriptor } from "./model";
 
-const ProviderDiscoveryKind = Schema.Literals([
+export const ProviderDiscoveryKind = Schema.Literals([
   "codex",
   "claudeAgent",
   "cursor",
@@ -18,6 +18,7 @@ const ProviderDiscoveryKind = Schema.Literals([
   "openclaw",
   "pi",
 ]);
+export type ProviderDiscoveryKind = typeof ProviderDiscoveryKind.Type;
 
 export const ProviderSkillInterface = Schema.Struct({
   displayName: Schema.optional(TrimmedNonEmptyString),

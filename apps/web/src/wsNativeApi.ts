@@ -100,6 +100,37 @@ export function __resetWsNativeApiForTests(): void {
   fallbackBrowserStates.clear();
 }
 
+function currentTransport(): WsTransport {
+  if (!instance || instance.transport.getState() === "disposed") {
+    createWsNativeApi();
+  }
+
+  if (!instance) {
+    throw new Error("WebSocket transport unavailable");
+  }
+
+  return instance.transport;
+}
+
+function requestWs<T = unknown>(
+  method: string,
+  params?: unknown,
+  options?: { readonly timeoutMs?: number | null },
+): Promise<T> {
+  if (arguments.length >= 3) {
+    return currentTransport().request<T>(method, params, options);
+  }
+  if (arguments.length >= 2) {
+    return currentTransport().request<T>(method, params);
+  }
+  return currentTransport().request<T>(method);
+}
+
+function resetTransportAfterBrowserSessionAuth(): void {
+  instance?.transport.dispose();
+  instance = null;
+}
+
 function defaultBrowserState(threadId: ThreadId): ThreadBrowserState {
   return {
     threadId,
@@ -508,12 +539,12 @@ export function createWsNativeApi(): NativeApi {
       },
     },
     terminal: {
-      open: (input) => transport.request(WS_METHODS.terminalOpen, input),
-      write: (input) => transport.request(WS_METHODS.terminalWrite, input),
-      resize: (input) => transport.request(WS_METHODS.terminalResize, input),
-      clear: (input) => transport.request(WS_METHODS.terminalClear, input),
-      restart: (input) => transport.request(WS_METHODS.terminalRestart, input),
-      close: (input) => transport.request(WS_METHODS.terminalClose, input),
+      open: (input) => requestWs(WS_METHODS.terminalOpen, input),
+      write: (input) => requestWs(WS_METHODS.terminalWrite, input),
+      resize: (input) => requestWs(WS_METHODS.terminalResize, input),
+      clear: (input) => requestWs(WS_METHODS.terminalClear, input),
+      restart: (input) => requestWs(WS_METHODS.terminalRestart, input),
+      close: (input) => requestWs(WS_METHODS.terminalClose, input),
       onEvent: (callback) => {
         terminalEventListeners.add(callback);
         return () => {
@@ -522,18 +553,16 @@ export function createWsNativeApi(): NativeApi {
       },
     },
     projects: {
-      listDirectories: (input) => transport.request(WS_METHODS.projectsListDirectories, input),
-      searchEntries: (input) => transport.request(WS_METHODS.projectsSearchEntries, input),
-      searchLocalEntries: (input) =>
-        transport.request(WS_METHODS.projectsSearchLocalEntries, input),
-      writeFile: (input) => transport.request(WS_METHODS.projectsWriteFile, input),
+      listDirectories: (input) => requestWs(WS_METHODS.projectsListDirectories, input),
+      searchEntries: (input) => requestWs(WS_METHODS.projectsSearchEntries, input),
+      searchLocalEntries: (input) => requestWs(WS_METHODS.projectsSearchLocalEntries, input),
+      writeFile: (input) => requestWs(WS_METHODS.projectsWriteFile, input),
     },
     filesystem: {
-      browse: (input) => transport.request(WS_METHODS.filesystemBrowse, input),
+      browse: (input) => requestWs(WS_METHODS.filesystemBrowse, input),
     },
     shell: {
-      openInEditor: (cwd, editor) =>
-        transport.request(WS_METHODS.shellOpenInEditor, { cwd, editor }),
+      openInEditor: (cwd, editor) => requestWs(WS_METHODS.shellOpenInEditor, { cwd, editor }),
       openExternal: async (url) => {
         if (window.desktopBridge) {
           const opened = await window.desktopBridge.openExternal(url);
@@ -555,33 +584,31 @@ export function createWsNativeApi(): NativeApi {
       },
     },
     git: {
-      pull: (input) => transport.request(WS_METHODS.gitPull, input),
-      status: (input) => transport.request(WS_METHODS.gitStatus, input),
-      readWorkingTreeDiff: (input) => transport.request(WS_METHODS.gitReadWorkingTreeDiff, input),
+      pull: (input) => requestWs(WS_METHODS.gitPull, input),
+      status: (input) => requestWs(WS_METHODS.gitStatus, input),
+      readWorkingTreeDiff: (input) => requestWs(WS_METHODS.gitReadWorkingTreeDiff, input),
       summarizeDiff: (input) =>
-        transport.request(WS_METHODS.gitSummarizeDiff, input, {
+        requestWs(WS_METHODS.gitSummarizeDiff, input, {
           timeoutMs: null,
         }),
       runStackedAction: (input) =>
-        transport.request(WS_METHODS.gitRunStackedAction, input, {
+        requestWs(WS_METHODS.gitRunStackedAction, input, {
           timeoutMs: null,
         }),
-      listBranches: (input) => transport.request(WS_METHODS.gitListBranches, input),
-      createWorktree: (input) => transport.request(WS_METHODS.gitCreateWorktree, input),
-      createDetachedWorktree: (input) =>
-        transport.request(WS_METHODS.gitCreateDetachedWorktree, input),
-      removeWorktree: (input) => transport.request(WS_METHODS.gitRemoveWorktree, input),
-      createBranch: (input) => transport.request(WS_METHODS.gitCreateBranch, input),
-      checkout: (input) => transport.request(WS_METHODS.gitCheckout, input),
-      stashAndCheckout: (input) => transport.request(WS_METHODS.gitStashAndCheckout, input),
-      stashDrop: (input) => transport.request(WS_METHODS.gitStashDrop, input),
-      stashInfo: (input) => transport.request(WS_METHODS.gitStashInfo, input),
-      removeIndexLock: (input) => transport.request(WS_METHODS.gitRemoveIndexLock, input),
-      init: (input) => transport.request(WS_METHODS.gitInit, input),
-      handoffThread: (input) => transport.request(WS_METHODS.gitHandoffThread, input),
-      resolvePullRequest: (input) => transport.request(WS_METHODS.gitResolvePullRequest, input),
-      preparePullRequestThread: (input) =>
-        transport.request(WS_METHODS.gitPreparePullRequestThread, input),
+      listBranches: (input) => requestWs(WS_METHODS.gitListBranches, input),
+      createWorktree: (input) => requestWs(WS_METHODS.gitCreateWorktree, input),
+      createDetachedWorktree: (input) => requestWs(WS_METHODS.gitCreateDetachedWorktree, input),
+      removeWorktree: (input) => requestWs(WS_METHODS.gitRemoveWorktree, input),
+      createBranch: (input) => requestWs(WS_METHODS.gitCreateBranch, input),
+      checkout: (input) => requestWs(WS_METHODS.gitCheckout, input),
+      stashAndCheckout: (input) => requestWs(WS_METHODS.gitStashAndCheckout, input),
+      stashDrop: (input) => requestWs(WS_METHODS.gitStashDrop, input),
+      stashInfo: (input) => requestWs(WS_METHODS.gitStashInfo, input),
+      removeIndexLock: (input) => requestWs(WS_METHODS.gitRemoveIndexLock, input),
+      init: (input) => requestWs(WS_METHODS.gitInit, input),
+      handoffThread: (input) => requestWs(WS_METHODS.gitHandoffThread, input),
+      resolvePullRequest: (input) => requestWs(WS_METHODS.gitResolvePullRequest, input),
+      preparePullRequestThread: (input) => requestWs(WS_METHODS.gitPreparePullRequestThread, input),
       onActionProgress: (callback) => {
         gitActionProgressListeners.add(callback);
         return () => {
@@ -601,21 +628,28 @@ export function createWsNativeApi(): NativeApi {
       },
     },
     server: {
-      getConfig: () => transport.request(WS_METHODS.serverGetConfig),
-      getEnvironment: () => transport.request(WS_METHODS.serverGetEnvironment),
-      getSettings: () => transport.request(WS_METHODS.serverGetSettings),
-      updateSettings: (input) => transport.request(WS_METHODS.serverUpdateSettings, input),
-      updateOpenClawSecrets: (input) =>
-        transport.request(WS_METHODS.serverUpdateOpenClawSecrets, input),
+      getConfig: () => requestWs(WS_METHODS.serverGetConfig),
+      getEnvironment: () => requestWs(WS_METHODS.serverGetEnvironment),
+      getSettings: () => requestWs(WS_METHODS.serverGetSettings),
+      updateSettings: (input) => requestWs(WS_METHODS.serverUpdateSettings, input),
+      updateOpenClawSecrets: (input) => requestWs(WS_METHODS.serverUpdateOpenClawSecrets, input),
       getAuthSession: () =>
         requestAuthJson<AuthSessionState>(AuthHttpRoutes.session.pathname, {
           method: AuthHttpRoutes.session.method,
         }),
-      bootstrapAuth: (input: AuthBootstrapInput) =>
-        requestAuthJson<AuthBootstrapResult>(AuthHttpRoutes.bootstrap.pathname, {
-          method: AuthHttpRoutes.bootstrap.method,
-          body: input,
-        }),
+      bootstrapAuth: async (input: AuthBootstrapInput) => {
+        const result = await requestAuthJson<AuthBootstrapResult>(
+          AuthHttpRoutes.bootstrap.pathname,
+          {
+            method: AuthHttpRoutes.bootstrap.method,
+            body: input,
+          },
+        );
+        if (result.sessionMethod === "browser-session-cookie") {
+          resetTransportAfterBrowserSessionAuth();
+        }
+        return result;
+      },
       bootstrapBearerAuth: (input: AuthBootstrapInput) =>
         requestAuthJson<AuthBearerBootstrapResult>(AuthHttpRoutes.bootstrapBearer.pathname, {
           method: AuthHttpRoutes.bootstrapBearer.method,
@@ -653,77 +687,81 @@ export function createWsNativeApi(): NativeApi {
           method: AuthHttpRoutes.revokeOtherClients.method,
         }),
       onAuthAccess,
-      refreshProviders: () => transport.request(WS_METHODS.serverRefreshProviders),
-      updateProvider: (input) => transport.request(WS_METHODS.serverUpdateProvider, input),
-      listWorktrees: () => transport.request(WS_METHODS.serverListWorktrees),
+      refreshProviders: () => requestWs(WS_METHODS.serverRefreshProviders),
+      updateProvider: (input) => requestWs(WS_METHODS.serverUpdateProvider, input),
+      listWorktrees: () => requestWs(WS_METHODS.serverListWorktrees),
       getProviderUsageSnapshot: (input) =>
-        transport.request(WS_METHODS.serverGetProviderUsageSnapshot, input),
-      getDiagnostics: () => transport.request(WS_METHODS.serverGetDiagnostics),
+        requestWs(WS_METHODS.serverGetProviderUsageSnapshot, input),
+      getDiagnostics: () => requestWs(WS_METHODS.serverGetDiagnostics),
       transcribeVoice: (input) => {
         if (window.desktopBridge?.server?.transcribeVoice) {
           return window.desktopBridge.server.transcribeVoice(input);
         }
-        return transport.request(WS_METHODS.serverTranscribeVoice, input);
+        return requestWs(WS_METHODS.serverTranscribeVoice, input);
       },
-      upsertKeybinding: (input) => transport.request(WS_METHODS.serverUpsertKeybinding, input),
-      resetKeybinding: (input) => transport.request(WS_METHODS.serverResetKeybinding, input),
-      resetAllKeybindings: () => transport.request(WS_METHODS.serverResetAllKeybindings, {}),
-      generateThreadRecap: (input) =>
-        transport.request(WS_METHODS.serverGenerateThreadRecap, input),
+      upsertKeybinding: (input) => requestWs(WS_METHODS.serverUpsertKeybinding, input),
+      resetKeybinding: (input) => requestWs(WS_METHODS.serverResetKeybinding, input),
+      resetAllKeybindings: () => requestWs(WS_METHODS.serverResetAllKeybindings, {}),
+      getFirstRunWizardData: () => requestWs(WS_METHODS.serverGetFirstRunWizardData, {}),
+      completeFirstRunWizard: (input) => requestWs(WS_METHODS.serverCompleteFirstRunWizard, input),
+      skipFirstRun: () => requestWs(WS_METHODS.serverSkipFirstRun, {}),
+      generateThreadRecap: (input) => requestWs(WS_METHODS.serverGenerateThreadRecap, input),
     },
     provider: {
       getComposerCapabilities: (input) =>
-        transport.request(WS_METHODS.providerGetComposerCapabilities, input),
-      getRuntimeHealth: (input) => transport.request(WS_METHODS.providerGetRuntimeHealth, input),
+        requestWs(WS_METHODS.providerGetComposerCapabilities, input),
+      getRuntimeHealth: (input) => requestWs(WS_METHODS.providerGetRuntimeHealth, input),
+      getManagedSidecarHealth: () =>
+        requestWs(WS_METHODS.providerGetManagedSidecarHealth, undefined),
+      repairManagedSidecar: (input) => requestWs(WS_METHODS.providerRepairManagedSidecar, input),
+      exportManagedSidecarDiagnostics: () =>
+        requestWs(WS_METHODS.providerExportManagedSidecarDiagnostics, undefined),
       getRuntimeBootstrapStatus: (input) =>
-        transport.request(WS_METHODS.providerGetRuntimeBootstrapStatus, input),
-      bootstrapRuntime: (input) => transport.request(WS_METHODS.providerBootstrapRuntime, input),
-      repairRuntime: (input) => transport.request(WS_METHODS.providerRepairRuntime, input),
-      compactThread: (input) => transport.request(WS_METHODS.providerCompactThread, input),
-      listCommands: (input) => transport.request(WS_METHODS.providerListCommands, input),
-      listSkills: (input) => transport.request(WS_METHODS.providerListSkills, input),
-      installSkill: (input) => transport.request(WS_METHODS.providerInstallSkill, input),
-      uninstallSkill: (input) => transport.request(WS_METHODS.providerUninstallSkill, input),
-      setSkillEnabled: (input) => transport.request(WS_METHODS.providerSetSkillEnabled, input),
-      searchSkillsCatalog: (input) =>
-        transport.request(WS_METHODS.providerSearchSkillsCatalog, input),
-      listPlugins: (input) => transport.request(WS_METHODS.providerListPlugins, input),
-      readPlugin: (input) => transport.request(WS_METHODS.providerReadPlugin, input),
-      listModels: (input) => transport.request(WS_METHODS.providerListModels, input),
-      listAgents: (input) => transport.request(WS_METHODS.providerListAgents, input),
+        requestWs(WS_METHODS.providerGetRuntimeBootstrapStatus, input),
+      bootstrapRuntime: (input) => requestWs(WS_METHODS.providerBootstrapRuntime, input),
+      repairRuntime: (input) => requestWs(WS_METHODS.providerRepairRuntime, input),
+      compactThread: (input) => requestWs(WS_METHODS.providerCompactThread, input),
+      listCommands: (input) => requestWs(WS_METHODS.providerListCommands, input),
+      listSkills: (input) => requestWs(WS_METHODS.providerListSkills, input),
+      installSkill: (input) => requestWs(WS_METHODS.providerInstallSkill, input),
+      uninstallSkill: (input) => requestWs(WS_METHODS.providerUninstallSkill, input),
+      setSkillEnabled: (input) => requestWs(WS_METHODS.providerSetSkillEnabled, input),
+      searchSkillsCatalog: (input) => requestWs(WS_METHODS.providerSearchSkillsCatalog, input),
+      listPlugins: (input) => requestWs(WS_METHODS.providerListPlugins, input),
+      readPlugin: (input) => requestWs(WS_METHODS.providerReadPlugin, input),
+      listModels: (input) => requestWs(WS_METHODS.providerListModels, input),
+      listAgents: (input) => requestWs(WS_METHODS.providerListAgents, input),
     },
     orchestration: {
       getSnapshot: () =>
-        transport.request(ORCHESTRATION_WS_METHODS.getSnapshot, undefined, {
+        requestWs(ORCHESTRATION_WS_METHODS.getSnapshot, undefined, {
           timeoutMs: null,
         }),
       getShellSnapshot: () =>
-        transport.request(ORCHESTRATION_WS_METHODS.getShellSnapshot, undefined, {
+        requestWs(ORCHESTRATION_WS_METHODS.getShellSnapshot, undefined, {
           timeoutMs: null,
         }),
       dispatchCommand: (command) => {
-        return transport.request(ORCHESTRATION_WS_METHODS.dispatchCommand, {
+        return requestWs(ORCHESTRATION_WS_METHODS.dispatchCommand, {
           command: omitNullUserInputAnswers(command),
         });
       },
-      importThread: (input) => transport.request(ORCHESTRATION_WS_METHODS.importThread, input),
-      repairState: () => transport.request(ORCHESTRATION_WS_METHODS.repairState),
-      getTurnDiff: (input) => transport.request(ORCHESTRATION_WS_METHODS.getTurnDiff, input),
+      importThread: (input) => requestWs(ORCHESTRATION_WS_METHODS.importThread, input),
+      repairState: () => requestWs(ORCHESTRATION_WS_METHODS.repairState),
+      getTurnDiff: (input) => requestWs(ORCHESTRATION_WS_METHODS.getTurnDiff, input),
       getFullThreadDiff: (input) =>
-        transport.request(ORCHESTRATION_WS_METHODS.getFullThreadDiff, input, {
+        requestWs(ORCHESTRATION_WS_METHODS.getFullThreadDiff, input, {
           timeoutMs: null,
         }),
       replayEvents: (fromSequenceExclusive) =>
-        transport.request(ORCHESTRATION_WS_METHODS.replayEvents, {
+        requestWs(ORCHESTRATION_WS_METHODS.replayEvents, {
           fromSequenceExclusive,
         }),
-      subscribeShell: () => transport.request<void>(ORCHESTRATION_WS_METHODS.subscribeShell, {}),
-      unsubscribeShell: () =>
-        transport.request<void>(ORCHESTRATION_WS_METHODS.unsubscribeShell, {}),
-      subscribeThread: (input) =>
-        transport.request<void>(ORCHESTRATION_WS_METHODS.subscribeThread, input),
+      subscribeShell: () => requestWs<void>(ORCHESTRATION_WS_METHODS.subscribeShell, {}),
+      unsubscribeShell: () => requestWs<void>(ORCHESTRATION_WS_METHODS.unsubscribeShell, {}),
+      subscribeThread: (input) => requestWs<void>(ORCHESTRATION_WS_METHODS.subscribeThread, input),
       unsubscribeThread: (input) =>
-        transport.request<void>(ORCHESTRATION_WS_METHODS.unsubscribeThread, input),
+        requestWs<void>(ORCHESTRATION_WS_METHODS.unsubscribeThread, input),
       onDomainEvent: (callback) => {
         orchestrationDomainEventListeners.add(callback);
         return () => {

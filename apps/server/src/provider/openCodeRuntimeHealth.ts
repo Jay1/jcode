@@ -294,7 +294,11 @@ export function checkOpenCodeRuntimeHealth(input: {
           ...(connectionConfig.xdgConfigHome
             ? { xdgConfigHome: connectionConfig.xdgConfigHome }
             : {}),
+          ...(connectionConfig.extraEnv ? { extraEnv: connectionConfig.extraEnv } : {}),
           ...(connectionConfig.cwd ? { cwd: connectionConfig.cwd } : {}),
+          ...(connectionConfig.serverPassword
+            ? { serverPassword: connectionConfig.serverPassword }
+            : {}),
         }),
       );
 
@@ -322,8 +326,8 @@ export function checkOpenCodeRuntimeHealth(input: {
         baseUrl: server.url,
         directory: input.cwd ?? profile.cwdDefault ?? process.cwd(),
         cliSpec: input.cliSpec,
-        ...(server.external && resolved.serverPassword
-          ? { serverPassword: resolved.serverPassword }
+        ...(connectionConfig.serverPassword
+          ? { serverPassword: connectionConfig.serverPassword }
           : {}),
       });
       const inventoryExit = yield* Effect.exit(input.runtime.loadOpenCodeInventory(client));

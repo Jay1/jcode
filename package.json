@@ -57,6 +57,8 @@
     "test:desktop-smoke": "turbo run smoke-test --filter=@jcode/desktop",
     "release:notes": "bun scripts/release-notes.ts",
     "release:scoop": "node scripts/generate-scoop-manifest.ts",
+    "release:winget": "node scripts/generate-winget-manifest.ts",
+    "update-manifests": "node scripts/update-package-manifests.ts",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "fmt:check:local": "oxfmt --check --threads=4",

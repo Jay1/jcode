@@ -5,6 +5,10 @@ import {
   WsProviderBootstrapRuntimeRpc,
   WsProviderGetRuntimeBootstrapStatusRpc,
   WsProviderRepairRuntimeRpc,
+  WsServerSkipFirstRunRpc,
+  WsProviderExportManagedSidecarDiagnosticsRpc,
+  WsProviderGetManagedSidecarHealthRpc,
+  WsProviderRepairManagedSidecarRpc,
   WsRpcError,
   WsRpcGroup,
 } from "./rpc";
@@ -18,6 +22,16 @@ describe("WS RPC contracts", () => {
 
   it("uses a schema-backed transport error", () => {
     expect(new WsRpcError({ message: "failed" }).message).toBe("failed");
+  });
+
+  it("exports managed sidecar provider RPCs", () => {
+    expect(WsProviderGetManagedSidecarHealthRpc).toBeDefined();
+    expect(WsProviderRepairManagedSidecarRpc).toBeDefined();
+    expect(WsProviderExportManagedSidecarDiagnosticsRpc).toBeDefined();
+  });
+
+  it("exports the first-run skip RPC", () => {
+    expect(WsServerSkipFirstRunRpc).toBeDefined();
   });
 
   it("exports provider runtime bootstrap RPC methods", () => {

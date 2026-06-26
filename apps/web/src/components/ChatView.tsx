@@ -2869,7 +2869,6 @@ export default function ChatView({
     voiceProviderStatus?.voiceTranscriptionAvailable !== false;
   const showVoiceNotesControl = canRenderVoiceNotes || isVoiceRecording || isVoiceTranscribing;
   const activeProjectCwd = activeProject?.cwd ?? null;
-  const activeThreadWorktreePath = activeThread?.worktreePath ?? null;
   const hasNativeUserMessages = useMemo(
     () =>
       activeThread?.messages.some(
@@ -2883,9 +2882,9 @@ export default function ChatView({
       project: {
         cwd: activeProjectCwd,
       },
-      worktreePath: activeThreadWorktreePath,
+      worktreePath: resolvedThreadWorktreePath,
     });
-  }, [activeProjectCwd, activeThreadWorktreePath]);
+  }, [activeProjectCwd, resolvedThreadWorktreePath]);
   // Default true while loading to avoid toolbar flicker.
   const isGitRepo = branchesQuery.data?.isRepo ?? true;
   const terminalToggleShortcutLabel = useMemo(
@@ -3559,7 +3558,7 @@ export default function ChatView({
       },
     ) => {
       const api = readNativeApi();
-      if (!api || !activeThreadId || !activeProject || !activeThread) return;
+      if (!api || !activeThreadId || !activeProject) return;
       if (options?.rememberAsLastInvoked !== false) {
         setLastInvokedScriptByProjectId((current) => {
           if (current[activeProject.id] === script.id) return current;
@@ -3590,7 +3589,7 @@ export default function ChatView({
         project: {
           cwd: activeProject.cwd,
         },
-        worktreePath: options?.worktreePath ?? activeThread.worktreePath ?? null,
+        worktreePath: options?.worktreePath ?? resolvedThreadWorktreePath,
         ...(options?.env ? { extraEnv: options.env } : {}),
       });
       const openTerminalInput: Parameters<typeof api.terminal.open>[0] = shouldCreateNewTerminal
@@ -3632,9 +3631,9 @@ export default function ChatView({
     },
     [
       activeProject,
-      activeThread,
       activeThreadId,
       gitCwd,
+      resolvedThreadWorktreePath,
       setTerminalOpen,
       setThreadError,
       storeNewTerminal,

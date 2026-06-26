@@ -8,7 +8,7 @@
 | Audience        | Engineers, reviewers, maintainers, and automation agents                                                         |
 | Scope           | Durable architecture decisions for JCode boundaries, runtime posture, release strategy, and provider integration |
 | Canonical path  | `docs/adr/README.md`                                                                                             |
-| Last reviewed   | 2026-06-05                                                                                                       |
+| Last reviewed   | 2026-06-19                                                                                                       |
 | Review cadence  | Event-driven; add or update ADRs when a decision changes how future work should be done                          |
 | Source of truth | ADR files, linked architecture docs, and runtime source                                                          |
 | Verification    | Cross-check ADR claims against current source and tests before relying on them                                   |
@@ -22,9 +22,11 @@
 | [0003](0003-settings-native-skill-library.md)              | Accepted | Settings-native provider-aware Skill Library |
 | [0004](0004-project-language-icons.md)                     | Proposed | Project language icons as metadata           |
 | [0005](0005-openclaw-gateway-provider.md)                  | Accepted | OpenClaw Gateway as a first-class Provider   |
-| [0008](0008-scoped-remote-client-capability-tokens.md)     | Accepted | Scoped remote client capability tokens       |
 | [0006](0006-remote-client-runtime-ws-rpc-scope-wiring.md)  | Decided  | Remote Client Runtime WS RPC Scope Wiring    |
 | [0007](0007-parallel-windows-wsl-backend-routing.md)       | Proposed | Parallel Windows + WSL Backend Routing       |
+| [0008](0008-scoped-remote-client-capability-tokens.md)     | Accepted | Scoped remote client capability tokens       |
+| [0009](0009-backend-owned-managed-runtime-sidecar.md)      | Accepted | Backend-owned managed runtime sidecar        |
+| [0010](0010-provider-agnostic-first-run-wizard.md)         | Accepted | Provider-agnostic first-run wizard           |
 
 ## When To Add An ADR
 

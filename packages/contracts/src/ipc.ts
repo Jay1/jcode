@@ -82,6 +82,11 @@ import type {
   ServerVoiceTranscriptionResult,
 } from "./server";
 import type {
+  CompleteFirstRunWizardInput,
+  FirstRunState,
+  FirstRunWizardData,
+} from "./firstRunWizard";
+import type {
   TerminalClearInput,
   TerminalCloseInput,
   TerminalEvent,
@@ -138,6 +143,12 @@ import type {
   OpenCodeRuntimeHealth,
 } from "./providerDiscovery";
 import type { ProviderCompactThreadInput } from "./provider";
+import type {
+  ManagedSidecarDiagnostics,
+  ManagedSidecarHealthCheck,
+  ManagedSidecarRepairRequest,
+  ManagedSidecarRepairResult,
+} from "./managedRuntimeHealth";
 
 export interface ContextMenuItem<T extends string = string> {
   id: T;
@@ -473,6 +484,9 @@ export interface NativeApi {
     upsertKeybinding: (input: ServerUpsertKeybindingInput) => Promise<ServerUpsertKeybindingResult>;
     resetKeybinding: (input: ServerResetKeybindingInput) => Promise<ServerResetKeybindingsResult>;
     resetAllKeybindings: () => Promise<ServerResetKeybindingsResult>;
+    getFirstRunWizardData: () => Promise<FirstRunWizardData>;
+    completeFirstRunWizard: (input: CompleteFirstRunWizardInput) => Promise<FirstRunState>;
+    skipFirstRun: () => Promise<FirstRunState>;
     generateThreadRecap: (
       input: ServerGenerateThreadRecapInput,
     ) => Promise<ServerGenerateThreadRecapResult>;
@@ -482,6 +496,11 @@ export interface NativeApi {
       input: ProviderGetComposerCapabilitiesInput,
     ) => Promise<ProviderComposerCapabilities>;
     getRuntimeHealth: (input: ProviderGetRuntimeHealthInput) => Promise<OpenCodeRuntimeHealth>;
+    getManagedSidecarHealth: () => Promise<ManagedSidecarHealthCheck>;
+    repairManagedSidecar: (
+      input: ManagedSidecarRepairRequest,
+    ) => Promise<ManagedSidecarRepairResult>;
+    exportManagedSidecarDiagnostics: () => Promise<ManagedSidecarDiagnostics>;
     getRuntimeBootstrapStatus: (
       input: ProviderRuntimeBootstrapStatusInput,
     ) => Promise<ProviderRuntimeBootstrapSnapshot>;
