@@ -1474,6 +1474,54 @@ it.layer(TestLayer)("git integration", (it) => {
         expect(listed).toEqual([]);
       }),
     );
+
+    it.effect("marks porcelain worktrees prunable when git includes a reason suffix", () =>
+      Effect.gen(function* () {
+        const tmp = yield* makeTmpDir();
+        yield* initRepoWithCommit(tmp);
+        const currentBranchEntry = (yield* (yield* GitCore).listBranches({
+          cwd: tmp,
+        })).branches.find((branch) => branch.current);
+        expect(currentBranchEntry).toBeDefined();
+        if (!currentBranchEntry) return;
+        const result = yield* (yield* GitCore).createWorktree({
+          cwd: tmp,
+          branch: currentBranchEntry.name,
+          newBranch: "wt-prunable-candidate",
+          path: null,
+        });
+        const stalePath = result.worktree.path;
+        const fileSystem = yield* FileSystem.FileSystem;
+        yield* fileSystem.remove(stalePath, { recursive: true });
+        const realGitCore = yield* GitCore;
+        const core = yield* makeIsolatedGitCore((input) => {
+          if (input.args[0] === "worktree" && input.args[1] === "list") {
+            return Effect.succeed({
+              code: 0,
+              stdout: [
+                `worktree ${tmp}`,
+                "HEAD abc123",
+                "branch refs/heads/main",
+                "",
+                `worktree ${stalePath}`,
+                "HEAD def456",
+                "branch refs/heads/wt-stale",
+                "prunable gitdir file points to non-existent location",
+                "",
+              ].join("\n"),
+              stderr: "",
+            });
+          }
+          return realGitCore.execute(input);
+        });
+
+        const listed = yield* core.listManagedWorktrees(tmp);
+        const candidate = listed.find((worktree) => worktree.path === stalePath);
+
+        expect(candidate?.cleanupStatus).toBe("stale_missing");
+        expect(candidate?.cleanupExplanation).toContain("prunable");
+      }),
+    );
   });
 
   // ── Full flow: local branch checkout ──

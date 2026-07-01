@@ -455,7 +455,7 @@ function parseWorktreeListPorcelain(stdout: string): WorktreePorcelainEntry[] {
       currentBranch = branch.length > 0 ? branch : null;
       continue;
     }
-    if (line === "prunable") {
+    if (line === "prunable" || line.startsWith("prunable ")) {
       currentPrunable = true;
     }
   }
