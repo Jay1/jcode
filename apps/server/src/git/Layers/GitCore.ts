@@ -24,6 +24,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 import { randomUUID } from "node:crypto";
 import * as nodeFs from "node:fs/promises";
 import * as nodePath from "node:path";
+import type { ServerManagedWorktree } from "@jcode/contracts";
 
 import { GitCheckoutDirtyWorktreeError, GitCommandError } from "../Errors.ts";
 import {
@@ -80,6 +81,12 @@ interface ExecuteGitOptions {
   fallbackErrorMessage?: string | undefined;
   env?: NodeJS.ProcessEnv | undefined;
   progress?: ExecuteGitProgress | undefined;
+}
+
+interface WorktreePorcelainEntry {
+  readonly path: string;
+  readonly branch: string | null;
+  readonly prunable: boolean;
 }
 
 type WorkingTreeFileStat = { path: string; insertions: number; deletions: number };
@@ -409,6 +416,51 @@ function parseNonEmptyLineList(input: string): string[] {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
+}
+
+function parseWorktreeListPorcelain(stdout: string): WorktreePorcelainEntry[] {
+  const entries: WorktreePorcelainEntry[] = [];
+  let currentPath: string | null = null;
+  let currentBranch: string | null = null;
+  let currentPrunable = false;
+
+  const flush = () => {
+    const pathValue = currentPath?.trim() ?? "";
+    if (pathValue.length > 0) {
+      entries.push({
+        path: pathValue,
+        branch: currentBranch,
+        prunable: currentPrunable,
+      });
+    }
+    currentPath = null;
+    currentBranch = null;
+    currentPrunable = false;
+  };
+
+  for (const rawLine of stdout.split(/\r?\n/g)) {
+    const line = rawLine.trim();
+    if (line.length === 0) {
+      flush();
+      continue;
+    }
+    if (line.startsWith("worktree ")) {
+      flush();
+      const pathValue = line.slice("worktree ".length).trim();
+      currentPath = pathValue.length > 0 ? pathValue : null;
+      continue;
+    }
+    if (line.startsWith("branch refs/heads/")) {
+      const branch = line.slice("branch refs/heads/".length).trim();
+      currentBranch = branch.length > 0 ? branch : null;
+      continue;
+    }
+    if (line === "prunable") {
+      currentPrunable = true;
+    }
+  }
+  flush();
+  return entries;
 }
 
 type StashEntry = {
@@ -2252,6 +2304,161 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
         );
       });
 
+    const isUnderManagedWorktreeRoot = (candidatePath: string): boolean => {
+      const normalizedCandidate = path.resolve(candidatePath);
+      const normalizedRoot = path.resolve(worktreesDir);
+      return normalizedCandidate.startsWith(`${normalizedRoot}${path.sep}`);
+    };
+
+    const resolveCleanupBaseRefs = (
+      cwd: string,
+    ): Effect.Effect<readonly string[], GitCommandError> =>
+      Effect.gen(function* () {
+        const branchResult = yield* executeGit(
+          "GitCore.listManagedWorktrees.currentBranch",
+          cwd,
+          ["branch", "--show-current"],
+          { allowNonZeroExit: true, timeoutMs: 5_000 },
+        );
+        const currentBranch = branchResult.stdout.trim();
+        const candidates = ["main", "master", currentBranch].filter((value) => value.length > 0);
+        const refs = yield* Effect.forEach(candidates, (candidate) =>
+          executeGit(
+            "GitCore.listManagedWorktrees.verifyBaseRef",
+            cwd,
+            ["rev-parse", "--verify", `${candidate}^{commit}`],
+            { allowNonZeroExit: true, timeoutMs: 5_000 },
+          ).pipe(Effect.map((result) => (result.code === 0 ? candidate : null))),
+        );
+        return Array.from(new Set(refs.filter((ref): ref is string => ref !== null)));
+      });
+
+    const readWorktreeSafety = (
+      worktreePath: string,
+      baseRefs: readonly string[],
+    ): Effect.Effect<
+      Pick<
+        ServerManagedWorktree,
+        "cleanupExplanation" | "cleanupStatus" | "hasUnmergedCommits" | "isDirty"
+      >,
+      GitCommandError
+    > =>
+      Effect.gen(function* () {
+        const exists = yield* fileSystem
+          .exists(worktreePath)
+          .pipe(
+            Effect.mapError((cause) =>
+              createGitCommandError(
+                "GitCore.listManagedWorktrees.exists",
+                worktreePath,
+                ["worktree", "list", "--porcelain"],
+                "failed to inspect worktree path.",
+                cause,
+              ),
+            ),
+          );
+        if (!exists) {
+          return {
+            isDirty: false,
+            hasUnmergedCommits: false,
+            cleanupStatus: "stale_missing" as const,
+            cleanupExplanation:
+              "The worktree path is missing on disk; prune stale git metadata first.",
+          };
+        }
+
+        const statusResult = yield* executeGit(
+          "GitCore.listManagedWorktrees.status",
+          worktreePath,
+          ["status", "--porcelain"],
+          { allowNonZeroExit: true, timeoutMs: 10_000 },
+        );
+        if (statusResult.code !== 0) {
+          return {
+            isDirty: false,
+            hasUnmergedCommits: false,
+            cleanupStatus: "blocked_unknown" as const,
+            cleanupExplanation: "Git status could not be verified for this worktree.",
+          };
+        }
+        const isDirty = statusResult.stdout.trim().length > 0;
+        if (isDirty) {
+          return {
+            isDirty: true,
+            hasUnmergedCommits: false,
+            cleanupStatus: "blocked_dirty" as const,
+            cleanupExplanation: "Uncommitted changes must be committed or stashed first.",
+          };
+        }
+
+        const ancestryResults = yield* Effect.forEach(baseRefs, (baseRef) =>
+          executeGit(
+            "GitCore.listManagedWorktrees.mergeBase",
+            worktreePath,
+            ["merge-base", "--is-ancestor", "HEAD", baseRef],
+            { allowNonZeroExit: true, timeoutMs: 10_000 },
+          ).pipe(Effect.map((result) => result.code === 0)),
+        );
+        const isMerged = ancestryResults.some((result) => result);
+        if (!isMerged) {
+          return {
+            isDirty: false,
+            hasUnmergedCommits: true,
+            cleanupStatus: "blocked_unmerged" as const,
+            cleanupExplanation:
+              "The worktree contains commits that are not merged into the repository base branch.",
+          };
+        }
+
+        return {
+          isDirty: false,
+          hasUnmergedCommits: false,
+          cleanupStatus: "safe" as const,
+          cleanupExplanation: "No dirty files or unmerged commits were detected.",
+        };
+      });
+
+    const listManagedWorktrees: GitCoreShape["listManagedWorktrees"] = (cwd) =>
+      Effect.gen(function* () {
+        const result = yield* executeGit(
+          "GitCore.listManagedWorktrees",
+          cwd,
+          ["worktree", "list", "--porcelain"],
+          { allowNonZeroExit: true, timeoutMs: 10_000 },
+        );
+        if (result.code !== 0) {
+          return [];
+        }
+
+        const workspaceRoot = path.resolve(cwd);
+        const parsed = parseWorktreeListPorcelain(result.stdout).filter((entry) => {
+          const resolvedPath = path.resolve(entry.path);
+          return resolvedPath !== workspaceRoot && isUnderManagedWorktreeRoot(resolvedPath);
+        });
+        const baseRefs = yield* resolveCleanupBaseRefs(cwd);
+
+        return yield* Effect.forEach(
+          parsed,
+          (entry) =>
+            readWorktreeSafety(entry.path, baseRefs).pipe(
+              Effect.map(
+                (safety): ServerManagedWorktree => ({
+                  path: entry.path,
+                  workspaceRoot: cwd,
+                  branch: entry.branch,
+                  isDirty: safety.isDirty,
+                  hasUnmergedCommits: safety.hasUnmergedCommits,
+                  cleanupStatus: entry.prunable ? "stale_missing" : safety.cleanupStatus,
+                  cleanupExplanation: entry.prunable
+                    ? "Git marks this worktree as prunable; prune stale git metadata before removing it."
+                    : safety.cleanupExplanation,
+                }),
+              ),
+            ),
+          { concurrency: 4 },
+        );
+      });
+
     const renameBranch: GitCoreShape["renameBranch"] = (input) =>
       Effect.gen(function* () {
         if (input.oldBranch === input.newBranch) {
@@ -2633,6 +2840,7 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
       fetchRemoteBranch,
       setBranchUpstream,
       removeWorktree,
+      listManagedWorktrees,
       renameBranch,
       createBranch,
       publishBranch,
