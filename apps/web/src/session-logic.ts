@@ -82,7 +82,7 @@ export function isCommandWorkLogEntry(workEntry: CommandWorkLogEntryInput): bool
   return (
     workEntry.itemType === "command_execution" ||
     workEntry.requestKind === "command" ||
-    Boolean(workEntry.command ?? workEntry.rawCommand)
+    Boolean(workEntry.command || workEntry.rawCommand)
   );
 }
 

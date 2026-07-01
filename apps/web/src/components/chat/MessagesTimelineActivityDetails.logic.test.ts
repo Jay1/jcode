@@ -22,6 +22,20 @@ describe("MessagesTimelineActivityDetails logic", () => {
     ).toBe(true);
   });
 
+  it("falls back to raw command text when a command entry carries an empty command", () => {
+    expect(
+      hasCommandActivityDetails({
+        id: "work-raw-command",
+        createdAt: "2026-03-17T19:12:28.000Z",
+        label: "Ran command",
+        tone: "tool",
+        command: "",
+        rawCommand: "bun test",
+        exitCode: 0,
+      }),
+    ).toBe(true);
+  });
+
   it("keeps file-change patches expandable after normalizing workspace paths", () => {
     const entry = {
       id: "work-file-change",
