@@ -79,7 +79,7 @@ describe("MessagesTimeline activity details", () => {
         "aria-expanded",
         "true",
       );
-      await expect(page.getByText("Command")).toBeVisible();
+      await expect(page.getByText("Command", { exact: true })).toBeVisible();
       await expect(page.getByText("Exit code 0")).toBeVisible();
       await expect(page.getByText("Duration 1.3s")).toBeVisible();
       await expect(page.getByText("PASS timeline details")).toBeVisible();
