@@ -16,15 +16,15 @@ JCode is a local-first coding-agent cockpit for maintainers who need to steer ag
 
 ## 3. Typography
 
-| Role | Token or Pattern | Current Source | Usage |
-| --- | --- | --- | --- |
-| UI sans | `--font-ui-family`, `--theme-font-ui-family`, `.font-system-ui` | `apps/web/src/index.css` | App chrome, settings rows, metadata, transcript body when rendered as UI text. |
-| Code mono | `--font-mono-family`, `--theme-font-code-family` | `apps/web/src/index.css` | Inputs, textareas, generic code, diff fallback chrome. |
-| Chat code mono | `--font-chat-code-family`, `.font-chat-code` | `apps/web/src/index.css` | Transcript code blocks, inline code chips, diff stats inside chat. |
-| Terminal mono | `--terminal-font-family` | `apps/web/src/index.css`, `terminalRuntimeAppearance.ts` | Xterm surfaces and terminal system messages. |
-| Body tracking | `body { letter-spacing: -0.015em; }` | `apps/web/src/index.css` | Native, utilitarian cockpit text rhythm. |
-| Chat scale | `DEFAULT_CHAT_FONT_SIZE_PX`, `getAppTypographyScale`, `getChatTranscriptTextStyle` | `MessagesTimeline.tsx` | User-configurable transcript size, timestamps, and metadata. |
-| Settings labels | `text-[11px] uppercase tracking-[0.14em]` | `_chat.settings.tsx` | Section labels and compact settings hierarchy. |
+| Role            | Token or Pattern                                                                   | Current Source                                           | Usage                                                                          |
+| --------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| UI sans         | `--font-ui-family`, `--theme-font-ui-family`, `.font-system-ui`                    | `apps/web/src/index.css`                                 | App chrome, settings rows, metadata, transcript body when rendered as UI text. |
+| Code mono       | `--font-mono-family`, `--theme-font-code-family`                                   | `apps/web/src/index.css`                                 | Inputs, textareas, generic code, diff fallback chrome.                         |
+| Chat code mono  | `--font-chat-code-family`, `.font-chat-code`                                       | `apps/web/src/index.css`                                 | Transcript code blocks, inline code chips, diff stats inside chat.             |
+| Terminal mono   | `--terminal-font-family`                                                           | `apps/web/src/index.css`, `terminalRuntimeAppearance.ts` | Xterm surfaces and terminal system messages.                                   |
+| Body tracking   | `body { letter-spacing: -0.015em; }`                                               | `apps/web/src/index.css`                                 | Native, utilitarian cockpit text rhythm.                                       |
+| Chat scale      | `DEFAULT_CHAT_FONT_SIZE_PX`, `getAppTypographyScale`, `getChatTranscriptTextStyle` | `MessagesTimeline.tsx`                                   | User-configurable transcript size, timestamps, and metadata.                   |
+| Settings labels | `text-[11px] uppercase tracking-[0.14em]`                                          | `_chat.settings.tsx`                                     | Section labels and compact settings hierarchy.                                 |
 
 Rules:
 
@@ -37,19 +37,19 @@ Rules:
 
 JCode has two token layers: generic shadcn/Tailwind-compatible tokens and cockpit-specific semantic `--app-*` tokens. Components must consume semantic roles, not raw palette values.
 
-| Family | Tokens | Use |
-| --- | --- | --- |
-| Base surfaces | `--background`, `--foreground`, `--card`, `--popover`, `--border`, `--input`, `--ring` | App shell, card/panel foundations, form controls, focus rings. |
-| App depth | `--app-surface-canvas`, `--app-surface-sidebar`, `--app-surface-topbar`, `--app-surface-panel`, `--app-surface-card`, `--app-surface-card-header`, `--app-surface-composer`, `--app-surface-toolbar`, `--app-surface-toolbar-hover`, `--app-surface-toolbar-active`, `--app-surface-toolbar-border` | Cockpit shell depth, sidebar/topbar rhythm, panel/card separation, composer surface, toolbar states. |
-| Transcript | `--app-transcript-stage-bg`, `--app-transcript-stage-border`, `--app-transcript-edge-fade`, `--app-assistant-message-bg`, `--app-assistant-message-border`, `--app-assistant-message-accent`, `--app-user-message-bg`, `--app-user-message-border`, `--app-user-message-accent` | Chat transcript stage, assistant message rail, user message bubble, live-edge fade. |
-| Chat semantics | `--app-chat-heading`, `--app-chat-link`, `--app-chat-file`, `--app-chat-token`, `--app-chat-command`, `--app-chat-success`, `--app-chat-warning`, `--app-chat-error`, `--app-chat-chip-bg`, `--app-chat-chip-border`, `--app-chat-code-bg`, `--app-chat-code-border`, `--app-chat-code-copy-bg`, `--app-chat-code-copy-fg` | Role-based markdown scannability for headings, file paths, commands, tokens, statuses, code blocks, and copy controls. |
-| Work rows | `--app-work-row-bg`, `--app-work-row-hover-bg`, `--app-work-row-border`, `--app-work-row-icon` | Tool calls, file-change rows, branch/worktree rows, subagent cards, and expandable activity. |
-| Diff | `--app-diff-title`, `--app-diff-card-bg`, `--app-diff-card-header-bg`, `--diffs-font-family`, `--diffs-header-font-family` | Diff panel title, file cards, file-change summaries, diff renderer font bridge. |
-| Terminal | `--terminal-font-family`, `--app-terminal-search-match-*`, `--app-terminal-search-active-match-*`, `--app-scrollbar-thumb`, `--app-scrollbar-thumb-hover` | Terminal xterm font, search highlights, and scrollbar parity. |
-| Chrome controls | `--app-chrome-control-bg`, `--app-chrome-control-border`, `--app-chrome-control-fg`, `--app-chrome-control-hover-bg`, `--app-chrome-control-hover-fg`, `--app-chrome-control-active-bg`, `--app-control-icon-*`, `.sidebar-icon-button` | Compact icon buttons, message actions, terminal/browser/diff toolbar actions. |
-| Metadata | `--app-metadata-fg`, `--app-metadata-muted-fg`, `--app-text-metadata`, `--app-text-metadata-strong` | Secondary labels, timestamps, environment labels, settings status text. |
-| Status | `--app-status-{working,success,warning,input,plan,error,muted}-{fg,dot,bg,border}` | Thread, terminal, PR, plan, input, warning, success, working, error, and muted markers. |
-| Agent accents | `--app-agent-chip-*`, `--app-subagent-accent-*` | Provider/agent chips and subagent identity accents. |
+| Family          | Tokens                                                                                                                                                                                                                                                                                                                     | Use                                                                                                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Base surfaces   | `--background`, `--foreground`, `--card`, `--popover`, `--border`, `--input`, `--ring`                                                                                                                                                                                                                                     | App shell, card/panel foundations, form controls, focus rings.                                                         |
+| App depth       | `--app-surface-canvas`, `--app-surface-sidebar`, `--app-surface-topbar`, `--app-surface-panel`, `--app-surface-card`, `--app-surface-card-header`, `--app-surface-composer`, `--app-surface-toolbar`, `--app-surface-toolbar-hover`, `--app-surface-toolbar-active`, `--app-surface-toolbar-border`                        | Cockpit shell depth, sidebar/topbar rhythm, panel/card separation, composer surface, toolbar states.                   |
+| Transcript      | `--app-transcript-stage-bg`, `--app-transcript-stage-border`, `--app-transcript-edge-fade`, `--app-assistant-message-bg`, `--app-assistant-message-border`, `--app-assistant-message-accent`, `--app-user-message-bg`, `--app-user-message-border`, `--app-user-message-accent`                                            | Chat transcript stage, assistant message rail, user message bubble, live-edge fade.                                    |
+| Chat semantics  | `--app-chat-heading`, `--app-chat-link`, `--app-chat-file`, `--app-chat-token`, `--app-chat-command`, `--app-chat-success`, `--app-chat-warning`, `--app-chat-error`, `--app-chat-chip-bg`, `--app-chat-chip-border`, `--app-chat-code-bg`, `--app-chat-code-border`, `--app-chat-code-copy-bg`, `--app-chat-code-copy-fg` | Role-based markdown scannability for headings, file paths, commands, tokens, statuses, code blocks, and copy controls. |
+| Work rows       | `--app-work-row-bg`, `--app-work-row-hover-bg`, `--app-work-row-border`, `--app-work-row-icon`                                                                                                                                                                                                                             | Tool calls, file-change rows, branch/worktree rows, subagent cards, and expandable activity.                           |
+| Diff            | `--app-diff-title`, `--app-diff-card-bg`, `--app-diff-card-header-bg`, `--diffs-font-family`, `--diffs-header-font-family`                                                                                                                                                                                                 | Diff panel title, file cards, file-change summaries, diff renderer font bridge.                                        |
+| Terminal        | `--terminal-font-family`, `--app-terminal-search-match-*`, `--app-terminal-search-active-match-*`, `--app-scrollbar-thumb`, `--app-scrollbar-thumb-hover`                                                                                                                                                                  | Terminal xterm font, search highlights, and scrollbar parity.                                                          |
+| Chrome controls | `--app-chrome-control-bg`, `--app-chrome-control-border`, `--app-chrome-control-fg`, `--app-chrome-control-hover-bg`, `--app-chrome-control-hover-fg`, `--app-chrome-control-active-bg`, `--app-control-icon-*`, `.sidebar-icon-button`                                                                                    | Compact icon buttons, message actions, terminal/browser/diff toolbar actions.                                          |
+| Metadata        | `--app-metadata-fg`, `--app-metadata-muted-fg`, `--app-text-metadata`, `--app-text-metadata-strong`                                                                                                                                                                                                                        | Secondary labels, timestamps, environment labels, settings status text.                                                |
+| Status          | `--app-status-{working,success,warning,input,plan,error,muted}-{fg,dot,bg,border}`                                                                                                                                                                                                                                         | Thread, terminal, PR, plan, input, warning, success, working, error, and muted markers.                                |
+| Agent accents   | `--app-agent-chip-*`, `--app-subagent-accent-*`                                                                                                                                                                                                                                                                            | Provider/agent chips and subagent identity accents.                                                                    |
 
 Source rules:
 
@@ -62,14 +62,14 @@ Source rules:
 
 JCode uses Tailwind v4 utilities over a 4px/rem scale and compact cockpit-specific measurements. The common rhythm is dense: `gap-1`/`gap-1.5` for icon-label clusters, `gap-2` for toolbar groups, `px-2` to `px-4` for rows/cards, and `rounded-md` to `rounded-xl` for panel and row corners.
 
-| Pattern | Current Usage | Rule |
-| --- | --- | --- |
-| Full-height cockpit | `h-full`, `min-h-0`, `min-w-0`, `overflow-hidden`, `h-dvh` for browser sidebars | Preserve containment; prevent transcript, diff, terminal, and browser panes from leaking scroll. |
-| Transcript width | `mx-auto w-full min-w-0 max-w-3xl` | Keep chat content readable while the cockpit shell can be wide. |
-| Right panel widths | Diff inline default `42vw`, `min-w-[360px]`, max `560px`; browser/right panel widths are persisted and bounded | Do not hardcode new panel widths without using the existing storage and composer-fit guards. |
-| Work row density | Compact rows use `py-0.5`, `gap-1.5`; default rows use rounded row cards and `px-2 py-1` | Dense activity rows are allowed, but they must remain clickable and readable. |
-| Settings density | `SettingsRow` uses `rounded-xl`, `px-4 py-3.5`, `gap-3` | Settings are card-like rows, not bare forms. |
-| Terminal density | 32px tab bars, 6px scrollbars, split handles, compact icon buttons | Terminal chrome should stay tight and prioritize viewport space. |
+| Pattern             | Current Usage                                                                                                  | Rule                                                                                             |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Full-height cockpit | `h-full`, `min-h-0`, `min-w-0`, `overflow-hidden`, `h-dvh` for browser sidebars                                | Preserve containment; prevent transcript, diff, terminal, and browser panes from leaking scroll. |
+| Transcript width    | `mx-auto w-full min-w-0 max-w-3xl`                                                                             | Keep chat content readable while the cockpit shell can be wide.                                  |
+| Right panel widths  | Diff inline default `42vw`, `min-w-[360px]`, max `560px`; browser/right panel widths are persisted and bounded | Do not hardcode new panel widths without using the existing storage and composer-fit guards.     |
+| Work row density    | Compact rows use `py-0.5`, `gap-1.5`; default rows use rounded row cards and `px-2 py-1`                       | Dense activity rows are allowed, but they must remain clickable and readable.                    |
+| Settings density    | `SettingsRow` uses `rounded-xl`, `px-4 py-3.5`, `gap-3`                                                        | Settings are card-like rows, not bare forms.                                                     |
+| Terminal density    | 32px tab bars, 6px scrollbars, split handles, compact icon buttons                                             | Terminal chrome should stay tight and prioritize viewport space.                                 |
 
 Rules:
 
@@ -124,13 +124,13 @@ Rules:
 
 ## 8. Motion
 
-| Motion | Token/Pattern | Rule |
-| --- | --- | --- |
-| Chat pane entry | `.chat-pane-enter`, `220ms cubic-bezier(0.22, 1, 0.36, 1)` | Use for empty/transcript pane swaps; respect reduced motion. |
-| Terminal running dot | `.terminal-running-indicator__dot`, `640ms ease-in-out`, opacity/scale only | Keep as CSS animation to avoid JS timers across many terminals. |
-| Generated image shimmer | `chat-generated-image-shimmer`, `1.6s ease-in-out` | Loading feedback for generated images only. |
-| Micro-interactions | Tailwind `transition-colors`, `transition-opacity`, `duration-120/140/150/200` patterns | Prefer color/opacity/transform transitions. |
-| Ultrathink | `ultrathink-*` spectrum animations, 10s linear | Existing special mode only; do not use as general decoration. |
+| Motion                  | Token/Pattern                                                                           | Rule                                                            |
+| ----------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Chat pane entry         | `.chat-pane-enter`, `220ms cubic-bezier(0.22, 1, 0.36, 1)`                              | Use for empty/transcript pane swaps; respect reduced motion.    |
+| Terminal running dot    | `.terminal-running-indicator__dot`, `640ms ease-in-out`, opacity/scale only             | Keep as CSS animation to avoid JS timers across many terminals. |
+| Generated image shimmer | `chat-generated-image-shimmer`, `1.6s ease-in-out`                                      | Loading feedback for generated images only.                     |
+| Micro-interactions      | Tailwind `transition-colors`, `transition-opacity`, `duration-120/140/150/200` patterns | Prefer color/opacity/transform transitions.                     |
+| Ultrathink              | `ultrathink-*` spectrum animations, 10s linear                                          | Existing special mode only; do not use as general decoration.   |
 
 Rules:
 
