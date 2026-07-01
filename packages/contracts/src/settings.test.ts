@@ -1,10 +1,40 @@
 import { describe, expect, it } from "vitest";
 import { Schema } from "effect";
 
-import { ServerSettings, ServerSettingsPatch } from "./settings";
+import { DEFAULT_SERVER_SETTINGS, ServerSettings, ServerSettingsPatch } from "./settings";
 
 const decodeServerSettings = Schema.decodeUnknownSync(ServerSettings);
 const decodeServerSettingsPatch = Schema.decodeUnknownSync(ServerSettingsPatch);
+
+describe("ServerSettings chat word wrap", () => {
+  it("defaults chat markdown word wrap on when the setting is missing", () => {
+    expect(decodeServerSettings({}).chatMarkdownWordWrap).toBe(true);
+    expect(DEFAULT_SERVER_SETTINGS.chatMarkdownWordWrap).toBe(true);
+  });
+
+  it("accepts chat markdown word wrap patches independently from diff word wrap", () => {
+    const parsed = decodeServerSettingsPatch({
+      chatMarkdownWordWrap: false,
+      diffWordWrap: true,
+    });
+
+    expect(parsed.chatMarkdownWordWrap).toBe(false);
+    expect(parsed.diffWordWrap).toBe(true);
+  });
+});
+
+describe("ServerSettings provider update checks", () => {
+  it("defaults provider update checks on when the setting is missing", () => {
+    expect(decodeServerSettings({}).enableProviderUpdateChecks).toBe(true);
+    expect(DEFAULT_SERVER_SETTINGS.enableProviderUpdateChecks).toBe(true);
+  });
+
+  it("accepts provider update check patches", () => {
+    expect(decodeServerSettingsPatch({ enableProviderUpdateChecks: false })).toEqual({
+      enableProviderUpdateChecks: false,
+    });
+  });
+});
 
 describe("ServerSettings OpenClaw provider settings", () => {
   it("decodes OpenClaw non-secret settings with redacted secret metadata", () => {
