@@ -25,6 +25,7 @@ import {
   type ServerConfigStreamEvent,
   type ServerDiagnosticsResult,
   type ServerLifecycleStreamEvent,
+  type ServerManagedWorktree,
   ServerVoiceTranscriptionErrorDetail,
   type ServerVoiceTranscriptionErrorDetail as ServerVoiceTranscriptionErrorDetailType,
 } from "@jcode/contracts";
@@ -777,6 +778,7 @@ export const makeWsRpcLayer = () =>
         effect: Effect.Effect<A, E, R>,
       ): Effect.Effect<A, E | WsRpcError, R> =>
         requireOwnerSession.pipe(Effect.flatMap(() => effect));
+      const noManagedWorktrees: readonly ServerManagedWorktree[] = [];
 
       return WsRpcGroup.of({
         [ORCHESTRATION_WS_METHODS.dispatchCommand]: (command) =>
@@ -1055,7 +1057,25 @@ export const makeWsRpcLayer = () =>
             "Failed to refresh providers",
           ),
         [WS_METHODS.serverUpdateProvider]: (input) => providerHealth.updateProvider(input),
-        [WS_METHODS.serverListWorktrees]: () => Effect.succeed({ worktrees: [] }),
+        [WS_METHODS.serverListWorktrees]: () =>
+          withScope(
+            "thread:read",
+            rpcEffect(
+              Effect.gen(function* () {
+                const snapshot = yield* projectionReadModelQuery.getShellSnapshot();
+                const worktreeGroups = yield* Effect.forEach(
+                  snapshot.projects,
+                  (project) =>
+                    git
+                      .listManagedWorktrees(project.workspaceRoot)
+                      .pipe(Effect.orElseSucceed(() => noManagedWorktrees)),
+                  { concurrency: 4 },
+                );
+                return { worktrees: worktreeGroups.flat() };
+              }),
+              "Failed to list managed worktrees",
+            ),
+          ),
         [WS_METHODS.serverGetProviderUsageSnapshot]: (input) =>
           rpcEffect(getProviderUsageSnapshot(input), "Failed to load provider usage"),
         [WS_METHODS.serverGetDiagnostics]: () =>
