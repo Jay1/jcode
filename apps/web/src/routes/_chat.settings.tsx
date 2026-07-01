@@ -107,7 +107,10 @@ import { useStore } from "../store";
 import ReleaseHistoryDialog from "../components/ReleaseHistoryDialog";
 import { createAllThreadsSelector } from "../storeSelectors";
 import { formatRelativeTime } from "../components/Sidebar";
-import { formatWorktreePathForDisplay } from "../worktreeCleanup";
+import {
+  classifyManagedWorktreeCleanupChoices,
+  formatWorktreePathForDisplay,
+} from "../worktreeCleanup";
 import { filterVisibleProviderItems, sameProviderOrder } from "../providerOrdering";
 
 // ── Settings taxonomy ──────────────────────────────────────────────────────
@@ -751,33 +754,23 @@ function SettingsRouteView() {
     return () => window.cancelAnimationFrame(frame);
   }, [serverConfigQuery.data?.providers, shouldFocusProviderUpdates]);
   const managedWorktrees = serverWorktreesQuery.data?.worktrees ?? [];
-  const worktreesByWorkspaceRoot = managedWorktrees.reduce<
+  const managedWorktreeChoices = useMemo(
+    () => classifyManagedWorktreeCleanupChoices({ worktrees: managedWorktrees, threads }),
+    [managedWorktrees, threads],
+  );
+  const worktreesByWorkspaceRoot = managedWorktreeChoices.reduce<
     Array<{
       workspaceRoot: string;
-      worktrees: Array<{
-        path: string;
-        linkedThreads: typeof threads;
-      }>;
+      worktrees: Array<(typeof managedWorktreeChoices)[number]>;
     }>
   >((groups, worktree) => {
-    const linkedThreads = threads.filter((thread) => {
-      const candidatePaths = [
-        normalizeManagedWorktreePath(thread.worktreePath),
-        normalizeManagedWorktreePath(thread.associatedWorktreePath),
-      ];
-      return candidatePaths.includes(worktree.path);
-    });
     const existingGroup = groups.find((group) => group.workspaceRoot === worktree.workspaceRoot);
-    const nextWorktree = {
-      path: worktree.path,
-      linkedThreads,
-    };
     if (existingGroup) {
-      existingGroup.worktrees.push(nextWorktree);
+      existingGroup.worktrees.push(worktree);
     } else {
       groups.push({
         workspaceRoot: worktree.workspaceRoot,
-        worktrees: [nextWorktree],
+        worktrees: [worktree],
       });
     }
     return groups;
@@ -885,7 +878,13 @@ function SettingsRouteView() {
     ...(settings.enableAssistantStreaming !== defaults.enableAssistantStreaming
       ? ["Assistant output"]
       : []),
+    ...(settings.chatMarkdownWordWrap !== defaults.chatMarkdownWordWrap
+      ? ["Chat markdown wrapping"]
+      : []),
     ...(settings.diffWordWrap !== defaults.diffWordWrap ? ["Diff line wrapping"] : []),
+    ...(settings.enableProviderUpdateChecks !== defaults.enableProviderUpdateChecks
+      ? ["Provider update checks"]
+      : []),
     ...(settings.confirmThreadDelete !== defaults.confirmThreadDelete
       ? ["Delete confirmation"]
       : []),
@@ -1278,9 +1277,22 @@ function SettingsRouteView() {
   }, [isRepairingLocalState, syncServerReadModel]);
 
   const deleteManagedWorktree = useCallback(
-    async (input: { workspaceRoot: string; worktreePath: string }) => {
+    async (input: {
+      workspaceRoot: string;
+      worktreePath: string;
+      canRemove: boolean;
+      blockedReason: string | null;
+    }) => {
       const api = readNativeApi() ?? ensureNativeApi();
       const displayName = formatWorktreePathForDisplay(input.worktreePath);
+      if (!input.canRemove) {
+        toastManager.add({
+          type: "error",
+          title: "Worktree cleanup blocked",
+          description: input.blockedReason ?? "This worktree is not safe to remove.",
+        });
+        return;
+      }
       const snapshot = await api.orchestration.getShellSnapshot().catch(() => null);
       if (snapshot === null) {
         toastManager.add({
@@ -1337,7 +1349,6 @@ function SettingsRouteView() {
         await removeWorktreeMutation.mutateAsync({
           cwd: input.workspaceRoot,
           path: input.worktreePath,
-          force: true,
         });
         await queryClient.invalidateQueries({
           queryKey: serverQueryKeys.worktrees(),
@@ -2111,6 +2122,34 @@ function SettingsRouteView() {
           />
 
           <SettingsRow
+            title="Chat markdown wrapping"
+            description="Wrap long lines in chat code blocks and markdown tables by default. Per-block toggles only affect the current rendered message."
+            resetAction={
+              settings.chatMarkdownWordWrap !== defaults.chatMarkdownWordWrap ? (
+                <SettingResetButton
+                  label="chat markdown wrapping"
+                  onClick={() =>
+                    updateSettings({
+                      chatMarkdownWordWrap: defaults.chatMarkdownWordWrap,
+                    })
+                  }
+                />
+              ) : null
+            }
+            control={
+              <Switch
+                checked={settings.chatMarkdownWordWrap}
+                onCheckedChange={(checked) =>
+                  updateSettings({
+                    chatMarkdownWordWrap: Boolean(checked),
+                  })
+                }
+                aria-label="Wrap chat code blocks and markdown tables by default"
+              />
+            }
+          />
+
+          <SettingsRow
             title="Diff line wrapping"
             description="Set the default wrap state when the diff panel opens. The in-panel wrap toggle only affects the current diff session."
             resetAction={
@@ -2134,6 +2173,34 @@ function SettingsRouteView() {
                   })
                 }
                 aria-label="Wrap diff lines by default"
+              />
+            }
+          />
+
+          <SettingsRow
+            title="Provider update checks"
+            description="Check installed provider CLIs for newer available versions. Local install and auth health stay visible when this is off."
+            resetAction={
+              settings.enableProviderUpdateChecks !== defaults.enableProviderUpdateChecks ? (
+                <SettingResetButton
+                  label="provider update checks"
+                  onClick={() =>
+                    updateSettings({
+                      enableProviderUpdateChecks: defaults.enableProviderUpdateChecks,
+                    })
+                  }
+                />
+              ) : null
+            }
+            control={
+              <Switch
+                checked={settings.enableProviderUpdateChecks}
+                onCheckedChange={(checked) =>
+                  updateSettings({
+                    enableProviderUpdateChecks: Boolean(checked),
+                  })
+                }
+                aria-label="Check provider versions"
               />
             }
           />
@@ -2257,7 +2324,7 @@ function SettingsRouteView() {
 
                 <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/50">
                   {group.worktrees.map((worktree, index) => {
-                    const deleteDisabled = removeWorktreeMutation.isPending;
+                    const deleteDisabled = removeWorktreeMutation.isPending || !worktree.canRemove;
                     return (
                       <div
                         key={worktree.path}
@@ -2267,11 +2334,32 @@ function SettingsRouteView() {
                         )}
                       >
                         <div className="min-w-0 flex-1 space-y-2">
-                          <div className="space-y-0.5">
-                            <div className="text-sm font-medium text-foreground">Worktree</div>
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="text-sm font-medium text-foreground">
+                                {worktree.branch ?? "Detached worktree"}
+                              </div>
+                              <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] text-muted-foreground">
+                                {worktree.association === "orphaned"
+                                  ? "No linked conversations"
+                                  : worktree.association === "archived"
+                                    ? "Archived only"
+                                    : "Active conversation"}
+                              </span>
+                              {worktree.cleanupStatus !== "safe" ? (
+                                <span className="rounded-full border border-[color:var(--app-status-warning-border)] bg-[color:var(--app-status-warning-bg)] px-2 py-0.5 text-[11px] text-[color:var(--app-status-warning-fg)]">
+                                  Cleanup blocked
+                                </span>
+                              ) : null}
+                            </div>
                             <div className="font-mono text-[11px] text-muted-foreground">
                               {worktree.path}
                             </div>
+                            {worktree.blockedReason ? (
+                              <div className="text-xs text-muted-foreground">
+                                {worktree.blockedReason}
+                              </div>
+                            ) : null}
                           </div>
 
                           <div className="space-y-1">
@@ -2303,12 +2391,18 @@ function SettingsRouteView() {
                               void deleteManagedWorktree({
                                 workspaceRoot: group.workspaceRoot,
                                 worktreePath: worktree.path,
+                                canRemove: worktree.canRemove,
+                                blockedReason: worktree.blockedReason,
                               })
                             }
                           >
                             Delete
                           </Button>
-                          {worktree.linkedThreads.length > 0 ? (
+                          {worktree.blockedReason ? (
+                            <p className="max-w-48 text-right text-[11px] text-muted-foreground">
+                              {worktree.blockedReason}
+                            </p>
+                          ) : worktree.linkedThreads.length > 0 ? (
                             <p className="max-w-40 text-right text-[11px] text-muted-foreground">
                               Linked conversations exist. Deleting will ask for confirmation.
                             </p>

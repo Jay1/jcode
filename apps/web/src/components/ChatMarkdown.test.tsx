@@ -2,6 +2,10 @@ import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+const mockSettingsState = vi.hoisted(() => ({
+  chatMarkdownWordWrap: true,
+}));
+
 vi.mock("@pierre/diffs", () => ({
   getSharedHighlighter: () =>
     Promise.resolve({
@@ -15,6 +19,14 @@ vi.mock("../hooks/useTheme", () => ({
   useTheme: () => ({ resolvedTheme: "light" }),
 }));
 
+vi.mock("../appSettings", () => ({
+  useAppSettings: () => ({
+    settings: {
+      chatMarkdownWordWrap: mockSettingsState.chatMarkdownWordWrap,
+    },
+  }),
+}));
+
 async function renderMarkdown(text: string, cwd = "C:\\Users\\LENOVO\\dpcode") {
   const { default: ChatMarkdown } = await import("./ChatMarkdown");
 
@@ -22,6 +34,48 @@ async function renderMarkdown(text: string, cwd = "C:\\Users\\LENOVO\\dpcode") {
 }
 
 describe("ChatMarkdown", () => {
+  it("seeds code block and table wrapping from settings", async () => {
+    mockSettingsState.chatMarkdownWordWrap = true;
+
+    const markup = await renderMarkdown(
+      [
+        "```ts",
+        "const veryLongValue = 'abcdefghijklmnopqrstuvwxyz';",
+        "```",
+        "",
+        "| Column | Value |",
+        "| --- | --- |",
+        "| Long | abcdefghijklmnopqrstuvwxyz |",
+      ].join("\n"),
+    );
+
+    expect(markup).toContain("chat-markdown-codeblock--wrapped");
+    expect(markup).toContain('aria-label="Disable code line wrap"');
+    expect(markup).toContain("chat-markdown-table-scroll--wrapped");
+    expect(markup).toContain('aria-label="Expand table cells"');
+  });
+
+  it("can seed code block and table wrapping off without changing diff rendering", async () => {
+    mockSettingsState.chatMarkdownWordWrap = false;
+
+    const markup = await renderMarkdown(
+      [
+        "```ts",
+        "const veryLongValue = 'abcdefghijklmnopqrstuvwxyz';",
+        "```",
+        "",
+        "| Column | Value |",
+        "| --- | --- |",
+        "| Long | abcdefghijklmnopqrstuvwxyz |",
+      ].join("\n"),
+    );
+
+    expect(markup).not.toContain("chat-markdown-codeblock--wrapped");
+    expect(markup).toContain('aria-label="Enable code line wrap"');
+    expect(markup).not.toContain("chat-markdown-table-scroll--wrapped");
+    expect(markup).toContain('aria-label="Wrap table cells"');
+  });
+
   it("renders inline math with KaTeX", async () => {
     const markup = await renderMarkdown("Euler wrote $e^{i\\\\pi} + 1 = 0$.");
 
