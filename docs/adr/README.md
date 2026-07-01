@@ -25,6 +25,7 @@
 | [0008](0008-scoped-remote-client-capability-tokens.md)     | Accepted | Scoped remote client capability tokens       |
 | [0006](0006-remote-client-runtime-ws-rpc-scope-wiring.md)  | Decided  | Remote Client Runtime WS RPC Scope Wiring    |
 | [0007](0007-parallel-windows-wsl-backend-routing.md)       | Proposed | Parallel Windows + WSL Backend Routing       |
+| [0009](0009-copilot-provider-entry-path.md)                | Proposed | Copilot provider entry path                  |
 
 ## When To Add An ADR
 
