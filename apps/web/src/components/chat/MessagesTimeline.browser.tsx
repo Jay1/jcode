@@ -75,7 +75,10 @@ describe("MessagesTimeline activity details", () => {
 
       await row.click();
 
-      await expect(row).toHaveAttribute("aria-expanded", "true");
+      await expect(page.getByRole("button", { name: /Collapse Ran command/u })).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
       await expect(page.getByText("Command")).toBeVisible();
       await expect(page.getByText("Exit code 0")).toBeVisible();
       await expect(page.getByText("Duration 1.3s")).toBeVisible();
@@ -108,7 +111,7 @@ describe("MessagesTimeline activity details", () => {
       await row.click();
 
       await expect(
-        page.getByText("apps/web/src/components/chat/MessagesTimeline.tsx"),
+        page.getByTitle("apps/web/src/components/chat/MessagesTimeline.tsx"),
       ).toBeVisible();
       await expect(page.getByText("-old timeline row")).toBeVisible();
       await expect(page.getByText("+new timeline row")).toBeVisible();
