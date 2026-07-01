@@ -32,7 +32,7 @@ describe("backend registry discovery", () => {
     });
     calls.concat(mutableCalls);
 
-    expect(registry.host.kind).toBe("local");
+    expect(registry.host.connection.kind).toBe("local");
     expect(registry.backends.map((backend) => backend.id)).toEqual([
       "host",
       "wsl-ubuntu",

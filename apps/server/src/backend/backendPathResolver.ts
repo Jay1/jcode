@@ -65,7 +65,7 @@ function hostPathForBackend(path: string): string {
 }
 
 export function resolveBackendPath(input: ResolveBackendPathInput): ResolvedBackendPath {
-  if (input.backend.kind === "wsl") {
+  if (input.backend.connection.kind === "wsl-exe") {
     return { hostPath: input.path, backendPath: backendPathForWsl(input.path) };
   }
   return { hostPath: hostPathForBackend(input.path), backendPath: input.path };

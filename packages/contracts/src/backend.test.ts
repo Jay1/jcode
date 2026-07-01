@@ -69,4 +69,14 @@ describe("Backend contracts", () => {
     expect(resolution.backend.state.kind).toBe("removed");
     expect(resolution.backendPath).toBe("/home/jay/project");
   });
+
+  it("rejects backend contracts with mismatched kind and connection", () => {
+    expect(() =>
+      Schema.decodeUnknownSync(Backend)({
+        ...hostBackend,
+        kind: "local",
+        connection: { kind: "wsl-exe", distro: "Ubuntu" },
+      }),
+    ).toThrow();
+  });
 });

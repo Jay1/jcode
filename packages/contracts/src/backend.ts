@@ -27,13 +27,24 @@ export const BackendConnection = Schema.Union([
 ]);
 export type BackendConnection = typeof BackendConnection.Type;
 
-export const Backend = Schema.Struct({
+const BackendBase = Schema.Struct({
   id: BackendId,
-  kind: BackendKind,
-  connection: BackendConnection,
   descriptor: ExecutionEnvironmentDescriptor,
   state: BackendLifecycleState,
 });
+
+export const Backend = Schema.Union([
+  Schema.Struct({
+    ...BackendBase.fields,
+    kind: Schema.Literal("local"),
+    connection: Schema.Struct({ kind: Schema.Literal("local") }),
+  }),
+  Schema.Struct({
+    ...BackendBase.fields,
+    kind: Schema.Literal("wsl"),
+    connection: Schema.Struct({ kind: Schema.Literal("wsl-exe"), distro: WslDistroName }),
+  }),
+]);
 export type Backend = typeof Backend.Type;
 
 export const BackendRegistry = Schema.Struct({
