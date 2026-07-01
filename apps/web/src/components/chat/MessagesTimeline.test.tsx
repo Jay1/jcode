@@ -1628,7 +1628,7 @@ describe("MessagesTimeline", () => {
 
     expect(markup).toContain('data-file-change-row="true"');
     expect(markup).toContain('aria-expanded="false"');
-    expect(markup).toContain('aria-label="Expand File Change');
+    expect(markup).toContain("Show details");
     expect(markup).toContain("MessagesTimeline.tsx");
     expect(markup).not.toContain("old timeline row");
     expect(markup).not.toContain("new timeline row");
@@ -2156,6 +2156,83 @@ describe("MessagesTimeline", () => {
     expect(markup).toContain("+1");
     expect(markup).toContain("-1");
     expect(markup).toContain("+2");
+  });
+
+  it("keeps multi-file diff buttons separate from shared activity details expansion", async () => {
+    const { MessagesTimeline } = await import("./MessagesTimeline");
+    const assistantMessageId = MessageId.makeUnsafe("message-assistant-inline-multi-edit-details");
+    const markup = renderToStaticMarkup(
+      <MessagesTimeline
+        hasMessages
+        isWorking={false}
+        activeTurnInProgress={false}
+        activeTurnStartedAt={null}
+        timelineEntries={[
+          {
+            id: "entry-inline-multi-file-change-details",
+            kind: "work",
+            createdAt: "2026-03-17T19:12:28.000Z",
+            entry: {
+              id: "work-inline-multi-file-change-details",
+              createdAt: "2026-03-17T19:12:28.000Z",
+              label: "File Change",
+              tone: "tool",
+              requestKind: "file-change",
+              patch: "diff --git a/one.ts b/one.ts",
+              changedFiles: ["apps/web/src/one.ts", "apps/web/src/two.ts"],
+            },
+          },
+          {
+            id: "entry-assistant-inline-multi-edit-details",
+            kind: "message",
+            createdAt: "2026-03-17T19:12:29.000Z",
+            message: {
+              id: assistantMessageId,
+              role: "assistant",
+              text: "done",
+              createdAt: "2026-03-17T19:12:29.000Z",
+              completedAt: "2026-03-17T19:12:30.000Z",
+              streaming: false,
+            },
+          },
+        ]}
+        completionDividerBeforeEntryId={null}
+        completionSummary={null}
+        turnDiffSummaryByAssistantMessageId={
+          new Map([
+            [
+              assistantMessageId,
+              {
+                turnId: TurnId.makeUnsafe("turn-inline-multi-edit-details"),
+                completedAt: "2026-03-17T19:12:30.000Z",
+                assistantMessageId,
+                files: [
+                  { path: "apps/web/src/one.ts", additions: 1, deletions: 0 },
+                  { path: "apps/web/src/two.ts", additions: 0, deletions: 1 },
+                ],
+              },
+            ],
+          ])
+        }
+        nowIso="2026-03-17T19:12:30.000Z"
+        expandedWorkGroups={{}}
+        onToggleWorkGroup={() => {}}
+        onOpenTurnDiff={() => {}}
+        revertTurnCountByUserMessageId={new Map()}
+        onRevertUserMessage={() => {}}
+        isRevertingCheckpoint={false}
+        onImageExpand={() => {}}
+        markdownCwd={undefined}
+        resolvedTheme="dark"
+        timestampFormat="locale"
+        workspaceRoot={undefined}
+      />,
+    );
+
+    expect(markup).toContain('aria-label="Open diff for File Change one.ts"');
+    expect(markup).toContain('aria-label="Open diff for File Change two.ts"');
+    expect(markup).toContain("Show details");
+    expect(markup).not.toContain('aria-label="Expand File Change one.ts"');
   });
 
   it("renders inline edited rows from the turn summary when the file-change tool call has no filenames", async () => {

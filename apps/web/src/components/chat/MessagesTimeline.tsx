@@ -1894,6 +1894,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
   const subagentMeta = subagentCardMeta(workEntry);
   const [expanded, setExpanded] = useState(false);
   const canExpand = hasExpandableActivityDetails(workEntry);
+  const toggleDetailsExpanded = () => setExpanded((current) => !current);
 
   // Use the text font size (matching the UI settings) for tool call rows
   const rowFontSizePx = textFontSizePx;
@@ -1906,6 +1907,11 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
             const changedFileStat = fileDiffStatByPath?.get(changedFilePath);
             const canOpenEditedDiff = Boolean(turnId && onOpenTurnDiff);
             const changedFileLabel = `${toolWorkEntryHeading(workEntry)} ${basename(changedFilePath)}`;
+            const changedFileAriaLabel = canOpenEditedDiff
+              ? `Open diff for ${changedFileLabel}`
+              : canExpand
+                ? `${expanded ? "Collapse" : "Expand"} details for ${changedFileLabel}`
+                : undefined;
             return (
               <button
                 key={`${workEntry.id}:${changedFilePath}`}
@@ -1920,17 +1926,14 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                 )}
                 title={changedFilePath}
                 disabled={!canOpenEditedDiff && !canExpand}
-                aria-label={
-                  canExpand ? `${expanded ? "Collapse" : "Expand"} ${changedFileLabel}` : undefined
-                }
-                aria-expanded={canExpand ? expanded : undefined}
+                aria-label={changedFileAriaLabel}
+                aria-expanded={!canOpenEditedDiff && canExpand ? expanded : undefined}
                 onClick={() => {
-                  if (canExpand) {
-                    setExpanded((current) => !current);
-                    return;
+                  if (turnId && onOpenTurnDiff) {
+                    onOpenTurnDiff(turnId, changedFilePath);
+                  } else if (canExpand) {
+                    toggleDetailsExpanded();
                   }
-                  if (!turnId || !onOpenTurnDiff) return;
-                  onOpenTurnDiff(turnId, changedFilePath);
                 }}
               >
                 <span
@@ -1962,6 +1965,17 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
               </button>
             );
           })}
+          {canExpand && changedFiles.length > 0 ? (
+            <button
+              type="button"
+              className="ms-6 font-system-ui text-[var(--app-metadata-muted-fg)] transition-colors duration-150 hover:text-[var(--app-metadata-fg)]"
+              style={{ fontSize: `${Math.max(11, rowFontSizePx - 1)}px` }}
+              aria-expanded={expanded}
+              onClick={toggleDetailsExpanded}
+            >
+              {expanded ? "Hide details" : "Show details"}
+            </button>
+          ) : null}
           {expanded && canExpand ? (
             <ActivityEntryDetails workEntry={workEntry} workspaceRoot={workspaceRoot} />
           ) : null}
