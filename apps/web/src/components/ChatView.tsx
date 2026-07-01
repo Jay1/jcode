@@ -194,6 +194,7 @@ import { useThreadWorkspaceHandoff } from "../hooks/useThreadWorkspaceHandoff";
 import { useComposerCommandMenuItems } from "../hooks/useComposerCommandMenuItems";
 import { useThreadHandoff } from "../hooks/useThreadHandoff";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
+import { useProviderUsageSummary } from "../hooks/useProviderUsageSummary";
 import BranchToolbar, { RuntimeUsageControls } from "./BranchToolbar";
 import { resolveRuntimeUsageControlsClassName } from "./BranchToolbar.logic";
 import { ThreadWorktreeHandoffDialog } from "./ThreadWorktreeHandoffDialog";
@@ -324,7 +325,7 @@ import {
   getComposerProviderState,
   renderProviderTraitsPicker,
 } from "./chat/composerProviderRegistry";
-import { getComposerTraitSelection } from "./chat/composerTraits";
+import { deriveComposerPromptTraits, getComposerTraitSelection } from "./chat/composerTraits";
 import { resolveRuntimeModelDescriptor } from "./chat/runtimeModelCapabilities";
 import { ProjectPicker } from "./chat/ProjectPicker";
 import { ProviderHealthBanner } from "./chat/ProviderHealthBanner";
@@ -850,6 +851,7 @@ export default function ChatView({
   const syncServerShellSnapshot = useStore((store) => store.syncServerShellSnapshot);
   const setStoreThreadError = useStore((store) => store.setError);
   const setStoreThreadWorkspace = useStore((store) => store.setThreadWorkspace);
+  const allThreads = useStore((store) => store.threads);
   const { settings } = useAppSettings();
   const setStickyComposerModelSelection = useComposerDraftStore(
     (store) => store.setStickyModelSelection,
@@ -1036,6 +1038,7 @@ export default function ChatView({
   );
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
   const [isTraitsPickerOpen, setIsTraitsPickerOpen] = useState(false);
+  const [tailFollowEnabled, setTailFollowEnabled] = useState(true);
   const legendListRef = useRef<LegendListRef | null>(null);
   const tailFollowEnabledRef = useRef(true);
   const isAtEndRef = useRef(true);
@@ -1450,6 +1453,13 @@ export default function ChatView({
     : null;
   const selectedProvider: ProviderKind =
     lockedProvider ?? selectedProviderByThreadId ?? threadProvider ?? settings.defaultProvider;
+  const activeProvider =
+    activeThread?.session?.provider ?? activeThread?.modelSelection.provider ?? selectedProvider;
+  const activeProviderUsageSummary = useProviderUsageSummary({
+    provider: activeProvider,
+    threads: allThreads,
+    codexHomePath: settings.codexHomePath || null,
+  });
   const voiceTranscriptionRequestIdRef = useRef(0);
   const voiceThreadIdRef = useRef(threadId);
   const voiceProviderRef = useRef<ProviderKind>(selectedProvider);
@@ -1734,16 +1744,23 @@ export default function ChatView({
       }),
     [runtimeModelsByProvider, selectedModel, selectedProvider],
   );
+  const composerPromptTraits = useMemo(() => deriveComposerPromptTraits(prompt), [prompt]);
   const composerProviderState = useMemo(
     () =>
       getComposerProviderState({
         provider: selectedProvider,
         model: selectedModel,
         runtimeModel: selectedRuntimeModel,
-        prompt,
+        promptTraits: composerPromptTraits,
         modelOptions: composerModelOptions,
       }),
-    [composerModelOptions, prompt, selectedModel, selectedProvider, selectedRuntimeModel],
+    [
+      composerModelOptions,
+      composerPromptTraits,
+      selectedModel,
+      selectedProvider,
+      selectedRuntimeModel,
+    ],
   );
   const selectedPromptEffort = composerProviderState.promptEffort;
   const selectedModelOptionsForDispatch = composerProviderState.modelOptionsForDispatch;
@@ -3956,6 +3973,7 @@ export default function ChatView({
   const programmaticScrollUntilRef = useRef(0);
   const setTailFollowIntent = useCallback((enabled: boolean) => {
     tailFollowEnabledRef.current = enabled;
+    setTailFollowEnabled((current) => (current === enabled ? current : enabled));
   }, []);
   const rememberCurrentMessagesScrollTop = useCallback(() => {
     const scrollContainer = legendListRef.current?.getScrollableNode?.();
@@ -7680,8 +7698,13 @@ export default function ChatView({
   };
 
   const runtimeUsageControlsProps = {
+    provider: activeProvider,
     runtimeMode,
     onRuntimeModeChange: handleRuntimeModeChange,
+    providerRateLimits: activeProviderUsageSummary.rateLimits,
+    providerUsageLines: activeProviderUsageSummary.usageLines,
+    providerUsageIsLoading: activeProviderUsageSummary.isLoading,
+    providerUsageLearnMoreHref: activeProviderUsageSummary.learnMoreHref,
     contextWindow: runtimeUsageContextWindow,
     cumulativeCostUsd: activeCumulativeCostUsd,
     activeContextWindowLabel: contextWindowSelectionStatus.activeLabel,
@@ -8255,7 +8278,7 @@ export default function ChatView({
           activeThreadId={activeThread.id}
           activeThreadTitle={activeThreadDisplayTitle}
           activeThreadEntryPoint={terminalState.entryPoint}
-          activeProvider={activeThread.session?.provider ?? activeThread.modelSelection.provider}
+          activeProvider={activeProvider}
           activeProjectName={activeProjectDisplayName}
           threadBreadcrumbs={threadBreadcrumbs}
           isSidechat={Boolean(activeThread.sidechatSourceThreadId)}
@@ -8434,7 +8457,7 @@ export default function ChatView({
                   onEditUserMessage={onEditUserMessage}
                   isRevertingCheckpoint={isRevertingCheckpoint}
                   onExpandTimelineImage={onExpandTimelineImage}
-                  followLiveOutput={hasStreamingAssistantText}
+                  followLiveOutput={tailFollowEnabled}
                   onIsAtEndChange={onIsAtEndChange}
                   markdownCwd={threadWorkspaceCwd ?? undefined}
                   resolvedTheme={resolvedTheme}
