@@ -809,6 +809,54 @@ function extractResumeSessionId(resumeCursor: unknown): string | undefined {
   return undefined;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasOpenCodeNotFoundName(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return typeof value.name === "string" && value.name.toLowerCase().includes("notfound");
+}
+
+function isOpenCodeSessionNotFound(cause: unknown): boolean {
+  const queue: unknown[] = [cause];
+  const seen = new Set<unknown>();
+  const nestedKeys = ["cause", "body", "error", "data", "response"] as const;
+
+  for (let index = 0; index < queue.length && index < 32; index += 1) {
+    const current = queue[index];
+    if (!isRecord(current) || seen.has(current)) {
+      continue;
+    }
+    seen.add(current);
+
+    if (current.status === 404 || current.statusCode === 404) {
+      return true;
+    }
+    if (hasOpenCodeNotFoundName(current)) {
+      return true;
+    }
+
+    const response = current.response;
+    if (isRecord(response) && response.status === 404) {
+      return true;
+    }
+    for (const key of nestedKeys) {
+      const nested = current[key];
+      if (isRecord(nested)) {
+        if (hasOpenCodeNotFoundName(nested)) {
+          return true;
+        }
+        queue.push(nested);
+      }
+    }
+  }
+
+  return false;
+}
+
 type OpenCodeModelInventory = {
   readonly providerList: {
     readonly connected: ReadonlyArray<string>;
@@ -3761,40 +3809,74 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
                   cliSpec: adapterConfig.cliSpec,
                   ...(server.external && serverPassword ? { serverPassword } : {}),
                 });
-                const openCodeSessionId =
-                  resumedSessionId ??
-                  (yield* runOpenCodeSdk("session.create", () => {
-                    const sessionCreateInput = {
-                      ...(initialParsedModel
-                        ? {
-                            model: {
-                              providerID: initialParsedModel.providerID,
-                              id: initialParsedModel.modelID,
-                              ...(initialVariant ? { variant: initialVariant } : {}),
-                            },
-                          }
-                        : {}),
-                      ...(initialAgent ? { agent: initialAgent } : {}),
-                      permission: buildOpenCodePermissionRules(input.runtimeMode),
-                      title: `JCode ${input.threadId}`,
-                    };
-                    return client.session.create(
-                      sessionCreateInput as unknown as Parameters<typeof client.session.create>[0],
-                    );
-                  }).pipe(
-                    Effect.flatMap((sessionResult) =>
-                      sessionResult.data?.id
-                        ? Effect.succeed(sessionResult.data.id)
-                        : Effect.fail(
-                            new OpenCodeRuntimeError({
-                              operation: "session.create",
-                              detail: `${adapterConfig.displayName} session.create returned no session payload.`,
-                            }),
-                          ),
-                    ),
-                  ));
+                const resumedSession = resumedSessionId
+                  ? yield* runOpenCodeSdk("session.get", () =>
+                      client.session.get({ sessionID: resumedSessionId }),
+                    ).pipe(
+                      Effect.catchIf(
+                        (cause) => isOpenCodeSessionNotFound(cause),
+                        () => Effect.succeed({ data: undefined }),
+                      ),
+                    )
+                  : undefined;
+                const resumedData = resumedSession?.data;
+                const resumedDirectory = isRecord(resumedData) ? resumedData.directory : undefined;
+                const reusableSessionId =
+                  isRecord(resumedData) &&
+                  (typeof resumedDirectory !== "string" || resumedDirectory === directory)
+                    ? typeof resumedData.id === "string" && resumedData.id.trim().length > 0
+                      ? resumedData.id.trim()
+                      : resumedSessionId
+                    : undefined;
 
-                return { sessionScope, server, client, openCodeSessionId };
+                if (reusableSessionId) {
+                  yield* runOpenCodeSdk("session.update", () =>
+                    client.session.update({
+                      sessionID: reusableSessionId,
+                      permission: buildOpenCodePermissionRules(input.runtimeMode),
+                    }),
+                  );
+                  return {
+                    sessionScope,
+                    server,
+                    client,
+                    openCodeSessionId: reusableSessionId,
+                    created: false,
+                  };
+                }
+
+                const openCodeSessionId = yield* runOpenCodeSdk("session.create", () => {
+                  const sessionCreateInput = {
+                    ...(initialParsedModel
+                      ? {
+                          model: {
+                            providerID: initialParsedModel.providerID,
+                            id: initialParsedModel.modelID,
+                            ...(initialVariant ? { variant: initialVariant } : {}),
+                          },
+                        }
+                      : {}),
+                    ...(initialAgent ? { agent: initialAgent } : {}),
+                    permission: buildOpenCodePermissionRules(input.runtimeMode),
+                    title: `JCode ${input.threadId}`,
+                  };
+                  return client.session.create(
+                    sessionCreateInput as unknown as Parameters<typeof client.session.create>[0],
+                  );
+                }).pipe(
+                  Effect.flatMap((sessionResult) =>
+                    sessionResult.data?.id
+                      ? Effect.succeed(sessionResult.data.id)
+                      : Effect.fail(
+                          new OpenCodeRuntimeError({
+                            operation: "session.create",
+                            detail: `${adapterConfig.displayName} session.create returned no session payload.`,
+                          }),
+                        ),
+                  ),
+                );
+
+                return { sessionScope, server, client, openCodeSessionId, created: true };
               }).pipe(Effect.provideService(Scope.Scope, sessionScope)),
             );
             if (Exit.isFailure(startedExit)) {
@@ -3806,11 +3888,13 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
 
           const raceWinner = sessions.get(input.threadId);
           if (raceWinner) {
-            yield* runOpenCodeSdk("session.abort", () =>
-              started.client.session.abort({
-                sessionID: started.openCodeSessionId,
-              }),
-            ).pipe(Effect.ignore);
+            if (started.created) {
+              yield* runOpenCodeSdk("session.abort", () =>
+                started.client.session.abort({
+                  sessionID: started.openCodeSessionId,
+                }),
+              ).pipe(Effect.ignore);
+            }
             yield* Scope.close(started.sessionScope, Exit.void).pipe(Effect.ignore);
             return raceWinner.session;
           }
@@ -3876,9 +3960,9 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             ...buildEventBase({ threadId: input.threadId }),
             type: "session.started",
             payload: {
-              message: resumedSessionId
-                ? `${adapterConfig.displayName} session resumed`
-                : `${adapterConfig.displayName} session started`,
+              message: started.created
+                ? `${adapterConfig.displayName} session started`
+                : `${adapterConfig.displayName} session resumed`,
               resume: { openCodeSessionId: started.openCodeSessionId },
             },
           });
