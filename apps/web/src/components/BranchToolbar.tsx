@@ -1,12 +1,7 @@
 // FILE: BranchToolbar.tsx
 // Purpose: Renders the chat thread's compact workspace controls, including the
 // local usage popover, inline workspace handoff actions, and runtime access toggle.
-import type { ThreadId, RuntimeMode } from "@jcode/contracts";
-import { LuSplit } from "react-icons/lu";
-import { ChevronDownIcon, ChevronRightIcon, HandoffIcon } from "~/lib/icons";
-import { FiThumbsUp } from "react-icons/fi";
-import { HiOutlineHandRaised } from "react-icons/hi2";
-import { PiLaptop } from "react-icons/pi";
+import type { RuntimeMode, ThreadId } from "@jcode/contracts";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useAppSettings } from "~/appSettings";
 
@@ -29,16 +24,12 @@ import {
   resolveEffectiveEnvMode,
 } from "./BranchToolbar.logic";
 import { BranchToolbarBranchSelector } from "./BranchToolbarBranchSelector";
-import { ContextWindowMeter } from "./chat/ContextWindowMeter";
 import type { ContextWindowSnapshot } from "../lib/contextWindow";
-import { ProviderUsagePanelContent } from "./ProviderUsagePanelContent";
-import { Popover, PopoverPopup, PopoverTrigger } from "./ui/popover";
-import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "./ui/collapsible";
+import { BranchToolbarEnvironmentPicker } from "./BranchToolbarEnvironmentPicker";
+import { RuntimeUsageControls } from "./RuntimeUsageControls";
 import type { ThreadWorkspacePatch } from "../types";
 
-function WorktreeGlyph({ className }: { className?: string }) {
-  return <LuSplit className={cn("rotate-90", className)} />;
-}
+export { RuntimeUsageControls } from "./RuntimeUsageControls";
 
 interface BranchToolbarProps {
   threadId: ThreadId;
@@ -56,71 +47,6 @@ interface BranchToolbarProps {
   cumulativeCostUsd?: number | null;
   activeContextWindowLabel?: string | null;
   pendingContextWindowLabel?: string | null;
-}
-
-export interface RuntimeUsageControlsProps {
-  runtimeMode?: RuntimeMode | undefined;
-  onRuntimeModeChange?: ((mode: RuntimeMode) => void) | undefined;
-  contextWindow?: ContextWindowSnapshot | null | undefined;
-  cumulativeCostUsd?: number | null | undefined;
-  activeContextWindowLabel?: string | null | undefined;
-  pendingContextWindowLabel?: string | null | undefined;
-  className?: string | undefined;
-}
-
-export function RuntimeUsageControls({
-  runtimeMode,
-  onRuntimeModeChange,
-  contextWindow,
-  cumulativeCostUsd,
-  activeContextWindowLabel,
-  pendingContextWindowLabel,
-  className,
-}: RuntimeUsageControlsProps) {
-  return (
-    <div
-      className={cn(
-        "runtime-usage-controls flex items-center gap-1.5 text-(--app-metadata-muted-fg)",
-        className,
-      )}
-    >
-      {runtimeMode && onRuntimeModeChange ? (
-        <button
-          type="button"
-          className="runtime-access-chip inline-flex items-center gap-1 rounded-full border border-[color:var(--app-runtime-chip-border)] bg-[var(--app-runtime-chip-bg)] px-2 py-0.5 text-[length:var(--app-font-size-ui-xs,10px)] font-medium text-[var(--app-metadata-fg)] transition-colors hover:bg-[var(--app-chrome-control-hover-bg)] hover:text-[var(--app-chrome-control-hover-fg)] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-[var(--app-state-focus)]"
-          onClick={() =>
-            onRuntimeModeChange(runtimeMode === "full-access" ? "approval-required" : "full-access")
-          }
-          title={
-            runtimeMode === "full-access"
-              ? "Full access — click to require approvals"
-              : "Ask every action"
-          }
-        >
-          {runtimeMode === "full-access" ? (
-            <FiThumbsUp className="size-3 shrink-0" />
-          ) : (
-            <HiOutlineHandRaised className="size-3 shrink-0" />
-          )}
-          <span className="leading-none">
-            {runtimeMode === "full-access" ? "Full access" : "Default permissions"}
-          </span>
-        </button>
-      ) : null}
-      {contextWindow ? (
-        <ContextWindowMeter
-          usage={contextWindow}
-          {...(cumulativeCostUsd != null ? { cumulativeCostUsd } : {})}
-          {...(activeContextWindowLabel !== undefined
-            ? { activeWindowLabel: activeContextWindowLabel }
-            : {})}
-          {...(pendingContextWindowLabel !== undefined
-            ? { pendingWindowLabel: pendingContextWindowLabel }
-            : {})}
-        />
-      ) : null}
-    </div>
-  );
 }
 
 export default function BranchToolbar({
@@ -283,166 +209,24 @@ export default function BranchToolbar({
       )}
     >
       <div className="flex items-center gap-2">
-        {showEnvPicker ? (
-          <Popover open={envPickerOpen} onOpenChange={setEnvPickerOpen}>
-            <PopoverTrigger className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[length:var(--app-font-size-ui-xs,10px)] font-normal text-(--app-metadata-muted-fg) transition-colors hover:bg-(--app-chrome-control-hover-bg) hover:text-(--app-metadata-fg)">
-              {environmentPresentation.mode === "local" ? (
-                <PiLaptop className="size-3.5" />
-              ) : (
-                <WorktreeGlyph className="size-3.5" />
-              )}
-              {environmentPresentation.shortLabel}
-              <ChevronDownIcon className="size-3 opacity-60" />
-            </PopoverTrigger>
-            <PopoverPopup
-              align="start"
-              side="top"
-              sideOffset={6}
-              className="w-56 [&_[data-slot=popover-viewport]]:py-0 [&_[data-slot=popover-viewport]]:[--viewport-inline-padding:0px]"
-            >
-              <div className="py-1.5">
-                <p className="px-3 pb-1 pt-1 text-[11px] font-medium text-(--app-metadata-muted-fg)">
-                  Continue in
-                </p>
-                {environmentPresentation.mode === "local" ? (
-                  <div className="flex w-full items-center gap-2 px-3 py-1.5 text-sm">
-                    <PiLaptop className="size-4 text-(--app-work-row-icon)" />
-                    <span className="text-(--app-metadata-fg)">
-                      {environmentPresentation.localOptionLabel}
-                    </span>
-                    <svg
-                      className="ml-auto size-4 text-(--app-metadata-fg)"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm text-(--app-metadata-fg) transition-colors hover:bg-(--app-work-row-hover-bg)"
-                    onClick={() => {
-                      setEnvPickerOpen(false);
-                      onEnvModeChange("local");
-                    }}
-                  >
-                    <PiLaptop className="size-4 text-(--app-work-row-icon)" />
-                    <span>{environmentPresentation.localOptionLabel}</span>
-                  </button>
-                )}
-                {canSwitchToWorktree ? (
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm text-(--app-metadata-fg) transition-colors hover:bg-(--app-work-row-hover-bg)"
-                    onClick={() => {
-                      setEnvPickerOpen(false);
-                      onEnvModeChange("worktree");
-                    }}
-                  >
-                    <WorktreeGlyph className="size-4 text-(--app-work-row-icon)" />
-                    <span>New worktree</span>
-                  </button>
-                ) : null}
-                {effectiveEnvMode === "worktree" && !canHandoffToLocal ? (
-                  <div className="flex w-full items-center gap-2 px-3 py-1.5 text-sm">
-                    <WorktreeGlyph className="size-4 text-(--app-work-row-icon)" />
-                    <span className="text-(--app-metadata-fg)">
-                      {environmentPresentation.worktreeOptionLabel}
-                    </span>
-                    <svg
-                      className="ml-auto size-4 text-(--app-metadata-fg)"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                ) : null}
-                {canHandoffToWorktree && onHandoffToWorktree ? (
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm text-(--app-metadata-fg) transition-colors hover:bg-(--app-work-row-hover-bg) disabled:pointer-events-none disabled:opacity-50"
-                    disabled={handoffBusy}
-                    onClick={() => {
-                      setEnvPickerOpen(false);
-                      onHandoffToWorktree();
-                    }}
-                  >
-                    <WorktreeGlyph className="size-4 text-(--app-work-row-icon)" />
-                    <span>Hand off to new worktree</span>
-                  </button>
-                ) : null}
-                {canHandoffToLocal && onHandoffToLocal ? (
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm text-(--app-metadata-fg) transition-colors hover:bg-(--app-work-row-hover-bg) disabled:pointer-events-none disabled:opacity-50"
-                    disabled={handoffBusy}
-                    onClick={() => {
-                      setEnvPickerOpen(false);
-                      onHandoffToLocal();
-                    }}
-                  >
-                    <HandoffIcon className="size-4 text-(--app-work-row-icon)" />
-                    <span>Hand off to local</span>
-                  </button>
-                ) : null}
-              </div>
-
-              <div className="mx-3 border-t border-(--app-work-row-border)" />
-
-              <div className="py-1.5">
-                <Collapsible open={rateLimitsOpen} onOpenChange={setRateLimitsOpen}>
-                  <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm text-(--app-metadata-fg) transition-colors hover:bg-(--app-work-row-hover-bg)">
-                    <svg
-                      className="size-4 text-(--app-work-row-icon)"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                    <span>Rate limits remaining</span>
-                    <ChevronRightIcon
-                      className={cn(
-                        "ml-auto size-3.5 text-(--app-work-row-icon) transition-transform duration-150",
-                        rateLimitsOpen && "rotate-90",
-                      )}
-                    />
-                  </CollapsibleTrigger>
-                  <CollapsiblePanel>
-                    <ProviderUsagePanelContent
-                      provider={activeProvider}
-                      rateLimits={usageSummary.rateLimits}
-                      usageLines={usageSummary.usageLines}
-                      isLoading={usageSummary.isLoading}
-                      learnMoreHref={usageSummary.learnMoreHref}
-                      showTitle={false}
-                      className="px-3 pb-1 pt-1"
-                    />
-                  </CollapsiblePanel>
-                </Collapsible>
-              </div>
-            </PopoverPopup>
-          </Popover>
-        ) : (
-          <span className="inline-flex items-center gap-1 px-1.5 text-[length:var(--app-font-size-ui-xs,10px)] font-normal text-(--app-metadata-muted-fg)">
-            <WorktreeGlyph className="size-3.5" />
-            {environmentPresentation.shortLabel}
-          </span>
-        )}
+        <BranchToolbarEnvironmentPicker
+          activeProvider={activeProvider}
+          canHandoffToLocal={canHandoffToLocal}
+          canHandoffToWorktree={canHandoffToWorktree}
+          canSwitchToWorktree={canSwitchToWorktree}
+          effectiveEnvMode={effectiveEnvMode}
+          envPickerOpen={envPickerOpen}
+          environmentPresentation={environmentPresentation}
+          handoffBusy={handoffBusy}
+          onEnvModeChange={onEnvModeChange}
+          onEnvPickerOpenChange={setEnvPickerOpen}
+          onHandoffToLocal={onHandoffToLocal}
+          onHandoffToWorktree={onHandoffToWorktree}
+          onRateLimitsOpenChange={setRateLimitsOpen}
+          rateLimitsOpen={rateLimitsOpen}
+          showEnvPicker={showEnvPicker}
+          usageSummary={usageSummary}
+        />
 
         <BranchToolbarBranchSelector
           activeProjectCwd={activeProject.cwd}
@@ -458,8 +242,13 @@ export default function BranchToolbar({
       </div>
 
       <RuntimeUsageControls
+        provider={activeProvider}
         runtimeMode={runtimeMode}
         onRuntimeModeChange={onRuntimeModeChange}
+        providerRateLimits={usageSummary.rateLimits}
+        providerUsageLines={usageSummary.usageLines}
+        providerUsageIsLoading={usageSummary.isLoading}
+        providerUsageLearnMoreHref={usageSummary.learnMoreHref}
         contextWindow={contextWindow}
         cumulativeCostUsd={cumulativeCostUsd}
         activeContextWindowLabel={activeContextWindowLabel}
