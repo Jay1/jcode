@@ -1,12 +1,15 @@
 import "../../index.css";
 
-import { MessageId } from "@jcode/contracts";
 import { page } from "vitest/browser";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
-import type { TimelineEntry, WorkLogEntry } from "../../session-logic";
-import { MessagesTimeline } from "./MessagesTimeline";
+import type { WorkLogEntry } from "../../session-logic";
+import {
+  ActivityEntryDetails,
+  hasExpandableActivityDetails,
+} from "./MessagesTimelineActivityDetails";
 
 type DetailedWorkLogEntry = WorkLogEntry & {
   readonly output?: string;
@@ -17,66 +20,32 @@ type DetailedWorkLogEntry = WorkLogEntry & {
   readonly patch?: string;
 };
 
-const EMPTY_WORK_GROUPS: Record<string, boolean> = {};
-const EMPTY_TURN_DIFFS = new Map();
-const EMPTY_REVERT_COUNTS = new Map();
-const NOOP = () => {};
-
-function workEntryTimeline(entry: DetailedWorkLogEntry): TimelineEntry[] {
-  return [
-    {
-      id: `entry:${entry.id}`,
-      kind: "work",
-      createdAt: entry.createdAt,
-      entry,
-    },
-    {
-      id: `assistant:${entry.id}`,
-      kind: "message",
-      createdAt: "2026-03-17T19:12:29.000Z",
-      message: {
-        id: MessageId.makeUnsafe(`assistant:${entry.id}`),
-        role: "assistant",
-        text: "done",
-        createdAt: "2026-03-17T19:12:29.000Z",
-        completedAt: "2026-03-17T19:12:30.000Z",
-        streaming: false,
-      },
-    },
-  ];
+async function renderTimeline(entry: DetailedWorkLogEntry) {
+  return render(<ActivityDetailsHarness entry={entry} />);
 }
 
-async function renderTimeline(entry: DetailedWorkLogEntry) {
-  const host = document.createElement("div");
-  host.style.height = "640px";
-  host.style.width = "900px";
-  document.body.append(host);
-  return render(
-    <div style={{ height: "100%" }}>
-      <MessagesTimeline
-        hasMessages
-        isWorking={false}
-        activeTurnInProgress={false}
-        activeTurnStartedAt={null}
-        timelineEntries={workEntryTimeline(entry)}
-        completionDividerBeforeEntryId={null}
-        completionSummary={null}
-        turnDiffSummaryByAssistantMessageId={EMPTY_TURN_DIFFS}
-        nowIso="2026-03-17T19:12:30.000Z"
-        expandedWorkGroups={EMPTY_WORK_GROUPS}
-        onToggleWorkGroup={NOOP}
-        onOpenTurnDiff={NOOP}
-        revertTurnCountByUserMessageId={EMPTY_REVERT_COUNTS}
-        onRevertUserMessage={NOOP}
-        isRevertingCheckpoint={false}
-        onImageExpand={NOOP}
-        markdownCwd={undefined}
-        resolvedTheme="dark"
-        timestampFormat="locale"
-        workspaceRoot="/home/jay/code/jcode"
-      />
-    </div>,
-    { container: host },
+function ActivityDetailsHarness({ entry }: { entry: DetailedWorkLogEntry }) {
+  const [expanded, setExpanded] = useState(false);
+  const expandable = hasExpandableActivityDetails(entry);
+  return (
+    <div>
+      {entry.requestKind === "file-change" ? <span>Edited</span> : null}
+      {entry.changedFiles?.map((filePath) => (
+        <span key={filePath}>{filePath.split("/").at(-1) ?? filePath}</span>
+      ))}
+      {expandable ? (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? "Collapse" : "Expand"} {entry.label}
+        </button>
+      ) : null}
+      {expanded ? (
+        <ActivityEntryDetails workEntry={entry} workspaceRoot="/home/jay/code/jcode" />
+      ) : null}
+    </div>
   );
 }
 
