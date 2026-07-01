@@ -1,13 +1,17 @@
-import type { WorkLogEntry } from "../../session-logic";
 import { formatDuration } from "../../session-logic";
 import { getRenderablePatch, serializeRenderablePatchText } from "../../lib/diffRendering";
 import { cn } from "~/lib/utils";
+import type { WorkLogEntry } from "../../session-logic";
+import {
+  formatWorkspaceRelativePath,
+  getVisibleCommandOutputLines,
+  hasCommandActivityDetails,
+  hasExpandableActivityDetails,
+  hasFileChangeActivityDetails,
+  hasRenderableCommandOutput,
+} from "./MessagesTimelineActivityDetails.logic";
 
-const COMMAND_OUTPUT_TAIL_LINES = 40;
-
-export function hasExpandableActivityDetails(workEntry: WorkLogEntry): boolean {
-  return hasCommandActivityDetails(workEntry) || hasFileChangeActivityDetails(workEntry);
-}
+export { hasExpandableActivityDetails } from "./MessagesTimelineActivityDetails.logic";
 
 export function ActivityEntryDetails(props: {
   workEntry: WorkLogEntry;
@@ -20,37 +24,6 @@ export function ActivityEntryDetails(props: {
     return <FileChangeActivityDetails {...props} />;
   }
   return null;
-}
-
-function hasCommandActivityDetails(workEntry: WorkLogEntry): boolean {
-  if (!isCommandActivity(workEntry)) {
-    return false;
-  }
-  return Boolean(
-    workEntry.command ||
-    workEntry.rawCommand ||
-    workEntry.output ||
-    workEntry.stdout ||
-    workEntry.stderr ||
-    workEntry.exitCode !== undefined ||
-    workEntry.durationMs !== undefined,
-  );
-}
-
-function isCommandActivity(workEntry: WorkLogEntry): boolean {
-  return (
-    workEntry.itemType === "command_execution" ||
-    workEntry.requestKind === "command" ||
-    Boolean(workEntry.command ?? workEntry.rawCommand)
-  );
-}
-
-function hasFileChangeActivityDetails(workEntry: WorkLogEntry): boolean {
-  return isFileChangeActivity(workEntry) && Boolean(workEntry.patch?.trim());
-}
-
-function isFileChangeActivity(workEntry: WorkLogEntry): boolean {
-  return workEntry.itemType === "file_change" || workEntry.requestKind === "file-change";
 }
 
 function CommandActivityDetails(props: { workEntry: WorkLogEntry }) {
@@ -137,15 +110,6 @@ function FileChangeActivityDetails(props: {
   );
 }
 
-function formatWorkspaceRelativePath(filePath: string, workspaceRoot: string | undefined): string {
-  const normalizedPath = filePath.replace(/\\/gu, "/");
-  const normalizedRoot = workspaceRoot?.replace(/\\/gu, "/").replace(/\/+$/u, "");
-  if (normalizedRoot && normalizedPath.startsWith(`${normalizedRoot}/`)) {
-    return normalizedPath.slice(normalizedRoot.length + 1);
-  }
-  return normalizedPath;
-}
-
 function ActivityDetailBlock(props: {
   title: string;
   children: string;
@@ -173,32 +137,17 @@ function ActivityDetailBlock(props: {
 }
 
 function CommandOutputBlock(props: { title: string; value: string; tone?: "default" | "error" }) {
-  const lines = getRenderableCommandOutputLines(props.value);
-  const visibleLines =
-    lines.length > COMMAND_OUTPUT_TAIL_LINES ? lines.slice(-COMMAND_OUTPUT_TAIL_LINES) : lines;
+  const output = getVisibleCommandOutputLines(props.value);
   return (
-    <ActivityDetailBlock title={props.title} mono {...(props.tone ? { tone: props.tone } : {})}>
-      {visibleLines.join("\n")}
-    </ActivityDetailBlock>
+    <div className="space-y-1">
+      {output.hiddenLineCount > 0 ? (
+        <p className="text-[10px] text-[var(--app-metadata-muted-fg)]">
+          Showing last {output.lines.length} lines; {output.hiddenLineCount} earlier lines hidden.
+        </p>
+      ) : null}
+      <ActivityDetailBlock title={props.title} mono {...(props.tone ? { tone: props.tone } : {})}>
+        {output.lines.join("\n")}
+      </ActivityDetailBlock>
+    </div>
   );
-}
-
-function hasRenderableCommandOutput(value: string | undefined): value is string {
-  return getRenderableCommandOutputLines(value).length > 0;
-}
-
-function getRenderableCommandOutputLines(value: string | undefined): string[] {
-  if (typeof value !== "string" || value.length === 0) {
-    return [];
-  }
-  const lines = value.split(/\r?\n/u);
-  let startIndex = 0;
-  let endIndex = lines.length;
-  while (startIndex < endIndex && (lines[startIndex]?.trim().length ?? 0) === 0) {
-    startIndex += 1;
-  }
-  while (endIndex > startIndex && (lines[endIndex - 1]?.trim().length ?? 0) === 0) {
-    endIndex -= 1;
-  }
-  return lines.slice(startIndex, endIndex);
 }

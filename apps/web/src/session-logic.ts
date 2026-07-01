@@ -71,6 +71,21 @@ export interface WorkLogEntry {
   subagentAction?: WorkLogSubagentAction;
 }
 
+type CommandWorkLogEntryInput = {
+  readonly itemType?: WorkLogEntry["itemType"] | undefined;
+  readonly requestKind?: WorkLogEntry["requestKind"] | undefined;
+  readonly command?: string | undefined;
+  readonly rawCommand?: string | undefined;
+};
+
+export function isCommandWorkLogEntry(workEntry: CommandWorkLogEntryInput): boolean {
+  return (
+    workEntry.itemType === "command_execution" ||
+    workEntry.requestKind === "command" ||
+    Boolean(workEntry.command ?? workEntry.rawCommand)
+  );
+}
+
 export const WORK_LOG_PRESENTATION_VERSION = 5;
 
 export interface WorkLogSubagent {
@@ -771,10 +786,12 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   if (commandPreview.rawCommand) {
     entry.rawCommand = commandPreview.rawCommand;
   }
-  const isCommandEntry =
-    itemType === "command_execution" ||
-    requestKind === "command" ||
-    Boolean(commandPreview.command || commandPreview.rawCommand);
+  const isCommandEntry = isCommandWorkLogEntry({
+    itemType,
+    requestKind,
+    command: commandPreview.command ?? undefined,
+    rawCommand: commandPreview.rawCommand ?? undefined,
+  });
   if (isCommandEntry) {
     if (commandResult.output) {
       entry.output = commandResult.output;
