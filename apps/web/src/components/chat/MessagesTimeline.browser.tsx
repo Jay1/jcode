@@ -47,29 +47,36 @@ function workEntryTimeline(entry: DetailedWorkLogEntry): TimelineEntry[] {
 }
 
 async function renderTimeline(entry: DetailedWorkLogEntry) {
+  const host = document.createElement("div");
+  host.style.height = "640px";
+  host.style.width = "900px";
+  document.body.append(host);
   return render(
-    <MessagesTimeline
-      hasMessages
-      isWorking={false}
-      activeTurnInProgress={false}
-      activeTurnStartedAt={null}
-      timelineEntries={workEntryTimeline(entry)}
-      completionDividerBeforeEntryId={null}
-      completionSummary={null}
-      turnDiffSummaryByAssistantMessageId={EMPTY_TURN_DIFFS}
-      nowIso="2026-03-17T19:12:30.000Z"
-      expandedWorkGroups={EMPTY_WORK_GROUPS}
-      onToggleWorkGroup={NOOP}
-      onOpenTurnDiff={NOOP}
-      revertTurnCountByUserMessageId={EMPTY_REVERT_COUNTS}
-      onRevertUserMessage={NOOP}
-      isRevertingCheckpoint={false}
-      onImageExpand={NOOP}
-      markdownCwd={undefined}
-      resolvedTheme="dark"
-      timestampFormat="locale"
-      workspaceRoot="/home/jay/code/jcode"
-    />,
+    <div style={{ height: "100%" }}>
+      <MessagesTimeline
+        hasMessages
+        isWorking={false}
+        activeTurnInProgress={false}
+        activeTurnStartedAt={null}
+        timelineEntries={workEntryTimeline(entry)}
+        completionDividerBeforeEntryId={null}
+        completionSummary={null}
+        turnDiffSummaryByAssistantMessageId={EMPTY_TURN_DIFFS}
+        nowIso="2026-03-17T19:12:30.000Z"
+        expandedWorkGroups={EMPTY_WORK_GROUPS}
+        onToggleWorkGroup={NOOP}
+        onOpenTurnDiff={NOOP}
+        revertTurnCountByUserMessageId={EMPTY_REVERT_COUNTS}
+        onRevertUserMessage={NOOP}
+        isRevertingCheckpoint={false}
+        onImageExpand={NOOP}
+        markdownCwd={undefined}
+        resolvedTheme="dark"
+        timestampFormat="locale"
+        workspaceRoot="/home/jay/code/jcode"
+      />
+    </div>,
+    { container: host },
   );
 }
 
@@ -153,7 +160,7 @@ describe("MessagesTimeline activity details", () => {
     try {
       await expect(page.getByText("Edited")).toBeVisible();
       await expect(page.getByText("MessagesTimeline.logic.ts")).toBeVisible();
-      await expect(page.getByText("Patch")).not.toBeVisible();
+      expect(screen.container.textContent).not.toContain("Patch");
     } finally {
       await screen.unmount();
     }

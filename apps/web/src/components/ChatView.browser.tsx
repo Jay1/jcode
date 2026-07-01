@@ -3733,7 +3733,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
 
     try {
       await page.getByLabelText("Composer extras").click();
-      await page.getByText("Plan mode").click();
+      await page.getByRole("menuitemcheckbox", { name: /Plan mode/u }).click();
 
       await vi.waitFor(() => {
         expect(useComposerDraftStore.getState().draftsByThreadId[THREAD_ID]?.interactionMode).toBe(
