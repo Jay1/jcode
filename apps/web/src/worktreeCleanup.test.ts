@@ -2,7 +2,11 @@ import { ProjectId, ThreadId } from "@jcode/contracts";
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE, type Thread } from "./types";
-import { formatWorktreePathForDisplay, getOrphanedWorktreePathForThread } from "./worktreeCleanup";
+import {
+  classifyManagedWorktreeCleanupChoices,
+  formatWorktreePathForDisplay,
+  getOrphanedWorktreePathForThread,
+} from "./worktreeCleanup";
 
 function makeThread(overrides: Partial<Thread> = {}): Thread {
   return {
@@ -109,5 +113,70 @@ describe("formatWorktreePathForDisplay", () => {
   it("ignores trailing slashes", () => {
     const result = formatWorktreePathForDisplay("/tmp/custom-worktrees/my-worktree/");
     expect(result).toBe("my-worktree");
+  });
+});
+
+describe("classifyManagedWorktreeCleanupChoices", () => {
+  it("marks safe unlinked worktrees as orphaned cleanup choices", () => {
+    const choices = classifyManagedWorktreeCleanupChoices({
+      worktrees: [
+        {
+          path: "/tmp/repo/worktrees/feature-a",
+          workspaceRoot: "/tmp/repo",
+          branch: "feature-a",
+          isDirty: false,
+          hasUnmergedCommits: false,
+          cleanupStatus: "safe",
+          cleanupExplanation: "Safe to remove.",
+        },
+      ],
+      threads: [],
+    });
+
+    expect(choices[0]?.association).toBe("orphaned");
+    expect(choices[0]?.canRemove).toBe(true);
+  });
+
+  it("blocks worktrees linked to active threads", () => {
+    const choices = classifyManagedWorktreeCleanupChoices({
+      worktrees: [
+        {
+          path: "/tmp/repo/worktrees/feature-a",
+          workspaceRoot: "/tmp/repo",
+          branch: "feature-a",
+          isDirty: false,
+          hasUnmergedCommits: false,
+          cleanupStatus: "safe",
+          cleanupExplanation: "Safe to remove.",
+        },
+      ],
+      threads: [makeThread({ worktreePath: "/tmp/repo/worktrees/feature-a" })],
+    });
+
+    expect(choices[0]?.association).toBe("active");
+    expect(choices[0]?.canRemove).toBe(false);
+    expect(choices[0]?.blockedReason).toContain("active conversation");
+  });
+
+  it("carries server safety explanations for dirty worktrees", () => {
+    const choices = classifyManagedWorktreeCleanupChoices({
+      worktrees: [
+        {
+          path: "/tmp/repo/worktrees/feature-a",
+          workspaceRoot: "/tmp/repo",
+          branch: "feature-a",
+          isDirty: true,
+          hasUnmergedCommits: false,
+          cleanupStatus: "blocked_dirty",
+          cleanupExplanation: "Uncommitted changes must be committed or stashed first.",
+        },
+      ],
+      threads: [],
+    });
+
+    expect(choices[0]?.canRemove).toBe(false);
+    expect(choices[0]?.blockedReason).toBe(
+      "Uncommitted changes must be committed or stashed first.",
+    );
   });
 });

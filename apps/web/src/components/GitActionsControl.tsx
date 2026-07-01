@@ -76,6 +76,10 @@ import { resolvePathLinkTarget } from "~/terminal-links";
 import { readNativeApi } from "~/nativeApi";
 import { createThreadSelector } from "~/storeSelectors";
 import { useStore } from "~/store";
+import {
+  VcsCommandCenterStatusPanel,
+  buildVcsCommandCenterStatusModel,
+} from "./VcsCommandCenterStatusPanel";
 
 interface GitActionsControlProps {
   gitCwd: string | null;
@@ -418,6 +422,27 @@ export default function GitActionsControl({
   }, [activeThread?.createBranchFlowCompleted, activeThread?.worktreePath, gitStatusForActions]);
   const currentBranchName =
     gitStatusForActions?.branch ?? currentBranch ?? activeThread?.branch ?? null;
+  const activeProviderName =
+    activeThread?.session?.provider ?? activeThread?.modelSelection.provider ?? null;
+  const vcsCommandCenterStatusModel = useMemo(
+    () =>
+      buildVcsCommandCenterStatusModel({
+        gitCwd,
+        gitStatus: gitStatusForActions,
+        branchList,
+        gitStatusErrorMessage: gitStatusError?.message ?? null,
+        providerName: activeProviderName,
+        isGitStatusOutOfSync,
+      }),
+    [
+      activeProviderName,
+      branchList,
+      gitCwd,
+      gitStatusError?.message,
+      gitStatusForActions,
+      isGitStatusOutOfSync,
+    ],
+  );
   const existingBranchNames = useMemo(
     () => (branchList?.branches ?? []).map((branch) => branch.name),
     [branchList?.branches],
@@ -1291,8 +1316,9 @@ export default function GitActionsControl({
             <MenuPopup
               align="end"
               side="bottom"
-              className="w-50 rounded-lg border-(--app-chrome-control-border) bg-(--app-work-row-bg) shadow-lg"
+              className="w-80 rounded-lg border-(--app-chrome-control-border) bg-(--app-work-row-bg) shadow-lg"
             >
+              <VcsCommandCenterStatusPanel model={vcsCommandCenterStatusModel} />
               <MenuGroup>
                 <MenuGroupLabel>Git actions</MenuGroupLabel>
                 {gitPickerMenuItems.map((item) => {
