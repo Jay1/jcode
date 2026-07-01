@@ -85,6 +85,7 @@ export interface OpenCodeServerLaunchConfig {
   readonly xdgConfigHome?: string;
   readonly extraEnv?: Readonly<Record<string, string>>;
   readonly cwd?: string;
+  readonly serverPassword?: string;
 }
 
 const OPENCODE_RUNTIME_ERROR_TAG = "OpenCodeRuntimeError";
@@ -260,9 +261,11 @@ export function buildOpenCodeServerProcessEnv(input: {
   readonly xdgConfigHome?: string;
   readonly extraEnv?: Readonly<Record<string, string>>;
   readonly baseEnv?: NodeJS.ProcessEnv;
+  readonly serverPassword?: string;
 }): NodeJS.ProcessEnv {
   const cliSpec = input.cliSpec ?? OPENCODE_CLI_SPEC;
   const configMode = input.configMode ?? "inherit";
+  const serverPassword = input.serverPassword?.trim();
   return {
     ...(input.baseEnv ?? process.env),
     ...(configMode === "inherit"
@@ -275,6 +278,12 @@ export function buildOpenCodeServerProcessEnv(input: {
     ...(input.homePath?.trim() ? { HOME: input.homePath.trim() } : {}),
     ...(input.xdgConfigHome?.trim() ? { XDG_CONFIG_HOME: input.xdgConfigHome.trim() } : {}),
     ...input.extraEnv,
+    ...(serverPassword
+      ? {
+          OPENCODE_SERVER_USERNAME: cliSpec.serverAuthUsername,
+          OPENCODE_SERVER_PASSWORD: serverPassword,
+        }
+      : {}),
   };
 }
 
@@ -814,6 +823,9 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
               ...(input.homePath !== undefined ? { homePath: input.homePath } : {}),
               ...(input.xdgConfigHome !== undefined ? { xdgConfigHome: input.xdgConfigHome } : {}),
               ...(input.extraEnv !== undefined ? { extraEnv: input.extraEnv } : {}),
+              ...(input.serverPassword !== undefined
+                ? { serverPassword: input.serverPassword }
+                : {}),
             }),
             ...(input.cwd?.trim() ? { cwd: input.cwd.trim() } : {}),
             detached: false,
@@ -956,6 +968,7 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
       ...(input.xdgConfigHome !== undefined ? { xdgConfigHome: input.xdgConfigHome } : {}),
       ...(input.extraEnv !== undefined ? { extraEnv: input.extraEnv } : {}),
       ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
+      ...(input.serverPassword !== undefined ? { serverPassword: input.serverPassword } : {}),
     }).pipe(
       Effect.map((server) => ({
         url: server.url,

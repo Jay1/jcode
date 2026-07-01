@@ -61,6 +61,7 @@ function makeRuntime(overrides: Partial<OpenCodeRuntimeShape> = {}): OpenCodeRun
 
 function settingsWithOpenCodeProfile(
   profile: ServerSettings["providers"]["opencode"]["runtimeProfiles"][number],
+  options?: { readonly serverPassword?: string },
 ): ServerSettings {
   return {
     ...DEFAULT_SERVER_SETTINGS,
@@ -70,6 +71,7 @@ function settingsWithOpenCodeProfile(
         ...DEFAULT_SERVER_SETTINGS.providers.opencode,
         activeRuntimeProfileId: profile.id,
         runtimeProfiles: [profile],
+        ...(options?.serverPassword ? { serverPassword: options.serverPassword } : {}),
       },
     },
   };
@@ -185,5 +187,122 @@ describe("checkOpenCodeRuntimeHealth", () => {
 
     expect(health.status).toBe("healthy");
     expect(health.mismatches).toEqual([]);
+  });
+
+  it("passes managed profile password to spawned server connection and SDK client", async () => {
+    const connectCalls: Array<Parameters<OpenCodeRuntimeShape["connectToOpenCodeServer"]>[0]> = [];
+    const clientCalls: Array<Parameters<OpenCodeRuntimeShape["createOpenCodeSdkClient"]>[0]> = [];
+    const settings = settingsWithOpenCodeProfile(
+      {
+        id: "managed",
+        label: "Managed",
+        provider: "opencode",
+        mode: "managed",
+        configMode: "generated",
+        binaryPath: "/managed/bin/opencode",
+        cwdDefault: "/managed/workspace",
+        opencodeConfigDir: "/managed/config",
+        opencodeDataDir: "/managed/data",
+        skillRoots: [],
+        pluginRoots: [],
+        requiredCommands: [],
+        requiredSkills: [],
+        requiredPlugins: [],
+        requiredAgents: [],
+        requiredModels: [],
+        requiredEnv: [],
+        requirements: [],
+        capabilityPolicy: "warn",
+      },
+      { serverPassword: "profile-password" },
+    );
+    const runtime = makeRuntime({
+      connectToOpenCodeServer: (input) => {
+        connectCalls.push(input);
+        return Effect.succeed({
+          url: "http://127.0.0.1:4096",
+          exitCode: null,
+          external: false,
+        });
+      },
+      createOpenCodeSdkClient: (input) => {
+        clientCalls.push(input);
+        return {} as never;
+      },
+    });
+
+    const health = await Effect.runPromise(
+      checkOpenCodeRuntimeHealth({
+        settings,
+        runtime,
+        cliSpec: OPENCODE_CLI_SPEC,
+        defaultBinaryPath: "opencode",
+      }),
+    );
+
+    expect(health.external).toBe(false);
+    expect(connectCalls[0]).toMatchObject({
+      serverPassword: "profile-password",
+    });
+    expect(clientCalls[0]).toMatchObject({
+      baseUrl: "http://127.0.0.1:4096",
+      directory: "/managed/workspace",
+      serverPassword: "profile-password",
+    });
+  });
+
+  it("generates a memory-only password for managed profiles without a configured password", async () => {
+    const connectCalls: Array<Parameters<OpenCodeRuntimeShape["connectToOpenCodeServer"]>[0]> = [];
+    const clientCalls: Array<Parameters<OpenCodeRuntimeShape["createOpenCodeSdkClient"]>[0]> = [];
+    const settings = settingsWithOpenCodeProfile({
+      id: "managed",
+      label: "Managed",
+      provider: "opencode",
+      mode: "managed",
+      configMode: "generated",
+      binaryPath: "/managed/bin/opencode",
+      cwdDefault: "/managed/workspace",
+      opencodeConfigDir: "/managed/config",
+      opencodeDataDir: "/managed/data",
+      skillRoots: [],
+      pluginRoots: [],
+      requiredCommands: [],
+      requiredSkills: [],
+      requiredPlugins: [],
+      requiredAgents: [],
+      requiredModels: [],
+      requiredEnv: [],
+      requirements: [],
+      capabilityPolicy: "warn",
+    });
+    const runtime = makeRuntime({
+      connectToOpenCodeServer: (input) => {
+        connectCalls.push(input);
+        return Effect.succeed({
+          url: "http://127.0.0.1:4096",
+          exitCode: null,
+          external: false,
+        });
+      },
+      createOpenCodeSdkClient: (input) => {
+        clientCalls.push(input);
+        return {} as never;
+      },
+    });
+
+    const health = await Effect.runPromise(
+      checkOpenCodeRuntimeHealth({
+        settings,
+        runtime,
+        cliSpec: OPENCODE_CLI_SPEC,
+        defaultBinaryPath: "opencode",
+      }),
+    );
+
+    expect(health.external).toBe(false);
+    expect(connectCalls[0]?.serverPassword).toEqual(expect.any(String));
+    expect(connectCalls[0]?.serverPassword).toHaveLength(32);
+    expect(clientCalls[0]?.serverPassword).toBe(connectCalls[0]?.serverPassword);
+    expect(settings.providers.opencode.serverPassword).toBe("");
   });
 });

@@ -73,6 +73,14 @@ describe("createDesktopPlatformBuildConfig", () => {
       target: ["nsis"],
       icon: "icon.ico",
       azureSignOptions: { publisherName: "T3 Tools" },
+      nsis: {
+        oneClick: false,
+        perMachine: false,
+        allowToChangeInstallationDirectory: false,
+        runAfterFinish: true,
+        shortcutName: "JCode",
+        deleteAppDataOnUninstall: true,
+      },
     });
   });
 });

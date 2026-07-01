@@ -7,7 +7,7 @@
 | Owner           | Engineering                                                                                                                                                         |
 | Audience        | Maintainers, reviewers, and automation agents                                                                                                                       |
 | Scope           | Remote Client Runtime authentication, capability scopes, pairing/session semantics, observe-and-approve clients, and the Server Auth Boundary                       |
-| Canonical path  | `docs/adr/0005-scoped-remote-client-capability-tokens.md`                                                                                                           |
+| Canonical path  | `docs/adr/0008-scoped-remote-client-capability-tokens.md`                                                                                                           |
 | Last reviewed   | 2026-06-05                                                                                                                                                          |
 | Review cadence  | Event-driven; review when remote clients gain mutation capabilities, the Server Auth Boundary changes, or JCode becomes a hosted multi-tenant product               |
 | Source of truth | `CONTEXT.md`, `docs/adr/0001-local-coding-agent-cockpit.md`, `docs/security/dev-automation-access.md`, `packages/contracts/src/auth.ts`, and `apps/server/src/auth` |

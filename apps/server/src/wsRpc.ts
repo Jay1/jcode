@@ -6,7 +6,9 @@ import {
   type AuthAccessStreamEvent,
   type AuthCapabilityScope,
   type AuthClientSession,
-  type AuthSessionId,
+  AuthSessionId,
+  type CompleteFirstRunWizardInput,
+  type ManagedSidecarRepairRequest,
   type OpenCodeRuntimeProfile,
   type ProviderRuntimeBootstrapInput,
   type ProviderRuntimeBootstrapSnapshot,
@@ -26,6 +28,7 @@ import {
   type ServerDiagnosticsResult,
   type ServerLifecycleStreamEvent,
   type ServerManagedWorktree,
+  ServerProviderUpdateError,
   ServerVoiceTranscriptionErrorDetail,
   type ServerVoiceTranscriptionErrorDetail as ServerVoiceTranscriptionErrorDetailType,
 } from "@jcode/contracts";
@@ -75,6 +78,21 @@ import {
   OpenCodeRuntime,
   OpenCodeRuntimeLive,
 } from "./provider/opencodeRuntime";
+import {
+  completeFirstRunWizard,
+  getFirstRunWizardData,
+  skipFirstRunWizard,
+} from "./provider/firstRunWizard";
+import {
+  checkManagedSidecarHealth,
+  type ManagedSidecarServerProbe,
+  exportManagedSidecarDiagnostics,
+  repairManagedSidecar,
+} from "./provider/managedRuntimeHealth";
+import {
+  ManagedSidecarLifecycle,
+  type ManagedSidecarLifecycleShape,
+} from "./provider/managedRuntimeLifecycle";
 import { checkOpenCodeRuntimeHealth } from "./provider/openCodeRuntimeHealth";
 import {
   JCODE_OPENCODE_SERVICE_NAME,
@@ -139,6 +157,22 @@ type CurrentRpcAuthSessionShape = AuthenticatedSession | null;
 const CurrentRpcAuthSession = ServiceMap.Service<CurrentRpcAuthSessionShape>(
   "jcode/wsRpc/CurrentRpcAuthSession",
 );
+
+export const LOCAL_LEGACY_OWNER_AUTH_SESSION: AuthenticatedSession = {
+  sessionId: AuthSessionId.makeUnsafe("local-legacy-websocket-owner"),
+  subject: "local-legacy-websocket",
+  method: "bearer-session-token",
+  role: "owner",
+};
+
+export function resolveLocalLegacyWsAuthSession(input: {
+  readonly authToken: string | undefined;
+  readonly legacyToken: string | null;
+}): AuthenticatedSession | null {
+  return input.authToken !== undefined && input.legacyToken === input.authToken
+    ? LOCAL_LEGACY_OWNER_AUTH_SESSION
+    : null;
+}
 
 interface ProcessTableRow {
   readonly pid: number;
@@ -290,6 +324,81 @@ function withCurrentClientSession(
   };
 }
 
+export const getManagedSidecarHealthFromLifecycle = (input: {
+  readonly lifecycle: ManagedSidecarLifecycleShape;
+  readonly serverProbe?: ManagedSidecarServerProbe;
+}) =>
+  Effect.gen(function* () {
+    const sidecarSnapshot = yield* input.lifecycle.getManagedRuntimeStatus();
+    return yield* checkManagedSidecarHealth({
+      sidecarSnapshot,
+      ...(input.serverProbe ? { serverProbe: input.serverProbe } : {}),
+    });
+  });
+
+export const repairManagedSidecarFromLifecycle = (input: {
+  readonly lifecycle: ManagedSidecarLifecycleShape;
+  readonly request: ManagedSidecarRepairRequest;
+  readonly serverProbe?: ManagedSidecarServerProbe;
+}) =>
+  Effect.gen(function* () {
+    return yield* repairManagedSidecar({
+      lifecycle: input.lifecycle,
+      forceRedownload: input.request.forceRedownload,
+      ...(input.serverProbe ? { serverProbe: input.serverProbe } : {}),
+    });
+  });
+
+export const exportManagedSidecarDiagnosticsFromLifecycle = (input: {
+  readonly lifecycle: ManagedSidecarLifecycleShape;
+  readonly serverProbe?: ManagedSidecarServerProbe;
+}) =>
+  Effect.gen(function* () {
+    const sidecarSnapshot = yield* input.lifecycle.getManagedRuntimeStatus();
+    return yield* exportManagedSidecarDiagnostics({
+      sidecarSnapshot,
+      ...(input.serverProbe ? { serverProbe: input.serverProbe } : {}),
+    });
+  });
+
+export const skipFirstRunWizardFromRpc = () => skipFirstRunWizard();
+
+export const requireProviderStatusRpcAccess = (
+  session: AuthenticatedSession,
+): Effect.Effect<void, WsRpcError> =>
+  requireScope(session, "provider_status:read").pipe(
+    Effect.asVoid,
+    Effect.mapError((err) => new WsRpcError({ message: err.message, cause: err })),
+  );
+
+export const requireManagedSidecarHealthRpcAccess = (
+  session: AuthenticatedSession,
+): Effect.Effect<void, WsRpcError> => requireProviderStatusRpcAccess(session);
+
+export const requireOwnerWsRpcAccess = (
+  session: AuthenticatedSession,
+  operation = "WS RPC operation",
+): Effect.Effect<void, WsRpcError> =>
+  session.role === "owner"
+    ? Effect.void
+    : Effect.fail(new WsRpcError({ message: `${operation} requires owner role` }));
+
+const requireManagedSidecarOwnerRpcAccess = (
+  session: AuthenticatedSession,
+  operation: "repair" | "diagnostics",
+): Effect.Effect<void, WsRpcError> =>
+  session.role === "owner"
+    ? Effect.void
+    : Effect.fail(new WsRpcError({ message: `Managed sidecar ${operation} requires owner role` }));
+
+export const requireManagedSidecarRepairRpcAccess = (
+  session: AuthenticatedSession,
+): Effect.Effect<void, WsRpcError> => requireManagedSidecarOwnerRpcAccess(session, "repair");
+
+export const requireManagedSidecarDiagnosticsRpcAccess = (
+  session: AuthenticatedSession,
+): Effect.Effect<void, WsRpcError> => requireManagedSidecarOwnerRpcAccess(session, "diagnostics");
+
 export const makeWsRpcLayer = () =>
   WsRpcGroup.toLayer(
     Effect.gen(function* () {
@@ -312,6 +421,7 @@ export const makeWsRpcLayer = () =>
       const providerDiscoveryService = yield* ProviderDiscoveryService;
       const providerHealth = yield* ProviderHealth;
       const providerService = yield* ProviderService;
+      const managedSidecarLifecycle = yield* ManagedSidecarLifecycle;
       const lifecycleEvents = yield* ServerLifecycleEvents;
       const runtimeStartup = yield* ServerRuntimeStartup;
       const serverEnvironment = yield* ServerEnvironment;
@@ -692,6 +802,36 @@ export const makeWsRpcLayer = () =>
           }),
         );
 
+      const withCurrentSession = <A, E, R>(
+        guard: (session: AuthenticatedSession) => Effect.Effect<void, WsRpcError>,
+        effect: Effect.Effect<A, E, R>,
+      ): Effect.Effect<A, E | WsRpcError, R> =>
+        Effect.serviceOption(CurrentRpcAuthSession).pipe(
+          Effect.flatMap((sessionOpt) => {
+            const session = Option.getOrNull(sessionOpt);
+            if (!session) {
+              return Effect.fail(new WsRpcError({ message: "Authentication required" }));
+            }
+            return guard(session).pipe(Effect.flatMap(() => effect));
+          }),
+        );
+
+      const withCurrentSessionStream = <A, E, R>(
+        guard: (session: AuthenticatedSession) => Effect.Effect<void, WsRpcError>,
+        stream: Stream.Stream<A, E, R>,
+      ): Stream.Stream<A, E | WsRpcError, R> =>
+        Stream.unwrap(
+          Effect.serviceOption(CurrentRpcAuthSession).pipe(
+            Effect.flatMap((sessionOpt) => {
+              const session = Option.getOrNull(sessionOpt);
+              if (!session) {
+                return Effect.fail(new WsRpcError({ message: "Authentication required" }));
+              }
+              return guard(session).pipe(Effect.map(() => stream));
+            }),
+          ),
+        );
+
       /**
        * Wrap a Stream-returning RPC handler with a scope guard.
        * Validates scope before emitting any events. Owner sessions bypass all checks.
@@ -778,6 +918,7 @@ export const makeWsRpcLayer = () =>
         effect: Effect.Effect<A, E, R>,
       ): Effect.Effect<A, E | WsRpcError, R> =>
         requireOwnerSession.pipe(Effect.flatMap(() => effect));
+
       const noManagedWorktrees: readonly ServerManagedWorktree[] = [];
 
       return WsRpcGroup.of({
@@ -795,7 +936,10 @@ export const makeWsRpcLayer = () =>
             ),
           ),
         [ORCHESTRATION_WS_METHODS.importThread]: (input) =>
-          rpcEffect(importThread(input), "Failed to import thread"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(importThread(input), "Failed to import thread"),
+          ),
         [ORCHESTRATION_WS_METHODS.getSnapshot]: () =>
           withScope(
             "thread:read",
@@ -813,7 +957,10 @@ export const makeWsRpcLayer = () =>
             ),
           ),
         [ORCHESTRATION_WS_METHODS.repairState]: () =>
-          rpcEffect(orchestrationEngine.repairState(), "Failed to repair orchestration state"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(orchestrationEngine.repairState(), "Failed to repair orchestration state"),
+          ),
         [ORCHESTRATION_WS_METHODS.getTurnDiff]: (input) =>
           withScope(
             "thread:read",
@@ -893,137 +1040,234 @@ export const makeWsRpcLayer = () =>
           ),
         [ORCHESTRATION_WS_METHODS.unsubscribeThread]: () => withScope("thread:read", Effect.void),
         [WS_METHODS.subscribeOrchestrationDomainEvents]: () =>
-          orchestrationEngine.streamDomainEvents,
+          withScopeStream("thread:read", orchestrationEngine.streamDomainEvents),
 
         [WS_METHODS.projectsListDirectories]: (input) =>
-          rpcEffect(
-            workspaceEntries.listDirectories(input),
-            "Failed to list workspace directories",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              workspaceEntries.listDirectories(input),
+              "Failed to list workspace directories",
+            ),
           ),
         [WS_METHODS.projectsSearchEntries]: (input) =>
-          rpcEffect(workspaceEntries.search(input), "Failed to search workspace entries"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(workspaceEntries.search(input), "Failed to search workspace entries"),
+          ),
         [WS_METHODS.projectsSearchLocalEntries]: (input) =>
-          rpcEffect(workspaceEntries.searchLocal(input), "Failed to search local entries"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(workspaceEntries.searchLocal(input), "Failed to search local entries"),
+          ),
         [WS_METHODS.projectsWriteFile]: (input) =>
-          rpcEffect(workspaceFileSystem.writeFile(input), "Failed to write workspace file"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(workspaceFileSystem.writeFile(input), "Failed to write workspace file"),
+          ),
         [WS_METHODS.filesystemBrowse]: (input) =>
-          rpcEffect(workspaceEntries.browse(input), "Failed to browse filesystem"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(workspaceEntries.browse(input), "Failed to browse filesystem"),
+          ),
         [WS_METHODS.shellOpenInEditor]: (input) =>
-          rpcEffect(open.openInEditor(input), "Failed to open editor"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(open.openInEditor(input), "Failed to open editor"),
+          ),
 
         [WS_METHODS.gitStatus]: (input) =>
-          rpcEffect(gitStatusBroadcaster.getStatus(input), "Failed to read git status"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(gitStatusBroadcaster.getStatus(input), "Failed to read git status"),
+          ),
         [WS_METHODS.gitReadWorkingTreeDiff]: (input) =>
-          rpcEffect(gitManager.readWorkingTreeDiff(input), "Failed to read working tree diff"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(gitManager.readWorkingTreeDiff(input), "Failed to read working tree diff"),
+          ),
         [WS_METHODS.gitSummarizeDiff]: (input) =>
-          rpcEffect(gitManager.summarizeDiff(input), "Failed to summarize diff"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(gitManager.summarizeDiff(input), "Failed to summarize diff"),
+          ),
         [WS_METHODS.gitPull]: (input) =>
-          rpcEffect(
-            git.pullCurrentBranch(input.cwd).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
-            "Failed to pull branch",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              git.pullCurrentBranch(input.cwd).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+              "Failed to pull branch",
+            ),
           ),
         [WS_METHODS.gitRunStackedAction]: (input) =>
-          Stream.callback<GitActionProgressEvent, WsRpcError>((queue) =>
-            gitManager
-              .runStackedAction(input, {
-                actionId: input.actionId,
-                progressReporter: {
-                  publish: (event) => Queue.offer(queue, event).pipe(Effect.asVoid),
-                },
-              })
-              .pipe(
-                Effect.tap(() => refreshGitStatus(input.cwd)),
-                Effect.matchCauseEffect({
-                  onFailure: (cause) => Queue.fail(queue, toWsRpcError(cause, "Git action failed")),
-                  onSuccess: () => Queue.end(queue).pipe(Effect.asVoid),
-                }),
-              ),
+          withCurrentSessionStream(
+            requireOwnerWsRpcAccess,
+            Stream.callback<GitActionProgressEvent, WsRpcError>((queue) =>
+              gitManager
+                .runStackedAction(input, {
+                  actionId: input.actionId,
+                  progressReporter: {
+                    publish: (event) => Queue.offer(queue, event).pipe(Effect.asVoid),
+                  },
+                })
+                .pipe(
+                  Effect.tap(() => refreshGitStatus(input.cwd)),
+                  Effect.matchCauseEffect({
+                    onFailure: (cause) =>
+                      Queue.fail(queue, toWsRpcError(cause, "Git action failed")),
+                    onSuccess: () => Queue.end(queue).pipe(Effect.asVoid),
+                  }),
+                ),
+            ),
           ),
         [WS_METHODS.gitResolvePullRequest]: (input) =>
-          rpcEffect(gitManager.resolvePullRequest(input), "Failed to resolve pull request"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(gitManager.resolvePullRequest(input), "Failed to resolve pull request"),
+          ),
         [WS_METHODS.gitPreparePullRequestThread]: (input) =>
-          rpcEffect(
-            gitManager
-              .preparePullRequestThread(input)
-              .pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
-            "Failed to prepare pull request thread",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              gitManager
+                .preparePullRequestThread(input)
+                .pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+              "Failed to prepare pull request thread",
+            ),
           ),
         [WS_METHODS.gitListBranches]: (input) =>
-          rpcEffect(git.listBranches(input), "Failed to list branches"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(git.listBranches(input), "Failed to list branches"),
+          ),
         [WS_METHODS.gitCreateWorktree]: (input) =>
-          rpcEffect(
-            git.createWorktree(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
-            "Failed to create worktree",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              git.createWorktree(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+              "Failed to create worktree",
+            ),
           ),
         [WS_METHODS.gitCreateDetachedWorktree]: (input) =>
-          rpcEffect(
-            git.createDetachedWorktree(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
-            "Failed to create detached worktree",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              git.createDetachedWorktree(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+              "Failed to create detached worktree",
+            ),
           ),
         [WS_METHODS.gitRemoveWorktree]: (input) =>
-          rpcEffect(
-            git.removeWorktree(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
-            "Failed to remove worktree",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              git.removeWorktree(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+              "Failed to remove worktree",
+            ),
           ),
         [WS_METHODS.gitCreateBranch]: (input) =>
-          rpcEffect(
-            git.createBranch(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
-            "Failed to create branch",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              git.createBranch(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+              "Failed to create branch",
+            ),
           ),
         [WS_METHODS.gitCheckout]: (input) =>
-          rpcEffect(
-            Effect.scoped(git.checkoutBranch(input)).pipe(
-              Effect.tap(() => refreshGitStatus(input.cwd)),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              Effect.scoped(git.checkoutBranch(input)).pipe(
+                Effect.tap(() => refreshGitStatus(input.cwd)),
+              ),
+              "Failed to checkout branch",
             ),
-            "Failed to checkout branch",
           ),
         [WS_METHODS.gitStashAndCheckout]: (input) =>
-          rpcEffect(
-            Effect.scoped(git.stashAndCheckout(input)).pipe(
-              Effect.tap(() => refreshGitStatus(input.cwd)),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              Effect.scoped(git.stashAndCheckout(input)).pipe(
+                Effect.tap(() => refreshGitStatus(input.cwd)),
+              ),
+              "Failed to stash and checkout",
             ),
-            "Failed to stash and checkout",
           ),
         [WS_METHODS.gitStashDrop]: (input) =>
-          rpcEffect(
-            git.stashDrop(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
-            "Failed to drop stash",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              git.stashDrop(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+              "Failed to drop stash",
+            ),
           ),
         [WS_METHODS.gitStashInfo]: (input) =>
-          rpcEffect(git.stashInfo(input), "Failed to read stash"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(git.stashInfo(input), "Failed to read stash"),
+          ),
         [WS_METHODS.gitRemoveIndexLock]: (input) =>
-          rpcEffect(git.removeIndexLock(input), "Failed to remove Git index lock"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(git.removeIndexLock(input), "Failed to remove Git index lock"),
+          ),
         [WS_METHODS.gitInit]: (input) =>
-          rpcEffect(
-            git.initRepo(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
-            "Failed to initialize repository",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              git.initRepo(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+              "Failed to initialize repository",
+            ),
           ),
         [WS_METHODS.gitHandoffThread]: (input) =>
-          rpcEffect(
-            gitManager.handoffThread(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
-            "Failed to hand off thread",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              gitManager.handoffThread(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+              "Failed to hand off thread",
+            ),
           ),
 
         [WS_METHODS.terminalOpen]: (input) =>
-          rpcEffect(terminalManager.open(input), "Failed to open terminal"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(terminalManager.open(input), "Failed to open terminal"),
+          ),
         [WS_METHODS.terminalWrite]: (input) =>
-          rpcEffect(terminalManager.write(input), "Failed to write terminal"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(terminalManager.write(input), "Failed to write terminal"),
+          ),
         [WS_METHODS.terminalResize]: (input) =>
-          rpcEffect(terminalManager.resize(input), "Failed to resize terminal"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(terminalManager.resize(input), "Failed to resize terminal"),
+          ),
         [WS_METHODS.terminalClear]: (input) =>
-          rpcEffect(terminalManager.clear(input), "Failed to clear terminal"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(terminalManager.clear(input), "Failed to clear terminal"),
+          ),
         [WS_METHODS.terminalRestart]: (input) =>
-          rpcEffect(terminalManager.restart(input), "Failed to restart terminal"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(terminalManager.restart(input), "Failed to restart terminal"),
+          ),
         [WS_METHODS.terminalClose]: (input) =>
-          rpcEffect(terminalManager.close(input), "Failed to close terminal"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(terminalManager.close(input), "Failed to close terminal"),
+          ),
         [WS_METHODS.subscribeTerminalEvents]: () =>
-          Stream.callback((queue) =>
-            Effect.gen(function* () {
-              const unsubscribe = yield* terminalManager.subscribe((event) => {
-                Effect.runFork(Queue.offer(queue, event).pipe(Effect.asVoid));
-              });
-              yield* Effect.addFinalizer(() => Effect.sync(unsubscribe));
-            }),
+          withCurrentSessionStream(
+            requireOwnerWsRpcAccess,
+            Stream.callback((queue) =>
+              Effect.gen(function* () {
+                const unsubscribe = yield* terminalManager.subscribe((event) => {
+                  Effect.runFork(Queue.offer(queue, event).pipe(Effect.asVoid));
+                });
+                yield* Effect.addFinalizer(() => Effect.sync(unsubscribe));
+              }),
+            ),
           ),
 
         [WS_METHODS.serverGetConfig]: () =>
@@ -1032,34 +1276,63 @@ export const makeWsRpcLayer = () =>
             rpcEffect(loadServerConfig, "Failed to load server config"),
           ),
         [WS_METHODS.serverGetEnvironment]: () =>
-          rpcEffect(serverEnvironment.getDescriptor, "Failed to load server environment"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(serverEnvironment.getDescriptor, "Failed to load server environment"),
+          ),
         [WS_METHODS.serverGetSettings]: () =>
-          rpcEffect(serverSettings.getSettings, "Failed to load server settings"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(serverSettings.getSettings, "Failed to load server settings"),
+          ),
         [WS_METHODS.serverUpdateSettings]: (input) =>
-          rpcEffect(serverSettings.updateSettings(input), "Failed to update server settings"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(serverSettings.updateSettings(input), "Failed to update server settings"),
+          ),
         [WS_METHODS.serverUpdateOpenClawSecrets]: (input) =>
-          rpcEffect(
-            Effect.gen(function* () {
-              const metadata = yield* applyOpenClawSecretUpdate(input).pipe(
-                Effect.provideService(ServerSecretStore, serverSecretStore),
-              );
-              yield* serverSettings.updateOpenClawSecretMetadata({
-                hasSecret: metadata.hasToken || metadata.hasPassword,
-                paired: metadata.paired,
-              });
-              return metadata;
-            }),
-            "Failed to update OpenClaw secrets",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              Effect.gen(function* () {
+                const metadata = yield* applyOpenClawSecretUpdate(input).pipe(
+                  Effect.provideService(ServerSecretStore, serverSecretStore),
+                );
+                yield* serverSettings.updateOpenClawSecretMetadata({
+                  hasSecret: metadata.hasToken || metadata.hasPassword,
+                  paired: metadata.paired,
+                });
+                return metadata;
+              }),
+              "Failed to update OpenClaw secrets",
+            ),
           ),
         [WS_METHODS.serverRefreshProviders]: () =>
-          rpcEffect(
-            providerHealth.refresh.pipe(Effect.map((providers) => ({ providers }))),
-            "Failed to refresh providers",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              providerHealth.refresh.pipe(Effect.map((providers) => ({ providers }))),
+              "Failed to refresh providers",
+            ),
           ),
-        [WS_METHODS.serverUpdateProvider]: (input) => providerHealth.updateProvider(input),
+        [WS_METHODS.serverUpdateProvider]: (input) =>
+          withCurrentSession(requireOwnerWsRpcAccess, providerHealth.updateProvider(input)).pipe(
+            Effect.mapError(
+              (cause): ServerProviderUpdateError =>
+                Schema.is(ServerProviderUpdateError)(cause)
+                  ? cause
+                  : new ServerProviderUpdateError({
+                      provider: input.provider,
+                      reason:
+                        cause instanceof Error && cause.message.length > 0
+                          ? cause.message
+                          : "Provider update requires owner role",
+                    }),
+            ),
+          ),
         [WS_METHODS.serverListWorktrees]: () =>
-          withScope(
-            "thread:read",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
             rpcEffect(
               Effect.gen(function* () {
                 const snapshot = yield* projectionReadModelQuery.getShellSnapshot();
@@ -1077,86 +1350,125 @@ export const makeWsRpcLayer = () =>
             ),
           ),
         [WS_METHODS.serverGetProviderUsageSnapshot]: (input) =>
-          rpcEffect(getProviderUsageSnapshot(input), "Failed to load provider usage"),
+          withScope(
+            "provider_status:read",
+            rpcEffect(getProviderUsageSnapshot(input), "Failed to load provider usage"),
+          ),
         [WS_METHODS.serverGetDiagnostics]: () =>
-          rpcEffect(
-            Effect.gen(function* () {
-              const [projection, fullChildProcesses] = yield* Effect.all([
-                projectionReadModelQuery.getCounts(),
-                Effect.promise(() => readDescendantProcesses(process.pid)),
-              ]);
-              const childProcesses = fullChildProcesses.slice(0, MAX_DIAGNOSTIC_CHILD_PROCESSES);
-              const memory = process.memoryUsage();
-              const diagnostics: ServerDiagnosticsResult = {
-                generatedAt: new Date().toISOString(),
-                process: {
-                  pid: process.pid,
-                  uptimeSeconds: Math.max(0, Math.round(process.uptime())),
-                  memory: {
-                    rssBytes: Math.max(0, Math.round(memory.rss)),
-                    heapTotalBytes: Math.max(0, Math.round(memory.heapTotal)),
-                    heapUsedBytes: Math.max(0, Math.round(memory.heapUsed)),
-                    externalBytes: Math.max(0, Math.round(memory.external)),
-                    arrayBuffersBytes: Math.max(0, Math.round(memory.arrayBuffers)),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              Effect.gen(function* () {
+                const [projection, fullChildProcesses] = yield* Effect.all([
+                  projectionReadModelQuery.getCounts(),
+                  Effect.promise(() => readDescendantProcesses(process.pid)),
+                ]);
+                const childProcesses = fullChildProcesses.slice(0, MAX_DIAGNOSTIC_CHILD_PROCESSES);
+                const memory = process.memoryUsage();
+                const diagnostics: ServerDiagnosticsResult = {
+                  generatedAt: new Date().toISOString(),
+                  process: {
+                    pid: process.pid,
+                    uptimeSeconds: Math.max(0, Math.round(process.uptime())),
+                    memory: {
+                      rssBytes: Math.max(0, Math.round(memory.rss)),
+                      heapTotalBytes: Math.max(0, Math.round(memory.heapTotal)),
+                      heapUsedBytes: Math.max(0, Math.round(memory.heapUsed)),
+                      externalBytes: Math.max(0, Math.round(memory.external)),
+                      arrayBuffersBytes: Math.max(0, Math.round(memory.arrayBuffers)),
+                    },
                   },
-                },
-                childProcesses,
-                childProcessTotalCount: fullChildProcesses.length,
-                childProcessTotalRssBytes: fullChildProcesses.reduce(
-                  (total, processRow) => total + processRow.rssBytes,
-                  0,
-                ),
-                projection,
-              };
-              return diagnostics;
-            }),
-            "Failed to load server diagnostics",
+                  childProcesses,
+                  childProcessTotalCount: fullChildProcesses.length,
+                  childProcessTotalRssBytes: fullChildProcesses.reduce(
+                    (total, processRow) => total + processRow.rssBytes,
+                    0,
+                  ),
+                  projection,
+                };
+                return diagnostics;
+              }),
+              "Failed to load server diagnostics",
+            ),
           ),
         [WS_METHODS.serverTranscribeVoice]: (input) =>
-          providerAdapterRegistry.getByProvider(input.provider).pipe(
-            Effect.flatMap((adapter) =>
-              adapter.transcribeVoice
-                ? adapter.transcribeVoice(input)
-                : Effect.fail(
-                    new Error(
-                      `Voice transcription is unavailable for provider '${input.provider}'.`,
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            providerAdapterRegistry.getByProvider(input.provider).pipe(
+              Effect.flatMap((adapter) =>
+                adapter.transcribeVoice
+                  ? adapter.transcribeVoice(input)
+                  : Effect.fail(
+                      new Error(
+                        `Voice transcription is unavailable for provider '${input.provider}'.`,
+                      ),
                     ),
-                  ),
-            ),
-            Effect.mapError((cause) =>
-              toWsRpcError(
-                cause,
-                "Voice transcription failed",
-                readVoiceTranscriptionErrorDetail(cause),
+              ),
+              Effect.mapError((cause) =>
+                toWsRpcError(
+                  cause,
+                  "Voice transcription failed",
+                  readVoiceTranscriptionErrorDetail(cause),
+                ),
               ),
             ),
           ),
         [WS_METHODS.serverUpsertKeybinding]: (input) =>
-          rpcEffect(
-            keybindings
-              .upsertKeybindingRule(input)
-              .pipe(
-                Effect.map((keybindingsConfig) => ({ keybindings: keybindingsConfig, issues: [] })),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              keybindings.upsertKeybindingRule(input).pipe(
+                Effect.map((keybindingsConfig) => ({
+                  keybindings: keybindingsConfig,
+                  issues: [],
+                })),
               ),
-            "Failed to update keybinding",
+              "Failed to update keybinding",
+            ),
           ),
         [WS_METHODS.serverResetKeybinding]: (input) =>
-          rpcEffect(
-            keybindings
-              .resetKeybindingCommand(input.command)
-              .pipe(
-                Effect.map((keybindingsConfig) => ({ keybindings: keybindingsConfig, issues: [] })),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              keybindings.resetKeybindingCommand(input.command).pipe(
+                Effect.map((keybindingsConfig) => ({
+                  keybindings: keybindingsConfig,
+                  issues: [],
+                })),
               ),
-            "Failed to reset keybinding",
+              "Failed to reset keybinding",
+            ),
           ),
         [WS_METHODS.serverResetAllKeybindings]: () =>
-          rpcEffect(
-            keybindings
-              .resetAllKeybindings()
-              .pipe(
-                Effect.map((keybindingsConfig) => ({ keybindings: keybindingsConfig, issues: [] })),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              keybindings.resetAllKeybindings().pipe(
+                Effect.map((keybindingsConfig) => ({
+                  keybindings: keybindingsConfig,
+                  issues: [],
+                })),
               ),
-            "Failed to reset keybindings",
+              "Failed to reset keybindings",
+            ),
+          ),
+        [WS_METHODS.serverGetFirstRunWizardData]: () =>
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(getFirstRunWizardData(), "Failed to get first-run wizard data"),
+          ),
+        [WS_METHODS.serverCompleteFirstRunWizard]: (input: CompleteFirstRunWizardInput) =>
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              completeFirstRunWizard(input, { managedSidecarLifecycle }),
+              "Failed to complete first-run wizard",
+            ),
+          ),
+        [WS_METHODS.serverSkipFirstRun]: () =>
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(skipFirstRunWizardFromRpc(), "Failed to skip first-run wizard"),
           ),
         [WS_METHODS.serverGenerateThreadRecap]: (input: ServerGenerateThreadRecapInput) =>
           withScope(
@@ -1222,188 +1534,275 @@ export const makeWsRpcLayer = () =>
             ),
           ),
         [WS_METHODS.subscribeServerLifecycle]: () =>
-          Stream.concat(
-            Stream.fromEffect(
-              lifecycleEvents.snapshot.pipe(
-                Effect.map((snapshot) =>
-                  Array.from(snapshot.events).toSorted(
-                    (left, right) => left.sequence - right.sequence,
+          withCurrentSessionStream(
+            requireOwnerWsRpcAccess,
+            Stream.concat(
+              Stream.fromEffect(
+                lifecycleEvents.snapshot.pipe(
+                  Effect.map((snapshot) =>
+                    Array.from(snapshot.events).toSorted(
+                      (left, right) => left.sequence - right.sequence,
+                    ),
                   ),
                 ),
+              ).pipe(Stream.flatMap(Stream.fromIterable)),
+              lifecycleEvents.stream,
+            ).pipe(
+              Stream.map(
+                (event): ServerLifecycleStreamEvent =>
+                  event.type === "welcome"
+                    ? { type: "welcome", payload: event.payload }
+                    : event.type === "ready"
+                      ? { type: "ready", payload: event.payload }
+                      : { type: "maintenance", payload: event.payload },
               ),
-            ).pipe(Stream.flatMap(Stream.fromIterable)),
-            lifecycleEvents.stream,
-          ).pipe(
-            Stream.map(
-              (event): ServerLifecycleStreamEvent =>
-                event.type === "welcome"
-                  ? { type: "welcome", payload: event.payload }
-                  : event.type === "ready"
-                    ? { type: "ready", payload: event.payload }
-                    : { type: "maintenance", payload: event.payload },
             ),
           ),
         [WS_METHODS.subscribeServerConfig]: () =>
-          Stream.concat(
-            Stream.fromEffect(
-              loadServerConfig.pipe(
-                Effect.map(
-                  (config): ServerConfigStreamEvent => ({ type: "snapshot" as const, config }),
+          withCurrentSessionStream(
+            requireOwnerWsRpcAccess,
+            Stream.concat(
+              Stream.fromEffect(
+                loadServerConfig.pipe(
+                  Effect.map(
+                    (config): ServerConfigStreamEvent => ({ type: "snapshot" as const, config }),
+                  ),
                 ),
-              ),
-            ),
-            Stream.merge(
-              keybindings.streamChanges.pipe(
-                Stream.map((event) => ({
-                  type: "configUpdated" as const,
-                  payload: { issues: event.issues, providers: [] },
-                })),
               ),
               Stream.merge(
-                providerHealth.streamChanges.pipe(
-                  Stream.map((providers) => ({
-                    type: "providerStatuses" as const,
-                    payload: { providers },
+                keybindings.streamChanges.pipe(
+                  Stream.map((event) => ({
+                    type: "configUpdated" as const,
+                    payload: { issues: event.issues, providers: [] },
                   })),
                 ),
-                serverSettings.streamChanges.pipe(
-                  Stream.map((settings) => ({
-                    type: "settingsUpdated" as const,
-                    payload: { settings },
-                  })),
+                Stream.merge(
+                  providerHealth.streamChanges.pipe(
+                    Stream.map((providers) => ({
+                      type: "providerStatuses" as const,
+                      payload: { providers },
+                    })),
+                  ),
+                  serverSettings.streamChanges.pipe(
+                    Stream.map((settings) => ({
+                      type: "settingsUpdated" as const,
+                      payload: { settings },
+                    })),
+                  ),
                 ),
               ),
-            ),
-          ).pipe(Stream.mapError((cause) => toWsRpcError(cause, "Server config stream failed"))),
+            ).pipe(Stream.mapError((cause) => toWsRpcError(cause, "Server config stream failed"))),
+          ),
         [WS_METHODS.subscribeServerProviderStatuses]: () =>
           withScopeStream(
             "provider_status:read",
             providerHealth.streamChanges.pipe(Stream.map((providers) => ({ providers }))),
           ),
         [WS_METHODS.subscribeServerSettings]: () =>
-          serverSettings.streamChanges.pipe(Stream.map((settings) => ({ settings }))),
+          withCurrentSessionStream(
+            requireOwnerWsRpcAccess,
+            serverSettings.streamChanges.pipe(Stream.map((settings) => ({ settings }))),
+          ),
         [WS_METHODS.subscribeAuthAccess]: () =>
-          Stream.unwrap(
-            Effect.gen(function* () {
-              const currentAuthSession = yield* Effect.serviceOption(CurrentRpcAuthSession);
-              const currentSessionId =
-                Option.isSome(currentAuthSession) && currentAuthSession.value !== null
-                  ? currentAuthSession.value.sessionId
-                  : null;
-              const revisionRef = yield* Ref.make(0);
-              const nextRevision = Ref.updateAndGet(revisionRef, (revision) => revision + 1);
+          withCurrentSessionStream(
+            requireOwnerWsRpcAccess,
+            Stream.unwrap(
+              Effect.gen(function* () {
+                const currentAuthSession = yield* Effect.serviceOption(CurrentRpcAuthSession);
+                const currentSessionId =
+                  Option.isSome(currentAuthSession) && currentAuthSession.value !== null
+                    ? currentAuthSession.value.sessionId
+                    : null;
+                const revisionRef = yield* Ref.make(0);
+                const nextRevision = Ref.updateAndGet(revisionRef, (revision) => revision + 1);
 
-              const snapshotStream = Stream.fromEffect(
-                Effect.gen(function* () {
-                  const revision = yield* nextRevision;
-                  const [pairingLinks, clientSessions] = yield* Effect.all(
-                    [bootstrapCredentials.listActive(), sessionCredentials.listActive()],
-                    { concurrency: 2 },
-                  );
-                  return {
-                    type: "snapshot",
-                    revision,
-                    access: {
-                      pairingLinks,
-                      clientSessions: clientSessions.map((clientSession) =>
-                        withCurrentClientSession(clientSession, currentSessionId),
-                      ),
-                    },
-                  } satisfies AuthAccessStreamEvent;
-                }),
-              );
+                const snapshotStream = Stream.fromEffect(
+                  Effect.gen(function* () {
+                    const revision = yield* nextRevision;
+                    const [pairingLinks, clientSessions] = yield* Effect.all(
+                      [bootstrapCredentials.listActive(), sessionCredentials.listActive()],
+                      { concurrency: 2 },
+                    );
+                    return {
+                      type: "snapshot",
+                      revision,
+                      access: {
+                        pairingLinks,
+                        clientSessions: clientSessions.map((clientSession) =>
+                          withCurrentClientSession(clientSession, currentSessionId),
+                        ),
+                      },
+                    } satisfies AuthAccessStreamEvent;
+                  }),
+                );
 
-              const pairingLinkChanges = bootstrapCredentials.streamChanges.pipe(
-                Stream.mapEffect((event) =>
-                  Effect.map(nextRevision, (revision) =>
-                    event.type === "pairingLinkUpserted"
-                      ? ({
-                          type: "pairingLinkUpserted",
-                          revision,
-                          pairingLink: event.pairingLink,
-                        } satisfies AuthAccessStreamEvent)
-                      : ({
-                          type: "pairingLinkRemoved",
-                          revision,
-                          id: event.id,
-                        } satisfies AuthAccessStreamEvent),
+                const pairingLinkChanges = bootstrapCredentials.streamChanges.pipe(
+                  Stream.mapEffect((event) =>
+                    Effect.map(nextRevision, (revision) =>
+                      event.type === "pairingLinkUpserted"
+                        ? ({
+                            type: "pairingLinkUpserted",
+                            revision,
+                            pairingLink: event.pairingLink,
+                          } satisfies AuthAccessStreamEvent)
+                        : ({
+                            type: "pairingLinkRemoved",
+                            revision,
+                            id: event.id,
+                          } satisfies AuthAccessStreamEvent),
+                    ),
                   ),
-                ),
-              );
+                );
 
-              const clientChanges = sessionCredentials.streamChanges.pipe(
-                Stream.mapEffect((event) =>
-                  Effect.map(nextRevision, (revision) =>
-                    event.type === "clientUpserted"
-                      ? ({
-                          type: "clientUpserted",
-                          revision,
-                          clientSession: withCurrentClientSession(
-                            event.clientSession,
-                            currentSessionId,
-                          ),
-                        } satisfies AuthAccessStreamEvent)
-                      : ({
-                          type: "clientRemoved",
-                          revision,
-                          sessionId: event.sessionId,
-                        } satisfies AuthAccessStreamEvent),
+                const clientChanges = sessionCredentials.streamChanges.pipe(
+                  Stream.mapEffect((event) =>
+                    Effect.map(nextRevision, (revision) =>
+                      event.type === "clientUpserted"
+                        ? ({
+                            type: "clientUpserted",
+                            revision,
+                            clientSession: withCurrentClientSession(
+                              event.clientSession,
+                              currentSessionId,
+                            ),
+                          } satisfies AuthAccessStreamEvent)
+                        : ({
+                            type: "clientRemoved",
+                            revision,
+                            sessionId: event.sessionId,
+                          } satisfies AuthAccessStreamEvent),
+                    ),
                   ),
-                ),
-              );
+                );
 
-              return Stream.concat(snapshotStream, Stream.merge(pairingLinkChanges, clientChanges));
-            }),
-          ).pipe(Stream.mapError((cause) => toWsRpcError(cause, "Auth access stream failed"))),
+                return Stream.concat(
+                  snapshotStream,
+                  Stream.merge(pairingLinkChanges, clientChanges),
+                );
+              }),
+            ).pipe(Stream.mapError((cause) => toWsRpcError(cause, "Auth access stream failed"))),
+          ),
 
         [WS_METHODS.providerGetComposerCapabilities]: (input) =>
-          rpcEffect(
-            providerDiscoveryService.getComposerCapabilities(input),
-            "Failed to get composer capabilities",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              providerDiscoveryService.getComposerCapabilities(input),
+              "Failed to get composer capabilities",
+            ),
           ),
         [WS_METHODS.providerGetRuntimeHealth]: (input) =>
-          rpcEffect(
-            getOpenCodeRuntimeHealth({
-              provider: input.provider,
-              ...(input.profileId !== undefined ? { profileId: input.profileId } : {}),
-              ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
-            }),
-            "Failed to get runtime health",
+          withCurrentSession(
+            requireProviderStatusRpcAccess,
+            rpcEffect(
+              getOpenCodeRuntimeHealth({
+                provider: input.provider,
+                ...(input.profileId !== undefined ? { profileId: input.profileId } : {}),
+                ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
+              }),
+              "Failed to get runtime health",
+            ),
+          ),
+        [WS_METHODS.providerGetManagedSidecarHealth]: () =>
+          withCurrentSession(
+            requireManagedSidecarHealthRpcAccess,
+            rpcEffect(
+              getManagedSidecarHealthFromLifecycle({ lifecycle: managedSidecarLifecycle }),
+              "Failed to get managed sidecar health",
+            ),
+          ),
+        [WS_METHODS.providerRepairManagedSidecar]: (input) =>
+          withCurrentSession(
+            requireManagedSidecarRepairRpcAccess,
+            rpcEffect(
+              repairManagedSidecarFromLifecycle({
+                lifecycle: managedSidecarLifecycle,
+                request: input,
+              }),
+              "Failed to repair managed sidecar",
+            ),
+          ),
+        [WS_METHODS.providerExportManagedSidecarDiagnostics]: () =>
+          withCurrentSession(
+            requireManagedSidecarDiagnosticsRpcAccess,
+            rpcEffect(
+              exportManagedSidecarDiagnosticsFromLifecycle({ lifecycle: managedSidecarLifecycle }),
+              "Failed to export managed sidecar diagnostics",
+            ),
           ),
         [WS_METHODS.providerGetRuntimeBootstrapStatus]: (input) =>
-          rpcEffect(
-            getOpenCodeRuntimeBootstrapStatus(input),
-            "Failed to get runtime bootstrap status",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              getOpenCodeRuntimeBootstrapStatus(input),
+              "Failed to get runtime bootstrap status",
+            ),
           ),
         [WS_METHODS.providerBootstrapRuntime]: (input) =>
           rpcEffect(ownerOnly(bootstrapOpenCodeRuntime(input)), "Failed to bootstrap runtime"),
         [WS_METHODS.providerRepairRuntime]: (input) =>
           rpcEffect(ownerOnly(repairOpenCodeRuntime(input)), "Failed to repair runtime"),
         [WS_METHODS.providerCompactThread]: (input) =>
-          rpcEffect(providerService.compactThread(input), "Failed to compact thread"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerService.compactThread(input), "Failed to compact thread"),
+          ),
         [WS_METHODS.providerListCommands]: (input) =>
-          rpcEffect(providerDiscoveryService.listCommands(input), "Failed to list commands"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.listCommands(input), "Failed to list commands"),
+          ),
         [WS_METHODS.providerListSkills]: (input) =>
-          rpcEffect(providerDiscoveryService.listSkills(input), "Failed to list skills"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.listSkills(input), "Failed to list skills"),
+          ),
         [WS_METHODS.providerInstallSkill]: (input) =>
-          rpcEffect(providerDiscoveryService.installSkill(input), "Failed to install skill"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.installSkill(input), "Failed to install skill"),
+          ),
         [WS_METHODS.providerUninstallSkill]: (input) =>
-          rpcEffect(providerDiscoveryService.uninstallSkill(input), "Failed to uninstall skill"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.uninstallSkill(input), "Failed to uninstall skill"),
+          ),
         [WS_METHODS.providerSetSkillEnabled]: (input) =>
-          rpcEffect(providerDiscoveryService.setSkillEnabled(input), "Failed to set skill enabled"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              providerDiscoveryService.setSkillEnabled(input),
+              "Failed to set skill enabled",
+            ),
+          ),
         [WS_METHODS.providerSearchSkillsCatalog]: (input) =>
-          rpcEffect(
-            providerDiscoveryService.searchSkillsCatalog(input),
-            "Failed to search skills catalog",
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              providerDiscoveryService.searchSkillsCatalog(input),
+              "Failed to search skills catalog",
+            ),
           ),
         [WS_METHODS.providerListPlugins]: (input) =>
-          rpcEffect(providerDiscoveryService.listPlugins(input), "Failed to list plugins"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.listPlugins(input), "Failed to list plugins"),
+          ),
         [WS_METHODS.providerReadPlugin]: (input) =>
-          rpcEffect(providerDiscoveryService.readPlugin(input), "Failed to read plugin"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.readPlugin(input), "Failed to read plugin"),
+          ),
         [WS_METHODS.providerListModels]: (input) =>
-          rpcEffect(providerDiscoveryService.listModels(input), "Failed to list models"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.listModels(input), "Failed to list models"),
+          ),
         [WS_METHODS.providerListAgents]: (input) =>
-          rpcEffect(providerDiscoveryService.listAgents(input), "Failed to list agents"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(providerDiscoveryService.listAgents(input), "Failed to list agents"),
+          ),
       });
     }),
   );
@@ -1429,18 +1828,20 @@ export const websocketRpcRouteLayer = Layer.effectDiscard(
         const sessions = yield* SessionCredentialService;
         const url = HttpServerRequest.toURL(request);
         const legacyToken = url ? url.searchParams.get("token") : null;
+        const localLegacySession = resolveLocalLegacyWsAuthSession({
+          authToken: config.authToken,
+          legacyToken,
+        });
         const authenticatedSession =
-          !config.authToken || legacyToken === config.authToken
-            ? null
+          localLegacySession !== null
+            ? localLegacySession
             : yield* serverAuth.authenticateWebSocketUpgrade(makeEffectAuthRequest(request));
 
-        const rpcWebSocketHttpEffect = !authenticatedSession
-          ? yield* makeRpcWebSocketHttpEffect
-          : yield* makeRpcWebSocketHttpEffect.pipe(
-              Effect.provideService(CurrentRpcAuthSession, authenticatedSession),
-            );
+        const rpcWebSocketHttpEffect = yield* makeRpcWebSocketHttpEffect.pipe(
+          Effect.provideService(CurrentRpcAuthSession, authenticatedSession),
+        );
 
-        if (!authenticatedSession) return yield* rpcWebSocketHttpEffect;
+        if (localLegacySession !== null) return yield* rpcWebSocketHttpEffect;
 
         return yield* Effect.acquireUseRelease(
           sessions.markConnected(authenticatedSession.sessionId),

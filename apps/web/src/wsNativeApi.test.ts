@@ -2,6 +2,7 @@ import {
   ApprovalRequestId,
   CommandId,
   type ContextMenuItem,
+  DEFAULT_FIRST_RUN_STATE,
   EventId,
   ORCHESTRATION_WS_CHANNELS,
   ORCHESTRATION_WS_METHODS,
@@ -29,6 +30,7 @@ const showContextMenuFallbackMock =
   >();
 const channelListeners = new Map<string, Set<(message: WsPush) => void>>();
 const latestPushByChannel = new Map<string, WsPush>();
+const transportInstances: Array<{ disposed: boolean; request: typeof requestMock }> = [];
 const subscribeMock = vi.fn<
   (
     channel: string,
@@ -54,10 +56,22 @@ const subscribeMock = vi.fn<
 vi.mock("./wsTransport", () => {
   return {
     WsTransport: class MockWsTransport {
-      request = requestMock;
+      disposed = false;
+      request = vi.fn<(...args: Array<unknown>) => Promise<unknown>>((...args) =>
+        requestMock(...args),
+      );
       subscribe = subscribeMock;
+      constructor() {
+        transportInstances.push(this);
+      }
       getLatestPush(channel: string) {
         return latestPushByChannel.get(channel) ?? null;
+      }
+      getState() {
+        return this.disposed ? "disposed" : "open";
+      }
+      dispose() {
+        this.disposed = true;
       }
     },
   };
@@ -109,6 +123,7 @@ beforeEach(() => {
   requestMock.mockReset();
   showContextMenuFallbackMock.mockReset();
   subscribeMock.mockClear();
+  transportInstances.length = 0;
   channelListeners.clear();
   latestPushByChannel.clear();
   nextPushSequence = 1;
@@ -320,6 +335,7 @@ describe("wsNativeApi", () => {
           pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
           devin: { enabled: true, binaryPath: "devin", customModels: [] },
         },
+        firstRun: DEFAULT_FIRST_RUN_STATE,
       },
     } as const;
     emitPush(WS_CHANNELS.serverSettingsUpdated, payload);
@@ -572,6 +588,65 @@ describe("wsNativeApi", () => {
     expect(result).toMatchObject({ authenticated: true, sessionMethod: "browser-session-cookie" });
   });
 
+  it("uses a fresh WebSocket transport after successful browser-session bootstrap", async () => {
+    requestMock.mockResolvedValue({});
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          authenticated: true,
+          role: "owner",
+          sessionMethod: "browser-session-cookie",
+          expiresAt: "2026-01-01T00:00:00.000Z",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { createWsNativeApi } = await import("./wsNativeApi");
+
+    const api = createWsNativeApi();
+    await api.provider.getManagedSidecarHealth();
+    const preAuthTransport = transportInstances[0];
+    expect(preAuthTransport).toBeDefined();
+
+    await api.server.bootstrapAuth({ credential: "PAIRINGTOKEN" });
+    await api.provider.getManagedSidecarHealth();
+
+    expect(preAuthTransport?.disposed).toBe(true);
+    expect(transportInstances).toHaveLength(2);
+    expect(transportInstances[0]?.request).toHaveBeenCalledTimes(1);
+    expect(transportInstances[1]?.request).toHaveBeenCalledWith(
+      WS_METHODS.providerGetManagedSidecarHealth,
+      undefined,
+    );
+  });
+
+  it("keeps the existing WebSocket transport when browser-session bootstrap fails", async () => {
+    requestMock.mockResolvedValue({});
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: "invalid pairing token" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { createWsNativeApi } = await import("./wsNativeApi");
+
+    const api = createWsNativeApi();
+    await api.provider.getManagedSidecarHealth();
+    const preAuthTransport = transportInstances[0];
+    expect(preAuthTransport).toBeDefined();
+
+    await expect(api.server.bootstrapAuth({ credential: "BADTOKEN" })).rejects.toThrow(
+      "invalid pairing token",
+    );
+    await api.provider.getManagedSidecarHealth();
+
+    expect(preAuthTransport?.disposed).toBe(false);
+    expect(transportInstances).toHaveLength(1);
+    expect(transportInstances[0]?.request).toHaveBeenCalledTimes(2);
+  });
+
   it("uses no client timeout for git.runStackedAction", async () => {
     requestMock.mockResolvedValue({
       action: "commit",
@@ -634,6 +709,40 @@ describe("wsNativeApi", () => {
       },
       { timeoutMs: null },
     );
+  });
+
+  it("routes managed sidecar provider methods over WebSocket transport", async () => {
+    requestMock.mockResolvedValue({});
+    const { createWsNativeApi } = await import("./wsNativeApi");
+
+    const api = createWsNativeApi();
+    await api.provider.getManagedSidecarHealth();
+    await api.provider.repairManagedSidecar({ forceRedownload: true });
+    await api.provider.exportManagedSidecarDiagnostics();
+
+    expect(requestMock).toHaveBeenNthCalledWith(
+      1,
+      WS_METHODS.providerGetManagedSidecarHealth,
+      undefined,
+    );
+    expect(requestMock).toHaveBeenNthCalledWith(2, WS_METHODS.providerRepairManagedSidecar, {
+      forceRedownload: true,
+    });
+    expect(requestMock).toHaveBeenNthCalledWith(
+      3,
+      WS_METHODS.providerExportManagedSidecarDiagnostics,
+      undefined,
+    );
+  });
+
+  it("routes first-run skip over WebSocket transport", async () => {
+    requestMock.mockResolvedValue({ completed: true, skipped: true });
+    const { createWsNativeApi } = await import("./wsNativeApi");
+
+    const api = createWsNativeApi();
+    await api.server.skipFirstRun();
+
+    expect(requestMock).toHaveBeenCalledWith(WS_METHODS.serverSkipFirstRun, {});
   });
 
   it("forwards context menu metadata to desktop bridge", async () => {

@@ -18,7 +18,7 @@ import {
   TurnId,
   type UserInputQuestion,
 } from "@jcode/contracts";
-import { Cause, Deferred, Effect, Exit, Layer, Queue, Ref, Scope, Stream } from "effect";
+import { Cause, Deferred, Effect, Exit, Layer, Option, Queue, Ref, Scope, Stream } from "effect";
 import type {
   Agent,
   AssistantMessage,
@@ -31,6 +31,7 @@ import type {
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { ServerConfig } from "../../config.ts";
+import { ServerSettingsService } from "../../serverSettings.ts";
 import { type EventNdjsonLogger, makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
 import {
   ProviderAdapterProcessError,
@@ -43,6 +44,7 @@ import { KiloAdapter, type KiloAdapterShape } from "../Services/KiloAdapter.ts";
 import { OpenCodeAdapter, type OpenCodeAdapterShape } from "../Services/OpenCodeAdapter.ts";
 import { SkillManagementService } from "../Services/SkillManagementService.ts";
 import { SkillManagementServiceLive } from "./SkillManagementService.ts";
+import { ManagedSidecarLifecycle } from "../managedRuntimeLifecycle.ts";
 import {
   buildOpenCodePermissionRules,
   KILO_CLI_SPEC,
@@ -64,6 +66,10 @@ import {
   type OpenCodeServerConnection,
 } from "../opencodeRuntime.ts";
 import { extractProposedPlanMarkdown, withProviderPlanModePrompt } from "../planMode.ts";
+import {
+  resolveOpenCodeRuntimeConnectionConfig,
+  resolveOpenCodeRuntimeProfile,
+} from "../openCodeRuntimeProfiles.ts";
 
 type OpenCodeCompatibleProvider = Extract<ProviderKind, "opencode" | "kilo">;
 
@@ -1830,6 +1836,7 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
     OpenCodeAdapter,
     Effect.gen(function* () {
       const serverConfig = yield* ServerConfig;
+      const serverSettings = yield* Effect.serviceOption(ServerSettingsService);
       const openCodeRuntime = yield* OpenCodeRuntime;
       const skillManagement = yield* SkillManagementService;
       const provider = adapterConfig.provider;
@@ -3770,10 +3777,43 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
       const startSession: OpenCodeAdapterShape["startSession"] = Effect.fn("startSession")(
         function* (input) {
           const providerOptions = input.providerOptions?.[adapterConfig.providerOptionsKey];
-          const binaryPath = providerOptions?.binaryPath?.trim() || adapterConfig.defaultBinaryPath;
-          const serverUrl = providerOptions?.serverUrl?.trim();
-          const serverPassword = providerOptions?.serverPassword?.trim();
-          const directory = input.cwd ?? serverConfig.cwd;
+          const activeSettings =
+            provider === "opencode" && Option.isSome(serverSettings)
+              ? yield* Effect.exit(serverSettings.value.getSettings)
+              : undefined;
+          if (activeSettings !== undefined && Exit.isFailure(activeSettings)) {
+            return yield* toAdapterProcessError(input.threadId, Cause.squash(activeSettings.cause));
+          }
+          const resolvedRuntimeProfile =
+            activeSettings !== undefined
+              ? resolveOpenCodeRuntimeProfile({
+                  settings: activeSettings.value,
+                  defaultBinaryPath: adapterConfig.defaultBinaryPath,
+                })
+              : undefined;
+          const configuredConnection =
+            resolvedRuntimeProfile !== undefined
+              ? resolveOpenCodeRuntimeConnectionConfig({
+                  resolved: resolvedRuntimeProfile,
+                  cliSpec: adapterConfig.cliSpec,
+                  defaultBinaryPath: adapterConfig.defaultBinaryPath,
+                  ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
+                })
+              : undefined;
+          const binaryPath =
+            providerOptions?.binaryPath?.trim() ||
+            configuredConnection?.binaryPath ||
+            adapterConfig.defaultBinaryPath;
+          const providerServerUrl = providerOptions?.serverUrl?.trim();
+          const providerServerPassword = providerOptions?.serverPassword?.trim();
+          const profileServerUrl = resolvedRuntimeProfile?.profile.serverUrl?.trim();
+          const profileServerPassword = resolvedRuntimeProfile?.serverPassword?.trim();
+          const serverUrl = providerServerUrl || profileServerUrl;
+          const explicitServerPassword = providerServerPassword || profileServerPassword;
+          const serverPassword =
+            explicitServerPassword ||
+            (serverUrl ? undefined : configuredConnection?.serverPassword);
+          const directory = input.cwd ?? configuredConnection?.cwd ?? serverConfig.cwd;
           const initialParsedModel =
             input.modelSelection?.provider === adapterConfig.provider
               ? parseOpenCodeModelSlug(input.modelSelection.model)
@@ -3792,22 +3832,78 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             sessions.delete(input.threadId);
           }
 
+          const needsManagedSidecarLifecycle =
+            provider === "opencode" &&
+            resolvedRuntimeProfile?.profile.mode === "managed" &&
+            !providerOptions?.binaryPath?.trim() &&
+            !(providerServerUrl || providerServerPassword) &&
+            !(profileServerUrl || profileServerPassword);
+
           const resumedSessionId = extractResumeSessionId(input.resumeCursor);
 
           const started = yield* Effect.gen(function* () {
             const sessionScope = yield* Scope.make();
             const startedExit = yield* Effect.exit(
               Effect.gen(function* () {
-                const server = yield* openCodeRuntime.connectToOpenCodeServer({
-                  binaryPath,
-                  cliSpec: adapterConfig.cliSpec,
-                  ...(serverUrl ? { serverUrl } : {}),
-                });
+                const managedSidecarLifecycle = needsManagedSidecarLifecycle
+                  ? yield* Effect.serviceOption(ManagedSidecarLifecycle)
+                  : Option.none();
+                const managedConnection = Option.isSome(managedSidecarLifecycle)
+                  ? yield* Effect.gen(function* () {
+                      const lifecycle = managedSidecarLifecycle.value;
+                      const currentSnapshot = yield* lifecycle.getManagedRuntimeStatus();
+                      const readySnapshot =
+                        currentSnapshot.state === "ready" && currentSnapshot.serverUrl
+                          ? currentSnapshot
+                          : yield* lifecycle.startManagedRuntime();
+                      if (readySnapshot.state !== "ready" || !readySnapshot.serverUrl) {
+                        return yield* new OpenCodeRuntimeError({
+                          operation: "managedSidecarLifecycle",
+                          detail: "Managed OpenCode sidecar did not provide a ready server URL.",
+                        });
+                      }
+                      return {
+                        binaryPath: readySnapshot.binaryPath ?? binaryPath,
+                        serverUrl: readySnapshot.serverUrl,
+                        ...(readySnapshot.serverPassword
+                          ? { serverPassword: readySnapshot.serverPassword }
+                          : {}),
+                      };
+                    })
+                  : undefined;
+                const server: OpenCodeServerConnection = managedConnection
+                  ? {
+                      url: managedConnection.serverUrl,
+                      exitCode: null,
+                      external: true,
+                    }
+                  : yield* openCodeRuntime.connectToOpenCodeServer({
+                      binaryPath,
+                      cliSpec: adapterConfig.cliSpec,
+                      ...(serverUrl ? { serverUrl } : {}),
+                      ...(configuredConnection?.configMode !== undefined
+                        ? { configMode: configuredConnection.configMode }
+                        : {}),
+                      ...(configuredConnection?.homePath !== undefined
+                        ? { homePath: configuredConnection.homePath }
+                        : {}),
+                      ...(configuredConnection?.xdgConfigHome !== undefined
+                        ? { xdgConfigHome: configuredConnection.xdgConfigHome }
+                        : {}),
+                      ...(configuredConnection?.extraEnv !== undefined
+                        ? { extraEnv: configuredConnection.extraEnv }
+                        : {}),
+                      ...(configuredConnection?.cwd !== undefined
+                        ? { cwd: configuredConnection.cwd }
+                        : {}),
+                      ...(serverPassword ? { serverPassword } : {}),
+                    });
+                const effectiveServerPassword = managedConnection?.serverPassword ?? serverPassword;
                 const client = openCodeRuntime.createOpenCodeSdkClient({
                   baseUrl: server.url,
                   directory,
                   cliSpec: adapterConfig.cliSpec,
-                  ...(server.external && serverPassword ? { serverPassword } : {}),
+                  ...(effectiveServerPassword ? { serverPassword: effectiveServerPassword } : {}),
                 });
                 const resumedSession = resumedSessionId
                   ? yield* runOpenCodeSdk("session.get", () =>

@@ -1,4 +1,4 @@
-# ADR 0009: Copilot Provider Entry Path
+# ADR 0011: Copilot Provider Entry Path
 
 | Status | Proposed   |
 | ------ | ---------- |
