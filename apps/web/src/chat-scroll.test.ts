@@ -4,6 +4,7 @@ import {
   AUTO_SCROLL_BOTTOM_THRESHOLD_PX,
   getScrollContainerDistanceFromBottom,
   isScrollContainerNearBottom,
+  resolveTimelineLiveEdge,
   shouldDisableTailFollowOnScroll,
   shouldDisableTailFollowOnWheel,
 } from "./chat-scroll";
@@ -198,5 +199,17 @@ describe("isScrollContainerNearBottom", () => {
       ),
     ).toBe(true);
     expect(AUTO_SCROLL_BOTTOM_THRESHOLD_PX).toBe(64);
+  });
+});
+
+describe("resolveTimelineLiveEdge", () => {
+  it("prefers near-end visibility so layout growth keeps follow mode stable", () => {
+    expect(resolveTimelineLiveEdge({ isNearEnd: true, isAtEnd: false })).toBe(true);
+    expect(resolveTimelineLiveEdge({ isNearEnd: false, isAtEnd: true })).toBe(false);
+  });
+
+  it("falls back to exact end visibility when near-end state is unavailable", () => {
+    expect(resolveTimelineLiveEdge({ isAtEnd: true })).toBe(true);
+    expect(resolveTimelineLiveEdge(undefined)).toBeUndefined();
   });
 });

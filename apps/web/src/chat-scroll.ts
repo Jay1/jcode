@@ -22,6 +22,11 @@ interface TailFollowWheelInput {
   deltaY: number;
 }
 
+interface TimelineLiveEdgeState {
+  isAtEnd?: boolean;
+  isNearEnd?: boolean;
+}
+
 export function getScrollContainerDistanceFromBottom(position: ScrollPosition): number {
   const { scrollTop, clientHeight, scrollHeight } = position;
   if (![scrollTop, clientHeight, scrollHeight].every(Number.isFinite)) {
@@ -40,6 +45,12 @@ export function isScrollContainerNearBottom(
     : AUTO_SCROLL_BOTTOM_THRESHOLD_PX;
 
   return getScrollContainerDistanceFromBottom(position) <= threshold;
+}
+
+export function resolveTimelineLiveEdge(
+  state: TimelineLiveEdgeState | undefined,
+): boolean | undefined {
+  return state?.isNearEnd ?? state?.isAtEnd;
 }
 
 /**
