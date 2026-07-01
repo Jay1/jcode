@@ -535,6 +535,7 @@ export function createProviderVersionAdvisory(input: {
   readonly latestVersion?: string | null;
   readonly checkedAt?: string | null;
   readonly maintenanceCapabilities?: ProviderMaintenanceCapabilities;
+  readonly message?: string | null;
 }): ServerProviderVersionAdvisory {
   const capabilities =
     input.maintenanceCapabilities ??
@@ -552,7 +553,7 @@ export function createProviderVersionAdvisory(input: {
     updateCommand: capabilities.update?.command ?? null,
     canUpdate: capabilities.update !== null,
     checkedAt: input.checkedAt ?? null,
-    message: advisory.message,
+    message: input.message ?? advisory.message,
   };
 }
 
@@ -634,8 +635,11 @@ export const enrichProviderStatusWithVersionAdvisory = Effect.fn(
 )(function* (
   status: ServerProviderStatus,
   maintenanceCapabilities: ProviderMaintenanceCapabilities,
+  options?: {
+    readonly enableProviderUpdateChecks?: boolean;
+  },
 ) {
-  if (!status.available || !status.version) {
+  if (!status.available || !status.version || options?.enableProviderUpdateChecks === false) {
     return {
       ...status,
       versionAdvisory: createProviderVersionAdvisory({
@@ -643,6 +647,10 @@ export const enrichProviderStatusWithVersionAdvisory = Effect.fn(
         currentVersion: status.version ?? null,
         checkedAt: status.checkedAt,
         maintenanceCapabilities,
+        message:
+          options?.enableProviderUpdateChecks === false
+            ? "Provider update checks are disabled."
+            : null,
       }),
     };
   }

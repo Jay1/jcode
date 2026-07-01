@@ -50,6 +50,25 @@ describe("ServerSettingsService", () => {
     expect(settings.providers.opencode.activeRuntimeProfileId).toBe("");
   });
 
+  it("falls back to default chat and provider update settings when the settings file is malformed", async () => {
+    const settings = await runWithSettings(
+      Effect.gen(function* () {
+        const service = yield* ServerSettingsService;
+        const { settingsPath } = yield* ServerConfig;
+        const fs = yield* FileSystem.FileSystem;
+        yield* fs.makeDirectory(dirname(settingsPath), { recursive: true });
+        yield* fs.writeFileString(settingsPath, "{not-json");
+
+        yield* service.start;
+        return yield* service.getSettings;
+      }),
+    );
+
+    expect(settings.chatMarkdownWordWrap).toBe(true);
+    expect(settings.enableProviderUpdateChecks).toBe(true);
+    expect(settings.diffWordWrap).toBe(false);
+  });
+
   it("persists updates and reloads them", async () => {
     const result = await runWithSettings(
       Effect.gen(function* () {

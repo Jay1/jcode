@@ -1,11 +1,20 @@
 import { describe, it, assert } from "@effect/vitest";
+import type { ServerProviderStatus } from "@jcode/contracts";
+import { Effect } from "effect";
+import { afterEach, vi } from "vitest";
 
 import {
   createProviderVersionAdvisory,
+  enrichProviderStatusWithVersionAdvisory,
+  makeProviderMaintenanceCapabilities,
   parseGenericCliVersion,
   resolvePackageManagedProviderMaintenance,
   type PackageManagedProviderMaintenanceDefinition,
 } from "./providerMaintenance";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 const CODEX_DEFINITION = {
   provider: "codex",
@@ -32,6 +41,15 @@ const OPENCODE_DEFINITION = {
     excludedInstallSources: ["homebrew"],
   },
 } as const satisfies PackageManagedProviderMaintenanceDefinition;
+
+const INSTALLED_CODEX_STATUS = {
+  provider: "codex",
+  status: "ready",
+  available: true,
+  authStatus: "authenticated",
+  version: "1.0.0",
+  checkedAt: "2026-04-10T00:00:00.000Z",
+} as const satisfies ServerProviderStatus;
 
 describe("providerMaintenance", () => {
   it("parses generic CLI versions", () => {
@@ -120,5 +138,41 @@ describe("providerMaintenance", () => {
     assert.strictEqual(advisory.status, "behind_latest");
     assert.strictEqual(advisory.currentVersion, "0.129.0");
     assert.strictEqual(advisory.latestVersion, "0.130.0");
+  });
+
+  it.effect("skips latest-version lookup while preserving current provider health", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => {
+        throw new Error("provider update checks are disabled");
+      }),
+    );
+
+    return enrichProviderStatusWithVersionAdvisory(
+      INSTALLED_CODEX_STATUS,
+      makeProviderMaintenanceCapabilities({
+        provider: "codex",
+        packageName: "@openai/codex",
+        updateExecutable: "npm",
+        updateArgs: ["install", "-g", "@openai/codex@latest"],
+        updateLockKey: "npm-global",
+      }),
+      { enableProviderUpdateChecks: false },
+    ).pipe(
+      Effect.map((status) => {
+        assert.strictEqual(status.status, "ready");
+        assert.strictEqual(status.available, true);
+        assert.deepStrictEqual(status.versionAdvisory, {
+          status: "unknown",
+          currentVersion: "1.0.0",
+          latestVersion: null,
+          updateCommand: "npm install -g @openai/codex@latest",
+          canUpdate: true,
+          checkedAt: "2026-04-10T00:00:00.000Z",
+          message: "Provider update checks are disabled.",
+        });
+        assert.strictEqual(vi.mocked(fetch).mock.calls.length, 0);
+      }),
+    );
   });
 });
