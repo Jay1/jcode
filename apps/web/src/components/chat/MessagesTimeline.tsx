@@ -97,6 +97,12 @@ import {
 } from "../../lib/subagentPresentation";
 import { RiRobot3Line } from "react-icons/ri";
 import { deriveUserMessagePreviewState } from "./userMessagePreview";
+import {
+  ActivityEntryDetails,
+  hasExpandableActivityDetails,
+} from "./MessagesTimelineActivityDetails";
+import { TimelineMinimap, jumpToTimelineMinimapItem } from "./MessagesTimelineMinimap";
+import { resolveTimelineLiveEdge } from "../../chat-scroll";
 
 const MAX_VISIBLE_WORK_LOG_ENTRIES = 6;
 const MAX_VISIBLE_INLINE_TOOL_ENTRIES = 4;
@@ -372,11 +378,18 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     (event) => {
       onMessagesScroll?.(event);
       const state = resolvedListRef.current?.getState?.();
-      if (state) {
-        onIsAtEndChange?.(state.isAtEnd);
+      const liveEdgeVisible = resolveTimelineLiveEdge(state);
+      if (liveEdgeVisible !== undefined) {
+        onIsAtEndChange?.(liveEdgeVisible);
       }
     },
     [onIsAtEndChange, onMessagesScroll, resolvedListRef],
+  );
+  const handleTimelineMinimapJump = useCallback(
+    (item: Parameters<typeof jumpToTimelineMinimapItem>[1]) => {
+      jumpToTimelineMinimapItem(resolvedListRef, item);
+    },
+    [resolvedListRef],
   );
   const toggleFileChangesExpanded = useCallback((turnId: TurnId) => {
     setExpandedFileChangesByTurnId((current) => ({
@@ -459,6 +472,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                     chatMetaFontSizePx={appTypographyScale.chatMetaPx}
                     textFontSizePx={appTypographyScale.uiSmPx}
                     density={prefersCompactWorkEntryRow(workEntry) ? "compact" : "default"}
+                    workspaceRoot={workspaceRoot}
                     {...(onOpenThread ? { onOpenThread } : {})}
                   />
                 ))}
@@ -777,6 +791,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                           textFontSizePx={normalizedChatFontSizePx}
                           density="compact"
                           fileDiffStatByPath={fileDiffStatByPath}
+                          workspaceRoot={workspaceRoot}
                           onOpenTurnDiff={onOpenTurnDiff}
                           {...(onOpenThread ? { onOpenThread } : {})}
                           {...(turnSummary?.turnId ? { turnId: turnSummary.turnId } : {})}
@@ -1016,40 +1031,43 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   }
 
   return (
-    <LegendList<MessagesTimelineRow>
-      ref={resolvedListRef}
-      data={rows}
-      keyExtractor={(row) => row.id}
-      renderItem={({ item }) => (
-        <div
-          data-timeline-root="true"
-          className="mx-auto w-full min-w-0 max-w-3xl overflow-x-hidden"
-        >
-          {renderRowContent(item)}
-        </div>
-      )}
-      estimatedItemSize={90}
-      // LegendList caches rendered rows, so every local expansion map that changes row content
-      // has to be surfaced through extraData.
-      extraData={timelineExtraData}
-      initialScrollAtEnd
-      maintainScrollAtEnd={followLiveOutput}
-      maintainScrollAtEndThreshold={0.1}
-      maintainVisibleContentPosition
-      onClickCapture={onMessagesClickCapture}
-      onMouseUp={onMessagesMouseUp}
-      onPointerCancel={onMessagesPointerCancel}
-      onPointerDown={onMessagesPointerDown}
-      onPointerUp={onMessagesPointerUp}
-      onScroll={handleListScroll}
-      onTouchEnd={onMessagesTouchEnd}
-      onTouchMove={onMessagesTouchMove}
-      onTouchStart={onMessagesTouchStart}
-      onWheel={onMessagesWheel}
-      data-chat-scroll-container="true"
-      className="h-full overflow-x-hidden overscroll-y-contain px-3 py-3 sm:px-5 sm:py-4"
-      {...(bottomContentInsetPx ? { style: { paddingBottom: bottomContentInsetPx } } : {})}
-    />
+    <div className="relative h-full min-h-0">
+      <LegendList<MessagesTimelineRow>
+        ref={resolvedListRef}
+        data={rows}
+        keyExtractor={(row) => row.id}
+        renderItem={({ item }) => (
+          <div
+            data-timeline-root="true"
+            className="mx-auto w-full min-w-0 max-w-3xl overflow-x-hidden"
+          >
+            {renderRowContent(item)}
+          </div>
+        )}
+        estimatedItemSize={90}
+        // LegendList caches rendered rows, so every local expansion map that changes row content
+        // has to be surfaced through extraData.
+        extraData={timelineExtraData}
+        initialScrollAtEnd
+        maintainScrollAtEnd={followLiveOutput}
+        maintainScrollAtEndThreshold={0.1}
+        maintainVisibleContentPosition
+        onClickCapture={onMessagesClickCapture}
+        onMouseUp={onMessagesMouseUp}
+        onPointerCancel={onMessagesPointerCancel}
+        onPointerDown={onMessagesPointerDown}
+        onPointerUp={onMessagesPointerUp}
+        onScroll={handleListScroll}
+        onTouchEnd={onMessagesTouchEnd}
+        onTouchMove={onMessagesTouchMove}
+        onTouchStart={onMessagesTouchStart}
+        onWheel={onMessagesWheel}
+        data-chat-scroll-container="true"
+        className="h-full overflow-x-hidden overscroll-y-contain px-3 py-3 sm:px-5 sm:py-4"
+        {...(bottomContentInsetPx ? { style: { paddingBottom: bottomContentInsetPx } } : {})}
+      />
+      <TimelineMinimap rows={rows} onJump={handleTimelineMinimapJump} />
+    </div>
   );
 });
 
@@ -1833,6 +1851,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
   turnId?: TurnId;
   onOpenTurnDiff?: (turnId: TurnId, filePath?: string) => void;
   onOpenThread?: (threadId: ThreadId) => void;
+  workspaceRoot: string | undefined;
 }) {
   const {
     workEntry,
@@ -1843,6 +1862,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
     turnId,
     onOpenTurnDiff,
     onOpenThread,
+    workspaceRoot,
   } = props;
   const compact = density === "compact";
   const EntryIcon = workEntryIcon(workEntry);
@@ -1872,6 +1892,8 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
   );
   const subagentSummary = subagentCardSummary(workEntry);
   const subagentMeta = subagentCardMeta(workEntry);
+  const [expanded, setExpanded] = useState(false);
+  const canExpand = hasExpandableActivityDetails(workEntry);
 
   // Use the text font size (matching the UI settings) for tool call rows
   const rowFontSizePx = textFontSizePx;
@@ -1883,6 +1905,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
           {changedFiles.map((changedFilePath) => {
             const changedFileStat = fileDiffStatByPath?.get(changedFilePath);
             const canOpenEditedDiff = Boolean(turnId && onOpenTurnDiff);
+            const changedFileLabel = `${toolWorkEntryHeading(workEntry)} ${basename(changedFilePath)}`;
             return (
               <button
                 key={`${workEntry.id}:${changedFilePath}`}
@@ -1896,8 +1919,16 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                   canOpenEditedDiff ? "cursor-pointer" : "cursor-default",
                 )}
                 title={changedFilePath}
-                disabled={!canOpenEditedDiff}
+                disabled={!canOpenEditedDiff && !canExpand}
+                aria-label={
+                  canExpand ? `${expanded ? "Collapse" : "Expand"} ${changedFileLabel}` : undefined
+                }
+                aria-expanded={canExpand ? expanded : undefined}
                 onClick={() => {
+                  if (canExpand) {
+                    setExpanded((current) => !current);
+                    return;
+                  }
                   if (!turnId || !onOpenTurnDiff) return;
                   onOpenTurnDiff(turnId, changedFilePath);
                 }}
@@ -1931,6 +1962,9 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
               </button>
             );
           })}
+          {expanded && canExpand ? (
+            <ActivityEntryDetails workEntry={workEntry} workspaceRoot={workspaceRoot} />
+          ) : null}
         </div>
       ) : showSubagentRows ? (
         <div className="space-y-1.5">
@@ -2171,17 +2205,43 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
             </div>
           );
 
-          if (!rawCommand) {
-            return rowContent;
+          const expandableRowContent = canExpand ? (
+            <button
+              type="button"
+              className="w-full text-left focus-visible:outline-2 focus-visible:outline-ring"
+              aria-label={`${expanded ? "Collapse" : "Expand"} ${displayText}`}
+              aria-expanded={expanded}
+              onClick={() => setExpanded((current) => !current)}
+            >
+              {rowContent}
+            </button>
+          ) : (
+            rowContent
+          );
+
+          const rowWithOptionalTooltip =
+            !rawCommand || canExpand ? (
+              expandableRowContent
+            ) : (
+              <Tooltip>
+                <TooltipTrigger render={expandableRowContent} />
+                <TooltipPopup side="top" align="start" className="max-w-96 whitespace-normal">
+                  {commandTooltipContent(rawCommand, displayText)}
+                </TooltipPopup>
+              </Tooltip>
+            );
+
+          if (!canExpand) {
+            return rowWithOptionalTooltip;
           }
 
           return (
-            <Tooltip>
-              <TooltipTrigger render={rowContent} />
-              <TooltipPopup side="top" align="start" className="max-w-96 whitespace-normal">
-                {commandTooltipContent(rawCommand, displayText)}
-              </TooltipPopup>
-            </Tooltip>
+            <>
+              {rowWithOptionalTooltip}
+              {expanded ? (
+                <ActivityEntryDetails workEntry={workEntry} workspaceRoot={workspaceRoot} />
+              ) : null}
+            </>
           );
         })()
       )}
