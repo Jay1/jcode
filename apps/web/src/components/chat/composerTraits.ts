@@ -18,6 +18,24 @@ import {
 import type { ProviderOptions } from "../../providerModelOptions";
 import { getRuntimeAwareModelCapabilities } from "./runtimeModelCapabilities";
 
+export type ComposerPromptTraits = {
+  readonly ultrathinkPromptActive: boolean;
+};
+
+const ORDINARY_COMPOSER_PROMPT_TRAITS: ComposerPromptTraits = {
+  ultrathinkPromptActive: false,
+};
+
+const ULTRATHINK_COMPOSER_PROMPT_TRAITS: ComposerPromptTraits = {
+  ultrathinkPromptActive: true,
+};
+
+export function deriveComposerPromptTraits(prompt: string): ComposerPromptTraits {
+  return isClaudeUltrathinkPrompt(prompt)
+    ? ULTRATHINK_COMPOSER_PROMPT_TRAITS
+    : ORDINARY_COMPOSER_PROMPT_TRAITS;
+}
+
 function getCursorBooleanModelParameter(
   model: string | null | undefined,
   key: "fast" | "thinking",

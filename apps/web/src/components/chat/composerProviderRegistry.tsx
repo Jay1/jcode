@@ -17,7 +17,6 @@ import {
   getGeminiThinkingSelectionValue,
   hasContextWindowOption,
   hasEffortLevel,
-  isClaudeUltrathinkPrompt,
   normalizeClaudeModelOptions,
   normalizeGeminiModelOptions,
   normalizeOpenCodeModelOptions,
@@ -27,7 +26,11 @@ import {
 } from "@jcode/shared/model";
 import type { ReactNode } from "react";
 import { TraitsMenuContent, TraitsPicker } from "./TraitsPicker";
-import { getComposerTraitSelection, hasVisibleComposerTraitControls } from "./composerTraits";
+import {
+  type ComposerPromptTraits,
+  getComposerTraitSelection,
+  hasVisibleComposerTraitControls,
+} from "./composerTraits";
 import { getRuntimeAwareModelCapabilities } from "./runtimeModelCapabilities";
 
 type ComposerProviderModelOptions = ProviderModelOptions[keyof ProviderModelOptions];
@@ -36,7 +39,7 @@ export type ComposerProviderStateInput = {
   provider: ProviderKind;
   model: ModelSlug;
   runtimeModel?: ProviderModelDescriptor | undefined;
-  prompt: string;
+  promptTraits?: ComposerPromptTraits | undefined;
   modelOptions: ProviderModelOptions | null | undefined;
 };
 
@@ -119,7 +122,7 @@ function renderTraitsPickerForProvider(
 function getProviderStateFromCapabilities(
   input: ComposerProviderStateInput,
 ): ComposerProviderState {
-  const { provider, model, runtimeModel, prompt, modelOptions } = input;
+  const { provider, model, runtimeModel, promptTraits, modelOptions } = input;
   const caps = getRuntimeAwareModelCapabilities({ provider, model, runtimeModel });
 
   let rawEffort: string | null = null;
@@ -228,7 +231,7 @@ function getProviderStateFromCapabilities(
           : null;
 
   const ultrathinkActive =
-    caps.promptInjectedEffortLevels.length > 0 && isClaudeUltrathinkPrompt(prompt);
+    caps.promptInjectedEffortLevels.length > 0 && promptTraits?.ultrathinkPromptActive === true;
 
   return {
     provider,
