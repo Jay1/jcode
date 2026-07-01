@@ -2044,12 +2044,15 @@ export const ProviderHealthLive = Layer.effect(
     const enrichStatuses = Effect.fn("enrichProviderStatuses")(function* (
       statuses: ReadonlyArray<ServerProviderStatus>,
     ) {
+      const settings = yield* serverSettings.getSettings;
       const enriched = yield* Effect.forEach(
         statuses,
         (status) =>
           getProviderMaintenanceCapabilities(status.provider).pipe(
             Effect.flatMap((capabilities) =>
-              enrichProviderStatusWithVersionAdvisory(status, capabilities),
+              enrichProviderStatusWithVersionAdvisory(status, capabilities, {
+                enableProviderUpdateChecks: settings.enableProviderUpdateChecks,
+              }),
             ),
             Effect.catch(() =>
               Effect.succeed({
