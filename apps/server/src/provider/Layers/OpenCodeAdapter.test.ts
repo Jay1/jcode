@@ -1488,6 +1488,10 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
       Effect.gen(function* () {
         const adapter = yield* OpenCodeAdapter;
 
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 2)).pipe(
+          Effect.forkChild,
+        );
+
         // Given: a persisted JCode resume cursor names a live OpenCode session.
         const session = yield* adapter.startSession({
           provider: "opencode",
@@ -1508,7 +1512,8 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
         });
 
         // Then: both the session and turn keep the same upstream session cursor.
-        return { session, turn };
+        const events = Array.from(yield* Fiber.join(eventsFiber));
+        return { events, session, turn };
       }).pipe(
         Effect.provide(
           makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
@@ -1524,10 +1529,17 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
     expect(runtime.sessionGetCalls).toEqual([{ sessionID: "ses_valid" }]);
     expect(runtime.sessionUpdateCalls).toHaveLength(1);
     expect(runtime.sessionUpdateCalls[0]?.sessionID).toBe("ses_valid");
+    expect(runtime.sessionUpdateCalls[0]?.permission).toEqual([
+      { permission: "*", pattern: "*", action: "allow" },
+    ]);
     expect(runtime.createCalls).toEqual([]);
     expect(runtime.promptCalls[0]).toMatchObject({ sessionID: "ses_valid" });
     expect(result.session.resumeCursor).toEqual({ openCodeSessionId: "ses_valid" });
     expect(result.turn.resumeCursor).toEqual({ openCodeSessionId: "ses_valid" });
+    expect(result.events[0]).toMatchObject({
+      type: "session.started",
+      payload: { message: "OpenCode session resumed" },
+    });
   });
 
   it("surfaces transient resume probe failures instead of hiding context loss", async () => {
