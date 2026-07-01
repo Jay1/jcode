@@ -1,5 +1,6 @@
 import type { LegendListRef } from "@legendapp/list/react";
 import type { RefObject } from "react";
+import { useMemo } from "react";
 
 import type { MessagesTimelineRow } from "./MessagesTimeline.logic";
 
@@ -69,7 +70,7 @@ export function TimelineMinimap({
   readonly rows: ReadonlyArray<MessagesTimelineRow>;
   readonly onJump: (item: TimelineMinimapItem) => void;
 }) {
-  const items = deriveTimelineMinimapItems(rows);
+  const items = useMemo(() => deriveTimelineMinimapItems(rows), [rows]);
   if (items.length < TIMELINE_MINIMAP_MIN_ITEMS) {
     return null;
   }
