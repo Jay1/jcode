@@ -1,7 +1,7 @@
 import { ThreadId, type ManagedSidecarSnapshot } from "@jcode/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import type { Model, OpencodeClient, Part, Provider } from "@opencode-ai/sdk/v2";
-import { Effect, Fiber, Layer, Stream } from "effect";
+import { Effect, Exit, Fiber, Layer, Stream } from "effect";
 import { describe, it, expect, vi } from "vitest";
 
 import { ServerConfig } from "../../config.ts";
@@ -119,6 +119,13 @@ function createMockOpenCodeRuntime(options?: {
     data: Array<{ info: Record<string, unknown>; parts: Part[] }>;
   }>;
   readonly session?: Record<string, unknown>;
+  readonly sessionGet?: (input: { readonly sessionID: string }) => Promise<{
+    readonly data?: Record<string, unknown> | null;
+  }>;
+  readonly sessionUpdate?: (input: {
+    readonly sessionID: string;
+    readonly permission: unknown;
+  }) => Promise<unknown>;
   readonly connectedServerExternal?: boolean;
 }) {
   const abortCalls: Array<{ sessionID: string }> = [];
@@ -126,6 +133,8 @@ function createMockOpenCodeRuntime(options?: {
   const connectCalls: Array<Parameters<OpenCodeRuntimeShape["connectToOpenCodeServer"]>[0]> = [];
   const createCalls: Array<Record<string, unknown>> = [];
   const promptCalls: Array<Record<string, unknown>> = [];
+  const sessionGetCalls: Array<{ sessionID: string }> = [];
+  const sessionUpdateCalls: Array<{ sessionID: string; permission: unknown }> = [];
   const emptySubscription = {
     async *[Symbol.asyncIterator]() {
       // No provider-side events needed for these adapter lifecycle tests.
@@ -159,7 +168,22 @@ function createMockOpenCodeRuntime(options?: {
         return { data: null };
       },
       messages: options?.messages ?? (async () => ({ data: [] })),
-      get: async () => ({ data: { directory: process.cwd(), ...(options?.session ?? {}) } }),
+      get: async (input: { sessionID: string }) => {
+        sessionGetCalls.push(input);
+        if (options?.sessionGet) {
+          return options.sessionGet(input);
+        }
+        return {
+          data: { id: input.sessionID, directory: process.cwd(), ...(options?.session ?? {}) },
+        };
+      },
+      update: async (input: { sessionID: string; permission: unknown }) => {
+        sessionUpdateCalls.push(input);
+        if (options?.sessionUpdate) {
+          return options.sessionUpdate(input);
+        }
+        return { data: null };
+      },
       revert: async () => ({ data: null }),
       summarize: async () => ({ data: null }),
       fork: async () => ({ data: { id: "forked-session-1" } }),
@@ -210,7 +234,16 @@ function createMockOpenCodeRuntime(options?: {
     loadOpenCodeCredentialProviderIDs: () => Effect.succeed([]),
   };
 
-  return { abortCalls, clientCalls, connectCalls, createCalls, promptCalls, runtime };
+  return {
+    abortCalls,
+    clientCalls,
+    connectCalls,
+    createCalls,
+    promptCalls,
+    runtime,
+    sessionGetCalls,
+    sessionUpdateCalls,
+  };
 }
 
 const READY_MANAGED_SIDECAR: ManagedSidecarSnapshot = Object.freeze({
@@ -1895,6 +1928,362 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
       directory: "/managed/workspace",
       serverPassword: "profile-password",
     });
+  });
+
+  it("falls back to a fresh OpenCode session when the persisted resume cursor is stale", async () => {
+    const runtime = createMockOpenCodeRuntime({
+      sessionGet: async ({ sessionID }) => {
+        throw new Error(`Session not found: ${sessionID}`, {
+          cause: { status: 404, body: { name: "NotFoundError" } },
+        });
+      },
+    });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 2)).pipe(
+          Effect.forkChild,
+        );
+
+        // Given: ProviderService restored JCode's persisted OpenCode cursor after idle reaping.
+        // When: the adapter starts a follow-up session and OpenCode says that session is gone.
+        // Then: the adapter creates a fresh session and returns its new cursor.
+        const session = yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-stale-resume-cursor"),
+          runtimeMode: "full-access",
+          resumeCursor: { openCodeSessionId: "ses_stale" },
+        });
+        const events = Array.from(yield* Fiber.join(eventsFiber));
+        return { events, session };
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(runtime.sessionGetCalls).toEqual([{ sessionID: "ses_stale" }]);
+    expect(runtime.createCalls).toHaveLength(1);
+    expect(result.session.resumeCursor).toEqual({ openCodeSessionId: "opencode-session-1" });
+    expect(result.events[0]).toMatchObject({
+      type: "session.started",
+      payload: { message: "OpenCode session started" },
+    });
+  });
+
+  it("reuses a valid persisted OpenCode cursor for follow-up turns", async () => {
+    const runtime = createMockOpenCodeRuntime();
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 2)).pipe(
+          Effect.forkChild,
+        );
+
+        // Given: a persisted JCode resume cursor names a live OpenCode session.
+        const session = yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-valid-resume-cursor"),
+          runtimeMode: "full-access",
+          resumeCursor: { openCodeSessionId: "ses_valid" },
+        });
+
+        // When: the user sends a follow-up turn in the same JCode thread.
+        const turn = yield* adapter.sendTurn({
+          threadId: asThreadId("thread-valid-resume-cursor"),
+          input: "continue",
+          attachments: [],
+          modelSelection: {
+            provider: "opencode",
+            model: "openai/gpt-5.4",
+          },
+        });
+
+        // Then: both the session and turn keep the same upstream session cursor.
+        const events = Array.from(yield* Fiber.join(eventsFiber));
+        return { events, session, turn };
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(runtime.sessionGetCalls).toEqual([{ sessionID: "ses_valid" }]);
+    expect(runtime.sessionUpdateCalls).toHaveLength(1);
+    expect(runtime.sessionUpdateCalls[0]?.sessionID).toBe("ses_valid");
+    expect(runtime.sessionUpdateCalls[0]?.permission).toEqual([
+      { permission: "*", pattern: "*", action: "allow" },
+    ]);
+    expect(runtime.createCalls).toEqual([]);
+    expect(runtime.promptCalls[0]).toMatchObject({ sessionID: "ses_valid" });
+    expect(result.session.resumeCursor).toEqual({ openCodeSessionId: "ses_valid" });
+    expect(result.turn.resumeCursor).toEqual({ openCodeSessionId: "ses_valid" });
+    expect(result.events[0]).toMatchObject({
+      type: "session.started",
+      payload: { message: "OpenCode session resumed" },
+    });
+  });
+
+  it("falls back to a fresh OpenCode session when reusable session update returns not-found", async () => {
+    const runtime = createMockOpenCodeRuntime({
+      sessionGet: async ({ sessionID }) => ({
+        data: { id: sessionID, directory: process.cwd() },
+      }),
+      sessionUpdate: async ({ sessionID }) => {
+        throw new Error(`Session not found during update: ${sessionID}`, {
+          cause: { status: 404, body: { name: "NotFoundError" } },
+        });
+      },
+    });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 2)).pipe(
+          Effect.forkChild,
+        );
+
+        // Given: session.get sees the persisted upstream session.
+        // When: session.update loses a race with upstream session removal.
+        // Then: the adapter creates a fresh session instead of surfacing stale-session failure.
+        const session = yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-update-not-found-resume-cursor"),
+          runtimeMode: "full-access",
+          resumeCursor: { openCodeSessionId: "ses_update_stale" },
+        });
+        const events = Array.from(yield* Fiber.join(eventsFiber));
+        return { events, session };
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(runtime.sessionGetCalls).toEqual([{ sessionID: "ses_update_stale" }]);
+    expect(runtime.sessionUpdateCalls).toHaveLength(1);
+    expect(runtime.sessionUpdateCalls[0]?.sessionID).toBe("ses_update_stale");
+    expect(runtime.createCalls).toHaveLength(1);
+    expect(result.session.resumeCursor).toEqual({ openCodeSessionId: "opencode-session-1" });
+    expect(result.events[0]).toMatchObject({
+      type: "session.started",
+      payload: { message: "OpenCode session started" },
+    });
+  });
+
+  it("surfaces transient resume probe failures instead of hiding context loss", async () => {
+    const runtime = createMockOpenCodeRuntime({
+      sessionGet: async ({ sessionID }) => {
+        throw new Error(`OpenCode server failed for ${sessionID}`, { cause: { status: 500 } });
+      },
+    });
+
+    const exit = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+
+        // Given: a persisted cursor exists but OpenCode cannot currently verify it.
+        // When: the adapter probes the cursor and receives a transient server failure.
+        // Then: the start fails instead of replacing the live thread with an empty one.
+        return yield* Effect.exit(
+          adapter.startSession({
+            provider: "opencode",
+            threadId: asThreadId("thread-transient-resume-cursor"),
+            runtimeMode: "full-access",
+            resumeCursor: { openCodeSessionId: "ses_transient" },
+          }),
+        );
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(Exit.isFailure(exit)).toBe(true);
+    expect(runtime.sessionGetCalls).toEqual([{ sessionID: "ses_transient" }]);
+    expect(runtime.createCalls).toEqual([]);
+  });
+
+  it("starts fresh when a valid cursor belongs to a different working directory", async () => {
+    const runtime = createMockOpenCodeRuntime({
+      sessionGet: async ({ sessionID }) => ({
+        data: { id: sessionID, directory: "/tmp/some-other-worktree" },
+      }),
+    });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 2)).pipe(
+          Effect.forkChild,
+        );
+
+        // Given: the upstream session exists but is bound to a different cwd.
+        // When: JCode starts a follow-up for the current thread cwd.
+        // Then: the adapter creates a new OpenCode session in the requested cwd.
+        const session = yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-cwd-mismatch-resume-cursor"),
+          runtimeMode: "full-access",
+          resumeCursor: { openCodeSessionId: "ses_other_cwd" },
+        });
+        const events = Array.from(yield* Fiber.join(eventsFiber));
+        return { events, session };
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(runtime.sessionGetCalls).toEqual([{ sessionID: "ses_other_cwd" }]);
+    expect(runtime.sessionUpdateCalls).toEqual([]);
+    expect(runtime.createCalls).toHaveLength(1);
+    expect(result.session.resumeCursor).toEqual({ openCodeSessionId: "opencode-session-1" });
+    expect(result.events[0]).toMatchObject({
+      type: "session.started",
+      payload: { message: "OpenCode session started" },
+    });
+  });
+
+  it("ignores malformed OpenCode resume cursors without probing arbitrary state", async () => {
+    const runtime = createMockOpenCodeRuntime();
+
+    const session = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+
+        // Given: persisted runtime state has the right object key but no usable id.
+        // When: the adapter starts the session.
+        // Then: it treats the cursor as absent and creates a clean OpenCode session.
+        return yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-invalid-resume-cursor"),
+          runtimeMode: "full-access",
+          resumeCursor: { openCodeSessionId: "   " },
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(runtime.sessionGetCalls).toEqual([]);
+    expect(runtime.createCalls).toHaveLength(1);
+    expect(session.resumeCursor).toEqual({ openCodeSessionId: "opencode-session-1" });
+  });
+
+  it("does not abort a resumed OpenCode session when a concurrent start loses the race", async () => {
+    let resolveFirstGetStarted: (() => void) | undefined;
+    let resolveSecondGetStarted: (() => void) | undefined;
+    let releaseFirstGet: (() => void) | undefined;
+    const firstGetStarted = new Promise<void>((resolve) => {
+      resolveFirstGetStarted = resolve;
+    });
+    const secondGetStarted = new Promise<void>((resolve) => {
+      resolveSecondGetStarted = resolve;
+    });
+    const firstGetReleased = new Promise<void>((resolve) => {
+      releaseFirstGet = resolve;
+    });
+    let getCount = 0;
+    const runtime = createMockOpenCodeRuntime({
+      sessionGet: async ({ sessionID }) => {
+        getCount += 1;
+        if (getCount === 1) {
+          resolveFirstGetStarted?.();
+          await secondGetStarted;
+          await firstGetReleased;
+        } else {
+          resolveSecondGetStarted?.();
+        }
+        return { data: { id: sessionID, directory: process.cwd() } };
+      },
+    });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const firstStart = yield* adapter
+          .startSession({
+            provider: "opencode",
+            threadId: asThreadId("thread-racing-resume-cursor"),
+            runtimeMode: "full-access",
+            resumeCursor: { openCodeSessionId: "ses_shared" },
+          })
+          .pipe(Effect.forkChild);
+        yield* Effect.promise(() => firstGetStarted);
+
+        // Given: two starts race to adopt the same persisted OpenCode session id.
+        const secondSession = yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-racing-resume-cursor"),
+          runtimeMode: "full-access",
+          resumeCursor: { openCodeSessionId: "ses_shared" },
+        });
+        releaseFirstGet?.();
+        // When: the slower start loses after it already resumed, not created, the upstream session.
+        const firstSession = yield* Fiber.join(firstStart);
+        return { firstSession, secondSession };
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    // Then: only layer cleanup aborts the surviving session; race-loser cleanup does not abort it.
+    expect(runtime.sessionGetCalls).toEqual([
+      { sessionID: "ses_shared" },
+      { sessionID: "ses_shared" },
+    ]);
+    expect(runtime.createCalls).toEqual([]);
+    expect(runtime.abortCalls).toEqual([{ sessionID: "ses_shared" }]);
+    expect(result.secondSession.resumeCursor).toEqual({ openCodeSessionId: "ses_shared" });
+    expect(result.firstSession.resumeCursor).toEqual({ openCodeSessionId: "ses_shared" });
   });
 
   it("clears adapter session state when interrupting an active OpenCode turn", async () => {

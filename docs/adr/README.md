@@ -8,7 +8,7 @@
 | Audience        | Engineers, reviewers, maintainers, and automation agents                                                         |
 | Scope           | Durable architecture decisions for JCode boundaries, runtime posture, release strategy, and provider integration |
 | Canonical path  | `docs/adr/README.md`                                                                                             |
-| Last reviewed   | 2026-06-19                                                                                                       |
+| Last reviewed   | 2026-06-30                                                                                                       |
 | Review cadence  | Event-driven; add or update ADRs when a decision changes how future work should be done                          |
 | Source of truth | ADR files, linked architecture docs, and runtime source                                                          |
 | Verification    | Cross-check ADR claims against current source and tests before relying on them                                   |
@@ -27,6 +27,7 @@
 | [0008](0008-scoped-remote-client-capability-tokens.md)     | Accepted | Scoped remote client capability tokens       |
 | [0009](0009-backend-owned-managed-runtime-sidecar.md)      | Accepted | Backend-owned managed runtime sidecar        |
 | [0010](0010-provider-agnostic-first-run-wizard.md)         | Accepted | Provider-agnostic first-run wizard           |
+| [0011](0011-copilot-provider-entry-path.md)                | Proposed | Copilot provider entry path                  |
 
 ## When To Add An ADR
 

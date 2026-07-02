@@ -4,7 +4,7 @@
 // Exports: ChatMarkdown
 
 import { DiffsHighlighter, getSharedHighlighter, SupportedLanguages } from "@pierre/diffs";
-import { CheckIcon, CopyIcon } from "~/lib/icons";
+import { CheckIcon, CopyIcon, TextWrapIcon } from "~/lib/icons";
 import React, {
   Children,
   type CSSProperties,
@@ -25,6 +25,7 @@ import { defaultUrlTransform } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { useAppSettings } from "../appSettings";
 import { openInPreferredEditor } from "../editorPreferences";
 import { copyTextToClipboard } from "../hooks/useCopyToClipboard";
 import { resolveDiffThemeName, type DiffThemeName } from "../lib/diffRendering";
@@ -532,9 +533,40 @@ function getHighlighterPromise(language: string): Promise<DiffsHighlighter> {
   return promise;
 }
 
+function MarkdownTable({ children, ...props }: React.ComponentProps<"table">) {
+  const { settings } = useAppSettings();
+  const [wrapped, setWrapped] = useState(settings.chatMarkdownWordWrap);
+  const wrapLabel = wrapped ? "Expand table cells" : "Wrap table cells";
+
+  return (
+    <div
+      className={[
+        "chat-markdown-table-scroll",
+        wrapped ? "chat-markdown-table-scroll--wrapped" : undefined,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <button
+        type="button"
+        className="chat-markdown-table-wrap-button"
+        onClick={() => setWrapped((current) => !current)}
+        title={wrapLabel}
+        aria-label={wrapLabel}
+      >
+        <TextWrapIcon className="size-3" />
+      </button>
+      <table {...props}>{children}</table>
+    </div>
+  );
+}
+
 function MarkdownCodeBlock({ code, children }: { code: string; children: ReactNode }) {
+  const { settings } = useAppSettings();
   const [copied, setCopied] = useState(false);
+  const [wrapped, setWrapped] = useState(settings.chatMarkdownWordWrap);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapLabel = wrapped ? "Disable code line wrap" : "Enable code line wrap";
   const handleCopy = useCallback(() => {
     void copyTextToClipboard(code)
       .then(() => {
@@ -561,16 +593,34 @@ function MarkdownCodeBlock({ code, children }: { code: string; children: ReactNo
   );
 
   return (
-    <div className="chat-markdown-codeblock">
-      <button
-        type="button"
-        className="chat-markdown-copy-button"
-        onClick={handleCopy}
-        title={copied ? "Copied" : "Copy code"}
-        aria-label={copied ? "Copied" : "Copy code"}
-      >
-        {copied ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
-      </button>
+    <div
+      className={[
+        "chat-markdown-codeblock",
+        wrapped ? "chat-markdown-codeblock--wrapped" : undefined,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <div className="chat-markdown-codeblock-actions">
+        <button
+          type="button"
+          className="chat-markdown-codeblock-action"
+          onClick={handleCopy}
+          title={copied ? "Copied" : "Copy code"}
+          aria-label={copied ? "Copied" : "Copy code"}
+        >
+          {copied ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
+        </button>
+        <button
+          type="button"
+          className="chat-markdown-codeblock-action"
+          onClick={() => setWrapped((current) => !current)}
+          title={wrapLabel}
+          aria-label={wrapLabel}
+        >
+          <TextWrapIcon className="size-3" />
+        </button>
+      </div>
       {children}
     </div>
   );
@@ -700,7 +750,11 @@ function ChatMarkdown({
       pre({ node: _node, children, ...props }) {
         const codeBlock = extractCodeBlock(children);
         if (!codeBlock) {
-          return <pre {...props}>{children}</pre>;
+          return (
+            <MarkdownCodeBlock code={nodeToPlainText(children)}>
+              <pre {...props}>{children}</pre>
+            </MarkdownCodeBlock>
+          );
         }
 
         return (
@@ -745,11 +799,7 @@ function ChatMarkdown({
         return <img {...props} src={restoredSrc} alt={alt} loading="lazy" />;
       },
       table({ node: _node, children, ...props }) {
-        return (
-          <div className="chat-markdown-table-scroll">
-            <table {...props}>{children}</table>
-          </div>
-        );
+        return <MarkdownTable {...props}>{children}</MarkdownTable>;
       },
     }),
     [cwd, diffThemeName, isStreaming, onImageExpand],

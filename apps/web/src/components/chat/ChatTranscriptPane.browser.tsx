@@ -2,8 +2,16 @@ import "../../index.css";
 
 import { MessageId } from "@jcode/contracts";
 import { type LegendListRef } from "@legendapp/list/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { page } from "vitest/browser";
-import { Profiler, useCallback, useRef, useState, type ProfilerOnRenderCallback } from "react";
+import {
+  type ReactElement,
+  Profiler,
+  useCallback,
+  useRef,
+  useState,
+  type ProfilerOnRenderCallback,
+} from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
@@ -45,6 +53,16 @@ const DIFF_TABLE_MESSAGE = [
   "| --- | --- | --- |",
   "| `apps/web/src/components/chat/MessagesTimeline.browser-regression-with-a-very-long-file-name.tsx` | Modified | Rendered at completion after the assistant summarizes the diff changes. |",
 ].join("\n");
+
+function renderWithQueryClient(element: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  return render(<QueryClientProvider client={queryClient}>{element}</QueryClientProvider>);
+}
 
 function TranscriptPerfHarness(props: { onTranscriptRender: () => void }) {
   const [composerValue, setComposerValue] = useState("");
@@ -150,7 +168,7 @@ describe("ChatTranscriptPane", () => {
   it("does not re-render the transcript subtree when only composer text changes", async () => {
     let transcriptCommitCount = 0;
 
-    const screen = await render(
+    const screen = await renderWithQueryClient(
       <TranscriptPerfHarness
         onTranscriptRender={() => {
           transcriptCommitCount += 1;
@@ -180,7 +198,7 @@ describe("ChatTranscriptPane", () => {
     applyUIFontOverride(rootStyle, "serif");
     applyChatCodeFontOverride(rootStyle, "");
 
-    const screen = await render(<TranscriptPerfHarness onTranscriptRender={NOOP} />);
+    const screen = await renderWithQueryClient(<TranscriptPerfHarness onTranscriptRender={NOOP} />);
     try {
       await vi.waitFor(() => {
         expect(page.getByText("stable assistant message", { exact: false })).toBeVisible();
@@ -207,7 +225,7 @@ describe("ChatTranscriptPane", () => {
   });
 
   it("contains completed markdown diff tables within the transcript row", async () => {
-    const screen = await render(
+    const screen = await renderWithQueryClient(
       <ChatTranscriptPane
         activeThreadId="thread-diff-table"
         activeTurnInProgress={false}
@@ -282,7 +300,7 @@ describe("ChatTranscriptPane", () => {
     const hiddenTail = "TAIL_SHOULD_APPEAR_AFTER_EXPAND";
     const longUserText = `${"a".repeat(COLLAPSED_USER_MESSAGE_MAX_CHARS)}${hiddenTail}`;
 
-    const screen = await render(
+    const screen = await renderWithQueryClient(
       <ChatTranscriptPane
         activeThreadId="thread-user-message-expand"
         activeTurnInProgress={false}
@@ -368,7 +386,7 @@ describe("ChatTranscriptPane", () => {
     );
     document.documentElement.style.setProperty("--app-user-message-accent", "#cba6f7");
 
-    const screen = await render(
+    const screen = await renderWithQueryClient(
       <ChatTranscriptPane
         activeThreadId="thread-user-message-scan-marker"
         activeTurnInProgress={false}
@@ -449,7 +467,7 @@ describe("ChatTranscriptPane", () => {
     const rootStyle = root.style;
     const appliedProperties = new Set<string>();
 
-    const screen = await render(
+    const screen = await renderWithQueryClient(
       <ChatTranscriptPane
         activeThreadId="thread-user-message-themed-regression"
         activeTurnInProgress={false}

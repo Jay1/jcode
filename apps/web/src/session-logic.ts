@@ -53,6 +53,12 @@ export interface WorkLogEntry {
   detail?: string;
   command?: string;
   rawCommand?: string;
+  output?: string;
+  stdout?: string;
+  stderr?: string;
+  exitCode?: number;
+  durationMs?: number;
+  patch?: string;
   preview?: string;
   changedFiles?: ReadonlyArray<string>;
   tone: "thinking" | "tool" | "info" | "error";
@@ -63,6 +69,21 @@ export interface WorkLogEntry {
   requestKind?: PendingApproval["requestKind"];
   subagents?: ReadonlyArray<WorkLogSubagent>;
   subagentAction?: WorkLogSubagentAction;
+}
+
+type CommandWorkLogEntryInput = {
+  readonly itemType?: WorkLogEntry["itemType"] | undefined;
+  readonly requestKind?: WorkLogEntry["requestKind"] | undefined;
+  readonly command?: string | undefined;
+  readonly rawCommand?: string | undefined;
+};
+
+export function isCommandWorkLogEntry(workEntry: CommandWorkLogEntryInput): boolean {
+  return (
+    workEntry.itemType === "command_execution" ||
+    workEntry.requestKind === "command" ||
+    Boolean(workEntry.command || workEntry.rawCommand)
+  );
 }
 
 export const WORK_LOG_PRESENTATION_VERSION = 5;
@@ -728,7 +749,9 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
       : null;
   const commandAction = extractPrimaryCommandAction(payload);
   const commandPreview = extractToolCommand(payload, commandAction);
+  const commandResult = extractCommandResult(payload);
   const changedFiles = extractChangedFiles(payload);
+  const patch = extractToolPatch(payload);
   const title = extractToolTitle(payload);
   const toolName = extractToolName(payload);
   const toolCallId = extractToolCallId(payload);
@@ -762,6 +785,32 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   }
   if (commandPreview.rawCommand) {
     entry.rawCommand = commandPreview.rawCommand;
+  }
+  const isCommandEntry = isCommandWorkLogEntry({
+    itemType,
+    requestKind,
+    command: commandPreview.command ?? undefined,
+    rawCommand: commandPreview.rawCommand ?? undefined,
+  });
+  if (isCommandEntry) {
+    if (commandResult.output) {
+      entry.output = commandResult.output;
+    }
+    if (commandResult.stdout) {
+      entry.stdout = commandResult.stdout;
+    }
+    if (commandResult.stderr) {
+      entry.stderr = commandResult.stderr;
+    }
+    if (commandResult.exitCode !== undefined) {
+      entry.exitCode = commandResult.exitCode;
+    }
+    if (commandResult.durationMs !== undefined) {
+      entry.durationMs = commandResult.durationMs;
+    }
+  }
+  if (patch) {
+    entry.patch = patch;
   }
   const commandActionDisplay = deriveCommandActionDisplay(commandAction, activity.kind);
   if (commandActionDisplay?.preview) {
@@ -1010,6 +1059,116 @@ function asTrimmedString(value: unknown): string | null {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function asOutputString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  return value.length > 0 ? value : null;
+}
+
+function asInteger(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isInteger(value) ? value : undefined;
+}
+
+function asFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function firstOutputString(values: ReadonlyArray<unknown>): string | undefined {
+  for (const value of values) {
+    const output = asOutputString(value);
+    if (output) {
+      return output;
+    }
+  }
+  return undefined;
+}
+
+interface CommandResultDetails {
+  output?: string | undefined;
+  stdout?: string | undefined;
+  stderr?: string | undefined;
+  exitCode?: number | undefined;
+  durationMs?: number | undefined;
+}
+
+function extractCommandResult(payload: Record<string, unknown> | null): CommandResultDetails {
+  const data = asRecord(payload?.data);
+  const item = asRecord(data?.item);
+  const itemResult = asRecord(item?.result);
+  const rawOutput = asRecord(data?.rawOutput) ?? asRecord(item?.rawOutput);
+  const stdout = normalizeStdoutWithExitCode(
+    firstOutputString([rawOutput?.stdout, item?.stdout, itemResult?.stdout, data?.stdout]),
+  );
+  const stderr = firstOutputString([
+    rawOutput?.stderr,
+    item?.stderr,
+    itemResult?.stderr,
+    data?.stderr,
+  ]);
+  const output = firstOutputString([
+    rawOutput?.output,
+    rawOutput?.aggregatedOutput,
+    item?.output,
+    item?.aggregatedOutput,
+    itemResult?.output,
+    data?.output,
+  ]);
+  const exitCode =
+    asInteger(rawOutput?.exitCode) ??
+    asInteger(item?.exitCode) ??
+    asInteger(itemResult?.exitCode) ??
+    asInteger(data?.exitCode) ??
+    stdout.exitCode;
+  const durationMs =
+    asFiniteNumber(rawOutput?.durationMs) ??
+    asFiniteNumber(item?.durationMs) ??
+    asFiniteNumber(itemResult?.durationMs) ??
+    asFiniteNumber(data?.durationMs);
+
+  return {
+    ...(output ? { output } : {}),
+    ...(stdout.output ? { stdout: stdout.output } : {}),
+    ...(stderr ? { stderr } : {}),
+    ...(exitCode !== undefined ? { exitCode } : {}),
+    ...(durationMs !== undefined ? { durationMs } : {}),
+  };
+}
+
+function normalizeStdoutWithExitCode(value: string | undefined): {
+  output?: string | undefined;
+  exitCode?: number | undefined;
+} {
+  if (!value) {
+    return {};
+  }
+  const stripped = stripTrailingExitCode(value);
+  if (stripped.exitCode === undefined) {
+    return { output: value };
+  }
+  return {
+    ...(stripped.output ? { output: stripped.output } : {}),
+    exitCode: stripped.exitCode,
+  };
+}
+
+function extractToolPatch(payload: Record<string, unknown> | null): string | null {
+  const data = asRecord(payload?.data);
+  const item = asRecord(data?.item);
+  const itemResult = asRecord(item?.result);
+  return (
+    firstOutputString([
+      payload?.patch,
+      data?.patch,
+      item?.patch,
+      itemResult?.patch,
+      data?.diff,
+      item?.diff,
+      itemResult?.diff,
+    ]) ?? null
+  );
 }
 
 function normalizeCollabIdentifier(value: string | null | undefined): string | null {

@@ -1167,6 +1167,42 @@ describe("deriveWorkLogEntries", () => {
     ]);
   });
 
+  it("keeps command output, exit code, and duration for expanded timeline details", () => {
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "command-output-details",
+        createdAt: "2026-05-05T15:40:02.000Z",
+        kind: "tool.completed",
+        summary: "Ran command",
+        payload: {
+          itemType: "command_execution",
+          title: "Ran command",
+          data: {
+            toolCallId: "command-output-1",
+            command: "bun test src/components/chat/MessagesTimeline.test.tsx",
+            rawOutput: {
+              stdout: "PASS timeline details\n",
+              stderr: "warning: slow path\n",
+              exitCode: 0,
+              durationMs: 1250,
+            },
+          },
+        },
+      }),
+    ];
+
+    expect(deriveWorkLogEntries(activities, undefined)).toMatchObject([
+      {
+        id: "command-output-details",
+        command: "bun test src/components/chat/MessagesTimeline.test.tsx",
+        stdout: "PASS timeline details\n",
+        stderr: "warning: slow path\n",
+        exitCode: 0,
+        durationMs: 1250,
+      },
+    ]);
+  });
+
   it("shows a completion detail for completed commands with no output", () => {
     const activities: OrchestrationThreadActivity[] = [
       makeActivity({
@@ -1583,6 +1619,37 @@ describe("deriveWorkLogEntries", () => {
       "apps/web/src/components/ChatView.tsx",
       "apps/web/src/session-logic.ts",
     ]);
+  });
+
+  it("keeps file-change patches for expanded timeline diff details", () => {
+    const patch = [
+      "diff --git a/apps/web/src/session-logic.ts b/apps/web/src/session-logic.ts",
+      "--- a/apps/web/src/session-logic.ts",
+      "+++ b/apps/web/src/session-logic.ts",
+      "@@ -1 +1 @@",
+      "-old",
+      "+new",
+    ].join("\n");
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "file-change-patch-details",
+        kind: "tool.completed",
+        summary: "File Change",
+        payload: {
+          itemType: "file_change",
+          data: {
+            item: {
+              path: "apps/web/src/session-logic.ts",
+              patch,
+            },
+          },
+        },
+      }),
+    ];
+
+    const [entry] = deriveWorkLogEntries(activities, undefined);
+    expect(entry?.changedFiles).toEqual(["apps/web/src/session-logic.ts"]);
+    expect(entry?.patch).toBe(patch);
   });
 
   it("extracts Cursor read targets from rawInput and ACP locations", () => {

@@ -5,7 +5,7 @@ import {
   renderProviderTraitsMenuContent,
   renderProviderTraitsPicker,
 } from "./composerProviderRegistry";
-import { getComposerTraitSelection } from "./composerTraits";
+import { deriveComposerPromptTraits, getComposerTraitSelection } from "./composerTraits";
 
 const OPENCODE_RUNTIME_MODEL_WITH_REASONING: ProviderModelDescriptor = {
   slug: "openai/gpt-5.4",
@@ -63,11 +63,68 @@ const PI_RUNTIME_MODEL_WITH_REASONING: ProviderModelDescriptor = {
 };
 
 describe("getComposerProviderState", () => {
+  it("derives stable prompt traits for ordinary typing and updates exactly for ultrathink", () => {
+    const ordinaryTraits = deriveComposerPromptTraits("Investigate this failure");
+    const ordinaryTypingTraits = deriveComposerPromptTraits("Investigate this failure now");
+    const ultrathinkTraits = deriveComposerPromptTraits("Ultrathink:\nInvestigate this failure");
+    const ordinaryState = getComposerProviderState({
+      provider: "claudeAgent",
+      model: "claude-sonnet-4-6",
+      promptTraits: ordinaryTraits,
+      modelOptions: {
+        claudeAgent: {
+          effort: "medium",
+        },
+      },
+    });
+    const ordinaryTypingState = getComposerProviderState({
+      provider: "claudeAgent",
+      model: "claude-sonnet-4-6",
+      promptTraits: ordinaryTypingTraits,
+      modelOptions: {
+        claudeAgent: {
+          effort: "medium",
+        },
+      },
+    });
+    const ultrathinkState = getComposerProviderState({
+      provider: "claudeAgent",
+      model: "claude-sonnet-4-6",
+      promptTraits: ultrathinkTraits,
+      modelOptions: {
+        claudeAgent: {
+          effort: "medium",
+        },
+      },
+    });
+
+    expect(ordinaryTypingTraits).toBe(ordinaryTraits);
+    expect(ordinaryTraits).toEqual({ ultrathinkPromptActive: false });
+    expect(ultrathinkTraits).toEqual({ ultrathinkPromptActive: true });
+    expect(ordinaryTypingState).toEqual(ordinaryState);
+    expect(ordinaryState).toEqual({
+      provider: "claudeAgent",
+      promptEffort: "medium",
+      modelOptionsForDispatch: {
+        effort: "medium",
+      },
+    });
+    expect(ultrathinkState).toEqual({
+      provider: "claudeAgent",
+      promptEffort: "medium",
+      modelOptionsForDispatch: {
+        effort: "medium",
+      },
+      composerFrameClassName: "ultrathink-frame",
+      composerSurfaceClassName: "shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset]",
+      modelPickerIconClassName: "ultrathink-chroma",
+    });
+  });
+
   it("returns codex defaults when no codex draft options exist", () => {
     const state = getComposerProviderState({
       provider: "codex",
       model: "gpt-5.4",
-      prompt: "",
       modelOptions: undefined,
     });
 
@@ -82,7 +139,6 @@ describe("getComposerProviderState", () => {
     const state = getComposerProviderState({
       provider: "codex",
       model: "gpt-5.4",
-      prompt: "",
       modelOptions: {
         codex: {
           reasoningEffort: "low",
@@ -105,7 +161,6 @@ describe("getComposerProviderState", () => {
     const state = getComposerProviderState({
       provider: "codex",
       model: "gpt-5.4",
-      prompt: "",
       modelOptions: {
         codex: {
           fastMode: true,
@@ -133,7 +188,6 @@ describe("getComposerProviderState", () => {
         supportedReasoningEfforts: [{ value: "low" }, { value: "medium" }, { value: "high" }],
         defaultReasoningEffort: "medium",
       },
-      prompt: "",
       modelOptions: {
         codex: {
           fastMode: true,
@@ -160,7 +214,6 @@ describe("getComposerProviderState", () => {
         supportedReasoningEfforts: [{ value: "low" }, { value: "medium" }, { value: "high" }],
         defaultReasoningEffort: "medium",
       },
-      prompt: "",
       modelOptions: {
         codex: {
           fastMode: true,
@@ -179,7 +232,6 @@ describe("getComposerProviderState", () => {
     const state = getComposerProviderState({
       provider: "codex",
       model: "gpt-5.4",
-      prompt: "",
       modelOptions: {
         codex: {
           reasoningEffort: "high",
@@ -199,7 +251,6 @@ describe("getComposerProviderState", () => {
     const state = getComposerProviderState({
       provider: "claudeAgent",
       model: "claude-sonnet-4-6",
-      prompt: "",
       modelOptions: undefined,
     });
 
@@ -214,7 +265,7 @@ describe("getComposerProviderState", () => {
     const state = getComposerProviderState({
       provider: "claudeAgent",
       model: "claude-sonnet-4-6",
-      prompt: "Ultrathink:\nInvestigate this failure",
+      promptTraits: deriveComposerPromptTraits("Ultrathink:\nInvestigate this failure"),
       modelOptions: {
         claudeAgent: {
           effort: "medium",
@@ -267,7 +318,6 @@ describe("getComposerProviderState", () => {
     const state = getComposerProviderState({
       provider: "claudeAgent",
       model: "claude-haiku-4-5",
-      prompt: "",
       modelOptions: {
         claudeAgent: {
           effort: "max",
@@ -289,7 +339,6 @@ describe("getComposerProviderState", () => {
     const state = getComposerProviderState({
       provider: "claudeAgent",
       model: "claude-opus-4-6",
-      prompt: "",
       modelOptions: {
         claudeAgent: {
           fastMode: true,
@@ -310,7 +359,6 @@ describe("getComposerProviderState", () => {
     const state = getComposerProviderState({
       provider: "claudeAgent",
       model: "claude-opus-4-6",
-      prompt: "",
       modelOptions: {
         claudeAgent: {
           effort: "high",
@@ -330,7 +378,6 @@ describe("getComposerProviderState", () => {
     const state = getComposerProviderState({
       provider: "gemini",
       model: "gemini-2.5-pro",
-      prompt: "",
       modelOptions: {
         gemini: {
           thinkingBudget: 512,
@@ -351,7 +398,6 @@ describe("getComposerProviderState", () => {
     const state = getComposerProviderState({
       provider: "gemini",
       model: "auto-gemini-2.5",
-      prompt: "",
       modelOptions: {
         gemini: {
           thinkingBudget: 0,
@@ -370,7 +416,6 @@ describe("getComposerProviderState", () => {
     const state = getComposerProviderState({
       provider: "gemini",
       model: "gemini-2.5-flash",
-      prompt: "",
       modelOptions: {
         gemini: {
           thinkingBudget: 0,
@@ -389,7 +434,6 @@ describe("getComposerProviderState", () => {
     const state = getComposerProviderState({
       provider: "gemini",
       model: "gemini-3.1-pro-preview",
-      prompt: "",
       modelOptions: {
         gemini: {
           thinkingLevel: "HIGH",
@@ -409,7 +453,6 @@ describe("getComposerProviderState", () => {
       provider: "cursor",
       model: "claude-opus-4-7",
       runtimeModel: CURSOR_RUNTIME_MODEL_300K,
-      prompt: "",
       modelOptions: {
         cursor: {
           reasoningEffort: "xhigh",
@@ -440,7 +483,6 @@ describe("getComposerProviderState", () => {
       provider: "pi",
       model: "openai/gpt-5.5",
       runtimeModel: PI_RUNTIME_MODEL_WITH_REASONING,
-      prompt: "",
       modelOptions: {
         pi: {
           thinkingLevel: "xhigh",
@@ -490,7 +532,6 @@ describe("getComposerProviderState", () => {
       provider: "opencode",
       model: "openai/gpt-5.4",
       runtimeModel: OPENCODE_RUNTIME_MODEL_WITH_REASONING,
-      prompt: "",
       modelOptions: {
         opencode: {
           variant: "xhigh",
@@ -512,7 +553,6 @@ describe("getComposerProviderState", () => {
       provider: "opencode",
       model: "openai/gpt-5.4",
       runtimeModel: OPENCODE_RUNTIME_MODEL_WITH_REASONING,
-      prompt: "",
       modelOptions: undefined,
     });
 
@@ -528,7 +568,6 @@ describe("getComposerProviderState", () => {
       provider: "opencode",
       model: "opencode/gpt-5-nano",
       runtimeModel: OPENCODE_RUNTIME_MODEL_WITHOUT_DEFAULT,
-      prompt: "",
       modelOptions: undefined,
     });
 

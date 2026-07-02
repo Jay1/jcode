@@ -97,6 +97,17 @@ export type ServerConfig = typeof ServerConfig.Type;
 export const ServerManagedWorktree = Schema.Struct({
   path: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
+  branch: Schema.NullOr(TrimmedNonEmptyString),
+  isDirty: Schema.Boolean,
+  hasUnmergedCommits: Schema.Boolean,
+  cleanupStatus: Schema.Literals([
+    "safe",
+    "blocked_dirty",
+    "blocked_unmerged",
+    "stale_missing",
+    "blocked_unknown",
+  ]),
+  cleanupExplanation: TrimmedNonEmptyString,
 });
 export type ServerManagedWorktree = typeof ServerManagedWorktree.Type;
 

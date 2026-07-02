@@ -27,6 +27,7 @@ import type {
   GitStashInfoResult,
   GitStatusInput,
   GitStatusResult,
+  ServerManagedWorktree,
 } from "@jcode/contracts";
 
 import type { GitCheckoutDirtyWorktreeError, GitCommandError } from "../Errors.ts";
@@ -283,6 +284,10 @@ export interface GitCoreShape {
    * Remove an existing worktree.
    */
   readonly removeWorktree: (input: GitRemoveWorktreeInput) => Effect.Effect<void, GitCommandError>;
+
+  readonly listManagedWorktrees: (
+    cwd: string,
+  ) => Effect.Effect<readonly ServerManagedWorktree[], GitCommandError>;
 
   /**
    * Rename an existing local branch.

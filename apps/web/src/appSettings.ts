@@ -135,8 +135,10 @@ export const AppSettingsSchema = Schema.Struct({
   confirmThreadDelete: Schema.Boolean.pipe(withDefaults(() => true)),
   confirmThreadArchive: Schema.Boolean.pipe(withDefaults(() => false)),
   confirmTerminalTabClose: Schema.Boolean.pipe(withDefaults(() => true)),
+  chatMarkdownWordWrap: Schema.Boolean.pipe(withDefaults(() => true)),
   diffWordWrap: Schema.Boolean.pipe(withDefaults(() => false)),
   enableAssistantStreaming: Schema.Boolean.pipe(withDefaults(() => false)),
+  enableProviderUpdateChecks: Schema.Boolean.pipe(withDefaults(() => true)),
   enableNativeFontSmoothing: Schema.Boolean.pipe(withDefaults(getDefaultNativeFontSmoothing)),
   enableTaskCompletionToasts: Schema.Boolean.pipe(withDefaults(() => true)),
   enableSystemTaskCompletionNotifications: Schema.Boolean.pipe(withDefaults(() => true)),
@@ -370,7 +372,9 @@ export function serverSettingsToAppSettings(settings: ServerSettings): Partial<A
     confirmThreadDelete: settings.confirmThreadDelete,
     confirmThreadArchive: settings.confirmThreadArchive,
     confirmTerminalTabClose: settings.confirmTerminalTabClose,
+    chatMarkdownWordWrap: settings.chatMarkdownWordWrap,
     diffWordWrap: settings.diffWordWrap,
+    enableProviderUpdateChecks: settings.enableProviderUpdateChecks,
     enableTaskCompletionToasts: settings.enableTaskCompletionToasts,
     enableSystemTaskCompletionNotifications: settings.enableSystemTaskCompletionNotifications,
     defaultProvider: settings.defaultProvider,
@@ -586,8 +590,14 @@ export function appSettingsPatchToServerSettingsPatch(
   if (hasOwn(patch, "confirmTerminalTabClose")) {
     serverPatch.confirmTerminalTabClose = Boolean(patch.confirmTerminalTabClose);
   }
+  if (hasOwn(patch, "chatMarkdownWordWrap")) {
+    serverPatch.chatMarkdownWordWrap = Boolean(patch.chatMarkdownWordWrap);
+  }
   if (hasOwn(patch, "diffWordWrap")) {
     serverPatch.diffWordWrap = Boolean(patch.diffWordWrap);
+  }
+  if (hasOwn(patch, "enableProviderUpdateChecks")) {
+    serverPatch.enableProviderUpdateChecks = Boolean(patch.enableProviderUpdateChecks);
   }
   if (hasOwn(patch, "enableTaskCompletionToasts")) {
     serverPatch.enableTaskCompletionToasts = Boolean(patch.enableTaskCompletionToasts);
@@ -678,7 +688,9 @@ function buildV2ServerSettingsMigrationPatch(settings: AppSettings): ServerSetti
     "confirmThreadDelete",
     "confirmThreadArchive",
     "confirmTerminalTabClose",
+    "chatMarkdownWordWrap",
     "diffWordWrap",
+    "enableProviderUpdateChecks",
     "enableTaskCompletionToasts",
     "enableSystemTaskCompletionNotifications",
     "defaultProvider",

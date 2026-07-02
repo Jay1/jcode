@@ -1577,6 +1577,109 @@ describe("MessagesTimeline", () => {
     );
   });
 
+  it("renders file-change work rows with patch data as collapsed expandable detail rows", async () => {
+    const { MessagesTimeline } = await import("./MessagesTimeline");
+    const markup = renderToStaticMarkup(
+      <MessagesTimeline
+        hasMessages
+        isWorking={false}
+        activeTurnInProgress={false}
+        activeTurnStartedAt={null}
+        timelineEntries={[
+          {
+            id: "entry-file-change-details",
+            kind: "work",
+            createdAt: "2026-03-17T19:12:28.000Z",
+            entry: {
+              id: "work-file-change-details",
+              createdAt: "2026-03-17T19:12:28.000Z",
+              label: "File Change",
+              tone: "tool",
+              requestKind: "file-change",
+              changedFiles: ["apps/web/src/components/chat/MessagesTimeline.tsx"],
+              patch: [
+                "diff --git a/apps/web/src/components/chat/MessagesTimeline.tsx b/apps/web/src/components/chat/MessagesTimeline.tsx",
+                "--- a/apps/web/src/components/chat/MessagesTimeline.tsx",
+                "+++ b/apps/web/src/components/chat/MessagesTimeline.tsx",
+                "@@ -1 +1 @@",
+                "-old timeline row",
+                "+new timeline row",
+              ].join("\n"),
+            },
+          },
+        ]}
+        completionDividerBeforeEntryId={null}
+        completionSummary={null}
+        turnDiffSummaryByAssistantMessageId={new Map()}
+        nowIso="2026-03-17T19:12:30.000Z"
+        expandedWorkGroups={{}}
+        onToggleWorkGroup={() => {}}
+        onOpenTurnDiff={() => {}}
+        revertTurnCountByUserMessageId={new Map()}
+        onRevertUserMessage={() => {}}
+        isRevertingCheckpoint={false}
+        onImageExpand={() => {}}
+        markdownCwd={undefined}
+        resolvedTheme="dark"
+        timestampFormat="locale"
+        workspaceRoot={undefined}
+      />,
+    );
+
+    expect(markup).toContain('data-file-change-row="true"');
+    expect(markup).toContain('aria-expanded="false"');
+    expect(markup).toContain("Show details");
+    expect(markup).toContain("MessagesTimeline.tsx");
+    expect(markup).not.toContain("old timeline row");
+    expect(markup).not.toContain("new timeline row");
+  });
+
+  it("keeps file-change rows stable when patch data is missing", async () => {
+    const { MessagesTimeline } = await import("./MessagesTimeline");
+    const markup = renderToStaticMarkup(
+      <MessagesTimeline
+        hasMessages
+        isWorking={false}
+        activeTurnInProgress={false}
+        activeTurnStartedAt={null}
+        timelineEntries={[
+          {
+            id: "entry-file-change-empty-details",
+            kind: "work",
+            createdAt: "2026-03-17T19:12:28.000Z",
+            entry: {
+              id: "work-file-change-empty-details",
+              createdAt: "2026-03-17T19:12:28.000Z",
+              label: "File Change",
+              tone: "tool",
+              requestKind: "file-change",
+              changedFiles: ["apps/web/src/components/chat/MessagesTimeline.logic.ts"],
+            },
+          },
+        ]}
+        completionDividerBeforeEntryId={null}
+        completionSummary={null}
+        turnDiffSummaryByAssistantMessageId={new Map()}
+        nowIso="2026-03-17T19:12:30.000Z"
+        expandedWorkGroups={{}}
+        onToggleWorkGroup={() => {}}
+        onOpenTurnDiff={() => {}}
+        revertTurnCountByUserMessageId={new Map()}
+        onRevertUserMessage={() => {}}
+        isRevertingCheckpoint={false}
+        onImageExpand={() => {}}
+        markdownCwd={undefined}
+        resolvedTheme="dark"
+        timestampFormat="locale"
+        workspaceRoot={undefined}
+      />,
+    );
+
+    expect(markup).toContain("Edited");
+    expect(markup).toContain("MessagesTimeline.logic.ts");
+    expect(markup).not.toContain('aria-label="Expand File Change');
+  });
+
   it("renders command rows with a readable summary and keeps the full command on hover", async () => {
     const { MessagesTimeline } = await import("./MessagesTimeline");
     const markup = renderToStaticMarkup(
@@ -1627,6 +1730,60 @@ describe("MessagesTimeline", () => {
       `title="/bin/zsh -lc &#x27;rg -n &quot;ProjectionSnapshotQuery&quot; apps/server/src&#x27;"`,
     );
     expect(markup).not.toContain("&gt;/bin/zsh -lc");
+  });
+
+  it("renders command work rows as collapsed expandable detail rows", async () => {
+    const { MessagesTimeline } = await import("./MessagesTimeline");
+    const markup = renderToStaticMarkup(
+      <MessagesTimeline
+        hasMessages
+        isWorking={false}
+        activeTurnInProgress={false}
+        activeTurnStartedAt={null}
+        timelineEntries={[
+          {
+            id: "entry-command-details",
+            kind: "work",
+            createdAt: "2026-03-17T19:12:28.000Z",
+            entry: {
+              id: "work-command-details",
+              createdAt: "2026-03-17T19:12:28.000Z",
+              label: "Ran command",
+              tone: "tool",
+              itemType: "command_execution",
+              toolTitle: "Ran command",
+              command: "bun test src/components/chat/MessagesTimeline.test.tsx",
+              rawCommand: "snip bun test src/components/chat/MessagesTimeline.test.tsx",
+              stdout: "PASS timeline details",
+              stderr: "warning: slow path",
+              exitCode: 0,
+              durationMs: 1250,
+            },
+          },
+        ]}
+        completionDividerBeforeEntryId={null}
+        completionSummary={null}
+        turnDiffSummaryByAssistantMessageId={new Map()}
+        nowIso="2026-03-17T19:12:30.000Z"
+        expandedWorkGroups={{}}
+        onToggleWorkGroup={() => {}}
+        onOpenTurnDiff={() => {}}
+        revertTurnCountByUserMessageId={new Map()}
+        onRevertUserMessage={() => {}}
+        isRevertingCheckpoint={false}
+        onImageExpand={() => {}}
+        markdownCwd={undefined}
+        resolvedTheme="dark"
+        timestampFormat="locale"
+        workspaceRoot={undefined}
+      />,
+    );
+
+    expect(markup).toContain("<button");
+    expect(markup).toContain('aria-expanded="false"');
+    expect(markup).toContain('aria-label="Expand Ran command');
+    expect(markup).toContain("bun test src/components/chat/MessagesTimeline.test.tsx");
+    expect(markup).not.toContain("PASS timeline details");
   });
 
   it("renders command text even when commandActions provide a short preview", async () => {
@@ -1999,6 +2156,83 @@ describe("MessagesTimeline", () => {
     expect(markup).toContain("+1");
     expect(markup).toContain("-1");
     expect(markup).toContain("+2");
+  });
+
+  it("keeps multi-file diff buttons separate from shared activity details expansion", async () => {
+    const { MessagesTimeline } = await import("./MessagesTimeline");
+    const assistantMessageId = MessageId.makeUnsafe("message-assistant-inline-multi-edit-details");
+    const markup = renderToStaticMarkup(
+      <MessagesTimeline
+        hasMessages
+        isWorking={false}
+        activeTurnInProgress={false}
+        activeTurnStartedAt={null}
+        timelineEntries={[
+          {
+            id: "entry-inline-multi-file-change-details",
+            kind: "work",
+            createdAt: "2026-03-17T19:12:28.000Z",
+            entry: {
+              id: "work-inline-multi-file-change-details",
+              createdAt: "2026-03-17T19:12:28.000Z",
+              label: "File Change",
+              tone: "tool",
+              requestKind: "file-change",
+              patch: "diff --git a/one.ts b/one.ts",
+              changedFiles: ["apps/web/src/one.ts", "apps/web/src/two.ts"],
+            },
+          },
+          {
+            id: "entry-assistant-inline-multi-edit-details",
+            kind: "message",
+            createdAt: "2026-03-17T19:12:29.000Z",
+            message: {
+              id: assistantMessageId,
+              role: "assistant",
+              text: "done",
+              createdAt: "2026-03-17T19:12:29.000Z",
+              completedAt: "2026-03-17T19:12:30.000Z",
+              streaming: false,
+            },
+          },
+        ]}
+        completionDividerBeforeEntryId={null}
+        completionSummary={null}
+        turnDiffSummaryByAssistantMessageId={
+          new Map([
+            [
+              assistantMessageId,
+              {
+                turnId: TurnId.makeUnsafe("turn-inline-multi-edit-details"),
+                completedAt: "2026-03-17T19:12:30.000Z",
+                assistantMessageId,
+                files: [
+                  { path: "apps/web/src/one.ts", additions: 1, deletions: 0 },
+                  { path: "apps/web/src/two.ts", additions: 0, deletions: 1 },
+                ],
+              },
+            ],
+          ])
+        }
+        nowIso="2026-03-17T19:12:30.000Z"
+        expandedWorkGroups={{}}
+        onToggleWorkGroup={() => {}}
+        onOpenTurnDiff={() => {}}
+        revertTurnCountByUserMessageId={new Map()}
+        onRevertUserMessage={() => {}}
+        isRevertingCheckpoint={false}
+        onImageExpand={() => {}}
+        markdownCwd={undefined}
+        resolvedTheme="dark"
+        timestampFormat="locale"
+        workspaceRoot={undefined}
+      />,
+    );
+
+    expect(markup).toContain('aria-label="Open diff for File Change one.ts"');
+    expect(markup).toContain('aria-label="Open diff for File Change two.ts"');
+    expect(markup).toContain("Show details");
+    expect(markup).not.toContain('aria-label="Expand File Change one.ts"');
   });
 
   it("renders inline edited rows from the turn summary when the file-change tool call has no filenames", async () => {

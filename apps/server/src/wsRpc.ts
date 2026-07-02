@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { createServer } from "node:net";
 
@@ -27,6 +28,7 @@ import {
   type ServerConfigStreamEvent,
   type ServerDiagnosticsResult,
   type ServerLifecycleStreamEvent,
+  type ServerManagedWorktree,
   ServerProviderUpdateError,
   ServerVoiceTranscriptionErrorDetail,
   type ServerVoiceTranscriptionErrorDetail as ServerVoiceTranscriptionErrorDetailType,
@@ -108,6 +110,7 @@ import { ServerEnvironment } from "./environment/Services/ServerEnvironment";
 import { ServerLifecycleEvents } from "./serverLifecycleEvents";
 import { ServerRuntimeStartup } from "./serverRuntimeStartup";
 import { ServerSettingsService } from "./serverSettings";
+import { isLoopbackRemoteAddress } from "./startupAccess";
 import { TerminalManager } from "./terminal/Services/Manager";
 import { WorkspaceEntries } from "./workspace/Services/WorkspaceEntries";
 import { WorkspaceFileSystem } from "./workspace/Services/WorkspaceFileSystem";
@@ -167,10 +170,20 @@ export const LOCAL_LEGACY_OWNER_AUTH_SESSION: AuthenticatedSession = {
 export function resolveLocalLegacyWsAuthSession(input: {
   readonly authToken: string | undefined;
   readonly legacyToken: string | null;
+  readonly remoteAddress: string | null | undefined;
 }): AuthenticatedSession | null {
-  return input.authToken !== undefined && input.legacyToken === input.authToken
+  return input.authToken !== undefined &&
+    input.legacyToken !== null &&
+    isLoopbackRemoteAddress(input.remoteAddress) &&
+    timingSafeEqualSecret(input.legacyToken, input.authToken)
     ? LOCAL_LEGACY_OWNER_AUTH_SESSION
     : null;
+}
+
+function timingSafeEqualSecret(left: string, right: string): boolean {
+  const leftDigest = createHash("sha256").update(left).digest();
+  const rightDigest = createHash("sha256").update(right).digest();
+  return timingSafeEqual(leftDigest, rightDigest);
 }
 
 interface ProcessTableRow {
@@ -894,29 +907,7 @@ export const makeWsRpcLayer = () =>
           }),
         );
 
-      const requireOwnerSession: Effect.Effect<void, WsRpcError> = Effect.serviceOption(
-        CurrentRpcAuthSession,
-      ).pipe(
-        Effect.flatMap((sessionOpt) => {
-          const session = Option.getOrNull(sessionOpt);
-          if (!session) {
-            return Effect.fail(new WsRpcError({ message: "Authentication required" }));
-          }
-          if (session.role === "owner") {
-            return Effect.void;
-          }
-          return Effect.fail(
-            new WsRpcError({
-              message: "Insufficient permissions: this operation requires owner role",
-            }),
-          );
-        }),
-      );
-
-      const ownerOnly = <A, E, R>(
-        effect: Effect.Effect<A, E, R>,
-      ): Effect.Effect<A, E | WsRpcError, R> =>
-        requireOwnerSession.pipe(Effect.flatMap(() => effect));
+      const noManagedWorktrees: readonly ServerManagedWorktree[] = [];
 
       return WsRpcGroup.of({
         [ORCHESTRATION_WS_METHODS.dispatchCommand]: (command) =>
@@ -1328,7 +1319,31 @@ export const makeWsRpcLayer = () =>
             ),
           ),
         [WS_METHODS.serverListWorktrees]: () =>
-          withCurrentSession(requireOwnerWsRpcAccess, Effect.succeed({ worktrees: [] })),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(
+              Effect.gen(function* () {
+                const snapshot = yield* projectionReadModelQuery.getShellSnapshot();
+                const worktreeGroups = yield* Effect.forEach(
+                  snapshot.projects,
+                  (project) =>
+                    git.listManagedWorktrees(project.workspaceRoot).pipe(
+                      Effect.tapError((cause) =>
+                        Effect.logWarning("failed to list managed worktrees for project", {
+                          projectId: project.id,
+                          workspaceRoot: project.workspaceRoot,
+                          cause,
+                        }),
+                      ),
+                      Effect.orElseSucceed(() => noManagedWorktrees),
+                    ),
+                  { concurrency: 4 },
+                );
+                return { worktrees: worktreeGroups.flat() };
+              }),
+              "Failed to list managed worktrees",
+            ),
+          ),
         [WS_METHODS.serverGetProviderUsageSnapshot]: (input) =>
           withScope(
             "provider_status:read",
@@ -1719,9 +1734,15 @@ export const makeWsRpcLayer = () =>
             ),
           ),
         [WS_METHODS.providerBootstrapRuntime]: (input) =>
-          rpcEffect(ownerOnly(bootstrapOpenCodeRuntime(input)), "Failed to bootstrap runtime"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(bootstrapOpenCodeRuntime(input), "Failed to bootstrap runtime"),
+          ),
         [WS_METHODS.providerRepairRuntime]: (input) =>
-          rpcEffect(ownerOnly(repairOpenCodeRuntime(input)), "Failed to repair runtime"),
+          withCurrentSession(
+            requireOwnerWsRpcAccess,
+            rpcEffect(repairOpenCodeRuntime(input), "Failed to repair runtime"),
+          ),
         [WS_METHODS.providerCompactThread]: (input) =>
           withCurrentSession(
             requireOwnerWsRpcAccess,
@@ -1811,6 +1832,7 @@ export const websocketRpcRouteLayer = Layer.effectDiscard(
         const localLegacySession = resolveLocalLegacyWsAuthSession({
           authToken: config.authToken,
           legacyToken,
+          remoteAddress: request.remoteAddress ?? null,
         });
         const authenticatedSession =
           localLegacySession !== null
@@ -1820,8 +1842,6 @@ export const websocketRpcRouteLayer = Layer.effectDiscard(
         const rpcWebSocketHttpEffect = yield* makeRpcWebSocketHttpEffect.pipe(
           Effect.provideService(CurrentRpcAuthSession, authenticatedSession),
         );
-
-        if (localLegacySession !== null) return yield* rpcWebSocketHttpEffect;
 
         return yield* Effect.acquireUseRelease(
           sessions.markConnected(authenticatedSession.sessionId),

@@ -2042,6 +2042,7 @@ export const ProviderHealthLive = Layer.effect(
     });
 
     const enrichStatuses = Effect.fn("enrichProviderStatuses")(function* (
+      settings: ServerSettings,
       statuses: ReadonlyArray<ServerProviderStatus>,
     ) {
       const enriched = yield* Effect.forEach(
@@ -2049,7 +2050,9 @@ export const ProviderHealthLive = Layer.effect(
         (status) =>
           getProviderMaintenanceCapabilities(status.provider).pipe(
             Effect.flatMap((capabilities) =>
-              enrichProviderStatusWithVersionAdvisory(status, capabilities),
+              enrichProviderStatusWithVersionAdvisory(status, capabilities, {
+                enableProviderUpdateChecks: settings.enableProviderUpdateChecks,
+              }),
             ),
             Effect.catch(() =>
               Effect.succeed({
@@ -2073,42 +2076,37 @@ export const ProviderHealthLive = Layer.effect(
       });
     });
 
-    const loadProviderStatuses = serverSettings.getSettings
-      .pipe(
-        Effect.flatMap((settings) =>
-          Effect.all(
-            [
-              makeCheckCodexProviderStatus(settings.providers.codex.binaryPath),
-              makeCheckClaudeProviderStatus(
-                resolveClaudeSubscription,
-                settings.providers.claudeAgent.binaryPath,
-              ),
-              makeCheckCursorProviderStatus(settings.providers.cursor.binaryPath),
-              makeCheckGeminiProviderStatus(settings.providers.gemini.binaryPath),
-              makeCheckKiloProviderStatus(settings.providers.kilo.binaryPath),
-              makeCheckOpenCodeProviderStatus(settings.providers.opencode.binaryPath),
-              checkOpenClawProviderStatus(settings.providers.openclaw).pipe(
-                Effect.provideService(ServerSecretStore, serverSecretStore),
-              ),
-              checkPiProviderStatus(
-                settings.providers.pi.agentDir,
-                settings.providers.pi.binaryPath,
-              ),
-              makeCheckDevinProviderStatus(settings.providers.devin.binaryPath),
-            ],
-            {
-              concurrency: "unbounded",
-            },
-          ),
+    const loadProviderStatuses = serverSettings.getSettings.pipe(
+      Effect.flatMap((settings) =>
+        Effect.all(
+          [
+            makeCheckCodexProviderStatus(settings.providers.codex.binaryPath),
+            makeCheckClaudeProviderStatus(
+              resolveClaudeSubscription,
+              settings.providers.claudeAgent.binaryPath,
+            ),
+            makeCheckCursorProviderStatus(settings.providers.cursor.binaryPath),
+            makeCheckGeminiProviderStatus(settings.providers.gemini.binaryPath),
+            makeCheckKiloProviderStatus(settings.providers.kilo.binaryPath),
+            makeCheckOpenCodeProviderStatus(settings.providers.opencode.binaryPath),
+            checkOpenClawProviderStatus(settings.providers.openclaw).pipe(
+              Effect.provideService(ServerSecretStore, serverSecretStore),
+            ),
+            checkPiProviderStatus(settings.providers.pi.agentDir, settings.providers.pi.binaryPath),
+            makeCheckDevinProviderStatus(settings.providers.devin.binaryPath),
+          ],
+          {
+            concurrency: "unbounded",
+          },
+        ).pipe(
+          Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
+          Effect.provideService(FileSystem.FileSystem, fileSystem),
+          Effect.provideService(Path.Path, path),
+          Effect.map(orderProviderStatuses),
+          Effect.flatMap((statuses) => enrichStatuses(settings, statuses)),
         ),
-      )
-      .pipe(
-        Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
-        Effect.provideService(FileSystem.FileSystem, fileSystem),
-        Effect.provideService(Path.Path, path),
-        Effect.map(orderProviderStatuses),
-        Effect.flatMap(enrichStatuses),
-      );
+      ),
+    );
 
     const persistStatuses = (statuses: ProviderStatuses) =>
       Effect.forEach(

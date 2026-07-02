@@ -1354,6 +1354,174 @@ it.layer(TestLayer)("git integration", (it) => {
         expect(existsSync(wtPath)).toBe(false);
       }),
     );
+
+    it.effect("lists managed worktrees with safe cleanup metadata", () =>
+      Effect.gen(function* () {
+        const tmp = yield* makeTmpDir();
+        yield* initRepoWithCommit(tmp);
+
+        const currentBranchEntry = (yield* (yield* GitCore).listBranches({
+          cwd: tmp,
+        })).branches.find((branch) => branch.current);
+        expect(currentBranchEntry).toBeDefined();
+        if (!currentBranchEntry) return;
+        const result = yield* (yield* GitCore).createWorktree({
+          cwd: tmp,
+          branch: currentBranchEntry.name,
+          newBranch: "wt-safe-candidate",
+          path: null,
+        });
+
+        const listed = yield* (yield* GitCore).listManagedWorktrees(tmp);
+
+        expect(listed).toContainEqual(
+          expect.objectContaining({
+            path: result.worktree.path,
+            workspaceRoot: tmp,
+            branch: "wt-safe-candidate",
+            cleanupStatus: "safe",
+          }),
+        );
+
+        yield* (yield* GitCore).removeWorktree({ cwd: tmp, path: result.worktree.path });
+      }),
+    );
+
+    it.effect("blocks dirty managed worktrees with an explanation", () =>
+      Effect.gen(function* () {
+        const tmp = yield* makeTmpDir();
+        yield* initRepoWithCommit(tmp);
+
+        const currentBranchEntry = (yield* (yield* GitCore).listBranches({
+          cwd: tmp,
+        })).branches.find((branch) => branch.current);
+        expect(currentBranchEntry).toBeDefined();
+        if (!currentBranchEntry) return;
+        const result = yield* (yield* GitCore).createWorktree({
+          cwd: tmp,
+          branch: currentBranchEntry.name,
+          newBranch: "wt-dirty-candidate",
+          path: null,
+        });
+        yield* writeTextFile(path.join(result.worktree.path, "README.md"), "dirty change\n");
+
+        const listed = yield* (yield* GitCore).listManagedWorktrees(tmp);
+        const candidate = listed.find((worktree) => worktree.path === result.worktree.path);
+
+        expect(candidate?.cleanupStatus).toBe("blocked_dirty");
+        expect(candidate?.cleanupExplanation).toContain("Uncommitted changes");
+
+        yield* (yield* GitCore).removeWorktree({
+          cwd: tmp,
+          path: result.worktree.path,
+          force: true,
+        });
+      }),
+    );
+
+    it.effect("blocks unmerged managed worktrees with an explanation", () =>
+      Effect.gen(function* () {
+        const tmp = yield* makeTmpDir();
+        yield* initRepoWithCommit(tmp);
+
+        const currentBranchEntry = (yield* (yield* GitCore).listBranches({
+          cwd: tmp,
+        })).branches.find((branch) => branch.current);
+        expect(currentBranchEntry).toBeDefined();
+        if (!currentBranchEntry) return;
+        const result = yield* (yield* GitCore).createWorktree({
+          cwd: tmp,
+          branch: currentBranchEntry.name,
+          newBranch: "wt-unmerged-candidate",
+          path: null,
+        });
+        yield* writeTextFile(path.join(result.worktree.path, "unmerged.txt"), "unmerged\n");
+        yield* git(result.worktree.path, ["add", "unmerged.txt"]);
+        yield* git(result.worktree.path, ["commit", "-m", "unmerged work"]);
+
+        const listed = yield* (yield* GitCore).listManagedWorktrees(tmp);
+        const candidate = listed.find((worktree) => worktree.path === result.worktree.path);
+
+        expect(candidate?.cleanupStatus).toBe("blocked_unmerged");
+        expect(candidate?.cleanupExplanation).toContain("not merged");
+
+        yield* (yield* GitCore).removeWorktree({
+          cwd: tmp,
+          path: result.worktree.path,
+          force: true,
+        });
+      }),
+    );
+
+    it.effect("ignores malformed successful worktree list output", () =>
+      Effect.gen(function* () {
+        const tmp = yield* makeTmpDir();
+        yield* initRepoWithCommit(tmp);
+        const realGitCore = yield* GitCore;
+        const core = yield* makeIsolatedGitCore((input) => {
+          if (input.args[0] === "worktree" && input.args[1] === "list") {
+            return Effect.succeed({
+              code: 0,
+              stdout: "HEAD abc123\nbranch refs/heads/misleading\n",
+              stderr: "",
+            });
+          }
+          return realGitCore.execute(input);
+        });
+
+        const listed = yield* core.listManagedWorktrees(tmp);
+
+        expect(listed).toEqual([]);
+      }),
+    );
+
+    it.effect("marks porcelain worktrees prunable when git includes a reason suffix", () =>
+      Effect.gen(function* () {
+        const tmp = yield* makeTmpDir();
+        yield* initRepoWithCommit(tmp);
+        const currentBranchEntry = (yield* (yield* GitCore).listBranches({
+          cwd: tmp,
+        })).branches.find((branch) => branch.current);
+        expect(currentBranchEntry).toBeDefined();
+        if (!currentBranchEntry) return;
+        const result = yield* (yield* GitCore).createWorktree({
+          cwd: tmp,
+          branch: currentBranchEntry.name,
+          newBranch: "wt-prunable-candidate",
+          path: null,
+        });
+        const stalePath = result.worktree.path;
+        const fileSystem = yield* FileSystem.FileSystem;
+        yield* fileSystem.remove(stalePath, { recursive: true });
+        const realGitCore = yield* GitCore;
+        const core = yield* makeIsolatedGitCore((input) => {
+          if (input.args[0] === "worktree" && input.args[1] === "list") {
+            return Effect.succeed({
+              code: 0,
+              stdout: [
+                `worktree ${tmp}`,
+                "HEAD abc123",
+                "branch refs/heads/main",
+                "",
+                `worktree ${stalePath}`,
+                "HEAD def456",
+                "branch refs/heads/wt-stale",
+                "prunable gitdir file points to non-existent location",
+                "",
+              ].join("\n"),
+              stderr: "",
+            });
+          }
+          return realGitCore.execute(input);
+        });
+
+        const listed = yield* core.listManagedWorktrees(tmp);
+        const candidate = listed.find((worktree) => worktree.path === stalePath);
+
+        expect(candidate?.cleanupStatus).toBe("stale_missing");
+        expect(candidate?.cleanupExplanation).toContain("prunable");
+      }),
+    );
   });
 
   // ── Full flow: local branch checkout ──
