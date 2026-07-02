@@ -1,15 +1,11 @@
 import "../../index.css";
 
 import { page } from "vitest/browser";
-import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
 import type { WorkLogEntry } from "../../session-logic";
-import {
-  ActivityEntryDetails,
-  hasExpandableActivityDetails,
-} from "./MessagesTimelineActivityDetails";
+import { SimpleWorkEntryRow } from "./MessagesTimeline";
 
 type DetailedWorkLogEntry = WorkLogEntry & {
   readonly output?: string;
@@ -21,31 +17,12 @@ type DetailedWorkLogEntry = WorkLogEntry & {
 };
 
 async function renderTimeline(entry: DetailedWorkLogEntry) {
-  return render(<ActivityDetailsHarness entry={entry} />);
-}
-
-function ActivityDetailsHarness({ entry }: { entry: DetailedWorkLogEntry }) {
-  const [expanded, setExpanded] = useState(false);
-  const expandable = hasExpandableActivityDetails(entry);
-  return (
-    <div>
-      {entry.requestKind === "file-change" ? <span>Edited</span> : null}
-      {entry.changedFiles?.map((filePath) => (
-        <span key={filePath}>{filePath.split("/").at(-1) ?? filePath}</span>
-      ))}
-      {expandable ? (
-        <button
-          type="button"
-          aria-expanded={expanded}
-          onClick={() => setExpanded((value) => !value)}
-        >
-          {expanded ? "Collapse" : "Expand"} {entry.label}
-        </button>
-      ) : null}
-      {expanded ? (
-        <ActivityEntryDetails workEntry={entry} workspaceRoot="/home/jay/code/jcode" />
-      ) : null}
-    </div>
+  return render(
+    <SimpleWorkEntryRow
+      workEntry={entry}
+      chatMetaFontSizePx={12}
+      workspaceRoot="/home/jay/code/jcode"
+    />,
   );
 }
 
@@ -107,7 +84,7 @@ describe("MessagesTimeline activity details", () => {
       ].join("\n"),
     });
     try {
-      const row = page.getByRole("button", { name: /Expand File Change/u });
+      const row = page.getByRole("button", { name: /Show details/u });
       await row.click();
 
       await expect(

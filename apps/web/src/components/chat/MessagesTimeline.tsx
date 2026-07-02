@@ -1072,7 +1072,10 @@ export const MessagesTimeline = memo(function MessagesTimeline({
 });
 
 type TimelineMessage = Extract<MessagesTimelineRow, { kind: "message" }>["message"];
-type TimelineWorkEntry = Extract<MessagesTimelineRow, { kind: "work" }>["groupedEntries"][number];
+export type TimelineWorkEntry = Extract<
+  MessagesTimelineRow,
+  { kind: "work" }
+>["groupedEntries"][number];
 
 // Reuse stable row references so streaming updates only force React work for
 // rows whose visible content actually changed.
@@ -1842,7 +1845,7 @@ function commandTooltipContent(command: string, displayText: string) {
   );
 }
 
-const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
+export type SimpleWorkEntryRowProps = {
   workEntry: TimelineWorkEntry;
   chatMetaFontSizePx: number;
   textFontSizePx?: number;
@@ -1852,7 +1855,9 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
   onOpenTurnDiff?: (turnId: TurnId, filePath?: string) => void;
   onOpenThread?: (threadId: ThreadId) => void;
   workspaceRoot: string | undefined;
-}) {
+};
+
+export const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: SimpleWorkEntryRowProps) {
   const {
     workEntry,
     chatMetaFontSizePx,
