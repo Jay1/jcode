@@ -2039,6 +2039,59 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
     });
   });
 
+  it("falls back to a fresh OpenCode session when reusable session update returns not-found", async () => {
+    const runtime = createMockOpenCodeRuntime({
+      sessionGet: async ({ sessionID }) => ({
+        data: { id: sessionID, directory: process.cwd() },
+      }),
+      sessionUpdate: async ({ sessionID }) => {
+        throw new Error(`Session not found during update: ${sessionID}`, {
+          cause: { status: 404, body: { name: "NotFoundError" } },
+        });
+      },
+    });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 2)).pipe(
+          Effect.forkChild,
+        );
+
+        // Given: session.get sees the persisted upstream session.
+        // When: session.update loses a race with upstream session removal.
+        // Then: the adapter creates a fresh session instead of surfacing stale-session failure.
+        const session = yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-update-not-found-resume-cursor"),
+          runtimeMode: "full-access",
+          resumeCursor: { openCodeSessionId: "ses_update_stale" },
+        });
+        const events = Array.from(yield* Fiber.join(eventsFiber));
+        return { events, session };
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(runtime.sessionGetCalls).toEqual([{ sessionID: "ses_update_stale" }]);
+    expect(runtime.sessionUpdateCalls).toHaveLength(1);
+    expect(runtime.sessionUpdateCalls[0]?.sessionID).toBe("ses_update_stale");
+    expect(runtime.createCalls).toHaveLength(1);
+    expect(result.session.resumeCursor).toEqual({ openCodeSessionId: "opencode-session-1" });
+    expect(result.events[0]).toMatchObject({
+      type: "session.started",
+      payload: { message: "OpenCode session started" },
+    });
+  });
+
   it("surfaces transient resume probe failures instead of hiding context loss", async () => {
     const runtime = createMockOpenCodeRuntime({
       sessionGet: async ({ sessionID }) => {

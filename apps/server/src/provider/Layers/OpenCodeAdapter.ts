@@ -3926,19 +3926,27 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
                     : undefined;
 
                 if (reusableSessionId) {
-                  yield* runOpenCodeSdk("session.update", () =>
+                  const updatedReusableSession = yield* runOpenCodeSdk("session.update", () =>
                     client.session.update({
                       sessionID: reusableSessionId,
                       permission: buildOpenCodePermissionRules(input.runtimeMode),
                     }),
+                  ).pipe(
+                    Effect.as(true),
+                    Effect.catchIf(
+                      (cause) => isOpenCodeSessionNotFound(cause),
+                      () => Effect.succeed(false),
+                    ),
                   );
-                  return {
-                    sessionScope,
-                    server,
-                    client,
-                    openCodeSessionId: reusableSessionId,
-                    created: false,
-                  };
+                  if (updatedReusableSession) {
+                    return {
+                      sessionScope,
+                      server,
+                      client,
+                      openCodeSessionId: reusableSessionId,
+                      created: false,
+                    };
+                  }
                 }
 
                 const openCodeSessionId = yield* runOpenCodeSdk("session.create", () => {
