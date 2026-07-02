@@ -134,7 +134,11 @@ import {
   ensureLeadingSpaceForReplacement,
   extendReplacementRangeForTrailingSpace,
 } from "../composerTriggerInsertion";
-import { createProjectSelector, createThreadSelector } from "../storeSelectors";
+import {
+  createAllThreadsSelector,
+  createProjectSelector,
+  createThreadSelector,
+} from "../storeSelectors";
 import {
   canOfferForkSlashCommand,
   canOfferSideSlashCommand,
@@ -851,7 +855,7 @@ export default function ChatView({
   const syncServerShellSnapshot = useStore((store) => store.syncServerShellSnapshot);
   const setStoreThreadError = useStore((store) => store.setError);
   const setStoreThreadWorkspace = useStore((store) => store.setThreadWorkspace);
-  const allThreads = useStore((store) => store.threads);
+  const allThreads = useStore(useRef(createAllThreadsSelector()).current);
   const { settings } = useAppSettings();
   const setStickyComposerModelSelection = useComposerDraftStore(
     (store) => store.setStickyModelSelection,
