@@ -88,7 +88,7 @@ describe("MessagesTimeline activity details", () => {
       await row.click();
 
       await expect(
-        page.getByTitle("apps/web/src/components/chat/MessagesTimeline.tsx"),
+        page.getByText("apps/web/src/components/chat/MessagesTimeline.tsx", { exact: true }),
       ).toBeVisible();
       await expect(page.getByText("-old timeline row")).toBeVisible();
       await expect(page.getByText("+new timeline row")).toBeVisible();
