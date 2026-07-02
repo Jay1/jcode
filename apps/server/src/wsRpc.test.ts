@@ -234,13 +234,44 @@ describe("managed sidecar wsRpc adapters", () => {
   });
 
   it("maps local legacy WebSocket access to an owner-equivalent RPC session", () => {
-    expect(resolveLocalLegacyWsAuthSession({ authToken: undefined, legacyToken: null })).toBeNull();
     expect(
-      resolveLocalLegacyWsAuthSession({ authToken: "local-token", legacyToken: "local-token" }),
+      resolveLocalLegacyWsAuthSession({
+        authToken: undefined,
+        legacyToken: null,
+        remoteAddress: "127.0.0.1",
+      }),
+    ).toBeNull();
+    expect(
+      resolveLocalLegacyWsAuthSession({
+        authToken: "local-token",
+        legacyToken: "local-token",
+        remoteAddress: "127.0.0.1",
+      }),
     ).toMatchObject({ role: "owner", subject: "local-legacy-websocket" });
     expect(
-      resolveLocalLegacyWsAuthSession({ authToken: "local-token", legacyToken: "wrong-token" }),
+      resolveLocalLegacyWsAuthSession({
+        authToken: "local-token",
+        legacyToken: "wrong-token",
+        remoteAddress: "127.0.0.1",
+      }),
     ).toBeNull();
+    expect(
+      resolveLocalLegacyWsAuthSession({
+        authToken: "local-token",
+        legacyToken: "local-token",
+        remoteAddress: "203.0.113.8",
+      }),
+    ).toBeNull();
+  });
+
+  it("keeps legacy WebSocket owner access inside the normal session lifecycle", async () => {
+    const source = await readFile(new URL("./wsRpc.ts", import.meta.url), "utf8");
+    expect(source).toContain("request.remoteAddress ?? null");
+    expect(source).toContain("sessions.markConnected(authenticatedSession.sessionId)");
+    expect(source).toContain("sessions.markDisconnected(authenticatedSession.sessionId)");
+    expect(source).not.toContain(
+      "if (localLegacySession !== null) return yield* rpcWebSocketHttpEffect",
+    );
   });
 
   it("keeps privileged WS RPC handlers owner-only for scoped client sessions", async () => {
@@ -284,6 +315,8 @@ describe("managed sidecar wsRpc adapters", () => {
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.serverUpdateProvider");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.serverTranscribeVoice");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerGetComposerCapabilities");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerBootstrapRuntime");
+    await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerRepairRuntime");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerCompactThread");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerListCommands");
     await expectWsRpcHandlerOwnerGuarded("WS_METHODS.providerListSkills");
