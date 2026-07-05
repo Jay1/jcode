@@ -76,6 +76,26 @@ export const ManagedSidecarDiagnosticsSnapshot = Schema.Struct({
 }).annotate({ parseOptions: { onExcessProperty: "error" } });
 export type ManagedSidecarDiagnosticsSnapshot = typeof ManagedSidecarDiagnosticsSnapshot.Type;
 
+export const ManagedSidecarDiagnosticsReport = Schema.Struct({
+  summary: Schema.String,
+  generatedAt: IsoDateTime,
+  healthStatus: ManagedSidecarHealthStatus,
+  sidecarState: ManagedSidecarState,
+  binaryPath: Schema.optional(Schema.String),
+  binaryVersion: Schema.String,
+  binaryExists: Schema.Boolean,
+  binaryValid: Schema.Boolean,
+  serverUrl: Schema.optional(Schema.String),
+  serverReachable: Schema.Boolean,
+  platform: Schema.Struct({
+    os: Schema.String,
+    arch: Schema.String,
+    nodeVersion: Schema.String,
+  }),
+  issue: Schema.optional(Schema.String),
+});
+export type ManagedSidecarDiagnosticsReport = typeof ManagedSidecarDiagnosticsReport.Type;
+
 export const ManagedSidecarDiagnostics = Schema.Struct({
   generatedAt: IsoDateTime,
   health: ManagedSidecarHealthCheck,
@@ -86,6 +106,7 @@ export const ManagedSidecarDiagnostics = Schema.Struct({
   }),
   binaryVersion: Schema.String,
   logs: Schema.Array(Schema.String),
+  report: ManagedSidecarDiagnosticsReport,
   sidecarSnapshot: ManagedSidecarDiagnosticsSnapshot,
 });
 export type ManagedSidecarDiagnostics = typeof ManagedSidecarDiagnostics.Type;

@@ -41,6 +41,14 @@ const alternateCodexOptionsWithSecrets = {
   },
 } as const;
 
+const alternateOpenCodeOptionsWithSecrets = {
+  ...providerOptionsWithSecrets,
+  opencode: {
+    ...providerOptionsWithSecrets.opencode,
+    serverUrl: "http://127.0.0.1:4113",
+  },
+} as const;
+
 function expectSecretSafeCodexKey(queryKey: readonly unknown[]) {
   const keyText = JSON.stringify(queryKey);
 
@@ -120,6 +128,35 @@ describe("providerSkillsQueryOptions", () => {
     expect(defaultOptions.queryKey).not.toEqual(customOptions.queryKey);
     expect(customOptions.queryKey).not.toEqual(alternateOptions.queryKey);
     expectSecretSafeCodexKey(customOptions.queryKey);
+  });
+
+  it("keys OpenCode skill discovery by runtime options without leaking secrets", () => {
+    const defaultOptions = providerSkillsQueryOptions({
+      provider: "opencode",
+      cwd: "/repo",
+      query: "",
+    });
+    const customOptions = providerSkillsQueryOptions({
+      provider: "opencode",
+      cwd: "/repo",
+      query: "",
+      providerOptions: providerOptionsWithSecrets,
+    });
+    const alternateOptions = providerSkillsQueryOptions({
+      provider: "opencode",
+      cwd: "/repo",
+      query: "",
+      providerOptions: alternateOpenCodeOptionsWithSecrets,
+    });
+    const keyText = JSON.stringify(customOptions.queryKey);
+
+    expect(defaultOptions.queryKey).not.toEqual(customOptions.queryKey);
+    expect(customOptions.queryKey).not.toEqual(alternateOptions.queryKey);
+    expect(keyText).toContain("/bin/opencode");
+    expect(keyText).toContain("http://127.0.0.1:4112");
+    expect(keyText).not.toContain("opencode-secret-password");
+    expect(keyText).not.toContain("serverPassword");
+    expect(keyText).not.toContain("custom-codex");
   });
 });
 

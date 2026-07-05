@@ -26,6 +26,38 @@ export const ProviderSkillInterface = Schema.Struct({
 });
 export type ProviderSkillInterface = typeof ProviderSkillInterface.Type;
 
+export const ProviderSkillSourceOrigin = Schema.Literals(["filesystem", "builtin", "virtual"]);
+export type ProviderSkillSourceOrigin = typeof ProviderSkillSourceOrigin.Type;
+
+export const ProviderSkillSource = Schema.Struct({
+  origin: ProviderSkillSourceOrigin,
+  location: Schema.optional(TrimmedNonEmptyString),
+});
+export type ProviderSkillSource = typeof ProviderSkillSource.Type;
+
+export const ProviderSkillActionAvailable = Schema.Struct({
+  available: Schema.Literal(true),
+});
+export type ProviderSkillActionAvailable = typeof ProviderSkillActionAvailable.Type;
+
+export const ProviderSkillActionUnavailable = Schema.Struct({
+  available: Schema.Literal(false),
+  reason: TrimmedNonEmptyString,
+});
+export type ProviderSkillActionUnavailable = typeof ProviderSkillActionUnavailable.Type;
+
+export const ProviderSkillAction = Schema.Union([
+  ProviderSkillActionAvailable,
+  ProviderSkillActionUnavailable,
+]);
+export type ProviderSkillAction = typeof ProviderSkillAction.Type;
+
+export const ProviderSkillActions = Schema.Struct({
+  uninstall: Schema.optional(ProviderSkillAction),
+  toggle: Schema.optional(ProviderSkillAction),
+});
+export type ProviderSkillActions = typeof ProviderSkillActions.Type;
+
 export const ProviderSkillDescriptor = Schema.Struct({
   name: TrimmedNonEmptyString,
   description: Schema.optional(TrimmedNonEmptyString),
@@ -33,6 +65,8 @@ export const ProviderSkillDescriptor = Schema.Struct({
   enabled: Schema.Boolean,
   scope: Schema.optional(TrimmedNonEmptyString),
   interface: Schema.optional(ProviderSkillInterface),
+  source: Schema.optional(ProviderSkillSource),
+  actions: Schema.optional(ProviderSkillActions),
   dependencies: Schema.optional(Schema.Unknown),
 });
 export type ProviderSkillDescriptor = typeof ProviderSkillDescriptor.Type;

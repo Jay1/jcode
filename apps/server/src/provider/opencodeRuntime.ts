@@ -65,6 +65,17 @@ export const KILO_CLI_SPEC: OpenCodeCompatibleCliSpec = {
   serverAuthUsername: "kilo",
 };
 
+export const OPENCODE_BACKGROUND_PROBE_ENV = Object.freeze({
+  CI: "1",
+  GCM_INTERACTIVE: "never",
+  GIT_ASKPASS: "",
+  GIT_TERMINAL_PROMPT: "0",
+  NO_COLOR: "1",
+  SSH_ASKPASS: "",
+  SSH_ASKPASS_REQUIRE: "never",
+  TERM: "dumb",
+} satisfies NodeJS.ProcessEnv);
+
 export interface OpenCodeServerProcess {
   readonly url: string;
   readonly exitCode: Effect.Effect<number, never>;
@@ -107,8 +118,11 @@ export function openCodeRuntimeErrorDetail(cause: unknown): string {
     const body = anyCause.error ?? anyCause.data ?? anyCause.body;
     try {
       return `status=${status ?? "?"} body=${JSON.stringify(body ?? cause)}`;
-    } catch {
-      // ignore stringify failure
+    } catch (error) {
+      if (error instanceof Error) {
+        return `status=${status ?? "?"} body=[unserializable: ${error.message}]`;
+      }
+      throw error;
     }
   }
   return String(cause);
@@ -194,6 +208,7 @@ export interface OpenCodeRuntimeShape {
     readonly binaryPath: string;
     readonly cliSpec?: OpenCodeCompatibleCliSpec;
     readonly args: ReadonlyArray<string>;
+    readonly extraEnv?: Readonly<Record<string, string>>;
   }) => Effect.Effect<OpenCodeCommandResult, OpenCodeRuntimeError>;
   readonly createOpenCodeSdkClient: (input: {
     readonly baseUrl: string;
@@ -207,6 +222,7 @@ export interface OpenCodeRuntimeShape {
   readonly listOpenCodeCliModels: (input: {
     readonly binaryPath: string;
     readonly cliSpec?: OpenCodeCompatibleCliSpec;
+    readonly extraEnv?: Readonly<Record<string, string>>;
   }) => Effect.Effect<ReadonlyArray<OpenCodeCliModelDescriptor>, OpenCodeRuntimeError>;
   readonly loadOpenCodeCredentialProviderIDs: (
     client: OpencodeClient,
@@ -416,7 +432,7 @@ export function resolveOpenCodeAuthFilePath(
 }
 
 export function parseOpenCodeCredentialProviderIDs(content: string): ReadonlyArray<string> {
-  const parsed = JSON.parse(content) as unknown;
+  const parsed: unknown = JSON.parse(content);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return [];
   }
@@ -564,7 +580,9 @@ export function parseOpenCodeCliModelsOutput(
   let index = 0;
 
   while (index < output.length) {
-    while (index < output.length && /\s/u.test(output[index]!)) {
+    while (index < output.length) {
+      const char = output[index];
+      if (char === undefined || !/\s/u.test(char)) break;
       index += 1;
     }
     if (index >= output.length) {
@@ -590,7 +608,9 @@ export function parseOpenCodeCliModelsOutput(
       supportedReasoningEfforts: [],
     };
 
-    while (index < output.length && /\s/u.test(output[index]!)) {
+    while (index < output.length) {
+      const char = output[index];
+      if (char === undefined || !/\s/u.test(char)) break;
       index += 1;
     }
 
@@ -599,8 +619,8 @@ export function parseOpenCodeCliModelsOutput(
       if (block) {
         try {
           descriptor = parseOpenCodeCliModelJson(JSON.parse(block.json), candidate, parsedSlug);
-        } catch {
-          // Keep the slug-derived fallback descriptor when the JSON block cannot be parsed.
+        } catch (error) {
+          if (!(error instanceof SyntaxError)) throw error;
         }
         index = block.nextIndex;
       }
@@ -647,7 +667,7 @@ function supportsVerboseModelsCommandFailure(stdout: string, stderr: string): bo
 
 export function openCodeQuestionId(
   index: number,
-  question: QuestionRequest["questions"][number],
+  question: { readonly header: string; readonly question: string },
 ): string {
   const header = question.header
     .trim()
@@ -717,7 +737,9 @@ export function toOpenCodePermissionReply(
 }
 
 export function toOpenCodeQuestionAnswers(
-  request: QuestionRequest,
+  request: {
+    readonly questions: ReadonlyArray<{ readonly header: string; readonly question: string }>;
+  },
   answers: Record<string, unknown>,
 ): Array<QuestionAnswer> {
   return request.questions.map((question, index) => {
@@ -761,7 +783,10 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
       const child = yield* spawner.spawn(
         ChildProcess.make(input.binaryPath, [...input.args], {
           shell: process.platform === "win32",
-          env: process.env,
+          env: {
+            ...process.env,
+            ...input.extraEnv,
+          },
         }),
       );
       const [stdout, stderr, code] = yield* Effect.all(
@@ -1062,11 +1087,13 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
     readonly binaryPath: string;
     readonly cliSpec?: OpenCodeCompatibleCliSpec;
     readonly args: ReadonlyArray<string>;
+    readonly extraEnv?: Readonly<Record<string, string>>;
   }) =>
     runOpenCodeCommand({
       binaryPath: input.binaryPath,
       ...(input.cliSpec !== undefined ? { cliSpec: input.cliSpec } : {}),
       args: input.args,
+      ...(input.extraEnv !== undefined ? { extraEnv: input.extraEnv } : {}),
     }).pipe(
       Effect.flatMap((result) =>
         result.code === 0
@@ -1088,6 +1115,7 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
       binaryPath: input.binaryPath,
       ...(input.cliSpec !== undefined ? { cliSpec: input.cliSpec } : {}),
       args: ["models", "--verbose"],
+      ...(input.extraEnv !== undefined ? { extraEnv: input.extraEnv } : {}),
     }).pipe(
       Effect.catch((error) => {
         if (!OpenCodeRuntimeError.is(error)) {
@@ -1111,6 +1139,7 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
           binaryPath: input.binaryPath,
           ...(input.cliSpec !== undefined ? { cliSpec: input.cliSpec } : {}),
           args: ["models"],
+          ...(input.extraEnv !== undefined ? { extraEnv: input.extraEnv } : {}),
         });
       }),
     );

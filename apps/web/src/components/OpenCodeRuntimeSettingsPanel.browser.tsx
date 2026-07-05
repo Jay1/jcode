@@ -61,7 +61,24 @@ const SIDECAR_DIAGNOSTICS: ManagedSidecarDiagnostics = {
     nodeVersion: "v26.2.0",
   },
   binaryVersion: "unknown",
-  logs: [],
+  logs: ["serverPassword=test-password", "Authorization: Bearer secret-token"],
+  report: {
+    summary: "Managed sidecar healthy.",
+    generatedAt: "2026-06-07T12:02:00.000Z",
+    healthStatus: "healthy",
+    sidecarState: "ready",
+    binaryPath: "/tmp/jcode/opencode",
+    binaryVersion: "unknown",
+    binaryExists: true,
+    binaryValid: true,
+    serverUrl: "http://127.0.0.1:4096",
+    serverReachable: true,
+    platform: {
+      os: "linux",
+      arch: "x64",
+      nodeVersion: "v26.2.0",
+    },
+  },
   sidecarSnapshot: {
     state: "ready",
     binaryPath: "/tmp/jcode/opencode",
@@ -95,6 +112,8 @@ const nativeApi = {
 
 const originalCreateObjectUrl = URL.createObjectURL;
 const originalRevokeObjectUrl = URL.revokeObjectURL;
+const originalClipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+const writeClipboardText = vi.fn(async (_value: string) => undefined);
 
 describe("OpenCodeRuntimeSettingsPanel", () => {
   beforeEach(() => {
@@ -124,6 +143,11 @@ describe("OpenCodeRuntimeSettingsPanel", () => {
       configurable: true,
       value: vi.fn(),
     });
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: writeClipboardText },
+    });
+    writeClipboardText.mockClear();
     window.nativeApi = nativeApi;
   });
 
@@ -137,6 +161,11 @@ describe("OpenCodeRuntimeSettingsPanel", () => {
       configurable: true,
       value: originalRevokeObjectUrl,
     });
+    if (originalClipboardDescriptor) {
+      Object.defineProperty(navigator, "clipboard", originalClipboardDescriptor);
+    } else {
+      Reflect.deleteProperty(navigator, "clipboard");
+    }
     document.body.innerHTML = "";
   });
 
@@ -156,6 +185,72 @@ describe("OpenCodeRuntimeSettingsPanel", () => {
       expect(document.body.textContent).toContain("Profile ID: managed");
       expect(document.body.textContent).toContain("State: ready");
       expect(document.body.textContent).toContain("Server reachable");
+    });
+
+    await screen.unmount();
+  });
+
+  it("shows available capability surfaces with zero counts distinctly from unavailable surfaces", async () => {
+    providerApi.getRuntimeHealth.mockResolvedValueOnce({
+      ...RUNTIME_HEALTH,
+      capabilities: {
+        commands: { count: 2, names: ["init", "run"] },
+        skills: { count: 0, names: [] },
+        plugins: undefined,
+        agents: { count: 1, names: ["builder"] },
+        models: { count: 0, slugs: [] },
+      },
+    });
+
+    const screen = await render(<OpenCodeRuntimeSettingsPanel />);
+
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("Commands: available (2)");
+      expect(document.body.textContent).toContain("Skills: available (0)");
+      expect(document.body.textContent).toContain("Plugins: unavailable");
+      expect(document.body.textContent).toContain("Agents: available (1)");
+      expect(document.body.textContent).toContain("Models: available (0)");
+    });
+
+    await screen.unmount();
+  });
+
+  it("summarizes mismatch counts without implying degraded capabilities are available", async () => {
+    providerApi.getRuntimeHealth.mockResolvedValueOnce({
+      ...RUNTIME_HEALTH,
+      status: "degraded",
+      capabilities: {
+        commands: undefined,
+        skills: { count: 0, names: [] },
+        plugins: undefined,
+        agents: undefined,
+        models: { count: 1, slugs: ["openai/gpt-5.5"] },
+      },
+      mismatches: [
+        {
+          id: "command-rg",
+          severity: "blocking",
+          message: "Required command rg is unavailable.",
+        },
+        {
+          id: "skill-review",
+          severity: "warning",
+          message: "Recommended skill review-work is unavailable.",
+        },
+      ],
+    });
+
+    const screen = await render(<OpenCodeRuntimeSettingsPanel />);
+
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("Mismatches: 2 (1 blocking, 1 warning)");
+      expect(document.body.textContent).toContain("Commands: unavailable");
+      expect(document.body.textContent).toContain("Skills: available (0)");
+      expect(document.body.textContent).toContain("Models: available (1)");
+      expect(document.body.textContent).toContain("blocking - Required command rg is unavailable.");
+      expect(document.body.textContent).toContain(
+        "warning - Recommended skill review-work is unavailable.",
+      );
     });
 
     await screen.unmount();
@@ -188,6 +283,32 @@ describe("OpenCodeRuntimeSettingsPanel", () => {
       expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:jcode-sidecar-diagnostics");
       expect(document.body.textContent).toContain("Diagnostics exported");
     });
+
+    await screen.unmount();
+  });
+
+  it("copies managed sidecar diagnostics report as support text without secret-bearing payload fields", async () => {
+    const screen = await render(<OpenCodeRuntimeSettingsPanel />);
+
+    await page.getByRole("button", { name: "Copy support summary" }).click();
+
+    await vi.waitFor(() => {
+      expect(providerApi.exportManagedSidecarDiagnostics).toHaveBeenCalledTimes(1);
+      expect(writeClipboardText).toHaveBeenCalledTimes(1);
+      expect(document.body.textContent).toContain("Support summary copied");
+    });
+
+    const copiedText = writeClipboardText.mock.calls[0]?.[0] ?? "";
+    expect(copiedText).toContain("JCode OpenCode diagnostics support summary");
+    expect(copiedText).toContain("Managed sidecar healthy.");
+    expect(copiedText).toContain("Health: healthy");
+    expect(copiedText).toContain("Sidecar state: ready");
+    expect(copiedText).toContain("Server reachable: yes");
+    expect(copiedText).not.toContain("test-password");
+    expect(copiedText).not.toContain("secret-token");
+    expect(copiedText).not.toContain("serverPassword");
+    expect(copiedText).not.toContain("Authorization");
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
 
     await screen.unmount();
   });

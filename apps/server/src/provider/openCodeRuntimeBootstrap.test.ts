@@ -280,6 +280,19 @@ describe("openCodeRuntimeBootstrap", () => {
     expect(script).not.toContain("0.0.0.0");
   });
 
+  it("renders a non-interactive env for the background OpenCode service probe", () => {
+    const script = renderJcodeOpenCodeStartScript({
+      binaryPath: BINARY_PATH,
+      host: "127.0.0.1",
+      port: 4096,
+    });
+
+    expect(script).toContain("export CI='1'");
+    expect(script).toContain("export GIT_TERMINAL_PROMPT='0'");
+    expect(script).toContain("export SSH_ASKPASS_REQUIRE='never'");
+    expect(script).toContain("export TERM='dumb'");
+  });
+
   it("shell-quotes generated start script binary paths", () => {
     const script = renderJcodeOpenCodeStartScript({
       binaryPath: "/tmp/opencode $(touch /tmp/pwned)'bin",

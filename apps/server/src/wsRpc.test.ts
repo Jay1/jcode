@@ -274,6 +274,26 @@ describe("managed sidecar wsRpc adapters", () => {
     );
   });
 
+  it("preserves workspace RPC operation context with the original failure message", async () => {
+    const source = await readFile(new URL("./wsRpc.ts", import.meta.url), "utf8");
+
+    expect(source).toContain("function toContextualWsRpcError");
+    expect(source).toContain("`${fallbackMessage}: ${error.message}`");
+    expect(source).toContain("const rpcWorkspaceEffect");
+    expect(source).toMatch(
+      /rpcWorkspaceEffect\(\s*workspaceEntries\.listDirectories\(input\),\s*"Failed to list workspace directories",\s*\)/,
+    );
+    expect(source).toMatch(
+      /rpcWorkspaceEffect\(\s*workspaceEntries\.search\(input\),\s*"Failed to search workspace entries",?\s*\)/,
+    );
+    expect(source).toMatch(
+      /rpcWorkspaceEffect\(\s*workspaceEntries\.searchLocal\(input\),\s*"Failed to search local entries",?\s*\)/,
+    );
+    expect(source).toMatch(
+      /rpcWorkspaceEffect\(\s*workspaceEntries\.browse\(input\),\s*"Failed to browse filesystem",?\s*\)/,
+    );
+  });
+
   it("keeps privileged WS RPC handlers owner-only for scoped client sessions", async () => {
     await expectWsRpcHandlerOwnerGuarded("ORCHESTRATION_WS_METHODS.importThread");
     await expectWsRpcHandlerOwnerGuarded("ORCHESTRATION_WS_METHODS.repairState");

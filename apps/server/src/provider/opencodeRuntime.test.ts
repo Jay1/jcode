@@ -2,9 +2,22 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildOpenCodeServerProcessEnv,
+  openCodeRuntimeErrorDetail,
   parseOpenCodeCliModelsOutput,
   parseOpenCodeCredentialProviderIDs,
 } from "./opencodeRuntime.ts";
+
+describe("openCodeRuntimeErrorDetail", () => {
+  it("returns fallback detail when object serialization throws an Error", () => {
+    const cause = {
+      toJSON: () => {
+        throw new Error("boom");
+      },
+    };
+
+    expect(openCodeRuntimeErrorDetail(cause)).toBe("status=? body=[unserializable: boom]");
+  });
+});
 
 describe("buildOpenCodeServerProcessEnv", () => {
   it("inherits OpenCode config by default", () => {

@@ -107,6 +107,62 @@ import { resolveTimelineLiveEdge } from "../../chat-scroll";
 const MAX_VISIBLE_WORK_LOG_ENTRIES = 6;
 const MAX_VISIBLE_INLINE_TOOL_ENTRIES = 4;
 
+export type ScrollAnchorElement = {
+  readonly parentElement: ScrollAnchorElement | null;
+  readonly scrollHeight: number;
+  readonly clientHeight: number;
+  readonly overflowY?: string;
+  scrollTop: number;
+  getBoundingClientRect: () => { readonly top: number };
+};
+
+function isVerticallyScrollable(element: ScrollAnchorElement): boolean {
+  if (element.scrollHeight <= element.clientHeight) {
+    return false;
+  }
+
+  const overflowY =
+    element.overflowY ??
+    (typeof HTMLElement !== "undefined" && element instanceof HTMLElement
+      ? globalThis.getComputedStyle(element).overflowY
+      : undefined);
+  return overflowY === undefined || overflowY === "auto" || overflowY === "scroll";
+}
+
+export function findNearestVerticalScroller(
+  element: ScrollAnchorElement | null,
+): ScrollAnchorElement | null {
+  let current = element?.parentElement ?? null;
+  while (current) {
+    if (isVerticallyScrollable(current)) {
+      return current;
+    }
+    current = current.parentElement;
+  }
+  return null;
+}
+
+export function restoreScrollAnchorPosition(
+  scroller: ScrollAnchorElement,
+  anchorElement: Pick<ScrollAnchorElement, "getBoundingClientRect">,
+  previousTop: number,
+): void {
+  const nextTop = anchorElement.getBoundingClientRect().top;
+  scroller.scrollTop += nextTop - previousTop;
+}
+
+function findInlineToolAnchorElement(
+  groupElement: HTMLElement,
+  anchorEntryId: string,
+): HTMLElement | null {
+  for (const element of groupElement.querySelectorAll<HTMLElement>("[data-inline-tool-entry-id]")) {
+    if (element.getAttribute("data-inline-tool-entry-id") === anchorEntryId) {
+      return element;
+    }
+  }
+  return null;
+}
+
 const SkillCubeIcon: LucideIcon = (props) => (
   <svg {...props} viewBox="0 0 24 24" fill="none">
     <path
@@ -276,6 +332,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     {},
   );
   const expandedWorkGroupsState = expandedWorkGroups ?? localExpandedWorkGroups;
+  const inlineToolGroupRefs = useRef(new Map<string, HTMLDivElement>());
   const handleToggleWorkGroup = useCallback(
     (groupId: string) => {
       if (onToggleWorkGroup) {
@@ -288,6 +345,33 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       }));
     },
     [onToggleWorkGroup],
+  );
+  const setInlineToolGroupRef = useCallback((groupId: string, element: HTMLDivElement | null) => {
+    if (element) {
+      inlineToolGroupRefs.current.set(groupId, element);
+      return;
+    }
+    inlineToolGroupRefs.current.delete(groupId);
+  }, []);
+  const preserveInlineToolScrollAnchor = useCallback(
+    (groupId: string, anchorEntryId: string | null) => {
+      if (!anchorEntryId) return;
+      const groupElement = inlineToolGroupRefs.current.get(groupId);
+      if (!groupElement) return;
+      const anchorElement = findInlineToolAnchorElement(groupElement, anchorEntryId);
+      const scroller = findNearestVerticalScroller(anchorElement);
+      if (!anchorElement || !scroller) return;
+
+      const previousTop = anchorElement.getBoundingClientRect().top;
+      window.requestAnimationFrame(() => {
+        const nextGroupElement = inlineToolGroupRefs.current.get(groupId);
+        if (!nextGroupElement) return;
+        const nextAnchorElement = findInlineToolAnchorElement(nextGroupElement, anchorEntryId);
+        if (!nextAnchorElement) return;
+        restoreScrollAnchorPosition(scroller, nextAnchorElement, previousTop);
+      });
+    },
+    [],
   );
   const [expandedFileChangesByTurnId, setExpandedFileChangesByTurnId] = useState<
     Record<string, boolean>
@@ -680,12 +764,13 @@ export const MessagesTimeline = memo(function MessagesTimeline({
             inlineToolGroupId !== null
               ? (expandedWorkGroupsState[inlineToolGroupId] ?? false)
               : false;
+          const collapsedInlineToolEntries = inlineToolEntries.slice(
+            -MAX_VISIBLE_INLINE_TOOL_ENTRIES,
+          );
           const visibleInlineToolEntries =
             inlineToolExpanded || inlineToolEntries.length <= MAX_VISIBLE_INLINE_TOOL_ENTRIES
               ? inlineToolEntries
-              : activeTurnInProgress
-                ? inlineToolEntries.slice(-MAX_VISIBLE_INLINE_TOOL_ENTRIES)
-                : inlineToolEntries.slice(0, MAX_VISIBLE_INLINE_TOOL_ENTRIES);
+              : collapsedInlineToolEntries;
           const hiddenInlineToolCount = inlineToolEntries.length - visibleInlineToolEntries.length;
           const inlineWorkSummary =
             inlineToolEntries.length > 0
@@ -718,6 +803,19 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                 (workEntry.changedFiles?.length ?? 0) === 0
               ),
           );
+          const collapsedRenderableInlineToolEntries = collapsedInlineToolEntries.filter(
+            (workEntry) =>
+              !(
+                hasGenericInlineFileChangeEntry &&
+                isFileChangeWorkEntry(workEntry) &&
+                (workEntry.changedFiles?.length ?? 0) === 0
+              ),
+          );
+          const inlineToolToggleAnchorEntryId = inlineToolExpanded
+            ? (collapsedRenderableInlineToolEntries[0]?.id ??
+              visibleRenderableInlineToolEntries[0]?.id ??
+              null)
+            : (visibleRenderableInlineToolEntries[0]?.id ?? null);
           const inlineEditedFilesFromTurnSummary =
             hasGenericInlineFileChangeEntry && (turnSummary?.files.length ?? 0) > 0
               ? turnSummary!.files
@@ -781,35 +879,60 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                   />
                 </div>
                 {visibleRenderableInlineToolEntries.length > 0 && (
-                  <div className="mt-2.5">
+                  <div
+                    className="mt-2.5"
+                    ref={(element) => {
+                      if (inlineToolGroupId) {
+                        setInlineToolGroupRef(inlineToolGroupId, element);
+                      }
+                    }}
+                  >
                     <div className="space-y-px">
                       {visibleRenderableInlineToolEntries.map((workEntry) => (
-                        <SimpleWorkEntryRow
+                        <div
                           key={`inline-tool-row:${row.message.id}:${workEntry.id}`}
-                          workEntry={workEntry}
-                          chatMetaFontSizePx={appTypographyScale.chatMetaPx}
-                          textFontSizePx={normalizedChatFontSizePx}
-                          density="compact"
-                          fileDiffStatByPath={fileDiffStatByPath}
-                          workspaceRoot={workspaceRoot}
-                          onOpenTurnDiff={onOpenTurnDiff}
-                          {...(onOpenThread ? { onOpenThread } : {})}
-                          {...(turnSummary?.turnId ? { turnId: turnSummary.turnId } : {})}
-                        />
+                          data-inline-tool-entry-id={workEntry.id}
+                        >
+                          <SimpleWorkEntryRow
+                            workEntry={workEntry}
+                            chatMetaFontSizePx={appTypographyScale.chatMetaPx}
+                            textFontSizePx={normalizedChatFontSizePx}
+                            density="compact"
+                            fileDiffStatByPath={fileDiffStatByPath}
+                            workspaceRoot={workspaceRoot}
+                            onOpenTurnDiff={onOpenTurnDiff}
+                            {...(onOpenThread ? { onOpenThread } : {})}
+                            {...(turnSummary?.turnId ? { turnId: turnSummary.turnId } : {})}
+                          />
+                        </div>
                       ))}
                     </div>
                     {inlineToolGroupId &&
                       inlineToolEntries.length > MAX_VISIBLE_INLINE_TOOL_ENTRIES && (
-                        <div className="py-0.5">
+                        <div className="pt-1">
                           <button
                             type="button"
-                            className="text-muted-foreground/50 transition-colors duration-150 hover:text-foreground/72"
+                            data-inline-tool-overflow-toggle="true"
+                            className="group flex w-full max-w-full items-baseline gap-1 px-0 py-[1px] text-left font-system-ui text-[var(--app-metadata-muted-fg)] transition-colors duration-150 hover:text-[var(--app-metadata-fg)]"
                             style={{ fontSize: `${normalizedChatFontSizePx}px` }}
-                            onClick={() => handleToggleWorkGroup(inlineToolGroupId)}
+                            aria-expanded={inlineToolExpanded}
+                            aria-label={
+                              inlineToolExpanded
+                                ? "Hide previous tool calls"
+                                : `Show ${hiddenInlineToolCount} previous tool calls`
+                            }
+                            onClick={() => {
+                              preserveInlineToolScrollAnchor(
+                                inlineToolGroupId,
+                                inlineToolToggleAnchorEntryId,
+                              );
+                              handleToggleWorkGroup(inlineToolGroupId);
+                            }}
                           >
-                            {inlineToolExpanded
-                              ? "Show less"
-                              : `+${hiddenInlineToolCount} more tool calls`}
+                            <span className="shrink-0 font-medium text-[var(--app-metadata-muted-fg)]">
+                              {inlineToolExpanded ? "Hide" : hiddenInlineToolCount}
+                            </span>
+                            <span className="truncate">previous tool calls</span>
                           </button>
                         </div>
                       )}

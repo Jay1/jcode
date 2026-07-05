@@ -43,6 +43,13 @@ const DEFAULT_MAX_OUTPUT_BYTES = 1_000_000;
 const STATUS_UPSTREAM_REFRESH_INTERVAL = Duration.seconds(15);
 const STATUS_UPSTREAM_REFRESH_TIMEOUT = Duration.seconds(5);
 const STATUS_UPSTREAM_REFRESH_CACHE_CAPACITY = 2_048;
+const STATUS_UPSTREAM_REFRESH_ENV = Object.freeze({
+  GCM_INTERACTIVE: "never",
+  GIT_ASKPASS: "",
+  GIT_TERMINAL_PROMPT: "0",
+  SSH_ASKPASS: "",
+  SSH_ASKPASS_REQUIRE: "never",
+} satisfies NodeJS.ProcessEnv);
 const DEFAULT_BASE_BRANCH_CANDIDATES = ["main", "master"] as const;
 const EMPTY_TREE_OBJECT_ID = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 const WORKING_TREE_DIFF_TIMEOUT_MS = 15_000;
@@ -1122,6 +1129,7 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
         ["fetch", "--quiet", "--no-tags", upstream.remoteName, refspec],
         {
           allowNonZeroExit: true,
+          env: STATUS_UPSTREAM_REFRESH_ENV,
           timeoutMs: STATUS_UPSTREAM_REFRESH_TIMEOUT,
         },
       ).pipe(Effect.asVoid);

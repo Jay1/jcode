@@ -37,6 +37,9 @@ export class ManagedSidecarError extends Data.TaggedError("ManagedSidecarError")
 
 export const generateSidecarPassword = (): string => Crypto.randomBytes(24).toString("base64url");
 
+const redactGeneratedSidecarPassword = (value: string, password: string): string =>
+  value.split(password).join("[redacted]");
+
 export function managedSidecarOpenCodeLaunchOptions(managedRuntimeDir: string): {
   readonly xdgConfigHome: string;
   readonly extraEnv: Readonly<Record<string, string>>;
@@ -202,7 +205,7 @@ export const makeManagedSidecarLifecycle = Effect.gen(function* () {
               (err) =>
                 new ManagedSidecarError({
                   stage: "spawn",
-                  message: `Failed to start managed sidecar: ${err.detail}`,
+                  message: `Failed to start managed sidecar: ${redactGeneratedSidecarPassword(err.detail, password)}`,
                   cause: err,
                 }),
             ),

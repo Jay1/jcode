@@ -1,7 +1,12 @@
-import { ThreadId, type ManagedSidecarSnapshot } from "@jcode/contracts";
+import {
+  ApprovalRequestId,
+  ThreadId,
+  type ManagedSidecarSnapshot,
+  type ProviderRuntimeEvent,
+} from "@jcode/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import type { Model, OpencodeClient, Part, Provider } from "@opencode-ai/sdk/v2";
-import { Effect, Exit, Fiber, Layer, Stream } from "effect";
+import { Cause, Effect, Exit, Fiber, Layer, Stream } from "effect";
 import { describe, it, expect, vi } from "vitest";
 
 import { ServerConfig } from "../../config.ts";
@@ -26,6 +31,22 @@ import {
 } from "./OpenCodeAdapter.ts";
 
 const asThreadId = (value: string): ThreadId => ThreadId.makeUnsafe(value);
+const asApprovalRequestId = (value: string): ApprovalRequestId =>
+  ApprovalRequestId.makeUnsafe(value);
+
+function expectSessionStartedMessage(
+  event: ProviderRuntimeEvent | undefined,
+  expectedMessage: string,
+) {
+  expect(event).toMatchObject({
+    type: "session.started",
+    payload: { message: expectedMessage },
+  });
+  if (event?.type !== "session.started") {
+    throw new Error("Expected a session.started event.");
+  }
+  return event.payload.message;
+}
 
 type TestModelInput = Omit<Partial<Model>, "capabilities"> &
   Pick<Model, "id" | "name"> & {
@@ -132,9 +153,13 @@ function createMockOpenCodeRuntime(options?: {
   const clientCalls: Array<Parameters<OpenCodeRuntimeShape["createOpenCodeSdkClient"]>[0]> = [];
   const connectCalls: Array<Parameters<OpenCodeRuntimeShape["connectToOpenCodeServer"]>[0]> = [];
   const createCalls: Array<Record<string, unknown>> = [];
+  const permissionReplyCalls: Array<Record<string, unknown>> = [];
   const promptCalls: Array<Record<string, unknown>> = [];
+  const questionReplyCalls: Array<Record<string, unknown>> = [];
   const sessionGetCalls: Array<{ sessionID: string }> = [];
   const sessionUpdateCalls: Array<{ sessionID: string; permission: unknown }> = [];
+  const v2PermissionReplyCalls: Array<Record<string, unknown>> = [];
+  const v2QuestionReplyCalls: Array<Record<string, unknown>> = [];
   const emptySubscription = {
     async *[Symbol.asyncIterator]() {
       // No provider-side events needed for these adapter lifecycle tests.
@@ -189,10 +214,32 @@ function createMockOpenCodeRuntime(options?: {
       fork: async () => ({ data: { id: "forked-session-1" } }),
     },
     permission: {
-      reply: async () => ({ data: null }),
+      reply: async (input: Record<string, unknown>) => {
+        permissionReplyCalls.push(input);
+        return { data: null };
+      },
     },
     question: {
-      reply: async () => ({ data: null }),
+      reply: async (input: Record<string, unknown>) => {
+        questionReplyCalls.push(input);
+        return { data: null };
+      },
+    },
+    v2: {
+      session: {
+        permission: {
+          reply: async (input: Record<string, unknown>) => {
+            v2PermissionReplyCalls.push(input);
+            return { data: null };
+          },
+        },
+        question: {
+          reply: async (input: Record<string, unknown>) => {
+            v2QuestionReplyCalls.push(input);
+            return { data: null };
+          },
+        },
+      },
     },
     app: {
       skills: async () => ({ data: options?.appSkills ?? [] }),
@@ -239,10 +286,14 @@ function createMockOpenCodeRuntime(options?: {
     clientCalls,
     connectCalls,
     createCalls,
+    permissionReplyCalls,
     promptCalls,
+    questionReplyCalls,
     runtime,
     sessionGetCalls,
     sessionUpdateCalls,
+    v2PermissionReplyCalls,
+    v2QuestionReplyCalls,
   };
 }
 
@@ -1138,6 +1189,13 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
           enabled: true,
           description: "Security code review for vulnerabilities.",
           scope: "user",
+          source: {
+            origin: "filesystem",
+            location: "/home/test/.opencode/skills/security-review/SKILL.md",
+          },
+          actions: {
+            uninstall: { available: true },
+          },
           interface: {
             displayName: "Security Review",
             shortDescription: "Review code for security issues",
@@ -1148,6 +1206,13 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
           path: "/home/test/.opencode/skills/legacy/SKILL.md",
           enabled: false,
           description: "Legacy metadata shape.",
+          source: {
+            origin: "filesystem",
+            location: "/home/test/.opencode/skills/legacy/SKILL.md",
+          },
+          actions: {
+            uninstall: { available: true },
+          },
           interface: {
             shortDescription: "Legacy metadata shape.",
           },
@@ -1208,6 +1273,13 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
         path: "/home/test/.opencode/skills/analyze/SKILL.md",
         enabled: true,
         description: "Answer data questions.",
+        source: {
+          origin: "filesystem",
+          location: "/home/test/.opencode/skills/analyze/SKILL.md",
+        },
+        actions: {
+          uninstall: { available: true },
+        },
         interface: {
           displayName: "Analyze",
           shortDescription: "Answer data questions.",
@@ -1262,11 +1334,129 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
         path: "/home/test/.opencode/skills/analyze/SKILL.md",
         enabled: true,
         description: "Answer data questions.",
+        source: {
+          origin: "filesystem",
+          location: "/home/test/.opencode/skills/analyze/SKILL.md",
+        },
+        actions: {
+          uninstall: { available: true },
+        },
         interface: {
           shortDescription: "Answer data questions.",
         },
       },
     ]);
+  });
+
+  it("uses explicit OpenCode provider options when listing skills", async () => {
+    const runtime = createMockOpenCodeRuntime({
+      appSkills: [
+        {
+          name: "code-review",
+          description: "Review code changes.",
+          location: "/configured/opencode/skills/code-review/SKILL.md",
+        },
+      ],
+    });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const listSkills = adapter.listSkills;
+        if (!listSkills) {
+          throw new Error("Expected OpenCode adapter to support skill listing.");
+        }
+        return yield* listSkills({
+          provider: "opencode",
+          cwd: "/configured/workspace",
+          providerOptions: {
+            opencode: {
+              binaryPath: "/configured/bin/opencode",
+              serverUrl: "http://127.0.0.1:4777",
+              serverPassword: "configured-password",
+            },
+          },
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(runtime.connectCalls[0]).toMatchObject({
+      binaryPath: "/configured/bin/opencode",
+      serverUrl: "http://127.0.0.1:4777",
+    });
+    expect(runtime.clientCalls[0]).toMatchObject({
+      baseUrl: "http://127.0.0.1:4777",
+      serverPassword: "configured-password",
+    });
+    expect(result.skills.map((skill) => skill.name)).toEqual(["code-review"]);
+  });
+
+  it("does not reuse an active OpenCode session when explicit skill discovery options differ", async () => {
+    const runtime = createMockOpenCodeRuntime({
+      appSkills: [
+        {
+          name: "code-review",
+          description: "Review code changes.",
+          location: "/configured/opencode/skills/code-review/SKILL.md",
+        },
+      ],
+    });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-active-default-runtime"),
+          runtimeMode: "full-access",
+        });
+
+        const listSkills = adapter.listSkills;
+        if (!listSkills) {
+          throw new Error("Expected OpenCode adapter to support skill listing.");
+        }
+        return yield* listSkills({
+          provider: "opencode",
+          cwd: "/configured/workspace",
+          providerOptions: {
+            opencode: {
+              binaryPath: "/configured/bin/opencode",
+              serverUrl: "http://127.0.0.1:4777",
+              serverPassword: "configured-password",
+            },
+          },
+        });
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(runtime.connectCalls).toHaveLength(2);
+    expect(runtime.connectCalls[1]).toMatchObject({
+      binaryPath: "/configured/bin/opencode",
+      serverUrl: "http://127.0.0.1:4777",
+    });
+    expect(runtime.clientCalls[1]).toMatchObject({
+      baseUrl: "http://127.0.0.1:4777",
+      serverPassword: "configured-password",
+    });
+    expect(result.skills.map((skill) => skill.name)).toEqual(["code-review"]);
   });
 
   it("normalizes keyed and string OpenCode skill metadata", async () => {
@@ -1280,6 +1470,10 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
               description: "Review code changes for correctness.",
               file: "/home/test/.opencode/skills/code-review/SKILL.md",
               title: "Code Review",
+            },
+            "customize-opencode": {
+              description: "Customize OpenCode configuration.",
+              location: "<built-in>",
             },
             quickstart: true,
             write: "write-a-skill",
@@ -1317,15 +1511,50 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
         path: "/home/test/.opencode/skills/code-review/SKILL.md",
         enabled: true,
         description: "Review code changes for correctness.",
+        source: {
+          origin: "filesystem",
+          location: "/home/test/.opencode/skills/code-review/SKILL.md",
+        },
+        actions: {
+          uninstall: { available: true },
+        },
         interface: {
           displayName: "Code Review",
           shortDescription: "Review code changes for correctness.",
         },
       },
       {
+        name: "customize-opencode",
+        path: "opencode://skill/customize-opencode",
+        enabled: true,
+        description: "Customize OpenCode configuration.",
+        source: {
+          origin: "builtin",
+          location: "<built-in>",
+        },
+        actions: {
+          uninstall: {
+            available: false,
+            reason: "Built-in skills cannot be uninstalled.",
+          },
+        },
+        interface: {
+          shortDescription: "Customize OpenCode configuration.",
+        },
+      },
+      {
         name: "write-a-skill",
         path: "opencode://skill/write-a-skill",
         enabled: true,
+        source: {
+          origin: "virtual",
+        },
+        actions: {
+          uninstall: {
+            available: false,
+            reason: "Provider did not report a filesystem skill location.",
+          },
+        },
       },
     ]);
   });
@@ -1972,10 +2201,11 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
     expect(runtime.sessionGetCalls).toEqual([{ sessionID: "ses_stale" }]);
     expect(runtime.createCalls).toHaveLength(1);
     expect(result.session.resumeCursor).toEqual({ openCodeSessionId: "opencode-session-1" });
-    expect(result.events[0]).toMatchObject({
-      type: "session.started",
-      payload: { message: "OpenCode session started" },
-    });
+    const message = expectSessionStartedMessage(
+      result.events[0],
+      "OpenCode session started fresh after stale resume cursor",
+    );
+    expect(message).not.toContain("resumed");
   });
 
   it("reuses a valid persisted OpenCode cursor for follow-up turns", async () => {
@@ -2033,10 +2263,10 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
     expect(runtime.promptCalls[0]).toMatchObject({ sessionID: "ses_valid" });
     expect(result.session.resumeCursor).toEqual({ openCodeSessionId: "ses_valid" });
     expect(result.turn.resumeCursor).toEqual({ openCodeSessionId: "ses_valid" });
-    expect(result.events[0]).toMatchObject({
-      type: "session.started",
-      payload: { message: "OpenCode session resumed" },
-    });
+    expectSessionStartedMessage(
+      result.events[0],
+      "OpenCode session resumed from persisted session",
+    );
   });
 
   it("falls back to a fresh OpenCode session when reusable session update returns not-found", async () => {
@@ -2086,10 +2316,11 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
     expect(runtime.sessionUpdateCalls[0]?.sessionID).toBe("ses_update_stale");
     expect(runtime.createCalls).toHaveLength(1);
     expect(result.session.resumeCursor).toEqual({ openCodeSessionId: "opencode-session-1" });
-    expect(result.events[0]).toMatchObject({
-      type: "session.started",
-      payload: { message: "OpenCode session started" },
-    });
+    const message = expectSessionStartedMessage(
+      result.events[0],
+      "OpenCode session started fresh after resume update not-found",
+    );
+    expect(message).not.toContain("resumed");
   });
 
   it("surfaces transient resume probe failures instead of hiding context loss", async () => {
@@ -2127,6 +2358,15 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
     );
 
     expect(Exit.isFailure(exit)).toBe(true);
+    if (!Exit.isFailure(exit)) {
+      throw new Error("Expected transient resume failure to fail the startSession effect.");
+    }
+    const error = Cause.squash(exit.cause);
+    if (!(error instanceof Error)) {
+      throw new Error("Expected transient resume failure to squash to an Error.");
+    }
+    expect(error.message).toContain("session.get");
+    expect(error.message).toContain("OpenCode server failed for ses_transient");
     expect(runtime.sessionGetCalls).toEqual([{ sessionID: "ses_transient" }]);
     expect(runtime.createCalls).toEqual([]);
   });
@@ -2172,28 +2412,34 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
     expect(runtime.sessionUpdateCalls).toEqual([]);
     expect(runtime.createCalls).toHaveLength(1);
     expect(result.session.resumeCursor).toEqual({ openCodeSessionId: "opencode-session-1" });
-    expect(result.events[0]).toMatchObject({
-      type: "session.started",
-      payload: { message: "OpenCode session started" },
-    });
+    const message = expectSessionStartedMessage(
+      result.events[0],
+      "OpenCode session started fresh after resume cwd mismatch",
+    );
+    expect(message).not.toContain("resumed");
   });
 
   it("ignores malformed OpenCode resume cursors without probing arbitrary state", async () => {
     const runtime = createMockOpenCodeRuntime();
 
-    const session = await Effect.runPromise(
+    const result = await Effect.runPromise(
       Effect.gen(function* () {
         const adapter = yield* OpenCodeAdapter;
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 2)).pipe(
+          Effect.forkChild,
+        );
 
         // Given: persisted runtime state has the right object key but no usable id.
         // When: the adapter starts the session.
         // Then: it treats the cursor as absent and creates a clean OpenCode session.
-        return yield* adapter.startSession({
+        const session = yield* adapter.startSession({
           provider: "opencode",
           threadId: asThreadId("thread-invalid-resume-cursor"),
           runtimeMode: "full-access",
           resumeCursor: { openCodeSessionId: "   " },
         });
+        const events = Array.from(yield* Fiber.join(eventsFiber));
+        return { events, session };
       }).pipe(
         Effect.provide(
           makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
@@ -2208,7 +2454,47 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
 
     expect(runtime.sessionGetCalls).toEqual([]);
     expect(runtime.createCalls).toHaveLength(1);
-    expect(session.resumeCursor).toEqual({ openCodeSessionId: "opencode-session-1" });
+    expect(result.session.resumeCursor).toEqual({ openCodeSessionId: "opencode-session-1" });
+    expectSessionStartedMessage(result.events[0], "OpenCode session started fresh");
+  });
+
+  it("records a fresh OpenCode session receipt when no resume cursor exists", async () => {
+    const runtime = createMockOpenCodeRuntime();
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 2)).pipe(
+          Effect.forkChild,
+        );
+
+        // Given: a new JCode thread has no persisted OpenCode cursor.
+        // When: the adapter starts the session.
+        // Then: the lifecycle receipt reports fresh creation, not resume.
+        const session = yield* adapter.startSession({
+          provider: "opencode",
+          threadId: asThreadId("thread-fresh-session-receipt"),
+          runtimeMode: "full-access",
+        });
+        const events = Array.from(yield* Fiber.join(eventsFiber));
+        return { events, session };
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(runtime.sessionGetCalls).toEqual([]);
+    expect(runtime.createCalls).toHaveLength(1);
+    expect(result.session.resumeCursor).toEqual({ openCodeSessionId: "opencode-session-1" });
+    const message = expectSessionStartedMessage(result.events[0], "OpenCode session started fresh");
+    expect(message).not.toContain("resumed");
   });
 
   it("does not abort a resumed OpenCode session when a concurrent start loses the race", async () => {
@@ -2863,6 +3149,185 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
     expect(runtime.promptCalls[0]).toMatchObject({
       agent: "reviewer",
     });
+  });
+
+  it("opens an approval request when OpenCode emits a v2 permission request", async () => {
+    const eventQueue = createSubscribedEventQueue();
+    const runtime = createMockOpenCodeRuntime({ events: eventQueue.stream });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 4)).pipe(
+          Effect.forkChild,
+        );
+
+        const threadId = asThreadId("thread-v2-permission-request");
+        yield* adapter.startSession({
+          provider: "opencode",
+          threadId,
+          runtimeMode: "full-access",
+        });
+
+        yield* adapter.sendTurn({
+          threadId,
+          input: "edit package.json",
+          attachments: [],
+          modelSelection: {
+            provider: "opencode",
+            model: "openai/gpt-5.4",
+          },
+        });
+
+        eventQueue.push({
+          id: "event-permission-v2-1",
+          type: "permission.v2.asked",
+          properties: {
+            id: "permission-v2-1",
+            sessionID: "opencode-session-1",
+            action: "edit",
+            resources: ["package.json"],
+            metadata: { file: "package.json" },
+          },
+        });
+
+        const collected = yield* Fiber.join(eventsFiber).pipe(Effect.timeoutOption(50));
+        yield* adapter.respondToRequest(
+          threadId,
+          asApprovalRequestId("permission-v2-1"),
+          "acceptForSession",
+        );
+        eventQueue.close();
+        return collected._tag === "Some" ? Array.from(collected.value) : [];
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(result.map((event) => event.type)).toEqual([
+      "session.started",
+      "thread.started",
+      "turn.started",
+      "request.opened",
+    ]);
+    expect(result[3]).toMatchObject({
+      type: "request.opened",
+      requestId: "permission-v2-1",
+      payload: {
+        requestType: "file_change_approval",
+        detail: "package.json",
+        args: { file: "package.json" },
+      },
+    });
+    expect(runtime.permissionReplyCalls).toEqual([]);
+    expect(runtime.v2PermissionReplyCalls).toEqual([
+      {
+        sessionID: "opencode-session-1",
+        requestID: "permission-v2-1",
+        reply: "always",
+      },
+    ]);
+  });
+
+  it("answers user input through the OpenCode v2 question endpoint", async () => {
+    const eventQueue = createSubscribedEventQueue();
+    const runtime = createMockOpenCodeRuntime({ events: eventQueue.stream });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const adapter = yield* OpenCodeAdapter;
+        const eventsFiber = yield* Stream.runCollect(Stream.take(adapter.streamEvents, 4)).pipe(
+          Effect.forkChild,
+        );
+
+        const threadId = asThreadId("thread-v2-question-request");
+        yield* adapter.startSession({
+          provider: "opencode",
+          threadId,
+          runtimeMode: "full-access",
+        });
+
+        yield* adapter.sendTurn({
+          threadId,
+          input: "ask a question",
+          attachments: [],
+          modelSelection: {
+            provider: "opencode",
+            model: "openai/gpt-5.4",
+          },
+        });
+
+        eventQueue.push({
+          id: "event-question-v2-1",
+          type: "question.v2.asked",
+          properties: {
+            id: "question-v2-1",
+            sessionID: "opencode-session-1",
+            questions: [
+              {
+                header: "Environment",
+                question: "Which environment should I use?",
+                options: [
+                  { label: "Staging", description: "Use staging" },
+                  { label: "Production", description: "Use production" },
+                ],
+              },
+            ],
+          },
+        });
+
+        const collected = yield* Fiber.join(eventsFiber).pipe(Effect.timeoutOption(50));
+        yield* adapter.respondToUserInput(threadId, asApprovalRequestId("question-v2-1"), {
+          "question-0-environment": "Staging",
+        });
+        eventQueue.close();
+        return collected._tag === "Some" ? Array.from(collected.value) : [];
+      }).pipe(
+        Effect.provide(
+          makeOpenCodeAdapterLive({ runtime: runtime.runtime }).pipe(
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), { prefix: "opencode-adapter-test-" }),
+            ),
+            Layer.provideMerge(NodeServices.layer),
+          ),
+        ),
+      ),
+    );
+
+    expect(result.map((event) => event.type)).toEqual([
+      "session.started",
+      "thread.started",
+      "turn.started",
+      "user-input.requested",
+    ]);
+    expect(result[3]).toMatchObject({
+      type: "user-input.requested",
+      requestId: "question-v2-1",
+      payload: {
+        questions: [
+          {
+            id: "question-0-environment",
+            header: "Environment",
+            question: "Which environment should I use?",
+          },
+        ],
+      },
+    });
+    expect(runtime.questionReplyCalls).toEqual([]);
+    expect(runtime.v2QuestionReplyCalls).toEqual([
+      {
+        sessionID: "opencode-session-1",
+        requestID: "question-v2-1",
+        questionV2Reply: { answers: [["Staging"]] },
+      },
+    ]);
   });
 
   it("does not capture tagged markdown as a proposed plan outside plan mode", async () => {

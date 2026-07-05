@@ -2,6 +2,7 @@ import {
   PROVIDER_DISPLAY_NAMES,
   type CatalogSkillEntry,
   type ProviderKind,
+  type ProviderSetSkillEnabledInput,
   type ProviderStartOptions,
 } from "@jcode/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,7 +10,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { getProviderStartOptions, useAppSettings } from "../appSettings";
 import { useFocusedChatContext } from "../focusedChatContext";
-import { DownloadIcon, ListChecksIcon, PlusIcon, SearchIcon, Trash2 } from "../lib/icons";
+import { DownloadIcon, PlusIcon, SearchIcon } from "../lib/icons";
 import { resolveProviderDiscoveryCwd } from "../lib/providerDiscovery";
 import {
   installSkillMutationOptions,
@@ -21,13 +22,13 @@ import {
   supportsSkillInstall,
   supportsSkillToggle,
   supportsSkillUninstall,
-  uninstallSkillMutationOptions,
 } from "../lib/providerDiscoveryReactQuery";
 import {
   buildSkillLibraryRows,
   countSkillLibraryRowsByProvider,
   filterInstallableCatalogEntries,
   filterSkillLibraryRows,
+  resolveSkillLibraryRowActions,
   type SkillLibraryProviderFilter,
   type SkillLibraryRow,
 } from "../lib/skillLibrary";
@@ -35,16 +36,7 @@ import { serverConfigQueryOptions } from "../lib/serverReactQuery";
 import { cn } from "../lib/utils";
 import { useStore } from "../store";
 import { createFirstProjectSelector } from "../storeSelectors";
-import {
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogPopup,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "./ui/alert-dialog";
+import { SkillRow } from "./SkillLibrarySkillRow";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -55,7 +47,6 @@ import {
   DialogTrigger,
 } from "./ui/dialog";
 import { Input } from "./ui/input";
-import { Switch } from "./ui/switch";
 
 type SkillLibraryDiscoveryProvider = Exclude<ProviderKind, "openclaw">;
 
@@ -71,6 +62,19 @@ export function buildSkillLibraryProviderStatusMap<T>(
   statuses: SkillLibraryDiscoveryProviderMap<T>,
 ): SkillLibraryDiscoveryProviderMap<T> {
   return statuses;
+}
+
+export function buildSkillLibraryToggleInput(input: {
+  readonly row: SkillLibraryRow;
+  readonly discoveryCwd: string;
+  readonly enabled: boolean;
+}): ProviderSetSkillEnabledInput {
+  return {
+    provider: input.row.provider,
+    cwd: input.discoveryCwd,
+    skillPath: input.row.skill.path,
+    enabled: input.enabled,
+  };
 }
 
 const PROVIDERS: readonly SkillLibraryDiscoveryProvider[] = [
@@ -91,146 +95,6 @@ function isSkillLibraryDiscoveryProvider(
 }
 
 const MAX_COLLAPSED_PROVIDER_ROWS = 48;
-
-function getSkillTitle(row: SkillLibraryRow): string {
-  return row.skill.interface?.displayName ?? row.skill.name;
-}
-
-function getSkillDescription(row: SkillLibraryRow): string {
-  return (
-    row.skill.interface?.shortDescription ?? row.skill.description ?? "No description available."
-  );
-}
-
-function SkillGlyph({ provider }: { provider: ProviderKind }) {
-  return (
-    <span
-      className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-linear-to-br from-foreground/18 to-foreground/5 shadow-xs"
-      data-provider={provider}
-    >
-      <ListChecksIcon className="size-4.5 text-foreground/75" />
-    </span>
-  );
-}
-
-function SourceBadge({ row }: { row: SkillLibraryRow }) {
-  return (
-    <span className="inline-flex max-w-24 shrink-0 items-center truncate rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-      {row.providerLabel}
-    </span>
-  );
-}
-
-function SkillRow({
-  row,
-  canUninstall,
-  canToggle,
-  onToggle,
-  isToggling,
-}: {
-  row: SkillLibraryRow;
-  canUninstall: boolean;
-  canToggle: boolean;
-  onToggle: (enabled: boolean) => void;
-  isToggling: boolean;
-}) {
-  return (
-    <div className="group grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3.5 transition-colors hover:bg-(--sidebar-accent)">
-      <SkillGlyph provider={row.provider} />
-      <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate text-[13px] font-semibold text-foreground">{getSkillTitle(row)}</p>
-          <SourceBadge row={row} />
-        </div>
-        <p className="mt-1 line-clamp-2 wrap-break-word text-[12px] leading-5 text-muted-foreground">
-          {getSkillDescription(row)}
-        </p>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {canToggle && (
-          <Switch
-            checked={row.skill.enabled}
-            onCheckedChange={onToggle}
-            disabled={isToggling}
-            aria-label={row.skill.enabled ? "Disable skill" : "Enable skill"}
-          />
-        )}
-        {canUninstall && (
-          <AlertDialog>
-            <AlertDialogTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-7 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
-                  aria-label={`Uninstall ${getSkillTitle(row)}`}
-                >
-                  <Trash2 className="size-3.5 text-muted-foreground" />
-                </Button>
-              }
-            />
-            <AlertDialogPopup>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Uninstall skill</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Remove <strong>{getSkillTitle(row)}</strong> from{" "}
-                  {PROVIDER_DISPLAY_NAMES[row.provider]}? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogClose
-                  render={
-                    <Button type="button" variant="outline" size="sm">
-                      Cancel
-                    </Button>
-                  }
-                />
-                <UninstallConfirmButton row={row} />
-              </AlertDialogFooter>
-            </AlertDialogPopup>
-          </AlertDialog>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function UninstallConfirmButton({ row }: { row: SkillLibraryRow }) {
-  const queryClient = useQueryClient();
-  const mutation = useMutation(uninstallSkillMutationOptions());
-
-  const handleUninstall = () => {
-    mutation.mutate(
-      {
-        provider: row.provider,
-        cwd: row.skill.path,
-        skillPath: row.skill.path,
-      },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ["provider-discovery", "skills"] });
-        },
-      },
-    );
-  };
-
-  return (
-    <AlertDialogClose
-      render={
-        <Button
-          type="button"
-          variant="destructive"
-          size="sm"
-          disabled={mutation.isPending}
-          onClick={handleUninstall}
-        >
-          {mutation.isPending ? "Removing..." : "Uninstall"}
-        </Button>
-      }
-    />
-  );
-}
 
 function formatInstallCount(count: number | undefined): string {
   if (count === undefined) return "";
@@ -630,6 +494,7 @@ export function SkillLibrarySettingsPanel() {
       provider: "opencode",
       cwd: discoveryCwd,
       query: "",
+      ...(providerOptions ? { providerOptions } : {}),
       enabled: providerCanListSkills.opencode,
     }),
   );
@@ -776,7 +641,8 @@ export function SkillLibrarySettingsPanel() {
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-                  Search, install, uninstall, and toggle skills across providers.
+                  Search, install, and manage skills across providers. Built-in and provider-managed
+                  skills show the actions available for each row.
                 </p>
               </div>
               {hasAnyManagement && providerCanManage.install.length > 0 ? (
@@ -801,7 +667,7 @@ export function SkillLibrarySettingsPanel() {
                 <p className="truncate text-lg font-semibold text-foreground">
                   {activeProviders.length}
                 </p>
-                <p className="truncate text-[11px] text-muted-foreground">Sources</p>
+                <p className="truncate text-[11px] text-muted-foreground">Providers</p>
               </div>
               <div className="min-w-0 rounded-xl border border-border/60 bg-background/60 px-3 py-3">
                 <p className="truncate text-lg font-semibold text-foreground">
@@ -830,7 +696,7 @@ export function SkillLibrarySettingsPanel() {
           <div
             className="flex min-w-0 flex-wrap gap-2"
             role="group"
-            aria-label="Filter skills by source"
+            aria-label="Filter skills by provider"
           >
             <Button
               type="button"
@@ -839,7 +705,7 @@ export function SkillLibrarySettingsPanel() {
               aria-pressed={providerFilter === "all"}
               onClick={() => setProviderFilter("all")}
             >
-              All sources
+              All providers
               <span className="ml-1 text-[11px] opacity-70">{rows.length}</span>
             </Button>
             {activeProviders.map((provider) => (
@@ -859,7 +725,7 @@ export function SkillLibrarySettingsPanel() {
         </div>
         <p className="mt-3 text-[12px] text-muted-foreground">
           Showing {filteredRows.length} of {rows.length} skills across {activeProviders.length}{" "}
-          sources.
+          providers.
         </p>
         {query.trim().length > 0 || providerFilter !== "all" ? (
           <div className="mt-3 flex flex-wrap gap-2">
@@ -875,7 +741,7 @@ export function SkillLibrarySettingsPanel() {
                 variant="outline"
                 onClick={() => setProviderFilter("all")}
               >
-                Source: {PROVIDER_DISPLAY_NAMES[providerFilter]} x
+                Provider: {PROVIDER_DISPLAY_NAMES[providerFilter]} x
               </Button>
             ) : null}
           </div>
@@ -1016,6 +882,7 @@ export function SkillLibrarySettingsPanel() {
                 isExpanded={isExpanded}
                 canUninstall={canUninstall}
                 canToggle={canToggle}
+                discoveryCwd={discoveryCwd}
                 totalCount={providerRows.length}
                 onExpand={() =>
                   setExpandedProviders((previous) => ({ ...previous, [provider]: true }))
@@ -1032,6 +899,7 @@ export function SkillLibrarySettingsPanel() {
 function ProviderSkillGroup({
   provider,
   rows,
+  discoveryCwd,
   hiddenCount,
   isExpanded,
   canUninstall,
@@ -1041,6 +909,7 @@ function ProviderSkillGroup({
 }: {
   provider: ProviderKind;
   rows: readonly SkillLibraryRow[];
+  discoveryCwd: string;
   hiddenCount: number;
   isExpanded: boolean;
   canUninstall: boolean;
@@ -1052,19 +921,11 @@ function ProviderSkillGroup({
   const toggleMutation = useMutation(setSkillEnabledMutationOptions());
 
   const handleToggle = (row: SkillLibraryRow, enabled: boolean) => {
-    toggleMutation.mutate(
-      {
-        provider: row.provider,
-        cwd: row.skill.path,
-        skillPath: row.skill.path,
-        enabled,
+    toggleMutation.mutate(buildSkillLibraryToggleInput({ row, discoveryCwd, enabled }), {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["provider-discovery", "skills"] });
       },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ["provider-discovery", "skills"] });
-        },
-      },
-    );
+    });
   };
 
   return (
@@ -1076,16 +937,29 @@ function ProviderSkillGroup({
         <span className="text-[12px] text-muted-foreground">{totalCount} skills</span>
       </div>
       <div className="min-w-0 divide-y divide-border overflow-hidden rounded-xl border border-border bg-background/35">
-        {rows.map((row) => (
-          <SkillRow
-            key={row.key}
-            row={row}
-            canUninstall={canUninstall}
-            canToggle={canToggle}
-            onToggle={(enabled) => handleToggle(row, enabled)}
-            isToggling={toggleMutation.isPending}
-          />
-        ))}
+        {rows.map((row) => {
+          const rowActions = resolveSkillLibraryRowActions({
+            row,
+            providerCanUninstall: canUninstall,
+            providerCanToggle: canToggle,
+          });
+
+          return (
+            <SkillRow
+              key={row.key}
+              row={row}
+              discoveryCwd={discoveryCwd}
+              canUninstall={rowActions.canUninstall}
+              {...(rowActions.uninstallReason
+                ? { uninstallReason: rowActions.uninstallReason }
+                : {})}
+              canToggle={rowActions.canToggle}
+              {...(rowActions.toggleReason ? { toggleReason: rowActions.toggleReason } : {})}
+              onToggle={(enabled) => handleToggle(row, enabled)}
+              isToggling={toggleMutation.isPending}
+            />
+          );
+        })}
       </div>
       {hiddenCount > 0 && !isExpanded ? (
         <Button type="button" variant="outline" size="sm" onClick={onExpand}>

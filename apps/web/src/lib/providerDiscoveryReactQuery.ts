@@ -10,7 +10,6 @@ import type {
   ProviderListSkillsResult,
   ProviderReadPluginResult,
   ProviderSearchCatalogInput,
-  ProviderSearchCatalogResult,
   ProviderSetSkillEnabledInput,
   ProviderSetSkillEnabledResult,
   ProviderStartOptions,
@@ -19,7 +18,7 @@ import type {
 } from "@jcode/contracts";
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
-import { buildCodexProviderOptionsKey } from "./providerOptions";
+import { buildProviderOptionsKey } from "./providerOptions";
 
 const EMPTY_SKILLS_RESULT: ProviderListSkillsResult = {
   skills: [],
@@ -152,7 +151,7 @@ export function providerSkillsQueryOptions(input: {
   query: string;
   enabled?: boolean;
 }) {
-  const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
+  const providerOptionsKey = buildProviderOptionsKey(input.provider, input.providerOptions);
   return queryOptions({
     queryKey: providerDiscoveryQueryKeys.skills(
       input.provider,
@@ -190,7 +189,7 @@ export function providerCommandsQueryOptions(input: {
   query: string;
   enabled?: boolean;
 }) {
-  const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
+  const providerOptionsKey = buildProviderOptionsKey(input.provider, input.providerOptions);
   return queryOptions({
     queryKey: providerDiscoveryQueryKeys.commands(
       input.provider,
@@ -228,7 +227,7 @@ export function providerModelsQueryOptions(input: {
   providerOptions?: ProviderStartOptions | null | undefined;
   enabled?: boolean;
 }) {
-  const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
+  const providerOptionsKey = buildProviderOptionsKey(input.provider, input.providerOptions);
   return queryOptions({
     queryKey: providerDiscoveryQueryKeys.models(
       input.provider,
@@ -300,7 +299,7 @@ export function providerPluginsQueryOptions(input: {
   providerOptions?: ProviderStartOptions | null | undefined;
   enabled?: boolean;
 }) {
-  const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
+  const providerOptionsKey = buildProviderOptionsKey(input.provider, input.providerOptions);
   return queryOptions({
     queryKey: providerDiscoveryQueryKeys.plugins(
       input.provider,
@@ -330,7 +329,7 @@ export function providerReadPluginQueryOptions(input: {
   providerOptions?: ProviderStartOptions | null | undefined;
   enabled?: boolean;
 }) {
-  const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
+  const providerOptionsKey = buildProviderOptionsKey(input.provider, input.providerOptions);
   return queryOptions({
     queryKey: providerDiscoveryQueryKeys.plugin(
       input.provider,
@@ -419,7 +418,7 @@ export function setSkillEnabledMutationOptions() {
 }
 
 export function searchSkillsCatalogQueryOptions(input: ProviderSearchCatalogInput) {
-  const providerOptionsKey = buildCodexProviderOptionsKey(input.providerOptions);
+  const providerOptionsKey = buildProviderOptionsKey(input.provider, input.providerOptions);
   const cwd = input.cwd?.trim();
   return queryOptions({
     queryKey: providerDiscoveryQueryKeys.catalogSearch(

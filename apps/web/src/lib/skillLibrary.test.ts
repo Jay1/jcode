@@ -6,6 +6,7 @@ import {
   countSkillLibraryRowsByProvider,
   filterInstallableCatalogEntries,
   filterSkillLibraryRows,
+  resolveSkillLibraryRowActions,
 } from "./skillLibrary";
 
 function skill(
@@ -131,5 +132,67 @@ describe("skill library helpers", () => {
         provider: "codex",
       }).map((entry) => entry.skillName),
     ).toEqual(["analyze", "code-review"]);
+  });
+
+  it("allows legacy skill row actions from provider capabilities", () => {
+    const [row] = buildSkillLibraryRows([
+      {
+        provider: "opencode",
+        providerLabel: "OpenCode",
+        skills: [skill("code-review")],
+      },
+    ]);
+
+    if (!row) {
+      throw new Error("Expected Skill Library row fixture.");
+    }
+    expect(
+      resolveSkillLibraryRowActions({
+        row,
+        providerCanUninstall: true,
+        providerCanToggle: false,
+      }),
+    ).toEqual({
+      canUninstall: true,
+      canToggle: false,
+    });
+  });
+
+  it("blocks uninstall when skill action metadata marks it unavailable", () => {
+    const [row] = buildSkillLibraryRows([
+      {
+        provider: "opencode",
+        providerLabel: "OpenCode",
+        skills: [
+          skill("customize-opencode", {
+            path: "opencode://skill/customize-opencode",
+            source: { origin: "builtin", location: "<built-in>" },
+            actions: {
+              uninstall: {
+                available: false,
+                reason: "Built-in skills cannot be uninstalled.",
+              },
+            },
+          }),
+        ],
+      },
+    ]);
+
+    if (!row) {
+      throw new Error("Expected Skill Library row fixture.");
+    }
+    expect(
+      resolveSkillLibraryRowActions({
+        row,
+        providerCanUninstall: true,
+        providerCanToggle: true,
+      }),
+    ).toEqual({
+      canUninstall: false,
+      uninstallReason: "Built-in skills cannot be uninstalled.",
+      canToggle: true,
+    });
+    expect(filterSkillLibraryRows([row], { query: "customize", provider: "all" })).toHaveLength(1);
+    expect(countSkillLibraryRowsByProvider([row])).toEqual({ opencode: 1 });
   });
 });

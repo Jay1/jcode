@@ -13,6 +13,7 @@ import {
   ManagedSidecarError,
   type ManagedSidecarLifecycleShape,
 } from "./managedRuntimeLifecycle.ts";
+import { exportManagedSidecarDiagnostics } from "./managedRuntimeHealth.ts";
 
 import { OpenCodeRuntime, type OpenCodeRuntimeShape } from "./opencodeRuntime.ts";
 
@@ -40,8 +41,16 @@ const makeMockRuntime = (overrides?: Partial<OpenCodeRuntimeShape>): OpenCodeRun
         exitCode: Effect.succeed(0),
       }),
     ),
+    connectToOpenCodeServer: vi.fn(() => Effect.die(new Error("unused test runtime connection"))),
+    runOpenCodeCommand: vi.fn(() => Effect.die(new Error("unused test runtime command"))),
+    createOpenCodeSdkClient: vi.fn(() => {
+      throw new Error("unused test runtime client");
+    }),
+    loadOpenCodeInventory: vi.fn(() => Effect.die(new Error("unused test runtime inventory"))),
+    listOpenCodeCliModels: vi.fn(() => Effect.die(new Error("unused test runtime models"))),
+    loadOpenCodeCredentialProviderIDs: vi.fn(() => Effect.succeed([])),
     ...overrides,
-  }) as unknown as OpenCodeRuntimeShape;
+  }) satisfies OpenCodeRuntimeShape;
 
 class TestOpenCodeRuntimeError extends Data.TaggedError("OpenCodeRuntimeError")<{
   readonly operation: string;
@@ -561,5 +570,44 @@ describe("error handling", () => {
         expect(secondPassword).toBeTruthy();
         expect(secondPassword).not.toBe(firstPassword);
       }).pipe(Effect.provide(Layer.succeed(OpenCodeRuntime, makeMockRuntime()))),
+    ));
+
+  it("redacts generated password from spawn error diagnostics", () =>
+    runProductionLifecycleTest(
+      Effect.gen(function* () {
+        let generatedPassword: string | undefined;
+        const startMock = vi.fn<OpenCodeRuntimeShape["startOpenCodeServerProcess"]>((input) => {
+          generatedPassword = input.serverPassword;
+          return Effect.fail(
+            new TestOpenCodeRuntimeError({
+              operation: "startOpenCodeServerProcess",
+              detail: `spawn failed with password ${input.serverPassword}`,
+            }),
+          );
+        });
+        const runtime = makeMockRuntime({
+          startOpenCodeServerProcess: startMock,
+        });
+        const lifecycle = yield* makeManagedSidecarLifecycle.pipe(
+          Effect.provide(Layer.succeed(OpenCodeRuntime, runtime)),
+        );
+
+        const exit = yield* Effect.exit(lifecycle.startManagedRuntime());
+        expect(Exit.isFailure(exit)).toBe(true);
+        expect(generatedPassword).toEqual(expect.any(String));
+        if (generatedPassword === undefined) {
+          throw new Error("expected generated password");
+        }
+
+        const status = yield* lifecycle.getManagedRuntimeStatus();
+        const diagnostics = yield* exportManagedSidecarDiagnostics({ sidecarSnapshot: status });
+        const serializedResult = JSON.stringify({ status, diagnostics });
+
+        expect(status.state).toBe("error");
+        expect(status.error).toContain("[redacted]");
+        expect(diagnostics.report.issue).toContain("[redacted]");
+        expect(diagnostics.report.summary).toContain("[redacted]");
+        expect(serializedResult).not.toContain(generatedPassword);
+      }),
     ));
 });

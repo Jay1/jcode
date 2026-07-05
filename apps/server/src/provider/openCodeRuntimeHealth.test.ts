@@ -305,4 +305,66 @@ describe("checkOpenCodeRuntimeHealth", () => {
     expect(clientCalls[0]?.serverPassword).toBe(connectCalls[0]?.serverPassword);
     expect(settings.providers.opencode.serverPassword).toBe("");
   });
+
+  it("passes non-interactive env markers to background managed health probes", async () => {
+    const connectCalls: Array<Parameters<OpenCodeRuntimeShape["connectToOpenCodeServer"]>[0]> = [];
+    const modelCalls: Array<Parameters<OpenCodeRuntimeShape["listOpenCodeCliModels"]>[0]> = [];
+    const settings = settingsWithOpenCodeProfile({
+      id: "managed",
+      label: "Managed",
+      provider: "opencode",
+      mode: "managed",
+      configMode: "generated",
+      binaryPath: "/managed/bin/opencode",
+      cwdDefault: "/managed/workspace",
+      skillRoots: [],
+      pluginRoots: [],
+      requiredCommands: [],
+      requiredSkills: [],
+      requiredPlugins: [],
+      requiredAgents: [],
+      requiredModels: [],
+      requiredEnv: [],
+      requirements: [],
+      capabilityPolicy: "warn",
+    });
+    const runtime = makeRuntime({
+      connectToOpenCodeServer: (input) => {
+        connectCalls.push(input);
+        return Effect.succeed({
+          url: "http://127.0.0.1:4096",
+          exitCode: null,
+          external: false,
+        });
+      },
+      listOpenCodeCliModels: (input) => {
+        modelCalls.push(input);
+        return Effect.succeed([]);
+      },
+    });
+
+    await Effect.runPromise(
+      checkOpenCodeRuntimeHealth({
+        settings,
+        runtime,
+        cliSpec: OPENCODE_CLI_SPEC,
+        defaultBinaryPath: "opencode",
+      }),
+    );
+
+    expect(connectCalls[0]).toMatchObject({
+      extraEnv: {
+        CI: "1",
+        GIT_TERMINAL_PROMPT: "0",
+        SSH_ASKPASS_REQUIRE: "never",
+      },
+    });
+    expect(modelCalls[0]).toMatchObject({
+      extraEnv: {
+        CI: "1",
+        GIT_TERMINAL_PROMPT: "0",
+        SSH_ASKPASS_REQUIRE: "never",
+      },
+    });
+  });
 });

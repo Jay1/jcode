@@ -443,6 +443,40 @@ describe("exportManagedSidecarDiagnostics", () => {
     expect(result.sidecarSnapshot.error).toBe("failed with [redacted]");
   });
 
+  it("includes a redacted diagnostics report for OpenCode support", async () => {
+    mockVerify.mockReturnValueOnce(
+      Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),
+    );
+
+    const result = await Effect.runPromise(
+      exportManagedSidecarDiagnostics({
+        sidecarSnapshot: {
+          ...READY_SNAPSHOT,
+          error: "spawn failed with test-password",
+        },
+        serverProbe: failedServerProbe,
+        binaryVersionProbe: () => Effect.succeed("opencode 1.3.17"),
+        logCollector: () => Effect.succeed(["stderr test-password"]),
+      }).pipe(Effect.provide(TestLayer)),
+    );
+
+    expect(result.report).toEqual({
+      summary: "OpenCode managed sidecar is degraded: spawn failed with [redacted]",
+      generatedAt: result.generatedAt,
+      healthStatus: "degraded",
+      sidecarState: "ready",
+      binaryPath: "/usr/local/bin/opencode",
+      binaryVersion: "opencode 1.3.17",
+      binaryExists: true,
+      binaryValid: true,
+      serverUrl: "http://127.0.0.1:9876",
+      serverReachable: false,
+      platform: result.platform,
+      issue: "spawn failed with [redacted]",
+    });
+    expect(JSON.stringify(result.report)).not.toContain("test-password");
+  });
+
   it("populates platform info from process globals", async () => {
     mockVerify.mockReturnValueOnce(
       Effect.succeed({ exists: true, sha256: "abc", expectedSha256: null, valid: true }),

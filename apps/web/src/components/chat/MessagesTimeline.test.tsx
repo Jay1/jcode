@@ -595,6 +595,56 @@ describe("MessagesTimeline", () => {
     expect(markup).not.toContain("<pre");
   });
 
+  it("renders chips for standalone terminal context messages", async () => {
+    const { MessagesTimeline } = await import("./MessagesTimeline");
+    const markup = renderToStaticMarkup(
+      <MessagesTimeline
+        hasMessages
+        isWorking={false}
+        activeTurnInProgress={false}
+        activeTurnStartedAt={null}
+        timelineEntries={[
+          {
+            id: "entry-standalone-terminal-context",
+            kind: "message",
+            createdAt: "2026-03-17T19:12:28.000Z",
+            message: {
+              id: MessageId.makeUnsafe("message-standalone-terminal-context"),
+              role: "user",
+              text: [
+                "<terminal_context>",
+                "- Dev server line 12:",
+                "  12 | Listening on http://localhost:3000",
+                "</terminal_context>",
+              ].join("\n"),
+              createdAt: "2026-03-17T19:12:28.000Z",
+              streaming: false,
+            },
+          },
+        ]}
+        completionDividerBeforeEntryId={null}
+        completionSummary={null}
+        turnDiffSummaryByAssistantMessageId={new Map()}
+        nowIso="2026-03-17T19:12:30.000Z"
+        expandedWorkGroups={{}}
+        onToggleWorkGroup={() => {}}
+        onOpenTurnDiff={() => {}}
+        revertTurnCountByUserMessageId={new Map()}
+        onRevertUserMessage={() => {}}
+        isRevertingCheckpoint={false}
+        onImageExpand={() => {}}
+        markdownCwd={undefined}
+        resolvedTheme="light"
+        timestampFormat="locale"
+        workspaceRoot={undefined}
+      />,
+    );
+
+    expect(markup).toContain("Dev server line 12");
+    expect(markup).not.toContain("&lt;terminal_context");
+    expect(markup).not.toContain("<terminal_context");
+  });
+
   it("collapses long user messages at the 600-char message budget and renders a separate Show more button", async () => {
     const { MessagesTimeline } = await import("./MessagesTimeline");
     const hiddenTail = "TAIL_SHOULD_STAY_HIDDEN";
@@ -1039,7 +1089,7 @@ describe("MessagesTimeline", () => {
     expect(markup).not.toContain('data-timeline-row-kind="work"');
   });
 
-  it("shows the first four inline tool calls and collapses the remainder", async () => {
+  it("shows the latest four inline tool calls and collapses previous calls", async () => {
     const { MessagesTimeline } = await import("./MessagesTimeline");
     const markup = renderToStaticMarkup(
       <MessagesTimeline
@@ -1146,11 +1196,95 @@ describe("MessagesTimeline", () => {
       />,
     );
 
-    expect(markup).toContain("Tool 1");
-    expect(markup).toContain("Tool 4");
-    expect(markup).toContain("+2 more tool calls");
-    expect(markup).not.toContain("Tool 5");
+    expect(markup).not.toContain("Tool 1");
+    expect(markup).not.toContain("Tool 2");
+    expect(markup).toContain("Tool 3");
+    expect(markup).toContain("Tool 6");
+    expect(markup).toContain('data-inline-tool-overflow-toggle="true"');
+    expect(markup).toContain('aria-label="Show 2 previous tool calls"');
+    expect(markup).toContain("2 previous tool calls");
+    expect(markup).not.toContain("+2 more tool calls");
     expect(markup).not.toContain("Tool calls");
+  });
+
+  it("preserves the inline tool anchor when expansion changes row height", async () => {
+    const { findNearestVerticalScroller, restoreScrollAnchorPosition } =
+      await import("./MessagesTimeline");
+    type TestAnchorElement = {
+      parentElement: TestAnchorElement | null;
+      scrollHeight: number;
+      clientHeight: number;
+      scrollTop: number;
+      getBoundingClientRect: () => { top: number };
+    };
+
+    const scroller: TestAnchorElement = {
+      parentElement: null,
+      scrollHeight: 500,
+      clientHeight: 200,
+      scrollTop: 40,
+      getBoundingClientRect: () => ({ top: 0 }),
+    };
+    const wrapper: TestAnchorElement = {
+      parentElement: scroller,
+      scrollHeight: 120,
+      clientHeight: 120,
+      scrollTop: 0,
+      getBoundingClientRect: () => ({ top: 0 }),
+    };
+    let anchorTop = 140;
+    const anchor: TestAnchorElement = {
+      parentElement: wrapper,
+      scrollHeight: 20,
+      clientHeight: 20,
+      scrollTop: 0,
+      getBoundingClientRect: () => ({ top: anchorTop }),
+    };
+
+    expect(findNearestVerticalScroller(anchor)).toBe(scroller);
+
+    anchorTop = 188;
+    restoreScrollAnchorPosition(scroller, anchor, 140);
+
+    expect(scroller.scrollTop).toBe(88);
+  });
+
+  it("skips non-scrollable ancestors when preserving inline tool anchors", async () => {
+    const { findNearestVerticalScroller } = await import("./MessagesTimeline");
+    type TestAnchorElement = {
+      parentElement: TestAnchorElement | null;
+      scrollHeight: number;
+      clientHeight: number;
+      overflowY?: string;
+      scrollTop: number;
+      getBoundingClientRect: () => { top: number };
+    };
+
+    const scroller: TestAnchorElement = {
+      parentElement: null,
+      scrollHeight: 500,
+      clientHeight: 200,
+      overflowY: "auto",
+      scrollTop: 40,
+      getBoundingClientRect: () => ({ top: 0 }),
+    };
+    const clippedContainer: TestAnchorElement = {
+      parentElement: scroller,
+      scrollHeight: 300,
+      clientHeight: 100,
+      overflowY: "hidden",
+      scrollTop: 0,
+      getBoundingClientRect: () => ({ top: 0 }),
+    };
+    const anchor: TestAnchorElement = {
+      parentElement: clippedContainer,
+      scrollHeight: 20,
+      clientHeight: 20,
+      scrollTop: 0,
+      getBoundingClientRect: () => ({ top: 140 }),
+    };
+
+    expect(findNearestVerticalScroller(anchor)).toBe(scroller);
   });
 
   it("highlights the action word on Cursor-style inline tool rows", async () => {
@@ -1324,7 +1458,8 @@ describe("MessagesTimeline", () => {
     expect(markup).not.toContain("Tool 2");
     expect(markup).toContain("Tool 3");
     expect(markup).toContain("Tool 6");
-    expect(markup).toContain("+2 more tool calls");
+    expect(markup).toContain("2 previous tool calls");
+    expect(markup).not.toContain("+2 more tool calls");
   });
 
   it("attaches trailing tool rows to the last assistant reply after completion", async () => {
@@ -1492,7 +1627,7 @@ describe("MessagesTimeline", () => {
     );
 
     expect(markup).toContain("Tool 5");
-    expect(markup).toContain("Show less");
+    expect(markup).toContain("Hide previous tool calls");
   });
 
   it("renders inline file-change tool calls as edited rows with diff stats", async () => {

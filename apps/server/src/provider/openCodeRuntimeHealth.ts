@@ -12,6 +12,7 @@ import { Cause, Effect, Exit } from "effect";
 
 import {
   type OpenCodeCompatibleCliSpec,
+  OPENCODE_BACKGROUND_PROBE_ENV,
   type OpenCodeInventory,
   type OpenCodeRuntimeShape,
   openCodeRuntimeErrorDetail,
@@ -264,6 +265,10 @@ export function checkOpenCodeRuntimeHealth(input: {
         defaultBinaryPath: input.defaultBinaryPath,
         ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
       });
+      const backgroundProbeExtraEnv = {
+        ...connectionConfig.extraEnv,
+        ...OPENCODE_BACKGROUND_PROBE_ENV,
+      };
 
       if (
         (profile.mode === "external" || profile.mode === "remote") &&
@@ -294,7 +299,7 @@ export function checkOpenCodeRuntimeHealth(input: {
           ...(connectionConfig.xdgConfigHome
             ? { xdgConfigHome: connectionConfig.xdgConfigHome }
             : {}),
-          ...(connectionConfig.extraEnv ? { extraEnv: connectionConfig.extraEnv } : {}),
+          extraEnv: backgroundProbeExtraEnv,
           ...(connectionConfig.cwd ? { cwd: connectionConfig.cwd } : {}),
           ...(connectionConfig.serverPassword
             ? { serverPassword: connectionConfig.serverPassword }
@@ -363,7 +368,11 @@ export function checkOpenCodeRuntimeHealth(input: {
       const skills = summarizeNames(extractNamedCollection(inventory.consoleState, ["skills"]));
       const plugins = summarizeNames(extractNamedCollection(inventory.consoleState, ["plugins"]));
       const cliModels = yield* input.runtime
-        .listOpenCodeCliModels({ binaryPath: connectionConfig.binaryPath, cliSpec: input.cliSpec })
+        .listOpenCodeCliModels({
+          binaryPath: connectionConfig.binaryPath,
+          cliSpec: input.cliSpec,
+          extraEnv: backgroundProbeExtraEnv,
+        })
         .pipe(
           Effect.map((models) => models.map((model) => model.slug)),
           Effect.catch(() => Effect.succeed([])),

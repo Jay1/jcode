@@ -302,6 +302,14 @@ function toWsRpcError(
       });
 }
 
+function toContextualWsRpcError(cause: unknown, fallbackMessage: string): WsRpcError {
+  const error = toWsRpcError(cause, fallbackMessage);
+  if (error.message === fallbackMessage || error.message.startsWith(`${fallbackMessage}:`)) {
+    return error;
+  }
+  return new WsRpcError({ message: `${fallbackMessage}: ${error.message}`, cause });
+}
+
 function isThreadDetailEvent(event: OrchestrationEvent): event is Extract<
   OrchestrationEvent,
   {
@@ -791,6 +799,10 @@ export const makeWsRpcLayer = () =>
 
       const rpcEffect = <A, E, R>(effect: Effect.Effect<A, E, R>, fallbackMessage: string) =>
         effect.pipe(Effect.mapError((cause) => toWsRpcError(cause, fallbackMessage)));
+      const rpcWorkspaceEffect = <A, E, R>(
+        effect: Effect.Effect<A, E, R>,
+        fallbackMessage: string,
+      ) => effect.pipe(Effect.mapError((cause) => toContextualWsRpcError(cause, fallbackMessage)));
 
       /**
        * Wrap an Effect-returning RPC handler with a scope guard.
@@ -1033,7 +1045,7 @@ export const makeWsRpcLayer = () =>
         [WS_METHODS.projectsListDirectories]: (input) =>
           withCurrentSession(
             requireOwnerWsRpcAccess,
-            rpcEffect(
+            rpcWorkspaceEffect(
               workspaceEntries.listDirectories(input),
               "Failed to list workspace directories",
             ),
@@ -1041,12 +1053,18 @@ export const makeWsRpcLayer = () =>
         [WS_METHODS.projectsSearchEntries]: (input) =>
           withCurrentSession(
             requireOwnerWsRpcAccess,
-            rpcEffect(workspaceEntries.search(input), "Failed to search workspace entries"),
+            rpcWorkspaceEffect(
+              workspaceEntries.search(input),
+              "Failed to search workspace entries",
+            ),
           ),
         [WS_METHODS.projectsSearchLocalEntries]: (input) =>
           withCurrentSession(
             requireOwnerWsRpcAccess,
-            rpcEffect(workspaceEntries.searchLocal(input), "Failed to search local entries"),
+            rpcWorkspaceEffect(
+              workspaceEntries.searchLocal(input),
+              "Failed to search local entries",
+            ),
           ),
         [WS_METHODS.projectsWriteFile]: (input) =>
           withCurrentSession(
@@ -1056,7 +1074,7 @@ export const makeWsRpcLayer = () =>
         [WS_METHODS.filesystemBrowse]: (input) =>
           withCurrentSession(
             requireOwnerWsRpcAccess,
-            rpcEffect(workspaceEntries.browse(input), "Failed to browse filesystem"),
+            rpcWorkspaceEffect(workspaceEntries.browse(input), "Failed to browse filesystem"),
           ),
         [WS_METHODS.shellOpenInEditor]: (input) =>
           withCurrentSession(

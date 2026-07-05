@@ -16,6 +16,13 @@ export type SkillLibraryRow = {
   searchBlob: string;
 };
 
+export type SkillLibraryRowActions = {
+  readonly canUninstall: boolean;
+  readonly uninstallReason?: string;
+  readonly canToggle: boolean;
+  readonly toggleReason?: string;
+};
+
 export type SkillLibraryProviderFilter = ProviderKind | "all";
 
 export function buildSkillLibraryRows(
@@ -54,6 +61,22 @@ export function countSkillLibraryRowsByProvider(
     counts[row.provider] = (counts[row.provider] ?? 0) + 1;
   }
   return counts;
+}
+
+export function resolveSkillLibraryRowActions(input: {
+  readonly row: SkillLibraryRow;
+  readonly providerCanUninstall: boolean;
+  readonly providerCanToggle: boolean;
+}): SkillLibraryRowActions {
+  const uninstall = input.row.skill.actions?.uninstall;
+  const toggle = input.row.skill.actions?.toggle;
+
+  return {
+    canUninstall: input.providerCanUninstall && (uninstall?.available ?? true),
+    ...(uninstall?.available === false ? { uninstallReason: uninstall.reason } : {}),
+    canToggle: input.providerCanToggle && (toggle?.available ?? true),
+    ...(toggle?.available === false ? { toggleReason: toggle.reason } : {}),
+  };
 }
 
 function catalogSkillMatchesInstalledSkill(

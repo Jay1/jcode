@@ -47,4 +47,29 @@ describe("resolveRemotePairingTarget", () => {
       }),
     ).toThrow("Pairing URL is missing its token.");
   });
+
+  it("rejects unsupported direct pairing URL protocols", () => {
+    expect(() =>
+      resolveRemotePairingTarget({
+        pairingUrl: "ftp://backend.example.com/pair#token=ABC123",
+      }),
+    ).toThrow("Unsupported remote backend URL protocol: ftp:");
+  });
+
+  it("rejects unsupported hosted pairing backend protocols", () => {
+    expect(() =>
+      resolveRemotePairingTarget({
+        pairingUrl: "https://app.t3.codes/pair?host=ftp%3A%2F%2Fbackend.example.com#token=ABC123",
+      }),
+    ).toThrow("Unsupported remote backend URL protocol: ftp:");
+  });
+
+  it("rejects unsupported direct host protocols", () => {
+    expect(() =>
+      resolveRemotePairingTarget({
+        host: "ftp://backend.example.com",
+        pairingCode: "ABC123",
+      }),
+    ).toThrow("Unsupported remote backend URL protocol: ftp:");
+  });
 });

@@ -1858,11 +1858,12 @@ it.layer(TestLayer)("git integration", (it) => {
     it.effect("reads branch, staged, and unstaged patches as separate scopes", () =>
       Effect.gen(function* () {
         const tmp = yield* makeTmpDir();
-        yield* initRepoWithCommit(tmp);
+        const { initialBranch } = yield* initRepoWithCommit(tmp);
         const core = yield* GitCore;
 
         yield* core.createBranch({ cwd: tmp, branch: "feature/diff-scopes" });
         yield* core.checkoutBranch({ cwd: tmp, branch: "feature/diff-scopes" });
+        yield* git(tmp, ["config", "branch.feature/diff-scopes.gh-merge-base", initialBranch]);
         yield* writeTextFile(path.join(tmp, "branch.txt"), "branch change\n");
         yield* git(tmp, ["add", "branch.txt"]);
         yield* git(tmp, ["commit", "-m", "branch change"]);
@@ -1892,11 +1893,16 @@ it.layer(TestLayer)("git integration", (it) => {
     it.effect("computes ahead count against base branch when no upstream is configured", () =>
       Effect.gen(function* () {
         const tmp = yield* makeTmpDir();
-        yield* initRepoWithCommit(tmp);
+        const { initialBranch } = yield* initRepoWithCommit(tmp);
         const core = yield* GitCore;
 
         yield* core.createBranch({ cwd: tmp, branch: "feature/no-upstream-ahead" });
         yield* core.checkoutBranch({ cwd: tmp, branch: "feature/no-upstream-ahead" });
+        yield* git(tmp, [
+          "config",
+          "branch.feature/no-upstream-ahead.gh-merge-base",
+          initialBranch,
+        ]);
         yield* writeTextFile(path.join(tmp, "feature.txt"), "ahead of base\n");
         yield* git(tmp, ["add", "feature.txt"]);
         yield* git(tmp, ["commit", "-m", "feature commit"]);
@@ -1923,6 +1929,7 @@ it.layer(TestLayer)("git integration", (it) => {
           })).branches.find((branch) => branch.current)!.name;
           yield* git(source, ["remote", "add", "origin", remote]);
           yield* git(source, ["push", "-u", "origin", initialBranch]);
+          yield* git(source, ["remote", "set-head", "origin", initialBranch]);
           yield* git(source, ["checkout", "-b", "feature/remote-base-only"]);
           yield* writeTextFile(
             path.join(source, "feature.txt"),
@@ -1982,11 +1989,16 @@ it.layer(TestLayer)("git integration", (it) => {
     it.effect("skips push when no upstream is configured and branch is not ahead of base", () =>
       Effect.gen(function* () {
         const tmp = yield* makeTmpDir();
-        yield* initRepoWithCommit(tmp);
+        const { initialBranch } = yield* initRepoWithCommit(tmp);
         const core = yield* GitCore;
 
         yield* core.createBranch({ cwd: tmp, branch: "feature/no-upstream-no-ahead" });
         yield* core.checkoutBranch({ cwd: tmp, branch: "feature/no-upstream-no-ahead" });
+        yield* git(tmp, [
+          "config",
+          "branch.feature/no-upstream-no-ahead.gh-merge-base",
+          initialBranch,
+        ]);
 
         const pushed = yield* core.pushCurrentBranch(tmp, null);
         expect(pushed.status).toBe("skipped_up_to_date");
@@ -2223,6 +2235,45 @@ it.layer(TestLayer)("git integration", (it) => {
           expect(details.aheadCount).toBe(0);
           expect(details.behindCount).toBe(1);
         }),
+    );
+
+    it.effect("makes statusDetails upstream refresh fetch non-interactive", () =>
+      Effect.gen(function* () {
+        const remote = yield* makeTmpDir();
+        const source = yield* makeTmpDir();
+        yield* git(remote, ["init", "--bare"]);
+
+        yield* initRepoWithCommit(source);
+        const currentBranch = (yield* (yield* GitCore).listBranches({ cwd: source })).branches.find(
+          (branch) => branch.current,
+        );
+        expect(currentBranch).toBeDefined();
+        if (!currentBranch) return;
+        const initialBranch = currentBranch.name;
+        yield* git(source, ["remote", "add", "origin", remote]);
+        yield* git(source, ["push", "-u", "origin", initialBranch]);
+
+        const realGitCore = yield* GitCore;
+        let fetchEnv: NodeJS.ProcessEnv | undefined;
+        const core = yield* makeIsolatedGitCore((input) => {
+          if (input.operation === "GitCore.fetchUpstreamRefForStatus") {
+            fetchEnv = input.env;
+            return Effect.succeed({ code: 0, stdout: "", stderr: "" });
+          }
+          return realGitCore.execute(input);
+        });
+
+        const details = yield* core.statusDetails(source);
+
+        expect(details.branch).toBe(initialBranch);
+        expect(fetchEnv).toMatchObject({
+          GCM_INTERACTIVE: "never",
+          GIT_ASKPASS: "",
+          GIT_TERMINAL_PROMPT: "0",
+          SSH_ASKPASS: "",
+          SSH_ASKPASS_REQUIRE: "never",
+        });
+      }),
     );
 
     it.effect("prepares commit context by auto-staging and creates commit", () =>

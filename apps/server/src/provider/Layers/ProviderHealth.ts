@@ -98,6 +98,7 @@ const DEFAULT_TIMEOUT_MS = 4_000;
 const CODEX_PROVIDER = "codex" as const;
 const CLAUDE_AGENT_PROVIDER = "claudeAgent" as const;
 const CURSOR_PROVIDER = "cursor" as const;
+const CURSOR_CLI_INSTALLATION_DOCS_URL = "https://cursor.com/docs/cli/installation";
 const GEMINI_PROVIDER = "gemini" as const;
 const KILO_PROVIDER = "kilo" as const;
 const OPENCODE_PROVIDER = "opencode" as const;
@@ -1779,7 +1780,11 @@ export const makeCheckCursorProviderStatus = (
         authStatus: "unknown" as const,
         checkedAt,
         message: isCommandMissingCause(error)
-          ? "Cursor Agent CLI (`agent`) is not installed or not on PATH."
+          ? [
+              `Cursor CLI command \`${executable}\` was not found.`,
+              `Install or enable the Cursor CLI, make sure \`${executable}\` is on PATH, then restart JCode.`,
+              `See ${CURSOR_CLI_INSTALLATION_DOCS_URL}.`,
+            ].join(" ")
           : `Failed to execute Cursor Agent CLI health check: ${error instanceof Error ? error.message : String(error)}.`,
       } satisfies ServerProviderStatus;
     }

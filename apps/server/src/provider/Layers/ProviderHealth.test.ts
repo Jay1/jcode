@@ -1099,9 +1099,29 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
         assert.strictEqual(status.authStatus, "unknown");
         assert.strictEqual(
           status.message,
-          "Cursor Agent CLI (`agent`) is not installed or not on PATH.",
+          [
+            "Cursor CLI command `agent` was not found.",
+            "Install or enable the Cursor CLI, make sure `agent` is on PATH, then restart JCode.",
+            "See https://cursor.com/docs/cli/installation.",
+          ].join(" "),
         );
       }).pipe(Effect.provide(failingSpawnerLayer("spawn agent ENOENT"))),
+    );
+
+    it.effect("includes the configured Cursor Agent binary when it is missing", () =>
+      Effect.gen(function* () {
+        const status = yield* makeCheckCursorProviderStatus("/custom/bin/cursor-agent");
+
+        assert.strictEqual(status.status, "error");
+        assert.strictEqual(
+          status.message,
+          [
+            "Cursor CLI command `/custom/bin/cursor-agent` was not found.",
+            "Install or enable the Cursor CLI, make sure `/custom/bin/cursor-agent` is on PATH, then restart JCode.",
+            "See https://cursor.com/docs/cli/installation.",
+          ].join(" "),
+        );
+      }).pipe(Effect.provide(failingSpawnerLayer("spawn /custom/bin/cursor-agent ENOENT"))),
     );
 
     it.effect("returns unavailable when Cursor Agent exits with an error", () =>

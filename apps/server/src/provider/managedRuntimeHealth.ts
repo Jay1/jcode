@@ -1,4 +1,3 @@
-import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 
 import type {
@@ -14,9 +13,13 @@ import * as Path from "effect/Path";
 import { HttpClient } from "effect/unstable/http";
 
 import { verifyManagedRuntimeBinary } from "./managedRuntimeDownload.ts";
+import { buildManagedSidecarDiagnosticsReport } from "./managedRuntimeDiagnosticsReport.ts";
+import {
+  defaultManagedSidecarBinaryVersionProbe,
+  defaultManagedSidecarServerProbe,
+} from "./managedRuntimeHealthProbes.ts";
 import type { ManagedSidecarLifecycleShape } from "./managedRuntimeLifecycle.ts";
 import { ManagedSidecarError } from "./managedRuntimeLifecycle.ts";
-import { OPENCODE_CLI_SPEC } from "./opencodeRuntime.ts";
 
 const isoNow = (): string => new Date().toISOString();
 
@@ -35,60 +38,6 @@ export type ManagedSidecarLogCollector = (input: {
   sidecarSnapshot: ManagedSidecarSnapshot;
   health: ManagedSidecarHealthCheck;
 }) => Effect.Effect<ReadonlyArray<string>, never, never>;
-
-const firstOutputLine = (output: string | Buffer): string =>
-  output
-    .toString()
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.length > 0) ?? "";
-
-const defaultBinaryVersionProbe: ManagedSidecarBinaryVersionProbe = (binaryPath) =>
-  Effect.tryPromise({
-    try: () =>
-      new Promise<string>((resolve, reject) => {
-        execFile(
-          binaryPath,
-          ["--version"],
-          { env: {}, timeout: 2_000 },
-          (error, stdout, stderr) => {
-            if (error) {
-              reject(error);
-              return;
-            }
-
-            const version = firstOutputLine(stdout) || firstOutputLine(stderr);
-            resolve(version || "unavailable");
-          },
-        );
-      }),
-    catch: () => "unavailable",
-  }).pipe(Effect.catch(() => Effect.succeed("unavailable")));
-
-const defaultServerProbe: ManagedSidecarServerProbe = (serverUrl, serverPassword) =>
-  Effect.tryPromise({
-    try: async () => {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2_000);
-      try {
-        const response = await fetch(serverUrl, {
-          method: "GET",
-          signal: controller.signal,
-          ...(serverPassword
-            ? {
-                headers: {
-                  Authorization: `Basic ${Buffer.from(`${OPENCODE_CLI_SPEC.serverAuthUsername}:${serverPassword}`, "utf8").toString("base64")}`,
-                },
-              }
-            : {}),
-        });
-        return response.ok;
-      } finally {
-        clearTimeout(timeout);
-      }
-    },
-    catch: () => false,
-  }).pipe(Effect.catch(() => Effect.succeed(false)));
 
 export const checkBinaryExists = (binaryPath: string | undefined): boolean =>
   binaryPath != null && binaryPath.length > 0 && existsSync(binaryPath);
@@ -134,7 +83,7 @@ const collectBinaryVersion = (input: {
     return Effect.succeed("unavailable");
   }
 
-  return (input.binaryVersionProbe ?? defaultBinaryVersionProbe)(binaryPath);
+  return (input.binaryVersionProbe ?? defaultManagedSidecarBinaryVersionProbe)(binaryPath);
 };
 
 const defaultLogCollector: ManagedSidecarLogCollector = ({ sidecarSnapshot, health }) => {
@@ -178,7 +127,7 @@ export const checkManagedSidecarHealth = (input: {
     const serverReachable = yield* checkServerReachable(
       snapshot.serverUrl,
       snapshot.serverPassword,
-      input.serverProbe ?? defaultServerProbe,
+      input.serverProbe ?? defaultManagedSidecarServerProbe,
     );
 
     const binaryValid =
@@ -279,17 +228,25 @@ export const exportManagedSidecarDiagnostics = (input: {
     });
     const redactedHealth = redactHealthCheck(health, secrets);
     const redactedLogs = logs.map((line) => redactSensitiveText(line, secrets));
+    const generatedAt = isoNow();
+    const platform = {
+      os: process.platform,
+      arch: process.arch,
+      nodeVersion: process.version,
+    };
 
     return {
-      generatedAt: isoNow(),
+      generatedAt,
       health: redactedHealth,
-      platform: {
-        os: process.platform,
-        arch: process.arch,
-        nodeVersion: process.version,
-      },
+      platform,
       binaryVersion,
       logs: redactedLogs.slice(0, MANAGED_SIDECAR_DIAGNOSTIC_LOG_LIMIT),
+      report: buildManagedSidecarDiagnosticsReport({
+        generatedAt,
+        health: redactedHealth,
+        platform,
+        binaryVersion,
+      }),
       sidecarSnapshot: redactSidecarSnapshot(input.sidecarSnapshot),
     } satisfies ManagedSidecarDiagnostics;
   });

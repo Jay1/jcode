@@ -1,18 +1,31 @@
 import type {
-  ManagedSidecarDiagnostics,
   ManagedSidecarHealthCheck,
   OpenCodeRuntimeHealth,
   ProviderRuntimeBootstrapSnapshot,
 } from "@jcode/contracts";
 import { useCallback, useEffect, useState } from "react";
 
-import { DownloadIcon, HammerIcon, Loader2Icon, RefreshCwIcon, WrenchIcon } from "../lib/icons";
+import { copyTextToClipboard } from "../hooks/useCopyToClipboard";
+import {
+  CopyIcon,
+  DownloadIcon,
+  HammerIcon,
+  Loader2Icon,
+  RefreshCwIcon,
+  WrenchIcon,
+} from "../lib/icons";
 import { cn } from "../lib/utils";
 import { ensureNativeApi } from "../nativeApi";
+import {
+  downloadManagedSidecarDiagnostics,
+  formatManagedSidecarDiagnosticsSupportSummary,
+  formatRuntimeCapabilityLine,
+  formatRuntimeMismatchSummary,
+} from "./OpenCodeRuntimeSettingsPanel.logic";
 import { Button } from "./ui/button";
 import { toastManager } from "./ui/toast";
 
-type SidecarAction = "health" | "repair" | "diagnostics";
+type SidecarAction = "health" | "repair" | "diagnostics" | "supportSummary";
 
 interface SidecarFeedback {
   readonly status: "success" | "failed";
@@ -32,14 +45,6 @@ function statusClassName(status: OpenCodeRuntimeHealth["status"]): string {
     case "unknown":
       return "text-muted-foreground";
   }
-}
-
-function capabilityLine(
-  label: string,
-  summary: { count: number; names?: readonly string[]; slugs?: readonly string[] } | undefined,
-): string {
-  if (!summary) return `${label}: not exposed`;
-  return `${label}: ${summary.count}`;
 }
 
 function sidecarStatusClassName(status: ManagedSidecarHealthCheck["status"]): string {
@@ -72,23 +77,6 @@ function bootstrapStatusClassName(state: ProviderRuntimeBootstrapSnapshot["state
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
-}
-
-function downloadManagedSidecarDiagnostics(diagnostics: ManagedSidecarDiagnostics): void {
-  const payload = JSON.stringify(diagnostics, null, 2);
-  const blob = new Blob([payload], { type: "application/json" });
-  const objectUrl = URL.createObjectURL(blob);
-  const generatedAt = diagnostics.generatedAt.replace(/[:.]/g, "-");
-
-  try {
-    const link = document.createElement("a");
-    link.href = objectUrl;
-    link.download = `jcode-managed-sidecar-diagnostics-${generatedAt}.json`;
-    link.rel = "noopener";
-    link.click();
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
 }
 
 export function OpenCodeRuntimeSettingsPanel() {
@@ -190,6 +178,31 @@ export function OpenCodeRuntimeSettingsPanel() {
         type: "error",
         title: "Diagnostics export failed",
         description: errorMessage(error, "The managed sidecar diagnostics export failed."),
+      });
+    } finally {
+      setSidecarPendingAction(null);
+    }
+  }, []);
+
+  const copySidecarSupportSummary = useCallback(async () => {
+    setSidecarPendingAction("supportSummary");
+    setSidecarFeedback(null);
+    try {
+      const diagnostics = await ensureNativeApi().provider.exportManagedSidecarDiagnostics();
+      const summary = formatManagedSidecarDiagnosticsSupportSummary(diagnostics);
+      await copyTextToClipboard(summary);
+      setSidecarHealth(diagnostics.health);
+      setSidecarFeedback({ status: "success", message: "Support summary copied" });
+    } catch (error) {
+      const message = `Support summary copy failed: ${errorMessage(
+        error,
+        "The managed sidecar support summary copy failed.",
+      )}`;
+      setSidecarFeedback({ status: "failed", message });
+      toastManager.add({
+        type: "error",
+        title: "Support summary copy failed",
+        description: errorMessage(error, "The managed sidecar support summary copy failed."),
       });
     } finally {
       setSidecarPendingAction(null);
@@ -335,12 +348,17 @@ export function OpenCodeRuntimeSettingsPanel() {
       ) : null}
 
       {health ? (
-        <div className="mt-3 grid gap-1 border-t border-border/70 pt-3 text-xs text-muted-foreground sm:grid-cols-2">
-          <div>{capabilityLine("Commands", health.capabilities.commands)}</div>
-          <div>{capabilityLine("Skills", health.capabilities.skills)}</div>
-          <div>{capabilityLine("Plugins", health.capabilities.plugins)}</div>
-          <div>{capabilityLine("Agents", health.capabilities.agents)}</div>
-          <div>{capabilityLine("Models", health.capabilities.models)}</div>
+        <div
+          aria-label="OpenCode capability snapshot"
+          className="mt-3 grid gap-1 border-t border-border/70 pt-3 text-xs text-muted-foreground sm:grid-cols-2"
+        >
+          <div className="font-medium text-foreground sm:col-span-2">Capability snapshot</div>
+          <div>{formatRuntimeCapabilityLine("Commands", health.capabilities.commands)}</div>
+          <div>{formatRuntimeCapabilityLine("Skills", health.capabilities.skills)}</div>
+          <div>{formatRuntimeCapabilityLine("Plugins", health.capabilities.plugins)}</div>
+          <div>{formatRuntimeCapabilityLine("Agents", health.capabilities.agents)}</div>
+          <div>{formatRuntimeCapabilityLine("Models", health.capabilities.models)}</div>
+          <div>{formatRuntimeMismatchSummary(health.mismatches)}</div>
           <div>Profile ID: {health.profileId}</div>
           <div>Config: {health.configMode}</div>
         </div>
@@ -405,6 +423,20 @@ export function OpenCodeRuntimeSettingsPanel() {
                 <HammerIcon className="size-3.5" />
               )}
               Repair sidecar
+            </Button>
+            <Button
+              type="button"
+              size="xs"
+              variant="outline"
+              disabled={sidecarPendingAction !== null}
+              onClick={() => void copySidecarSupportSummary()}
+            >
+              {sidecarPendingAction === "supportSummary" ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : (
+                <CopyIcon className="size-3.5" />
+              )}
+              Copy support summary
             </Button>
             <Button
               type="button"

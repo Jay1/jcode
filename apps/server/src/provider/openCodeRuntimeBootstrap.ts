@@ -4,6 +4,8 @@ import type {
   ProviderRuntimeBootstrapSnapshot,
 } from "@jcode/contracts";
 
+import { OPENCODE_BACKGROUND_PROBE_ENV } from "./opencodeRuntime.ts";
+
 export const JCODE_OPENCODE_SERVICE_NAME = "jcode-opencode.service" as const;
 export const WSL_OPENCODE_PROFILE_ID = "wsl-opencode-service" as const;
 export const WSL_OPENCODE_PROFILE_LABEL = "WSL OpenCode service" as const;
@@ -201,9 +203,14 @@ export function renderJcodeOpenCodeStartScript(input: {
   readonly host: "127.0.0.1";
   readonly port: 4096;
 }): string {
+  const backgroundProbeEnvExports = Object.entries(OPENCODE_BACKGROUND_PROBE_ENV).map(
+    ([name, value]) => `export ${name}=${quoteShellArg(value ?? "")}`,
+  );
+
   return [
     "#!/usr/bin/env sh",
     "set -eu",
+    ...backgroundProbeEnvExports,
     "unset OPENCODE_CONFIG_CONTENT",
     `exec ${quoteShellArg(input.binaryPath)} serve --hostname=${input.host} --port=${input.port}`,
     "",
