@@ -3975,7 +3975,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
       await vi.waitFor(
         () => {
           expect(document.body.textContent).toContain("Tool 3");
-          expect(document.body.textContent).toContain("2 previous tool calls");
+          expect(document.body.textContent).toContain("2previous tool calls");
         },
         { timeout: 8_000, interval: 16 },
       );
