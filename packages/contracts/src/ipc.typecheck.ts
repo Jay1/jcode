@@ -1,5 +1,5 @@
 import type { FirstRunState } from "./firstRunWizard";
-import type { NativeApi } from "./ipc";
+import type { DesktopBridge, NativeApi } from "./ipc";
 
 type Assert<T extends true> = T;
 
@@ -22,4 +22,15 @@ export type _CompleteFirstRunWizardReturnsState = Assert<
 
 export type _SkipFirstRunWizardReturnsState = Assert<
   IsExact<SkipFirstRunWizardReturn, FirstRunState>
+>;
+
+export type _DesktopFullscreenSyncRead = Assert<
+  IsExact<NonNullable<DesktopBridge["getIsFullscreen"]>, () => boolean>
+>;
+
+export type _DesktopFullscreenSubscription = Assert<
+  IsExact<
+    NonNullable<DesktopBridge["onFullscreenChange"]>,
+    (listener: (isFullscreen: boolean) => void) => () => void
+  >
 >;

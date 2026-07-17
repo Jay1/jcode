@@ -41,6 +41,11 @@ import { isBackendReadinessAborted, waitForHttpReady } from "./backendReadiness"
 import { waitForBackendStartupReady } from "./backendStartupReadiness";
 import { showDesktopConfirmDialog } from "./confirmDialog";
 import { popupContextMenu } from "./contextMenuPopup";
+import {
+  DESKTOP_IS_FULLSCREEN_CHANNEL,
+  readSenderWindowFullscreen,
+  registerFullscreenWindowEvents,
+} from "./fullscreenWindow";
 import { openInitialBackendWindow } from "./initialBackendWindowOpen";
 import { shouldAllowMediaPermissionRequest } from "./mediaPermissions";
 import { ServerListeningDetector } from "./serverListeningDetector";
@@ -1655,6 +1660,13 @@ function registerIpcHandlers(): void {
       normalizeDesktopWsUrl(backendWsUrl) ?? resolveDesktopWsUrlFromEnv(process.env);
   });
 
+  ipcMain.removeAllListeners(DESKTOP_IS_FULLSCREEN_CHANNEL);
+  ipcMain.on(DESKTOP_IS_FULLSCREEN_CHANNEL, (event: IpcMainEvent) => {
+    event.returnValue = readSenderWindowFullscreen(event.sender, (sender) =>
+      BrowserWindow.fromWebContents(sender),
+    );
+  });
+
   ipcMain.removeHandler(DESKTOP_LOCAL_ENVIRONMENT_BOOTSTRAP_CHANNEL);
   ipcMain.handle(DESKTOP_LOCAL_ENVIRONMENT_BOOTSTRAP_CHANNEL, async () =>
     getLocalEnvironmentBootstrap(),
@@ -1959,6 +1971,7 @@ function createWindow(): BrowserWindow {
       webviewTag: true,
     },
   });
+  const unregisterFullscreenWindowEvents = registerFullscreenWindowEvents(window);
   browserManager.setWindow(window);
 
   window.webContents.on("context-menu", (event, params) => {
@@ -2025,6 +2038,7 @@ function createWindow(): BrowserWindow {
   }
 
   window.on("closed", () => {
+    unregisterFullscreenWindowEvents();
     if (mainWindow === window) {
       mainWindow = null;
     }

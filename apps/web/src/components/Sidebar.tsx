@@ -77,6 +77,7 @@ import { isElectron } from "../env";
 import { APP_BASE_NAME, APP_VERSION, APP_WORDMARK_SUFFIX } from "../branding";
 import { showConfirmDialogFallback } from "../confirmDialogFallback";
 import { isMacPlatform, newCommandId, newProjectId, newThreadId, randomUUID } from "../lib/utils";
+import { MacTrafficLightInsetLayout, useMacTrafficLightInset } from "../macTrafficLightInset";
 import { persistAppStateNow, useStore } from "../store";
 import { getThreadFromState, getThreadsFromState } from "../threadDerivation";
 import {
@@ -1227,6 +1228,7 @@ export default function Sidebar() {
   const isOnSettings = useLocation({ select: (loc) => loc.pathname === "/settings" });
   const isOnWorkspace = pathname.startsWith("/workspace");
   const { settings: appSettings, updateSettings } = useAppSettings();
+  const macTitlebarInset = useMacTrafficLightInset("titlebar");
   const { handleNewThread } = useHandleNewThread();
   const { handleNewChat } = useHandleNewChat();
   const { createThreadHandoff } = useThreadHandoff();
@@ -5425,14 +5427,16 @@ export default function Sidebar() {
     <>
       {isElectron ? (
         <>
-          <SidebarHeader
-            className={cn(
-              "drag-region h-[48px] flex-row items-center gap-2 px-4 py-0 font-system-ui",
-              appSettings.sidebarSide === "left" && "pl-[90px]",
-            )}
+          <MacTrafficLightInsetLayout
+            enabled={appSettings.sidebarSide === "left"}
+            inset={macTitlebarInset}
+            insetProperty="padding-left"
+            render={
+              <SidebarHeader className="drag-region h-[48px] flex-row items-center gap-2 px-4 py-0 font-system-ui" />
+            }
           >
             {titlebarControls}
-          </SidebarHeader>
+          </MacTrafficLightInsetLayout>
         </>
       ) : (
         <SidebarHeader className="gap-3 px-3 py-2.5 font-system-ui sm:gap-2.5 sm:px-4 sm:py-3">

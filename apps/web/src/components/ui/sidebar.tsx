@@ -4,8 +4,8 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { FiSidebar } from "react-icons/fi";
 import * as React from "react";
 import { cn } from "~/lib/utils";
-import { isElectron } from "~/env";
 import { useAppSettings } from "~/appSettings";
+import { MacTrafficLightInsetLayout, useMacTrafficLightInset } from "~/macTrafficLightInset";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
@@ -350,23 +350,24 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
 function SidebarHeaderTrigger({
   className,
   onClick,
+  style,
   ...props
 }: React.ComponentProps<typeof Button>) {
   const { isMobile, open } = useSidebar();
   const { settings } = useAppSettings();
+  const macCollapsedTriggerInset = useMacTrafficLightInset("collapsed-sidebar-trigger");
 
   if (!isMobile && open) {
     return null;
   }
 
   return (
-    <SidebarTrigger
-      className={cn(
-        isElectron && !isMobile && settings.sidebarSide === "left" && "ml-[76px]",
-        className,
-      )}
-      onClick={onClick}
-      {...props}
+    <MacTrafficLightInsetLayout
+      enabled={!isMobile && settings.sidebarSide === "left"}
+      inset={macCollapsedTriggerInset}
+      insetProperty="margin-left"
+      render={<SidebarTrigger className={className} onClick={onClick} {...props} />}
+      style={style}
     />
   );
 }

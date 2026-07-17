@@ -315,6 +315,8 @@ export interface DesktopAdvertisedEndpoint {
 
 export interface DesktopBridge {
   getWsUrl: () => string | null;
+  getIsFullscreen?: () => boolean;
+  onFullscreenChange?: (listener: (isFullscreen: boolean) => void) => () => void;
   getLocalEnvironmentBootstrap?: () => Promise<DesktopLocalEnvironmentBootstrap | null>;
   getServerExposureState?: () => Promise<DesktopServerExposureState>;
   setServerExposureMode?: (mode: DesktopServerExposureMode) => Promise<DesktopServerExposureState>;

@@ -227,6 +227,7 @@ import { Skeleton } from "./ui/skeleton";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "./ui/menu";
 import { terminalRuntimeRegistry } from "./terminal/terminalRuntimeRegistry";
 import { cn, isMacPlatform, randomUUID } from "~/lib/utils";
+import { MacTrafficLightInsetLayout, useMacTrafficLightInset } from "~/macTrafficLightInset";
 import { toastManager } from "./ui/toast";
 import { decodeProjectScriptKeybindingRule } from "~/lib/projectScriptKeybindings";
 import { type NewProjectScriptInput } from "./ProjectScriptsControl";
@@ -857,6 +858,7 @@ export default function ChatView({
   const setStoreThreadWorkspace = useStore((store) => store.setThreadWorkspace);
   const allThreads = useStore(useRef(createAllThreadsSelector()).current);
   const { settings } = useAppSettings();
+  const macTitlebarInset = useMacTrafficLightInset("titlebar");
   const setStickyComposerModelSelection = useComposerDraftStore(
     (store) => store.setStickyModelSelection,
   );
@@ -7628,15 +7630,17 @@ export default function ChatView({
           </header>
         )}
         {isElectron && (
-          <div
-            className={cn(
-              "drag-region flex h-[52px] shrink-0 items-center border-b border-[color:var(--color-border-light)] px-5",
-              settings.sidebarSide === "right" && "pl-[90px]",
-            )}
+          <MacTrafficLightInsetLayout
+            enabled={settings.sidebarSide === "right"}
+            inset={macTitlebarInset}
+            insetProperty="padding-left"
+            render={
+              <div className="drag-region flex h-[52px] shrink-0 items-center border-b border-[color:var(--color-border-light)] px-5" />
+            }
           >
             <SidebarHeaderNavigationControls />
             <span className="text-xs text-muted-foreground/50">No active thread</span>
-          </div>
+          </MacTrafficLightInsetLayout>
         )}
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center">
@@ -8270,12 +8274,18 @@ export default function ChatView({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--app-surface-canvas)]">
       {/* Top bar */}
-      <header
-        className={cn(
-          "border-b border-[color:var(--color-border-light)] bg-[var(--app-surface-topbar)] px-3 sm:px-5",
-          isElectron ? "drag-region flex h-[52px] items-center" : "py-2 sm:py-3",
-          isElectron && settings.sidebarSide === "right" && "pl-[90px] sm:pl-[90px]",
-        )}
+      <MacTrafficLightInsetLayout
+        enabled={isElectron && settings.sidebarSide === "right"}
+        inset={macTitlebarInset}
+        insetProperty="padding-left"
+        render={
+          <header
+            className={cn(
+              "border-b border-[color:var(--color-border-light)] bg-[var(--app-surface-topbar)] px-3 sm:px-5",
+              isElectron ? "drag-region flex h-[52px] items-center" : "py-2 sm:py-3",
+            )}
+          />
+        }
       >
         <ChatHeader
           activeThreadId={activeThread.id}
@@ -8351,7 +8361,7 @@ export default function ChatView({
           onRenameThread={() => setRenameDialogOpen(true)}
           {...(onCloseThreadPane ? { onCloseThreadPane } : {})}
         />
-      </header>
+      </MacTrafficLightInsetLayout>
 
       <RenameThreadDialog
         key={activeThread.id}

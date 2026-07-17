@@ -14,6 +14,7 @@ import {
   resolveDesktopWsUrlFromEnv,
 } from "./desktopWsBridge";
 import { SERVER_TRANSCRIBE_VOICE_CHANNEL } from "./voiceTranscription";
+import { createFullscreenBridge } from "./fullscreenBridge";
 
 const PICK_FOLDER_CHANNEL = "desktop:pick-folder";
 const SAVE_FILE_CHANNEL = "desktop:save-file";
@@ -42,6 +43,7 @@ function getDesktopWsUrl(): string | null {
 
 contextBridge.exposeInMainWorld("desktopBridge", {
   getWsUrl: getDesktopWsUrl,
+  ...createFullscreenBridge(ipcRenderer),
   getLocalEnvironmentBootstrap: () =>
     ipcRenderer.invoke(DESKTOP_LOCAL_ENVIRONMENT_BOOTSTRAP_CHANNEL),
   getServerExposureState: () => ipcRenderer.invoke(DESKTOP_SERVER_EXPOSURE_STATE_CHANNEL),
