@@ -8,6 +8,7 @@ import { ChevronDownIcon, PlusIcon } from "~/lib/icons";
 import { GoGitBranch } from "react-icons/go";
 import {
   type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -657,21 +658,9 @@ export function BranchToolbarBranchSelector({
     onSetThreadWorkspace,
   ]);
 
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      setIsBranchMenuOpen(open);
-      if (!open) {
-        setBranchQuery("");
-        return;
-      }
-      void queryClient.invalidateQueries({
-        queryKey: gitQueryKeys.branches(branchCwd),
-      });
-    },
-    [branchCwd, queryClient],
-  );
-
   const branchListScrollElementRef = useRef<HTMLDivElement | null>(null);
+  const branchListAttachGenerationRef = useRef(0);
+  const highlightedBranchIndexRef = useRef(0);
   const branchListVirtualizer = useVirtualizer({
     count: filteredBranchPickerItems.length,
     estimateSize: (index) => {
@@ -692,10 +681,28 @@ export function BranchToolbarBranchSelector({
   const virtualBranchRows = branchListVirtualizer.getVirtualItems();
   const setBranchListRef = useCallback(
     (element: HTMLDivElement | null) => {
+      const attachGeneration = ++branchListAttachGenerationRef.current;
       branchListScrollElementRef.current =
         (element?.parentElement as HTMLDivElement | null) ?? null;
       if (element) {
+        const scrollElement = branchListScrollElementRef.current;
+        highlightedBranchIndexRef.current = 0;
+        scrollElement?.scrollTo({ top: 0 });
+        branchListVirtualizer.scrollToOffset(0, { align: "start" });
         branchListVirtualizer.measure();
+        queueMicrotask(() => {
+          if (
+            !scrollElement ||
+            branchListAttachGenerationRef.current !== attachGeneration ||
+            branchListScrollElementRef.current !== scrollElement
+          ) {
+            return;
+          }
+          scrollElement.scrollTop = 0;
+          scrollElement.dispatchEvent(new Event("scroll"));
+          branchListVirtualizer.scrollToIndex(0, { align: "start" });
+          branchListVirtualizer.measure();
+        });
       }
     },
     [branchListVirtualizer],
@@ -703,7 +710,15 @@ export function BranchToolbarBranchSelector({
 
   useEffect(() => {
     if (!isBranchMenuOpen || !shouldVirtualizeBranchList) return;
+    const attachGeneration = branchListAttachGenerationRef.current;
+    const scrollElement = branchListScrollElementRef.current;
     queueMicrotask(() => {
+      if (
+        branchListAttachGenerationRef.current !== attachGeneration ||
+        branchListScrollElementRef.current !== scrollElement
+      ) {
+        return;
+      }
       branchListVirtualizer.measure();
     });
   }, [
@@ -713,6 +728,66 @@ export function BranchToolbarBranchSelector({
     isBranchMenuOpen,
     shouldVirtualizeBranchList,
   ]);
+
+  useEffect(() => {
+    if (!isBranchMenuOpen) return;
+    highlightedBranchIndexRef.current = 0;
+    const scrollElement = branchListScrollElementRef.current;
+    if (scrollElement) {
+      scrollElement.scrollTop = 0;
+      branchListVirtualizer.scrollToOffset(0, { align: "start" });
+    }
+  }, [branchListVirtualizer, isBranchMenuOpen, normalizedDeferredBranchQuery]);
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        highlightedBranchIndexRef.current = 0;
+        branchListVirtualizer.scrollToIndex(0, { align: "start" });
+        const scrollElement = branchListScrollElementRef.current;
+        if (scrollElement) {
+          scrollElement.scrollTop = 0;
+        }
+        setBranchQuery("");
+      }
+      setIsBranchMenuOpen(open);
+      if (open) {
+        void queryClient.invalidateQueries({
+          queryKey: gitQueryKeys.branches(branchCwd),
+        });
+      }
+    },
+    [branchCwd, branchListVirtualizer, queryClient],
+  );
+
+  const handleBranchInputKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLInputElement>) => {
+      if (!isBranchMenuOpen || !shouldVirtualizeBranchList) return;
+      if (event.key !== "PageDown" && event.key !== "End") return;
+      const lastIndex = filteredBranchPickerItems.length - 1;
+      if (lastIndex < 0) return;
+      const currentIndex = Math.max(0, highlightedBranchIndexRef.current);
+      const pageSize = Math.max(
+        1,
+        Math.floor((branchListScrollElementRef.current?.clientHeight ?? 224) / 28),
+      );
+      const targetIndex =
+        event.key === "End" ? lastIndex : Math.min(lastIndex, currentIndex + pageSize);
+      highlightedBranchIndexRef.current = targetIndex;
+      branchListVirtualizer.scrollToIndex(targetIndex, {
+        align: event.key === "End" ? "end" : "start",
+      });
+      if (event.key === "PageDown") {
+        event.preventDefault();
+      }
+    },
+    [
+      branchListVirtualizer,
+      filteredBranchPickerItems.length,
+      isBranchMenuOpen,
+      shouldVirtualizeBranchList,
+    ],
+  );
 
   const triggerLabel = getBranchTriggerLabel({
     activeWorktreePath,
@@ -728,6 +803,7 @@ export function BranchToolbarBranchSelector({
           key={itemValue}
           index={index}
           value={itemValue}
+          className="h-11 min-h-11 text-sm"
           style={style}
           onClick={() => {
             if (!prReference || !onCheckoutPullRequestRequest) {
@@ -739,7 +815,7 @@ export function BranchToolbarBranchSelector({
             onCheckoutPullRequestRequest(prReference);
           }}
         >
-          <div className="flex min-w-0 flex-col items-start py-1">
+          <div className="flex min-w-0 flex-col items-start">
             <span className="truncate font-medium">Checkout Pull Request</span>
             <span className="truncate text-muted-foreground text-xs">{prReference}</span>
           </div>
@@ -770,11 +846,11 @@ export function BranchToolbarBranchSelector({
         key={itemValue}
         index={index}
         value={itemValue}
-        className={
+        className={`${currentBranchChangeSummary ? "h-12 min-h-12" : "h-7 min-h-7"} text-sm ${
           itemValue === resolvedActiveBranch
             ? "bg-[var(--color-background-elevated-secondary)] text-[var(--color-text-foreground)]"
-            : undefined
-        }
+            : ""
+        }`}
         style={style}
         onClick={() => selectBranch(branch)}
       >
@@ -814,6 +890,7 @@ export function BranchToolbarBranchSelector({
       virtualized={shouldVirtualizeBranchList}
       onItemHighlighted={(_value, eventDetails) => {
         if (!isBranchMenuOpen || eventDetails.index < 0) return;
+        highlightedBranchIndexRef.current = eventDetails.index;
         branchListVirtualizer.scrollToIndex(eventDetails.index, { align: "auto" });
       }}
       onOpenChange={handleOpenChange}
@@ -838,6 +915,7 @@ export function BranchToolbarBranchSelector({
             size="sm"
             value={branchQuery}
             onChange={(event) => setBranchQuery(event.target.value)}
+            onKeyDown={handleBranchInputKeyDown}
           />
         </div>
         <ComboboxEmpty>No branches found.</ComboboxEmpty>

@@ -6,6 +6,11 @@ const runtimeUsageControlsSource = readFileSync(
   new URL("./RuntimeUsageControls.tsx", import.meta.url),
   "utf8",
 );
+const branchSelectorSource = readFileSync(
+  new URL("./BranchToolbarBranchSelector.tsx", import.meta.url),
+  "utf8",
+);
+const comboboxSource = readFileSync(new URL("./ui/combobox.tsx", import.meta.url), "utf8");
 
 describe("BranchToolbar structure", () => {
   it("renders runtime access as a tokenized state chip", () => {
@@ -19,5 +24,10 @@ describe("BranchToolbar structure", () => {
     expect(runtimeUsageControlsSource).toContain("ProviderUsageStatusChip");
     expect(branchToolbarSource).toContain("providerRateLimits={usageSummary.rateLimits}");
     expect(branchToolbarSource).toContain("providerUsageLines={usageSummary.usageLines}");
+  });
+
+  it("uses the shared combobox scroll fade without a selector-local duplicate", () => {
+    expect(branchSelectorSource.match(/scrollFade/g) ?? []).toHaveLength(0);
+    expect(comboboxSource.match(/<ScrollArea[^>]*scrollFade/g) ?? []).toHaveLength(1);
   });
 });
