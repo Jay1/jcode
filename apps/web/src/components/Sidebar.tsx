@@ -4652,7 +4652,7 @@ export default function Sidebar() {
                   className={cn(
                     "absolute -right-0.5 top-0.5 size-1.5 rounded-full",
                     projectStatus.dotClass,
-                    projectStatus.pulse ? "animate-pulse" : "",
+                    projectStatus.pulse ? "status-pulse" : "",
                   )}
                 />
               ) : null}

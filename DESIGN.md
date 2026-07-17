@@ -125,18 +125,20 @@ Rules:
 
 ## 8. Motion
 
-| Motion                  | Token/Pattern                                                                           | Rule                                                            |
-| ----------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Chat pane entry         | `.chat-pane-enter`, `220ms cubic-bezier(0.22, 1, 0.36, 1)`                              | Use for empty/transcript pane swaps; respect reduced motion.    |
-| Terminal running dot    | `.terminal-running-indicator__dot`, `640ms ease-in-out`, opacity/scale only             | Keep as CSS animation to avoid JS timers across many terminals. |
-| Generated image shimmer | `chat-generated-image-shimmer`, `1.6s ease-in-out`                                      | Loading feedback for generated images only.                     |
-| Micro-interactions      | Tailwind `transition-colors`, `transition-opacity`, `duration-120/140/150/200` patterns | Prefer color/opacity/transform transitions.                     |
-| Ultrathink              | `ultrathink-*` spectrum animations, 10s linear                                          | Existing special mode only; do not use as general decoration.   |
+| Motion                  | Token/Pattern                                                                           | Rule                                                                                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Chat pane entry         | `.chat-pane-enter`, `220ms cubic-bezier(0.22, 1, 0.36, 1)`                              | Use for empty/transcript pane swaps; respect reduced motion.                                                                                     |
+| Persistent status pulse | `.status-pulse`, `2s` stepped opacity-only duty cycle                                   | Use only for running terminal dots, the pulsing Sidebar project-status dot, and the timeline working ellipsis; keep it in CSS without JS timers. |
+| Generated image shimmer | `chat-generated-image-shimmer`, `1.6s ease-in-out`                                      | Loading feedback for generated images only.                                                                                                      |
+| Micro-interactions      | Tailwind `transition-colors`, `transition-opacity`, `duration-120/140/150/200` patterns | Prefer color/opacity/transform transitions.                                                                                                      |
+| Ultrathink              | `ultrathink-*` spectrum animations, 10s linear                                          | Existing special mode only; do not use as general decoration.                                                                                    |
 
 Rules:
 
 - Animate `opacity`, `transform`, and color/filter changes only. Do not animate layout properties for ordinary UI.
 - Respect `prefers-reduced-motion` for non-essential animation.
+- Preserve `.status-pulse` per-dot staggers: terminal dots use `0/160/320/480ms`, and timeline working dots use `0/200/400ms`. Under reduced motion, the indicator stays visible at full opacity with no animation or transform.
+- Completion or a non-running state must remove or stop `.status-pulse` and render the settled/static state. Finite spinners, loading skeletons, generated-image shimmer, and ultrathink motion are explicit exclusions and retain their own patterns.
 - Do not add decorative motion to transcript, diff, terminal, settings, or browser surfaces unless it improves state comprehension.
 
 ## 9. Implementation Rules

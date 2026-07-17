@@ -1132,9 +1132,9 @@ export const MessagesTimeline = memo(function MessagesTimeline({
             )}
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="h-1 w-1 rounded-full bg-[var(--app-work-row-icon)] animate-pulse" />
-            <span className="h-1 w-1 rounded-full bg-[var(--app-work-row-icon)] animate-pulse [animation-delay:200ms]" />
-            <span className="h-1 w-1 rounded-full bg-[var(--app-work-row-icon)] animate-pulse [animation-delay:400ms]" />
+            <span className="status-pulse h-1 w-1 rounded-full bg-[var(--app-work-row-icon)]" />
+            <span className="status-pulse h-1 w-1 rounded-full bg-[var(--app-work-row-icon)] [animation-delay:200ms]" />
+            <span className="status-pulse h-1 w-1 rounded-full bg-[var(--app-work-row-icon)] [animation-delay:400ms]" />
           </span>
         </div>
       )}

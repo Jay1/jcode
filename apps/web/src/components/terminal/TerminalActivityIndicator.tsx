@@ -42,9 +42,9 @@ export default function TerminalActivityIndicator({
     >
       {RUNNING_INDICATOR_OFFSETS_MS.map((delayMs) => (
         <span
-          // CSS animation keeps busy terminal indicators out of React's render loop.
+          // Semantic CSS motion keeps busy terminal indicators out of React's render loop.
           key={delayMs}
-          className="terminal-running-indicator__dot block size-1 rounded-full bg-current"
+          className="status-pulse block size-1 rounded-full bg-current"
           style={{ animationDelay: `${delayMs}ms` }}
         />
       ))}

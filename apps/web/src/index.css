@@ -80,25 +80,28 @@
     -webkit-backdrop-filter: var(--app-sidebar-backdrop-filter, none);
   }
 
-  /* Animate terminal run state in CSS so many open terminals don't schedule JS timers. */
-  .terminal-running-indicator__dot {
-    animation: terminal-running-indicator-pulse 640ms ease-in-out infinite;
-    opacity: 0.24;
-    transform: scale(0.7);
-    will-change: opacity, transform;
+  /* Persistent status motion stays in CSS so many active surfaces don't schedule JS timers. */
+  .status-pulse {
+    animation: status-pulse 2s infinite;
+    will-change: opacity;
   }
 }
 
-@keyframes terminal-running-indicator-pulse {
+@keyframes status-pulse {
   0%,
-  100% {
-    opacity: 0.24;
-    transform: scale(0.7);
+  40% {
+    opacity: 1;
+    animation-timing-function: steps(6);
   }
 
-  35% {
-    opacity: 0.92;
-    transform: scale(1);
+  50%,
+  90% {
+    opacity: 0.5;
+    animation-timing-function: steps(6);
+  }
+
+  100% {
+    opacity: 1;
   }
 }
 
@@ -190,6 +193,13 @@
 @media (prefers-reduced-motion: reduce) {
   .chat-pane-enter {
     animation: none;
+  }
+
+  .status-pulse {
+    animation-name: none;
+    opacity: 1;
+    transform: none;
+    will-change: auto;
   }
 }
 
