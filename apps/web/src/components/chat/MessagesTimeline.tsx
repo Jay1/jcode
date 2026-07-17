@@ -709,7 +709,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                 ) : null}
                 {!isEditingThisMessage && (
                   <div className="flex items-center justify-end gap-1.5 pr-0.5">
-                    <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover:opacity-100">
+                    <div className="message-action-group flex items-center gap-1 focus-within:opacity-100 group-hover:opacity-100">
                       {displayedUserMessage.copyText && (
                         <MessageCopyButton text={displayedUserMessage.copyText} />
                       )}
@@ -1085,7 +1085,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                     {assistantMeta}
                   </p>
                   {assistantCopyState.visible ? (
-                    <div className="flex items-center opacity-0 transition-opacity duration-200 group-hover/assistant:opacity-100 focus-within:opacity-100">
+                    <div className="message-action-group flex items-center group-hover/assistant:opacity-100 focus-within:opacity-100">
                       <MessageCopyButton
                         text={assistantCopyState.text ?? ""}
                         size="icon-xs"

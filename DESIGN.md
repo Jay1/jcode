@@ -83,6 +83,7 @@ Rules:
 
 - `ChatTranscriptPane` owns the transcript stage through `.app-transcript-stage` and renders `MessagesTimeline` with scroll-to-bottom chrome using `--app-scroll-button-*`.
 - `MessagesTimeline` renders assistant messages in `.app-assistant-message`, user messages in `.app-user-message`, and file-change/activity summaries through `--app-work-row-*`, `--app-diff-card-*`, and metadata tokens.
+- `.message-action-group` is the shared visibility pattern for user and assistant message actions. Actions remain discoverable at `0.6` opacity at rest and transition to full opacity over `200ms` on message hover or `focus-within`, including keyboard focus. Preserve their existing hit targets, accessible names/tooltips, and focus styling; do not introduce per-message opacity variants.
 - `ChatMarkdown` owns markdown scannability: headings, links, inline code role classes, code blocks, copy buttons, tables, local generated images, and lazy image rendering.
 - Chat-output semantic roles must stay conservative: file paths, commands, theme tokens, success/warning/error states can be colored; ordinary text stays neutral.
 

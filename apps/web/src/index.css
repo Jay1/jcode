@@ -66,6 +66,11 @@
     background: var(--app-control-icon-hover-bg, var(--color-background-button-secondary-hover));
   }
 
+  .message-action-group {
+    opacity: 0.6;
+    transition: opacity 200ms;
+  }
+
   /* Let the renderer switch between Codex-style translucent and opaque shells
      without duplicating sidebar markup or class strings. */
   .app-sidebar-surface {
