@@ -22,7 +22,6 @@ import type {
 import { ServerProviderUpdateError } from "@jcode/contracts";
 import { parseCodexConfigModelProvider } from "@jcode/shared/codexConfig";
 import { decodeJsonResult } from "@jcode/shared/schemaJson";
-import { query as claudeQuery, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import {
   Array,
@@ -93,6 +92,7 @@ import {
   type ProviderMaintenanceCapabilities,
 } from "../providerMaintenance";
 import { collectUint8StreamText } from "../../stream/collectUint8StreamText";
+import { probeClaudeSubscription } from "../claudeSubscriptionProbe";
 
 const DEFAULT_TIMEOUT_MS = 4_000;
 const CODEX_PROVIDER = "codex" as const;
@@ -527,57 +527,6 @@ function extractCodexAccountTypeFromOutput(result: CommandResult): string | unde
   };
   return walk(parsed.success);
 }
-
-// ── Claude SDK capability probe ─────────────────────────────────────
-//
-// Spawns a lightweight Claude Agent SDK session and reads the
-// initialization result. The prompt is a never-yielding AsyncIterable so
-// no user message reaches the Anthropic API — we get account metadata
-// (including subscription type) from local IPC, then abort the
-// subprocess. Used as a fallback when `claude auth status` output
-// doesn't include subscription info.
-
-const CAPABILITIES_PROBE_TIMEOUT_MS = 8_000;
-
-function waitForAbortSignal(signal: AbortSignal): Promise<void> {
-  if (signal.aborted) return Promise.resolve();
-  return new Promise((resolve) => {
-    signal.addEventListener("abort", () => resolve(), { once: true });
-  });
-}
-
-const probeClaudeSubscription = () => {
-  const abort = new AbortController();
-  return Effect.tryPromise(async () => {
-    const q = claudeQuery({
-      // oxlint-disable-next-line require-yield
-      prompt: (async function* (): AsyncGenerator<SDKUserMessage> {
-        await waitForAbortSignal(abort.signal);
-      })(),
-      options: {
-        persistSession: false,
-        abortController: abort,
-        settingSources: ["user", "project", "local"],
-        allowedTools: [],
-        stderr: () => {},
-      },
-    });
-    const init = await q.initializationResult();
-    return { subscriptionType: init.account?.subscriptionType };
-  }).pipe(
-    Effect.ensuring(
-      Effect.sync(() => {
-        if (!abort.signal.aborted) abort.abort();
-      }),
-    ),
-    Effect.timeoutOption(CAPABILITIES_PROBE_TIMEOUT_MS),
-    Effect.result,
-    Effect.map((result) => {
-      if (Result.isFailure(result)) return undefined;
-      return Option.isSome(result.success) ? result.success.value : undefined;
-    }),
-  );
-};
 
 export function parseAuthStatusFromOutput(result: CommandResult): {
   readonly status: ServerProviderStatusState;
@@ -1923,7 +1872,8 @@ export const ProviderHealthLive = Layer.effect(
     const claudeSubscriptionCache = yield* Cache.make({
       capacity: 1,
       timeToLive: Duration.minutes(5),
-      lookup: (_: "claude") => probeClaudeSubscription(),
+      lookup: (_: "claude") =>
+        probeClaudeSubscription({ homeDir: OS.homedir(), environment: process.env }),
     });
     const resolveClaudeSubscription = Cache.get(claudeSubscriptionCache, "claude").pipe(
       Effect.map((probe) => probe?.subscriptionType),
