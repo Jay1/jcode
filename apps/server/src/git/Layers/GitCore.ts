@@ -1726,6 +1726,7 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
             Effect.catch(() => Effect.void),
           );
           yield* runGit("GitCore.prepareCommitContext.addSelected", cwd, [
+            "--literal-pathspecs",
             "add",
             "-A",
             "--",

@@ -148,6 +148,53 @@ function initRepoWithoutCommit(cwd: string): Effect.Effect<void, GitCommandError
   });
 }
 
+function assertSelectedPathsAreLiteral(input: {
+  readonly selectedPaths: readonly string[];
+  readonly potentialMatches: readonly string[];
+}): Effect.Effect<
+  void,
+  GitCommandError | PlatformError.PlatformError,
+  GitCore | FileSystem.FileSystem | Scope.Scope
+> {
+  return Effect.gen(function* () {
+    // Given
+    const tmp = yield* makeTmpDir();
+    yield* initRepoWithCommit(tmp);
+    const core = yield* GitCore;
+    for (const filePath of [...input.selectedPaths, ...input.potentialMatches]) {
+      yield* writeTextFile(path.join(tmp, filePath), `${filePath}\n`);
+    }
+
+    // When
+    const context = yield* core.prepareCommitContext(tmp, input.selectedPaths);
+
+    // Then
+    expect(context).not.toBeNull();
+    if (context === null) return;
+
+    const cachedNameStatus = yield* git(tmp, ["diff", "--cached", "--name-status"]);
+    const cachedPatch = yield* git(tmp, ["diff", "--cached", "--patch"]);
+    const statusShort = yield* git(tmp, ["status", "--short"]);
+    const expectedNameStatus = input.selectedPaths
+      .toSorted()
+      .map((filePath) => `A\t${filePath}`)
+      .join("\n");
+
+    expect(cachedNameStatus).toBe(expectedNameStatus);
+    expect(context.stagedSummary).toBe(expectedNameStatus);
+    for (const selectedPath of input.selectedPaths) {
+      const diffHeader = `diff --git a/${selectedPath} b/${selectedPath}`;
+      expect(cachedPatch).toContain(diffHeader);
+      expect(context.stagedPatch).toContain(diffHeader);
+    }
+    for (const potentialMatch of input.potentialMatches) {
+      expect(cachedNameStatus).not.toContain(potentialMatch);
+      expect(cachedPatch).not.toContain(potentialMatch);
+      expect(statusShort).toContain(`?? ${potentialMatch}`);
+    }
+  });
+}
+
 function commitWithDate(
   cwd: string,
   fileName: string,
@@ -2314,6 +2361,34 @@ it.layer(TestLayer)("git integration", (it) => {
         const statusAfter = yield* git(tmp, ["status", "--porcelain"]);
         expect(statusAfter).toContain("b.txt");
         expect(statusAfter).not.toContain("a.txt");
+      }),
+    );
+
+    it.effect("prepareCommitContext treats bracket pathspec characters as literal", () =>
+      assertSelectedPathsAreLiteral({
+        selectedPaths: ["selected[1].txt"],
+        potentialMatches: ["selected1.txt"],
+      }),
+    );
+
+    it.effect("prepareCommitContext treats wildcard pathspec characters as literal", () =>
+      assertSelectedPathsAreLiteral({
+        selectedPaths: ["selected*.txt", "selected?.md"],
+        potentialMatches: ["selected-sibling.txt", "selected1.md"],
+      }),
+    );
+
+    it.effect("prepareCommitContext treats pathspec magic prefixes as literal", () =>
+      assertSelectedPathsAreLiteral({
+        selectedPaths: [":(exclude)selected.txt"],
+        potentialMatches: ["ordinary.txt"],
+      }),
+    );
+
+    it.effect("prepareCommitContext preserves leading-dash and plain literal paths", () =>
+      assertSelectedPathsAreLiteral({
+        selectedPaths: ["-selected.txt", "plain.txt"],
+        potentialMatches: ["unselected.txt"],
       }),
     );
 
