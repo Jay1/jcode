@@ -1,3 +1,5 @@
+import "../../index.css";
+
 import { type ModelSlug, type ProviderKind, type ServerProviderStatus } from "@jcode/contracts";
 import { page } from "vitest/browser";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -5,10 +7,37 @@ import { render } from "vitest-browser-react";
 
 import { ProviderModelPicker } from "./ProviderModelPicker";
 import type { ProviderModelOption } from "../../providerModelOptions";
+import { buildThemeCssVariables, getCodeThemeSeed } from "../../theme/theme.logic";
+
+const VISUAL_THEMES = ["light", "dark"] as const;
+const VISUAL_WIDTHS = [375, 768, 1280] as const;
+const appliedThemeVariables = new Set<string>();
+
+function applyFixtureTheme(theme: (typeof VISUAL_THEMES)[number]): void {
+  const root = document.documentElement;
+  const { variables } = buildThemeCssVariables(
+    { codeThemeId: "github", theme: getCodeThemeSeed("github", theme) },
+    theme,
+  );
+  root.classList.toggle("dark", theme === "dark");
+  for (const [name, value] of Object.entries(variables)) {
+    root.style.setProperty(name, value);
+    appliedThemeVariables.add(name);
+  }
+}
+
+function resetFixtureTheme(): void {
+  document.documentElement.classList.remove("dark");
+  for (const name of appliedThemeVariables) {
+    document.documentElement.style.removeProperty(name);
+  }
+  appliedThemeVariables.clear();
+}
 
 const MODEL_OPTIONS_BY_PROVIDER = {
   claudeAgent: [
     { slug: "claude-opus-4-6", name: "Claude Opus 4.6" },
+    { slug: "claude-sonnet-5", name: "Claude Sonnet 5" },
     { slug: "claude-sonnet-4-6", name: "Claude Sonnet 4.6" },
     { slug: "claude-haiku-4-5", name: "Claude Haiku 4.5" },
   ],
@@ -129,6 +158,7 @@ async function mountPicker(props: {
   >;
 }) {
   const host = document.createElement("div");
+  host.className = "min-h-dvh bg-[var(--app-surface-canvas)] p-4 text-foreground";
   document.body.append(host);
   const onProviderModelChange = vi.fn();
   const screen = await render(
@@ -156,9 +186,11 @@ async function mountPicker(props: {
 }
 
 describe("ProviderModelPicker", () => {
-  afterEach(() => {
+  afterEach(async () => {
+    resetFixtureTheme();
     document.body.innerHTML = "";
     localStorage.clear();
+    await page.viewport(1280, 720);
   });
 
   it("shows provider submenus when provider switching is allowed", async () => {
@@ -218,6 +250,146 @@ describe("ProviderModelPicker", () => {
         "claudeAgent",
         "claude-sonnet-4-6",
       );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("selects Sonnet 5 when the Claude Code version supports it", async () => {
+    const mounted = await mountPicker({
+      provider: "claudeAgent",
+      model: "claude-sonnet-4-6",
+      lockedProvider: "claudeAgent",
+      providers: [
+        {
+          provider: "claudeAgent",
+          status: "ready",
+          available: true,
+          authStatus: "authenticated",
+          version: "2.1.197",
+          checkedAt: "2026-07-17T00:00:00.000Z",
+        },
+      ],
+    });
+
+    try {
+      await page.getByRole("button").click();
+      const sonnet5 = page.getByRole("menuitemradio", { name: "Claude Sonnet 5" });
+      await expect.element(sonnet5).toBeEnabled();
+      await sonnet5.click();
+
+      expect(mounted.onProviderModelChange).toHaveBeenCalledWith("claudeAgent", "claude-sonnet-5");
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("describes Sonnet 5 capabilities in the model choice without changing older models", async () => {
+    // Given a supported Claude model menu with authoritative metadata for Sonnet 5 only
+    const mounted = await mountPicker({
+      provider: "claudeAgent",
+      model: "claude-sonnet-4-6",
+      lockedProvider: "claudeAgent",
+      providers: [
+        {
+          provider: "claudeAgent",
+          status: "ready",
+          available: true,
+          authStatus: "authenticated",
+          version: "2.1.197",
+          checkedAt: "2026-07-17T00:00:00.000Z",
+        },
+      ],
+    });
+
+    try {
+      // When the user opens the model menu
+      await page.getByRole("button").click();
+
+      // Then Sonnet 5 exposes a concise visible and accessible selection summary
+      await expect
+        .element(
+          page.getByRole("menuitemradio", {
+            name: /Claude Sonnet 5.*1M context.*128K max output.*Adaptive thinking/u,
+          }),
+        )
+        .toBeEnabled();
+      await expect
+        .element(page.getByText("1M context · 128K max output · Adaptive thinking"))
+        .toBeVisible();
+
+      // And a model without intrinsic metadata remains free of an invented detail line
+      await expect
+        .element(page.getByRole("menuitemradio", { name: "Claude Sonnet 4.6", exact: true }))
+        .toBeEnabled();
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("disables Sonnet 5 with an accessible upgrade reason on known-old Claude Code", async () => {
+    const mounted = await mountPicker({
+      provider: "claudeAgent",
+      model: "claude-sonnet-4-6",
+      lockedProvider: "claudeAgent",
+      providers: [
+        {
+          provider: "claudeAgent",
+          status: "ready",
+          available: true,
+          authStatus: "authenticated",
+          version: "2.1.196",
+          checkedAt: "2026-07-17T00:00:00.000Z",
+        },
+      ],
+    });
+
+    try {
+      await page.getByRole("button").click();
+
+      await expect
+        .element(
+          page.getByRole("menuitemradio", {
+            name: /Claude Sonnet 5.*1M context.*128K max output.*Adaptive thinking.*Update Claude Code to 2\.1\.197 or newer/u,
+          }),
+        )
+        .toBeDisabled();
+      await expect
+        .element(page.getByRole("menuitemradio", { name: "Claude Sonnet 4.6" }))
+        .toBeEnabled();
+      expect(mounted.onProviderModelChange).not.toHaveBeenCalled();
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("keeps Sonnet 5 selectable without an incompatibility reason for malformed versions", async () => {
+    const mounted = await mountPicker({
+      provider: "claudeAgent",
+      model: "claude-sonnet-4-6",
+      lockedProvider: "claudeAgent",
+      providers: [
+        {
+          provider: "claudeAgent",
+          status: "ready",
+          available: true,
+          authStatus: "authenticated",
+          version: "2.1.197-alpha..1",
+          checkedAt: "2026-07-17T00:00:00.000Z",
+        },
+      ],
+    });
+
+    try {
+      await page.getByRole("button").click();
+      const sonnet5 = page.getByRole("menuitemradio", { name: /Claude Sonnet 5/u });
+      await expect.element(sonnet5).toBeEnabled();
+      await expect
+        .element(page.getByText("1M context · 128K max output · Adaptive thinking"))
+        .toBeVisible();
+      expect(document.body.textContent).not.toContain("Update Claude Code to 2.1.197 or newer");
+      await sonnet5.click();
+      expect(mounted.onProviderModelChange).toHaveBeenCalledWith("claudeAgent", "claude-sonnet-5");
     } finally {
       await mounted.cleanup();
     }
@@ -546,4 +718,56 @@ describe("ProviderModelPicker", () => {
       await mounted.cleanup();
     }
   });
+
+  it.each(
+    VISUAL_THEMES.flatMap((theme) =>
+      VISUAL_WIDTHS.flatMap((width) =>
+        (["supported", "known-old", "malformed"] as const).map((state) => ({
+          theme,
+          width,
+          state,
+        })),
+      ),
+    ),
+  )(
+    "lays out the $state Sonnet 5 picker in $theme at $width px",
+    async ({ theme, width, state }) => {
+      await page.viewport(width, 720);
+      applyFixtureTheme(theme);
+      const mounted = await mountPicker({
+        provider: "claudeAgent",
+        model: "claude-sonnet-4-6",
+        lockedProvider: "claudeAgent",
+        providers: [
+          {
+            provider: "claudeAgent",
+            status: "ready",
+            available: true,
+            authStatus: "authenticated",
+            version:
+              state === "supported"
+                ? "2.1.197"
+                : state === "known-old"
+                  ? "2.1.196"
+                  : "2.1.197-alpha..1",
+            checkedAt: "2026-07-17T00:00:00.000Z",
+          },
+        ],
+      });
+
+      try {
+        await page.getByRole("button").click();
+        const sonnet5 = page.getByRole("menuitemradio", { name: /Claude Sonnet 5/u });
+        await expect.element(sonnet5).toBeVisible();
+        if (state === "known-old") {
+          await expect.element(sonnet5).toBeDisabled();
+        } else {
+          await expect.element(sonnet5).toBeEnabled();
+        }
+        expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+      } finally {
+        await mounted.cleanup();
+      }
+    },
+  );
 });

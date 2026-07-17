@@ -150,7 +150,13 @@ export type ContextWindowOption = {
   readonly isDefault?: true;
 };
 
+export type ModelThinkingMode = "adaptive" | "extended";
+
 export type ModelCapabilities = {
+  readonly contextWindowTokens?: number;
+  readonly maxOutputTokens?: number;
+  readonly thinkingMode?: ModelThinkingMode;
+  readonly minimumProviderVersion?: string;
   readonly optionDescriptors?: readonly ProviderOptionDescriptor[];
   readonly reasoningEffortLevels: readonly EffortOption[];
   readonly supportsFastMode: boolean;
@@ -244,6 +250,27 @@ export const MODEL_OPTIONS_BY_PROVIDER = {
     },
   ],
   claudeAgent: [
+    {
+      slug: "claude-sonnet-5",
+      name: "Claude Sonnet 5",
+      capabilities: {
+        contextWindowTokens: 1_000_000,
+        maxOutputTokens: 128_000,
+        thinkingMode: "adaptive",
+        minimumProviderVersion: "2.1.197",
+        reasoningEffortLevels: [
+          { value: "low", label: "Low" },
+          { value: "medium", label: "Medium" },
+          { value: "high", label: "High", isDefault: true },
+          { value: "xhigh", label: "Extra High" },
+          { value: "max", label: "Max" },
+        ],
+        supportsFastMode: false,
+        supportsThinkingToggle: false,
+        promptInjectedEffortLevels: [],
+        contextWindowOptions: [],
+      },
+    },
     {
       slug: "claude-opus-4-8",
       name: "Claude Opus 4.8",
@@ -577,6 +604,8 @@ export const MODEL_SLUG_ALIASES_BY_PROVIDER: Record<ProviderKind, Record<string,
     "claude-opus-4.5": "claude-opus-4-5",
     "claude-opus-4-5-20250120": "claude-opus-4-5",
     sonnet: "claude-sonnet-4-6",
+    "sonnet-5": "claude-sonnet-5",
+    "claude-sonnet-5": "claude-sonnet-5",
     "sonnet-4.6": "claude-sonnet-4-6",
     "claude-sonnet-4.6": "claude-sonnet-4-6",
     "claude-sonnet-4-6-20251117": "claude-sonnet-4-6",

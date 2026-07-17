@@ -60,6 +60,8 @@ describe("normalizeModelSlug", () => {
 
   it("uses provider-specific aliases", () => {
     expect(normalizeModelSlug("sonnet", "claudeAgent")).toBe("claude-sonnet-4-6");
+    expect(normalizeModelSlug("sonnet-5", "claudeAgent")).toBe("claude-sonnet-5");
+    expect(normalizeModelSlug("claude-sonnet-5", "claudeAgent")).toBe("claude-sonnet-5");
     expect(normalizeModelSlug("opus", "claudeAgent")).toBe("claude-opus-4-8");
     expect(normalizeModelSlug("opus-4.8", "claudeAgent")).toBe("claude-opus-4-8");
     expect(normalizeModelSlug("opus-4.6", "claudeAgent")).toBe("claude-opus-4-6");
@@ -221,6 +223,16 @@ describe("getModelCapabilities reasoningEffortLevels", () => {
     ]);
   });
 
+  it("returns authoritative effort options for Sonnet 5", () => {
+    expect(values("claudeAgent", "claude-sonnet-5")).toEqual([
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ]);
+  });
+
   it("returns no claude effort options for Haiku 4.5", () => {
     expect(values("claudeAgent", "claude-haiku-4-5")).toEqual([]);
   });
@@ -252,6 +264,7 @@ describe("getDefaultEffort", () => {
     expect(getDefaultEffort(getModelCapabilities("codex", "gpt-5.4"))).toBe("high");
     expect(getDefaultEffort(getModelCapabilities("claudeAgent", "claude-opus-4-8"))).toBe("high");
     expect(getDefaultEffort(getModelCapabilities("claudeAgent", "claude-opus-4-6"))).toBe("high");
+    expect(getDefaultEffort(getModelCapabilities("claudeAgent", "claude-sonnet-5"))).toBe("high");
     expect(getDefaultEffort(getModelCapabilities("claudeAgent", "claude-haiku-4-5"))).toBeNull();
     expect(getDefaultEffort(getModelCapabilities("gemini", "gemini-2.5-flash-lite"))).toBe("-1");
   });
@@ -367,6 +380,13 @@ describe("context window helpers", () => {
     expect(getDefaultContextWindow(getModelCapabilities("codex", "gpt-5.4"))).toBeNull();
   });
 
+  it("does not expose a selectable context suffix for intrinsic 1M models", () => {
+    const sonnetCaps = getModelCapabilities("claudeAgent", "claude-sonnet-5");
+    expect(sonnetCaps.contextWindowTokens).toBe(1_000_000);
+    expect(sonnetCaps.contextWindowOptions).toEqual([]);
+    expect(getDefaultContextWindow(sonnetCaps)).toBeNull();
+  });
+
   it("validates context window against model capabilities", () => {
     const opusCaps = getModelCapabilities("claudeAgent", "claude-opus-4-6");
     expect(hasContextWindowOption(opusCaps, "200k")).toBe(true);
@@ -475,6 +495,16 @@ describe("resolveApiModelId", () => {
       }),
     ).toBe("claude-opus-4-6");
   });
+
+  it("keeps Sonnet 5 canonical even when stale options request a 1m suffix", () => {
+    expect(
+      resolveApiModelId({
+        provider: "claudeAgent",
+        model: "claude-sonnet-5",
+        options: { contextWindow: "1m" },
+      }),
+    ).toBe("claude-sonnet-5");
+  });
 });
 
 describe("normalizeClaudeModelOptions", () => {
@@ -487,6 +517,17 @@ describe("normalizeClaudeModelOptions", () => {
     ).toEqual({
       effort: "max",
     });
+  });
+
+  it("preserves xhigh effort for Sonnet 5 without unrelated options", () => {
+    expect(
+      normalizeClaudeModelOptions("claude-sonnet-5", {
+        effort: "xhigh",
+        fastMode: true,
+        thinking: false,
+        contextWindow: "1m",
+      }),
+    ).toEqual({ effort: "xhigh" });
   });
 
   it("keeps the Haiku thinking toggle and removes unsupported effort", () => {

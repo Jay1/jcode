@@ -50,6 +50,16 @@ describe("normalizeCustomModelSlugs", () => {
   });
 });
 
+describe("Claude custom model settings", () => {
+  it("uses the canonical Sonnet 5 model ID as the example", () => {
+    const claudeSettings = MODEL_PROVIDER_SETTINGS.find(
+      (settings) => settings.provider === "claudeAgent",
+    );
+
+    expect(claudeSettings?.example).toBe("claude-sonnet-5");
+  });
+});
+
 describe("getAppModelOptions", () => {
   it("appends saved custom models after the built-in options", () => {
     const options = getAppModelOptions("codex", ["custom/internal-model"]);

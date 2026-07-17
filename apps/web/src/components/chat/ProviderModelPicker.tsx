@@ -4,7 +4,8 @@
 // Depends on: provider availability metadata, shared menu primitives, and picker trigger styling.
 
 import { type ModelSlug, type ProviderKind, type ServerProviderStatus } from "@jcode/contracts";
-import { resolveSelectableModel } from "@jcode/shared/model";
+import { getModelCapabilities, resolveSelectableModel } from "@jcode/shared/model";
+import { resolveModelCompatibility } from "@jcode/shared/modelCompatibility";
 import * as Schema from "effect/Schema";
 import { Fragment, memo, useCallback, useDeferredValue, useMemo, useState } from "react";
 import { type ProviderPickerKind, PROVIDER_OPTIONS } from "../../session-logic";
@@ -189,6 +190,35 @@ function buildModelSearchText(option: ProviderModelOption): string {
     .toLowerCase();
 }
 
+function formatModelTokenCount(tokens: number): string {
+  if (tokens >= 1_000_000) {
+    return `${tokens / 1_000_000}M`;
+  }
+  if (tokens >= 1_000) {
+    return `${tokens / 1_000}K`;
+  }
+  return String(tokens);
+}
+
+function resolveModelCapabilityDescription(provider: ProviderKind, model: string): string | null {
+  const capabilities = getModelCapabilities(provider, model);
+  const details: string[] = [];
+
+  if (capabilities.contextWindowTokens !== undefined) {
+    details.push(`${formatModelTokenCount(capabilities.contextWindowTokens)} context`);
+  }
+  if (capabilities.maxOutputTokens !== undefined) {
+    details.push(`${formatModelTokenCount(capabilities.maxOutputTokens)} max output`);
+  }
+  if (capabilities.thinkingMode !== undefined) {
+    details.push(
+      capabilities.thinkingMode === "adaptive" ? "Adaptive thinking" : "Extended thinking",
+    );
+  }
+
+  return details.length > 0 ? details.join(" · ") : null;
+}
+
 export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   provider: ProviderKind;
   model: ModelSlug;
@@ -319,6 +349,13 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   const handleModelChange = (provider: ProviderKind, value: string) => {
     if (props.disabled) return;
     if (!value) return;
+    const compatibility = resolveModelCompatibility({
+      provider,
+      model: value,
+      providerVersion:
+        props.providers?.find((entry) => entry.provider === provider)?.version ?? null,
+    });
+    if (!compatibility.selectable) return;
     const resolvedModel = resolveSelectableModel(
       provider,
       value,
@@ -399,13 +436,43 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                 {group.label ? <MenuGroupLabel>{group.label}</MenuGroupLabel> : null}
                 {group.options.map((modelOption) => {
                   const isFavorite = favoriteModelSlugSet?.has(modelOption.slug) ?? false;
+                  const compatibility = resolveModelCompatibility({
+                    provider,
+                    model: modelOption.slug,
+                    providerVersion:
+                      props.providers?.find((entry) => entry.provider === provider)?.version ??
+                      null,
+                  });
+                  const capabilityDescription = resolveModelCapabilityDescription(
+                    provider,
+                    modelOption.slug,
+                  );
+                  const modelLabel =
+                    capabilityDescription !== null ? (
+                      <span className="block min-w-0">
+                        <span className="block truncate">{modelOption.name}</span>
+                        <span className="block text-[length:var(--app-font-size-ui-xs,10px)] leading-tight text-muted-foreground">
+                          {capabilityDescription}
+                        </span>
+                      </span>
+                    ) : (
+                      modelOption.name
+                    );
                   return (
                     <MenuRadioItem
                       key={`${provider}:${modelOption.slug}`}
                       value={modelOption.slug}
-                      onClick={() => setMenuOpen(false)}
+                      disabled={!compatibility.selectable}
+                      onClick={compatibility.selectable ? () => setMenuOpen(false) : undefined}
                     >
-                      {favoriteModelSlugSet !== undefined ? (
+                      {!compatibility.selectable ? (
+                        <span className="block min-w-0">
+                          {modelLabel}
+                          <span className="block text-[length:var(--app-font-size-ui-xs,10px)] leading-tight text-muted-foreground">
+                            {compatibility.reason}
+                          </span>
+                        </span>
+                      ) : favoriteModelSlugSet !== undefined ? (
                         <span className="flex w-full min-w-0 items-center gap-2">
                           <span className="block min-w-0 flex-1 truncate">{modelOption.name}</span>
                           <button
@@ -438,7 +505,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                           </button>
                         </span>
                       ) : (
-                        modelOption.name
+                        modelLabel
                       )}
                     </MenuRadioItem>
                   );

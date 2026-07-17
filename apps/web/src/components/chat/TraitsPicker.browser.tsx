@@ -218,6 +218,33 @@ describe("TraitsPicker (Claude)", () => {
     });
   });
 
+  it("shows Sonnet 5 authoritative effort controls without legacy traits", async () => {
+    await using _ = await mountClaudePicker({
+      model: "claude-sonnet-5",
+    });
+
+    await vi.waitFor(() => {
+      expect(document.body.textContent ?? "").toContain("High");
+      expect(document.body.textContent ?? "").not.toContain("1M");
+    });
+    await page.getByRole("button").click();
+
+    await vi.waitFor(() => {
+      const text = document.body.textContent ?? "";
+      expect(text).toContain("Low");
+      expect(text).toContain("Medium");
+      expect(text).toContain("High");
+      expect(text).toContain("Extra High");
+      expect(text).toContain("Max");
+      expect(text).not.toContain("Ultrathink");
+      expect(text).not.toContain("Fast Mode");
+      expect(text).not.toContain("Thinking");
+      expect(text).not.toContain("Context Window");
+      expect(text).not.toContain("200k");
+      expect(text).not.toContain("1M");
+    });
+  });
+
   it("shows a th  inking on/off dropdown for Haiku", async () => {
     await using _ = await mountClaudePicker({
       model: "claude-haiku-4-5",

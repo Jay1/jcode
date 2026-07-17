@@ -8,6 +8,10 @@
       "types": "./src/model.ts",
       "import": "./src/model.ts"
     },
+    "./modelCompatibility": {
+      "types": "./src/modelCompatibility.ts",
+      "import": "./src/modelCompatibility.ts"
+    },
     "./git": {
       "types": "./src/git.ts",
       "import": "./src/git.ts"
