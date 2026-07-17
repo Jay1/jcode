@@ -34,6 +34,7 @@ import { isLocalImageMarkdownSrc } from "../lib/localImageUrls";
 import { LRUCache } from "../lib/lruCache";
 import { useTheme } from "../hooks/useTheme";
 import { resolveMarkdownFileLinkTarget, rewriteMarkdownFileUriHref } from "../markdown-links";
+import { remarkNormalizeListItemIndentation } from "../markdown-list-indentation";
 import { readNativeApi } from "../nativeApi";
 import type { ExpandedImagePreview } from "./chat/ExpandedImagePreview";
 import { GeneratedMarkdownImage } from "./chat/GeneratedMarkdownImage";
@@ -95,6 +96,7 @@ type MarkdownRehypePlugins = NonNullable<
 const MARKDOWN_REMARK_PLUGINS: MarkdownRemarkPlugins = [
   remarkGfm,
   [remarkMath, { singleDollarTextMath: true }],
+  remarkNormalizeListItemIndentation,
 ];
 const LITERAL_DOLLAR_PLACEHOLDER = "CHATMARKDOWNLITERALDOLLARPLACEHOLDER";
 
