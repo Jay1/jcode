@@ -69,7 +69,7 @@ import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./u
 import { ToggleGroup, Toggle } from "./ui/toggle-group";
 import { FileEntryIcon } from "./chat/FileEntryIcon";
 import { DiffStatLabel } from "./chat/DiffStatLabel";
-import { hasNonZeroStat } from "./chat/DiffStatLabel.logic";
+import { formatDiffStatAccessibleLabel, hasNonZeroStat } from "./chat/DiffStatLabel.logic";
 import { type SplitViewPanePanelState } from "../splitViewStore";
 
 type DiffRenderMode = "stacked" | "split";
@@ -442,6 +442,10 @@ export default function DiffPanel({
       });
   }, [renderablePatch]);
   const totalPatchStat = useMemo(() => summarizePatchStats(repoPatch), [repoPatch]);
+  const totalPatchStatAccessibleLabel =
+    totalPatchStat && hasNonZeroStat(totalPatchStat)
+      ? formatDiffStatAccessibleLabel(totalPatchStat.additions, totalPatchStat.deletions)
+      : undefined;
 
   useEffect(() => {
     if (diffOpen && !previousDiffOpenRef.current) {
@@ -930,6 +934,7 @@ export default function DiffPanel({
                       }}
                       aria-pressed={surfaceMode === "total"}
                       aria-label="Choose repo diff source"
+                      aria-description={totalPatchStatAccessibleLabel}
                     />
                   }
                 >

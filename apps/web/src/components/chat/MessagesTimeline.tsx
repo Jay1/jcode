@@ -42,6 +42,7 @@ import { Button } from "../ui/button";
 import { buildExpandedImagePreview, ExpandedImagePreview } from "./ExpandedImagePreview";
 import { ProposedPlanCard } from "./ProposedPlanCard";
 import { DiffStatLabel } from "./DiffStatLabel";
+import { formatDiffStatAccessibleLabel } from "./DiffStatLabel.logic";
 import { FileEntryIcon } from "./FileEntryIcon";
 import { MentionChipIcon } from "./MentionChipIcon";
 import { MessageActionButton } from "./MessageActionButton";
@@ -2033,6 +2034,9 @@ export const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: Simple
         <div className="space-y-0.5">
           {changedFiles.map((changedFilePath) => {
             const changedFileStat = fileDiffStatByPath?.get(changedFilePath);
+            const changedFileStatAccessibleLabel = changedFileStat
+              ? formatDiffStatAccessibleLabel(changedFileStat.additions, changedFileStat.deletions)
+              : undefined;
             const canOpenEditedDiff = Boolean(turnId && onOpenTurnDiff);
             const changedFileLabel = `${toolWorkEntryHeading(workEntry)} ${basename(changedFilePath)}`;
             const changedFileAriaLabel = canOpenEditedDiff
@@ -2055,6 +2059,7 @@ export const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: Simple
                 title={changedFilePath}
                 disabled={!canOpenEditedDiff && !canExpand}
                 aria-label={changedFileAriaLabel}
+                aria-description={changedFileStatAccessibleLabel}
                 aria-expanded={!canOpenEditedDiff && canExpand ? expanded : undefined}
                 onClick={() => {
                   if (turnId && onOpenTurnDiff) {
