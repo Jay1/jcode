@@ -40,6 +40,7 @@ import { RotatingFileSink } from "@jcode/shared/logging";
 import { isBackendReadinessAborted, waitForHttpReady } from "./backendReadiness";
 import { waitForBackendStartupReady } from "./backendStartupReadiness";
 import { showDesktopConfirmDialog } from "./confirmDialog";
+import { popupContextMenu } from "./contextMenuPopup";
 import { openInitialBackendWindow } from "./initialBackendWindowOpen";
 import { shouldAllowMediaPermissionRequest } from "./mediaPermissions";
 import { ServerListeningDetector } from "./serverListeningDetector";
@@ -1759,7 +1760,7 @@ function registerIpcHandlers(): void {
   ipcMain.removeHandler(CONTEXT_MENU_CHANNEL);
   ipcMain.handle(
     CONTEXT_MENU_CHANNEL,
-    async (_event, items: ContextMenuItem[], position?: { x: number; y: number }) => {
+    async (event, items: ContextMenuItem[], position?: { x: number; y: number }) => {
       const normalizedItems = items
         .filter((item) => typeof item.id === "string" && typeof item.label === "string")
         .map((item) => ({
@@ -1771,21 +1772,6 @@ function registerIpcHandlers(): void {
       if (normalizedItems.length === 0) {
         return null;
       }
-
-      const popupPosition =
-        position &&
-        Number.isFinite(position.x) &&
-        Number.isFinite(position.y) &&
-        position.x >= 0 &&
-        position.y >= 0
-          ? {
-              x: Math.floor(position.x),
-              y: Math.floor(position.y),
-            }
-          : null;
-
-      const window = BrowserWindow.getFocusedWindow() ?? mainWindow;
-      if (!window) return null;
 
       return new Promise<string | null>((resolve) => {
         const template: MenuItemConstructorOptions[] = [];
@@ -1814,11 +1800,21 @@ function registerIpcHandlers(): void {
         }
 
         const menu = Menu.buildFromTemplate(template);
-        menu.popup({
-          window,
-          ...popupPosition,
-          callback: () => resolve(null),
-        });
+        const didPopup = popupContextMenu(
+          {
+            menu,
+            position,
+            callback: () => resolve(null),
+          },
+          {
+            getSenderWindow: () => BrowserWindow.fromWebContents(event.sender),
+            getFocusedWindow: () => BrowserWindow.getFocusedWindow(),
+            getMainWindow: () => mainWindow,
+          },
+        );
+        if (!didPopup) {
+          resolve(null);
+        }
       });
     },
   );
