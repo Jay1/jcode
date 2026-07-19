@@ -21,7 +21,6 @@ import {
   collapseProjectsExcept,
   markThreadUnread,
   renameProjectLocally,
-  reorderProjects,
   setThreadWorkspace,
   setAllProjectsExpanded,
   syncServerReadModel,
@@ -172,6 +171,7 @@ function makeReadModelThread(overrides: Partial<OrchestrationReadModel["threads"
 function makeReadModel(thread: OrchestrationReadModel["threads"][number]): OrchestrationReadModel {
   return {
     snapshotSequence: 1,
+    sidebarLayout: null,
     updatedAt: "2026-02-27T00:00:00.000Z",
     projects: [
       {
@@ -759,6 +759,7 @@ describe("store pure functions", () => {
       },
       {
         snapshotSequence: 1,
+        sidebarLayout: null,
         updatedAt: "2026-02-27T00:00:00.000Z",
         projects: [
           makeReadModelProject({
@@ -1516,44 +1517,6 @@ describe("store pure functions", () => {
     expect(next.threads[0]?.activities).toEqual([]);
     expect(next.threads[0]?.pendingSourceProposedPlan).toBeUndefined();
     expect(next.threads[0]?.latestTurn?.turnId).toBe(TurnId.makeUnsafe("turn-1"));
-  });
-
-  it("reorderProjects moves a project to a target index", () => {
-    const project1 = ProjectId.makeUnsafe("project-1");
-    const project2 = ProjectId.makeUnsafe("project-2");
-    const project3 = ProjectId.makeUnsafe("project-3");
-    const state: AppState = {
-      projects: [
-        makeProject({
-          id: project1,
-          name: "Project 1",
-          remoteName: "Project 1",
-          folderName: "project-1",
-          cwd: "/tmp/project-1",
-        }),
-        makeProject({
-          id: project2,
-          name: "Project 2",
-          remoteName: "Project 2",
-          folderName: "project-2",
-          cwd: "/tmp/project-2",
-        }),
-        makeProject({
-          id: project3,
-          name: "Project 3",
-          remoteName: "Project 3",
-          folderName: "project-3",
-          cwd: "/tmp/project-3",
-        }),
-      ],
-      threads: [],
-      sidebarThreadSummaryById: {},
-      threadsHydrated: true,
-    };
-
-    const next = reorderProjects(state, project1, project3);
-
-    expect(next.projects.map((project) => project.id)).toEqual([project2, project3, project1]);
   });
 
   it("expands every project when toggled on", () => {
@@ -2726,7 +2689,7 @@ describe("store read model sync", () => {
     expect(next.sidebarThreadSummaryById["thread-1"]?.archivedAt).toBeNull();
   });
 
-  it("preserves the current project order when syncing incoming read model updates", () => {
+  it("maps incoming projects without treating the previous local array order as authority", () => {
     const project1 = ProjectId.makeUnsafe("project-1");
     const project2 = ProjectId.makeUnsafe("project-2");
     const project3 = ProjectId.makeUnsafe("project-3");
@@ -2753,6 +2716,7 @@ describe("store read model sync", () => {
     };
     const readModel: OrchestrationReadModel = {
       snapshotSequence: 2,
+      sidebarLayout: null,
       updatedAt: "2026-02-27T00:00:00.000Z",
       projects: [
         makeReadModelProject({
@@ -2776,7 +2740,7 @@ describe("store read model sync", () => {
 
     const next = syncServerReadModel(initialState, readModel);
 
-    expect(next.projects.map((project) => project.id)).toEqual([project2, project1, project3]);
+    expect(next.projects.map((project) => project.id)).toEqual([project1, project2, project3]);
   });
 
   it("preserves expanded project state when a project briefly disappears from the snapshot", () => {
@@ -2806,6 +2770,7 @@ describe("store read model sync", () => {
 
     const snapshotWithoutProject2: OrchestrationReadModel = {
       snapshotSequence: 2,
+      sidebarLayout: null,
       updatedAt: "2026-02-27T00:00:00.000Z",
       projects: [
         makeReadModelProject({
@@ -2818,6 +2783,7 @@ describe("store read model sync", () => {
     };
     const snapshotWithProject2Restored: OrchestrationReadModel = {
       snapshotSequence: 3,
+      sidebarLayout: null,
       updatedAt: "2026-02-27T00:01:00.000Z",
       projects: [
         makeReadModelProject({
@@ -2980,9 +2946,169 @@ describe("store read model sync", () => {
     }
   });
 
+  it("does not create browser-owned project order while persisting presentation state", async () => {
+    // Given: a fresh profile with a hydrated project list.
+    const storage = new Map<string, string>();
+    const fakeWindow = {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+        removeItem: (key: string) => storage.delete(key),
+        clear: () => storage.clear(),
+      },
+      addEventListener: vi.fn(),
+    };
+    vi.stubGlobal("window", fakeWindow);
+    try {
+      vi.resetModules();
+      const freshStore = await import("./store");
+      freshStore.useStore.setState((state) => ({
+        ...state,
+        projects: [makeProject({ cwd: "/tmp/project", expanded: true })],
+      }));
+
+      // When: device-local presentation state is flushed.
+      freshStore.persistAppStateNow();
+
+      // Then: expansion is retained without deriving an order from the project array.
+      expect(JSON.parse(storage.get("jcode:renderer-state:v8") ?? "{}")).toEqual({
+        expandedProjectCwds: ["/tmp/project"],
+        projectNamesByCwd: {},
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("preserves an unconfirmed legacy order without reading or updating it as authority", async () => {
+    // Given: migration candidates exist before the server has confirmed initialization.
+    const storage = new Map<string, string>();
+    storage.set(
+      "jcode:renderer-state:v8",
+      JSON.stringify({
+        expandedProjectCwds: ["/legacy"],
+        projectOrderCwds: ["/legacy/b", "/legacy/a"],
+        projectNamesByCwd: { "/legacy/a": "Legacy A" },
+      }),
+    );
+    const fakeWindow = {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+        removeItem: (key: string) => storage.delete(key),
+        clear: () => storage.clear(),
+      },
+      addEventListener: vi.fn(),
+    };
+    vi.stubGlobal("window", fakeWindow);
+    try {
+      vi.resetModules();
+      const freshStore = await import("./store");
+      freshStore.useStore.setState((state) => ({
+        ...state,
+        projects: [makeProject({ cwd: "/tmp/current", expanded: true })],
+      }));
+
+      // When: presentation changes are persisted before migration confirmation.
+      freshStore.persistAppStateNow();
+
+      // Then: the candidate field is byte-for-value preserved, not replaced by current UI order.
+      expect(JSON.parse(storage.get("jcode:renderer-state:v8") ?? "{}")).toMatchObject({
+        projectOrderCwds: ["/legacy/b", "/legacy/a"],
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("preserves a mixed legacy order and presentation fields before project hydration", async () => {
+    // Given: an old flat renderer payload contains valid candidates mixed with malformed entries.
+    const storage = new Map<string, string>();
+    storage.set(
+      "jcode:renderer-state:v8",
+      JSON.stringify({
+        expandedProjectCwds: ["/legacy/a"],
+        projectOrderCwds: ["/legacy/b", 42, "/legacy/a", null],
+        projectNamesByCwd: { "/legacy/a": "Legacy A" },
+      }),
+    );
+    const fakeWindow = {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+        removeItem: (key: string) => storage.delete(key),
+        clear: () => storage.clear(),
+      },
+      addEventListener: vi.fn(),
+    };
+    vi.stubGlobal("window", fakeWindow);
+    try {
+      vi.resetModules();
+      const freshStore = await import("./store");
+
+      // When: ordinary presentation persistence runs before the first project snapshot.
+      freshStore.persistAppStateNow();
+
+      // Then: migration input is unchanged and device-local presentation survives hydration wait.
+      expect(JSON.parse(storage.get("jcode:renderer-state:v8") ?? "{}")).toEqual({
+        expandedProjectCwds: ["/legacy/a"],
+        projectNamesByCwd: { "/legacy/a": "Legacy A" },
+        projectOrderCwds: ["/legacy/b", 42, "/legacy/a", null],
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("preserves Zustand-envelope migration input and presentation fields before hydration", async () => {
+    // Given: a supported persisted envelope contains legacy authority and presentation state.
+    const storage = new Map<string, string>();
+    storage.set(
+      "jcode:renderer-state:v8",
+      JSON.stringify({
+        state: {
+          expandedProjectCwds: ["/legacy/a"],
+          projectOrderCwds: ["/legacy/b", false, "/legacy/a"],
+          projectNamesByCwd: { "/legacy/a": "Legacy A" },
+        },
+        version: 8,
+      }),
+    );
+    const fakeWindow = {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+        removeItem: (key: string) => storage.delete(key),
+        clear: () => storage.clear(),
+      },
+      addEventListener: vi.fn(),
+    };
+    vi.stubGlobal("window", fakeWindow);
+    try {
+      vi.resetModules();
+      const freshStore = await import("./store");
+
+      // When: persistence runs before the server project snapshot arrives.
+      freshStore.persistAppStateNow();
+
+      // Then: the envelope and candidate field remain migration-only while presentation survives.
+      expect(JSON.parse(storage.get("jcode:renderer-state:v8") ?? "{}")).toEqual({
+        state: {
+          expandedProjectCwds: ["/legacy/a"],
+          projectNamesByCwd: { "/legacy/a": "Legacy A" },
+          projectOrderCwds: ["/legacy/b", false, "/legacy/a"],
+        },
+        version: 8,
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("reuses normalized thread objects when the incoming snapshot is unchanged", () => {
     const readModel = {
       snapshotSequence: 1,
+      sidebarLayout: null,
       updatedAt: "2026-02-28T00:00:00.000Z",
       projects: [
         makeReadModelProject({

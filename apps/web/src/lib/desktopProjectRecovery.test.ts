@@ -82,6 +82,7 @@ function makeThread(
 function makeSnapshot(overrides: Partial<OrchestrationReadModel> = {}): OrchestrationReadModel {
   return {
     snapshotSequence: 1,
+    sidebarLayout: null,
     updatedAt: "2026-04-20T08:00:00.000Z",
     projects: [makeProject()],
     threads: [makeThread()],
@@ -96,6 +97,7 @@ function makeShellSnapshot(
   const thread = makeThread();
   return {
     snapshotSequence: 1,
+    sidebarLayout: null,
     updatedAt: "2026-04-20T08:00:00.000Z",
     projects: [
       {

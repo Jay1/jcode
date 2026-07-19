@@ -320,6 +320,7 @@ function createSnapshotForTargetUser(options: {
 
   return {
     snapshotSequence: 1,
+    sidebarLayout: null,
     projects: [
       {
         id: PROJECT_ID,
@@ -522,6 +523,7 @@ function createShellSnapshotFromFixtureSnapshot(
 ): OrchestrationShellSnapshot {
   return {
     snapshotSequence: snapshot.snapshotSequence,
+    sidebarLayout: snapshot.sidebarLayout,
     projects: snapshot.projects
       .filter((project) => project.deletedAt === null)
       .map((project) => ({

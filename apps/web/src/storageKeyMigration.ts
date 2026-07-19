@@ -3,6 +3,11 @@
 // Layer: Web bootstrap utility
 // Exports: migrateJCodeLocalStorageKeys
 
+import {
+  removeSidebarLayoutLegacyProjectOrder,
+  SIDEBAR_LAYOUT_MIGRATION_MARKER_KEY,
+} from "./sidebarLayoutLegacyMigration";
+
 // DPCode/T3Code keys are compatibility inputs only. Leave legacy keys intact so
 // users can downgrade during the rebrand window without losing browser state.
 const STORAGE_KEY_MIGRATIONS = [
@@ -17,7 +22,6 @@ const STORAGE_KEY_MIGRATIONS = [
   [["dpcode:terminal-state:v1", "t3code:terminal-state:v1"], "jcode:terminal-state:v1"],
   [["dpcode:latest-project:v1", "t3code:latest-project:v1"], "jcode:latest-project:v1"],
   [["dpcode:app-settings:v1", "t3code:app-settings:v1"], "jcode:app-settings:v1"],
-  [["dpcode:pinned-threads:v1", "t3code:pinned-threads:v1"], "jcode:pinned-threads:v1"],
   [["dpcode:browser-state:v1", "t3code:browser-state:v1"], "jcode:browser-state:v1"],
   [["dpcode:workspace-pages:v2", "t3code:workspace-pages:v2"], "jcode:workspace-pages:v2"],
   [["dpcode:theme", "t3code:theme"], "jcode:theme"],
@@ -42,6 +46,7 @@ export function migrateJCodeLocalStorageKeys(): void {
   }
 
   try {
+    const sidebarLayoutMigrated = storage.getItem(SIDEBAR_LAYOUT_MIGRATION_MARKER_KEY) !== null;
     for (const [legacyKeys, nextKey] of STORAGE_KEY_MIGRATIONS) {
       if (storage.getItem(nextKey) !== null) {
         continue;
@@ -50,7 +55,13 @@ export function migrateJCodeLocalStorageKeys(): void {
         .map((legacyKey) => storage.getItem(legacyKey))
         .find((value): value is string => value !== null);
       if (legacyValue !== undefined) {
-        storage.setItem(nextKey, legacyValue);
+        const nextValue =
+          sidebarLayoutMigrated && nextKey === "jcode:renderer-state:v8"
+            ? removeSidebarLayoutLegacyProjectOrder(legacyValue)
+            : legacyValue;
+        if (nextValue !== null) {
+          storage.setItem(nextKey, nextValue);
+        }
       }
     }
   } catch {

@@ -98,8 +98,66 @@ describe("storageKeyMigration", () => {
     await importMigrationFresh();
 
     expect(globalThis.localStorage.getItem("jcode:composer-drafts:v1")).toBe("drafts");
-    expect(globalThis.localStorage.getItem("jcode:pinned-threads:v1")).toBe("pinned");
+    expect(globalThis.localStorage.getItem("jcode:pinned-threads:v1")).toBeNull();
     expect(globalThis.localStorage.getItem("jcode:last-editor")).toBe("vscode");
+  });
+
+  it("never copies a legacy pinned-thread payload into current storage", async () => {
+    // Given
+    const sourceKey = "dpcode:pinned-threads:v1";
+    const destinationKey = "jcode:pinned-threads:v1";
+    const legacyPayload = JSON.stringify({ state: { pinnedThreadIds: ["thread-2"] }, version: 0 });
+    globalThis.localStorage.setItem(sourceKey, legacyPayload);
+
+    // When
+    await importMigrationFresh();
+
+    // Then
+    expect(globalThis.localStorage.getItem(sourceKey)).toBe(legacyPayload);
+    expect(globalThis.localStorage.getItem(destinationKey)).toBeNull();
+  });
+
+  it("does not resurrect legacy pin or project-order authority after migration is marked", async () => {
+    // Given
+    globalThis.localStorage.setItem("jcode:sidebar-layout-migrated:v1", "1");
+    globalThis.localStorage.setItem("dpcode:pinned-threads:v1", "legacy pins");
+    globalThis.localStorage.setItem(
+      "t3code:renderer-state:v8",
+      JSON.stringify({ projectOrderCwds: ["/stale/project"] }),
+    );
+
+    // When
+    await importMigrationFresh();
+
+    // Then
+    expect(globalThis.localStorage.getItem("jcode:pinned-threads:v1")).toBeNull();
+    expect(
+      JSON.parse(globalThis.localStorage.getItem("jcode:renderer-state:v8") ?? "null"),
+    ).toEqual({});
+  });
+
+  it("migrates marked legacy renderer presentation without restoring project order", async () => {
+    // Given: a marked old profile only has a T3Code renderer payload.
+    globalThis.localStorage.setItem("jcode:sidebar-layout-migrated:v1", "1");
+    globalThis.localStorage.setItem(
+      "t3code:renderer-state:v8",
+      JSON.stringify({
+        expandedProjectCwds: ["/repo/a"],
+        projectNamesByCwd: { "/repo/a": "Local A" },
+        projectOrderCwds: ["/repo/a"],
+      }),
+    );
+
+    // When: namespace bootstrap runs.
+    await importMigrationFresh();
+
+    // Then: presentation migrates to JCode while ordering authority stays retired.
+    expect(
+      JSON.parse(globalThis.localStorage.getItem("jcode:renderer-state:v8") ?? "null"),
+    ).toEqual({
+      expandedProjectCwds: ["/repo/a"],
+      projectNamesByCwd: { "/repo/a": "Local A" },
+    });
   });
 
   it("swallows storage errors so the app can still boot", async () => {

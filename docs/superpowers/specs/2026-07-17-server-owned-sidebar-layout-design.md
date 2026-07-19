@@ -73,6 +73,11 @@ interface SidebarLayout {
 }
 ```
 
+Full and shell snapshots expose `sidebarLayout: SidebarLayout | null`. `null` is the only
+uninitialized state. Once initialized, every accepted layout event publishes a non-null layout
+whose `revision` is that event's global orchestration sequence; `snapshotSequence` is only a
+snapshot fence and is never a layout acknowledgement.
+
 The shell query normalizes the stored layout against live projections:
 
 - duplicate IDs are removed;
@@ -87,7 +92,7 @@ Normalization is deterministic and read-only. The next accepted layout command p
 Clients express intent with narrow commands:
 
 - `sidebar-layout.initialize`
-  - accepted only while the layout is uninitialized;
+  - the first accepted command initializes the layout;
   - carries legacy project and pinned-thread order candidates.
 - `sidebar-layout.project.move`
   - carries a project ID and an optional `beforeProjectId` anchor;
@@ -102,6 +107,11 @@ Clients express intent with narrow commands:
 
 All commands carry the existing idempotent command ID. Clients do not send full replacement arrays and do not use a client-authored revision as a last-write-wins token.
 
+Every accepted command returns the existing dispatch receipt sequence. A client retains its
+optimistic intent until a canonical layout with `revision >= acceptedSequence` is observed. This
+handles RPC-before-event, event-before-RPC, retry receipt recovery, and reconnect snapshots without
+using the unrelated shell `snapshotSequence`.
+
 ### Command semantics
 
 The orchestration engine serializes commands on the singleton layout stream and evaluates each command against the latest aggregate state.
@@ -112,6 +122,9 @@ The orchestration engine serializes commands on the singleton layout stream and 
 - Pin and unpin are idempotent.
 - Concurrent moves of different items are both applied in server acceptance order.
 - Concurrent moves of the same item resolve to the last accepted intent.
+- Initialization after the layout already exists is an accepted canonical no-op: it preserves the
+  existing ordered lists and emits them at a later global event sequence so the dispatch can be
+  acknowledged normally.
 
 Events contain the resulting canonical ordered lists. This keeps projection rebuilds deterministic and makes each accepted layout revision self-contained while commands remain semantic and concurrency-safe.
 
@@ -146,8 +159,9 @@ For each interaction:
 1. Add the semantic intent to the pending queue and render it immediately.
 2. Dispatch the command with a unique command ID.
 3. Apply shell layout events from any client as the new confirmed layout.
-4. Remove a pending intent when its command is acknowledged by command ID.
-5. Replay any remaining pending intents over the new confirmed layout.
+4. Record the dispatch result's global event sequence as the intent's `acceptedSequence`.
+5. Remove a pending intent after a canonical layout revision reaches that accepted sequence.
+6. Replay any remaining pending intents over the new confirmed layout.
 
 This model naturally handles another client changing the layout while a local command is in flight. There is no imperative rollback copy: on rejection, the client removes the rejected intent and the displayed layout derives again from the last confirmed server state. A targeted toast explains the failure.
 
@@ -163,11 +177,46 @@ Migration is explicit, atomic, and one-time.
 2. A client reads the legacy local project order and pinned-thread list.
 3. The client maps project workspace roots to project IDs from the hydrated server snapshot.
 4. The client sends `sidebar-layout.initialize` with valid candidate IDs.
-5. The server filters deleted or unknown IDs, removes duplicates, appends missing live projects deterministically, and initializes the aggregate atomically.
-6. If two clients race to initialize, only the first command changes state. The other receives or observes the already-initialized canonical layout and adopts it.
+5. The server filters deleted or unknown IDs, removes duplicates, appends missing live projects deterministically, merges valid client pin candidates with existing server-pinned threads, and initializes the aggregate atomically. Existing server pins are preserved even when the winning client has no legacy pin storage.
+6. If two clients race to initialize, only the first command changes the ordered lists. The later command is accepted as a canonical no-op event at a newer sequence, and the losing client adopts the already-initialized layout.
 7. After observing initialized server state, each client removes ordering and pin authority from its legacy local storage. Local expansion and other presentation values remain.
 
 If a client has no valid legacy order, it initializes from the deterministic server default. Legacy values are never consulted again after server initialization, so an old browser profile cannot resurrect stale pins or project order.
+
+The final web upgrade algorithm distinguishes three candidate states. `undefined` means the hydrated
+snapshot has not made candidate collection ready, a candidate object (including empty arrays) means
+the client may make its one initialization attempt, and `null` means a durable migration marker or
+unavailable storage forbids initialization from that profile. Candidate collection occurs at most
+once per mounted EventRouter. An empty, readable profile therefore still initializes the server
+default, while a marked old profile never submits another initialize command even if stale keys
+later reappear.
+
+A fully empty pushed shell snapshot is provisional because desktop startup can publish it before the
+projection query is hydrated. It keeps candidates `undefined`. Any pushed snapshot containing a
+project or thread is ready, including valid project-only and thread-only lifecycles. An authoritative
+`getShellSnapshot` query is ready even when both collections are genuinely empty, so an empty server
+still initializes deterministically without treating elapsed time as proof of readiness.
+
+Confirmation is driven only by an observed non-null canonical layout, whether it arrives in a
+snapshot, a non-applied fallback/bootstrap query, or another client's shell event. Canonical-only
+fallback observations pass through the layout router so they retry interrupted cleanup without
+reapplying stale lifecycle data or migration candidates; layout revision monotonicity still prevents
+regression. The client writes
+`jcode:sidebar-layout-migrated:v1` before retiring authority fields, removes only
+`projectOrderCwds` from renderer-state objects, removes the three current/DPCode/T3Code pin keys,
+and leaves expansion, local project names, and unrelated device-local state intact. If field cleanup
+is interrupted, the marker immediately prevents stale replay and later canonical observations retry
+the remaining cleanup. Bootstrap never copies legacy pin storage into a current pin store. Until
+confirmation, ordinary presentation persistence preserves an existing legacy order field unchanged;
+it never derives or updates that field from the rendered project array. This preservation supports
+both flat renderer objects and Zustand-style `{ state, version }` envelopes, keeps mixed legacy
+arrays byte-for-value equivalent until the migration parser filters them, and retains expansion and
+local project names even when persistence runs before project hydration.
+
+The namespace bootstrap marker retires ordering authority only; it does not suppress presentation
+migration. If a marked profile has only a DPCode/T3Code renderer payload, bootstrap strips
+`projectOrderCwds` and copies the remaining expansion, local-name, and unrelated presentation fields
+to the current JCode renderer key.
 
 ## Authorization And Transport
 
@@ -178,6 +227,9 @@ The web bundle and server contracts ship together. The old client-only pin migra
 ## Failure Handling
 
 - Transport failure: remove the rejected pending intent, render confirmed server state, and show a specific retryable toast.
+- Initialization rejection: clear the one-attempt latch and show a targeted Retry action. Retrying
+  reuses the collected candidate snapshot in a fresh command only while canonical layout remains
+  uninitialized; if another client wins first, the retry becomes a no-op and canonical state wins.
 - Domain not found: remove the intent and refresh from the next shell snapshot; do not retry automatically.
 - Lost connection after server acceptance: command ID idempotency makes an explicit retry safe, while the shell snapshot eventually confirms the canonical result.
 - Projection restart or rebuild: replay layout events and reconstruct both the layout row and denormalized pinned flags.

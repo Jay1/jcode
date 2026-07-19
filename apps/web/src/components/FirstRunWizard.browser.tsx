@@ -92,6 +92,7 @@ const testServerConfig: ServerConfig = {
 
 const emptyShellSnapshot: OrchestrationShellSnapshot = {
   snapshotSequence: 1,
+  sidebarLayout: null,
   projects: [],
   threads: [],
   updatedAt: "2026-06-12T12:03:00.000Z",
