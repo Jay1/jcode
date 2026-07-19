@@ -77,6 +77,18 @@ import { shouldRepairDesktopProjectBootstrapSnapshot } from "../lib/desktopProje
 import { parseDiffRouteSearch } from "../diffRouteSearch";
 import { resolveSplitViewThreadIds, selectSplitView, useSplitViewStore } from "../splitViewStore";
 import { providerDiscoveryQueryKeys } from "../lib/providerDiscoveryReactQuery";
+import {
+  createSidebarLayoutRouter,
+  sidebarLayoutLegacySubjectsReady,
+  type SidebarLayoutSnapshotSource,
+} from "../sidebarLayoutRouter";
+import {
+  confirmSidebarLayoutLegacyMigration,
+  readSidebarLayoutLegacyCandidates,
+  type SidebarLayoutLegacyCandidates,
+} from "../sidebarLayoutLegacyMigration";
+import { sidebarLayoutStore } from "../sidebarLayoutStore";
+import { classifyShellStreamEvent } from "../shellEventOrdering";
 
 const SHELL_SNAPSHOT_BOOTSTRAP_FALLBACK_DELAY_MS = 1_500;
 const THREAD_DETAIL_CATCHUP_INTERVAL_MS = 1_500;
@@ -700,6 +712,35 @@ function EventRouter() {
   const reconcileThreadSubscriptionsRef = useRef<
     ((threadIds: readonly ThreadId[]) => Promise<void>) | null
   >(null);
+  const sidebarLayoutRouterRef = useRef<ReturnType<typeof createSidebarLayoutRouter> | null>(null);
+  const sidebarLayoutRouter =
+    sidebarLayoutRouterRef.current ??
+    createSidebarLayoutRouter({
+      store: sidebarLayoutStore,
+      confirmLegacyMigration: (layout) =>
+        confirmSidebarLayoutLegacyMigration(window.localStorage, layout),
+      onInitializationRejected: (failure) => {
+        toastManager.add({
+          type: "error",
+          title: "Sidebar layout did not sync",
+          description:
+            failure.error instanceof Error
+              ? failure.error.message
+              : "The server rejected sidebar setup. Retry to use this profile's saved order.",
+          actionProps: {
+            children: "Retry",
+            onClick: () => {
+              failure.retry();
+            },
+          },
+        });
+      },
+    });
+  sidebarLayoutRouterRef.current = sidebarLayoutRouter;
+  const sidebarLayoutLegacyCandidatesRef = useRef<
+    | { readonly collected: false }
+    | { readonly collected: true; readonly candidates: SidebarLayoutLegacyCandidates | null }
+  >({ collected: false });
 
   workspacePagesRef.current = workspacePages;
   pathnameRef.current = pathname;
@@ -722,6 +763,47 @@ function EventRouter() {
     const threadSnapshotRequestInFlight = new Set<ThreadId>();
     const threadReplayRequestInFlight = new Set<ThreadId>();
     let reconcileThreadSubscriptionsChain = Promise.resolve();
+    const acceptSidebarLayoutSnapshot = (
+      snapshot: OrchestrationShellSnapshot,
+      source: SidebarLayoutSnapshotSource,
+    ): void => {
+      const lifecycle = {
+        projects: snapshot.projects.map((project) => ({
+          id: project.id,
+          kind: project.kind,
+          createdAt: project.createdAt,
+          deletedAt: null,
+        })),
+        threads: snapshot.threads.map((thread) => ({ id: thread.id, deletedAt: null })),
+      };
+      if (
+        !sidebarLayoutLegacyCandidatesRef.current.collected &&
+        sidebarLayoutLegacySubjectsReady(source, lifecycle)
+      ) {
+        sidebarLayoutLegacyCandidatesRef.current = {
+          collected: true,
+          candidates: readSidebarLayoutLegacyCandidates(
+            window.localStorage,
+            snapshot.sidebarLayout,
+            {
+              projects: snapshot.projects.map((project) => ({
+                id: project.id,
+                workspaceRoot: project.workspaceRoot,
+              })),
+              threadIds: snapshot.threads.map((thread) => thread.id),
+            },
+          ),
+        };
+      }
+      const legacyCandidateState = sidebarLayoutLegacyCandidatesRef.current;
+      sidebarLayoutRouter.acceptSnapshot({
+        sidebarLayout: snapshot.sidebarLayout,
+        lifecycle,
+        ...(legacyCandidateState.collected
+          ? { legacyCandidates: legacyCandidateState.candidates }
+          : {}),
+      });
+    };
 
     const beginThreadSubscription = (threadId: ThreadId) => {
       threadSnapshotSequenceById.delete(threadId);
@@ -766,6 +848,7 @@ function EventRouter() {
       pendingShellEvents = [];
       for (const event of nextPending) {
         shellSnapshotSequence = Math.max(shellSnapshotSequence, event.sequence);
+        sidebarLayoutRouter.acceptShellEvent(event);
         applyShellEvent(event);
       }
     };
@@ -837,16 +920,26 @@ function EventRouter() {
     const loadShellSnapshotOnce = async () => {
       const snapshot = await api.orchestration.getShellSnapshot();
       if (!shouldApplyBootstrapShellSnapshot(snapshot)) {
+        if (
+          snapshot.sidebarLayout === null &&
+          !sidebarLayoutLegacyCandidatesRef.current.collected
+        ) {
+          acceptSidebarLayoutSnapshot(snapshot, "query");
+        } else {
+          sidebarLayoutRouter.acceptConfirmedLayout(snapshot.sidebarLayout);
+        }
         return;
       }
       shellSnapshotSequence = snapshot.snapshotSequence;
       syncServerShellSnapshot(snapshot);
+      acceptSidebarLayoutSnapshot(snapshot, "query");
       reconcilePromotedDraftsFromShellThreads(snapshot.threads);
       removeOrphanedTerminalsForCurrentState();
       flushShellBuffer(snapshot.snapshotSequence);
     };
 
     const ensureScopedSubscriptions = async () => {
+      sidebarLayoutRouter.reconnect();
       shellSnapshotSequence = -1;
       pendingShellEvents = [];
       subscribedThreadIds.clear();
@@ -974,20 +1067,25 @@ function EventRouter() {
       if (item.kind === "snapshot") {
         shellSnapshotSequence = item.snapshot.snapshotSequence;
         syncServerShellSnapshot(item.snapshot);
+        acceptSidebarLayoutSnapshot(item.snapshot, "stream");
         reconcilePromotedDraftsFromShellThreads(item.snapshot.threads);
         removeOrphanedTerminalsForCurrentState();
         flushShellBuffer(item.snapshot.snapshotSequence);
         return;
       }
 
-      if (shellSnapshotSequence < 0) {
-        pendingShellEvents.push(item);
-        return;
-      }
-      if (item.sequence <= shellSnapshotSequence) {
-        return;
+      const disposition = classifyShellStreamEvent(shellSnapshotSequence, item.sequence);
+      switch (disposition) {
+        case "buffer":
+          pendingShellEvents.push(item);
+          return;
+        case "ignore":
+          return;
+        case "apply":
+          break;
       }
       shellSnapshotSequence = item.sequence;
+      sidebarLayoutRouter.acceptShellEvent(item);
       applyShellEvent(item);
       if (item.kind === "thread-upserted") {
         reconcilePromotedDraftsFromShellThreads([item.thread]);
@@ -1203,6 +1301,7 @@ function EventRouter() {
     setWorkspaceHomeDir,
     syncServerShellSnapshot,
     syncServerThreadDetailHotPath,
+    sidebarLayoutRouter,
   ]);
 
   useLayoutEffect(() => {

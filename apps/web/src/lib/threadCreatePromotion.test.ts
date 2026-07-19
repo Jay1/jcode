@@ -94,6 +94,7 @@ describe("threadCreatePromotion", () => {
     useComposerDraftStore.getState().setProjectDraftThreadId(projectId, threadId);
     useStore.getState().syncServerShellSnapshot({
       snapshotSequence: 1,
+      sidebarLayout: null,
       projects: [
         {
           id: projectId,

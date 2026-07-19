@@ -13,6 +13,7 @@ import {
   ProjectCreatedPayload,
   ProjectDeletedPayload,
   ProjectMetaUpdatedPayload,
+  SidebarLayoutUpdatedPayload,
   ThreadArchivedPayload,
   ThreadActivityAppendedPayload,
   ThreadCreatedPayload,
@@ -200,6 +201,7 @@ function compareThreadActivities(
 export function createEmptyReadModel(nowIso: string): OrchestrationReadModel {
   return {
     snapshotSequence: 0,
+    sidebarLayout: null,
     projects: [],
     threads: [],
     updatedAt: nowIso,
@@ -217,6 +219,26 @@ export function projectEvent(
   };
 
   switch (event.type) {
+    case "sidebar-layout.updated":
+      return decodeForEvent(SidebarLayoutUpdatedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => {
+          const pinnedThreadIds = new Set(payload.pinnedThreadOrder);
+          return {
+            ...nextBase,
+            sidebarLayout: {
+              projectOrder: payload.projectOrder,
+              pinnedThreadOrder: payload.pinnedThreadOrder,
+              revision: event.sequence,
+              updatedAt: payload.updatedAt,
+            },
+            threads: nextBase.threads.map((thread) => ({
+              ...thread,
+              isPinned: pinnedThreadIds.has(thread.id),
+            })),
+          };
+        }),
+      );
+
     case "project.created":
       return decodeForEvent(ProjectCreatedPayload, event.payload, event.type, "payload").pipe(
         Effect.map((payload) => {
@@ -312,7 +334,10 @@ export function projectEvent(
             associatedWorktreeBranch: payload.associatedWorktreeBranch,
             associatedWorktreeRef: payload.associatedWorktreeRef,
             createBranchFlowCompleted: payload.createBranchFlowCompleted,
-            isPinned: payload.isPinned,
+            isPinned:
+              nextBase.sidebarLayout === null
+                ? payload.isPinned
+                : nextBase.sidebarLayout.pinnedThreadOrder.includes(payload.threadId),
             parentThreadId: payload.parentThreadId,
             subagentAgentId: payload.subagentAgentId,
             subagentNickname: payload.subagentNickname,
@@ -417,7 +442,9 @@ export function projectEvent(
               ...(nextCreateBranchFlowCompleted !== undefined
                 ? { createBranchFlowCompleted: nextCreateBranchFlowCompleted }
                 : {}),
-              ...(payload.isPinned !== undefined ? { isPinned: payload.isPinned } : {}),
+              ...(nextBase.sidebarLayout === null && payload.isPinned !== undefined
+                ? { isPinned: payload.isPinned }
+                : {}),
               ...(payload.parentThreadId !== undefined
                 ? { parentThreadId: payload.parentThreadId }
                 : {}),

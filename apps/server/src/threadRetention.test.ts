@@ -3,9 +3,17 @@
 // Layer: Server maintenance tests
 // Exports: Vitest coverage for threadRetention helpers.
 
-import { ProjectId, ThreadId, type OrchestrationReadModel } from "@jcode/contracts";
+import {
+  CommandId,
+  EventId,
+  OrchestrationEvent,
+  ProjectId,
+  SIDEBAR_LAYOUT_ID,
+  ThreadId,
+  type OrchestrationReadModel,
+} from "@jcode/contracts";
 import { it as effectIt } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { describe, expect, it } from "vitest";
 
@@ -16,6 +24,7 @@ import {
   THREAD_RETENTION_UNUSED_MS,
 } from "./threadRetention";
 import { SqlitePersistenceMemory } from "./persistence/Layers/Sqlite";
+import { projectEvent } from "./orchestration/projector.ts";
 
 function makeReadModelThread(
   overrides: Partial<OrchestrationReadModel["threads"][number]> = {},
@@ -44,6 +53,7 @@ function makeReadModelThread(
 function makeReadModel(threads: OrchestrationReadModel["threads"]): OrchestrationReadModel {
   return {
     snapshotSequence: 0,
+    sidebarLayout: null,
     projects: [],
     threads,
     updatedAt: "2026-04-20T00:00:00.000Z",
@@ -114,6 +124,46 @@ describe("thread retention", () => {
     expect(
       getInactiveThreadIdsForRetention(makeReadModel([pinnedThread, unpinnedThread]), nowMs),
     ).toEqual([unpinnedThread.id]);
+  });
+
+  it("protects exactly the canonical sidebar pinned membership", async () => {
+    // Given
+    const nowMs = Date.parse("2026-04-20T00:00:00.000Z");
+    const oldActivityAt = new Date(nowMs - THREAD_RETENTION_UNUSED_MS - 1).toISOString();
+    const canonicalPinned = makeReadModelThread({
+      id: ThreadId.makeUnsafe("thread-canonical-pinned"),
+      isPinned: false,
+      latestUserMessageAt: oldActivityAt,
+    });
+    const staleLegacyPinned = makeReadModelThread({
+      id: ThreadId.makeUnsafe("thread-stale-legacy-pinned"),
+      isPinned: true,
+      latestUserMessageAt: oldActivityAt,
+    });
+    const model = makeReadModel([canonicalPinned, staleLegacyPinned]);
+    const event = Schema.decodeUnknownSync(OrchestrationEvent)({
+      sequence: 9,
+      eventId: EventId.makeUnsafe("event-layout-retention"),
+      aggregateKind: "sidebar-layout",
+      aggregateId: SIDEBAR_LAYOUT_ID,
+      type: "sidebar-layout.updated",
+      occurredAt: oldActivityAt,
+      commandId: CommandId.makeUnsafe("command-layout-retention"),
+      causationEventId: null,
+      correlationId: CommandId.makeUnsafe("command-layout-retention"),
+      metadata: {},
+      payload: {
+        projectOrder: [],
+        pinnedThreadOrder: [canonicalPinned.id],
+        updatedAt: oldActivityAt,
+      },
+    });
+
+    // When
+    const projected = await Effect.runPromise(projectEvent(model, event));
+
+    // Then
+    expect(getInactiveThreadIdsForRetention(projected, nowMs)).toEqual([staleLegacyPinned.id]);
   });
 
   it("selects already deleted threads for physical purge retry", () => {

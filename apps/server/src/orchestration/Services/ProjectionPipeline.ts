@@ -35,7 +35,8 @@ export interface OrchestrationProjectionPipelineShape {
 
   /**
    * Project only the hot-path repositories required for live transcript and
-   * session updates during streaming.
+   * session updates during streaming. When invoked by the orchestration engine,
+   * these writes and their cursors join the caller-owned event/receipt transaction.
    */
   readonly projectHotEvent: (
     event: OrchestrationEvent,

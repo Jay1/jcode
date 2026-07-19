@@ -4,6 +4,8 @@
 
 import type { KeybindingCommand, ProjectId, ThreadId } from "@jcode/contracts";
 import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "../appSettings";
+import type { SidebarLayoutIntent } from "../sidebarLayout.logic";
+import { getDndNextSiblingAnchor } from "../sidebarLayout.logic";
 import type { ChatMessage, Project, SidebarThreadSummary, Thread } from "../types";
 import { cn } from "../lib/utils";
 import { isDuplicateProjectCreateError } from "../lib/projectCreateRecovery";
@@ -654,9 +656,18 @@ export function getUnpinnedThreadsForSidebar<T extends Pick<Thread, "id">>(
   return threads.filter((thread) => !pinnedThreadIdSet.has(thread.id));
 }
 
-// Only prune persisted pins after the thread snapshot has hydrated.
-export function shouldPrunePinnedThreads(input: { threadsHydrated: boolean }): boolean {
-  return input.threadsHydrated;
+export function getUnpinnedSectionThreadsForSidebar<
+  TProject extends Pick<Project, "id">,
+  TThread extends Pick<SidebarThreadSummary, "id">,
+>(input: {
+  readonly projects: readonly TProject[];
+  readonly sortedThreadsByProjectId: ReadonlyMap<ProjectId, readonly TThread[]>;
+  readonly pinnedThreadIds: readonly ThreadId[];
+}): TThread[] {
+  return getUnpinnedThreadsForSidebar(
+    input.projects.flatMap((project) => input.sortedThreadsByProjectId.get(project.id) ?? []),
+    input.pinnedThreadIds,
+  );
 }
 
 export type ProjectEmptyState = "loading" | "empty" | null;
@@ -992,6 +1003,82 @@ export function sortProjectsForSidebar<
   });
 }
 
+export function orderProjectsByCanonicalOrder<TProject extends { readonly id: ProjectId }>(
+  projects: readonly TProject[],
+  projectOrder: readonly ProjectId[],
+): TProject[] {
+  const projectsById = new Map(projects.map((project) => [project.id, project]));
+  const orderedProjects = projectOrder.flatMap((projectId) => {
+    const project = projectsById.get(projectId);
+    if (project === undefined) {
+      return [];
+    }
+    projectsById.delete(projectId);
+    return [project];
+  });
+  return [...orderedProjects, ...projects.filter((project) => projectsById.has(project.id))];
+}
+
+type SidebarProjectMoveIntent = Extract<
+  SidebarLayoutIntent,
+  { readonly type: "sidebar-layout.project.move" }
+>;
+
+export function resolveSidebarProjectMoveIntent(input: {
+  readonly sortOrder: SidebarProjectSortOrder;
+  readonly projectOrder: readonly ProjectId[];
+  readonly movedProjectId: ProjectId;
+  readonly overProjectId: ProjectId;
+}): SidebarProjectMoveIntent | null {
+  if (input.sortOrder !== "manual") {
+    return null;
+  }
+  const anchor = getDndNextSiblingAnchor(
+    input.projectOrder,
+    input.movedProjectId,
+    input.overProjectId,
+  );
+  const orderChanged = anchor.finalOrder.some(
+    (projectId, index) => projectId !== input.projectOrder[index],
+  );
+  if (!orderChanged) {
+    return null;
+  }
+  return {
+    type: "sidebar-layout.project.move",
+    projectId: input.movedProjectId,
+    beforeProjectId: anchor.beforeId,
+  };
+}
+
+type SidebarPinnedThreadMoveIntent = Extract<
+  SidebarLayoutIntent,
+  { readonly type: "sidebar-layout.pinned-thread.move" }
+>;
+
+export function resolveSidebarPinnedThreadMoveIntent(input: {
+  readonly pinnedThreadOrder: readonly ThreadId[];
+  readonly movedThreadId: ThreadId;
+  readonly overThreadId: ThreadId;
+}): SidebarPinnedThreadMoveIntent | null {
+  const anchor = getDndNextSiblingAnchor(
+    input.pinnedThreadOrder,
+    input.movedThreadId,
+    input.overThreadId,
+  );
+  const orderChanged = anchor.finalOrder.some(
+    (threadId, index) => threadId !== input.pinnedThreadOrder[index],
+  );
+  if (!orderChanged) {
+    return null;
+  }
+  return {
+    type: "sidebar-layout.pinned-thread.move",
+    threadId: input.movedThreadId,
+    beforeThreadId: anchor.beforeId,
+  };
+}
+
 // Groups thread summaries once so project-specific sidebar derivations can reuse the same slices.
 export function groupSidebarThreadsByProjectId(
   threads: readonly SidebarThreadSummary[],
@@ -1026,7 +1113,11 @@ export function deriveSidebarProjectData(input: {
 
   for (const project of input.projects) {
     const allProjectThreads = input.sortedSidebarThreadsByProjectId.get(project.id) ?? [];
-    const projectThreads = getUnpinnedThreadsForSidebar(allProjectThreads, input.pinnedThreadIds);
+    const projectThreads = getUnpinnedSectionThreadsForSidebar({
+      projects: [project],
+      sortedThreadsByProjectId: input.sortedSidebarThreadsByProjectId,
+      pinnedThreadIds: input.pinnedThreadIds,
+    });
     const projectStatus = resolveProjectStatusIndicator(
       allProjectThreads.map((thread) =>
         input.resolveThreadStatus

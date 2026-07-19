@@ -1,4 +1,4 @@
-import { CommandId, EventId, ProjectId, ThreadId } from "@jcode/contracts";
+import { CommandId, EventId, ProjectId, SIDEBAR_LAYOUT_ID, ThreadId } from "@jcode/contracts";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer, Schema, Stream } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
@@ -13,6 +13,53 @@ const layer = it.layer(
 );
 
 layer("OrchestrationEventStore", (it) => {
+  it.effect("round-trips the singleton sidebar-layout aggregate stream", () =>
+    Effect.gen(function* () {
+      // Given: a canonical sidebar-layout event using the singleton aggregate id.
+      const eventStore = yield* OrchestrationEventStore;
+      const sql = yield* SqlClient.SqlClient;
+      const now = "2026-07-18T00:00:01.000Z";
+
+      yield* Effect.gen(function* () {
+        // When: the event is appended and replayed through SQLite.
+        yield* eventStore.append({
+          type: "sidebar-layout.updated",
+          eventId: EventId.makeUnsafe("evt-sidebar-layout-roundtrip"),
+          aggregateKind: "sidebar-layout",
+          aggregateId: SIDEBAR_LAYOUT_ID,
+          occurredAt: now,
+          commandId: CommandId.makeUnsafe("cmd-sidebar-layout-roundtrip"),
+          causationEventId: null,
+          correlationId: CommandId.makeUnsafe("cmd-sidebar-layout-roundtrip"),
+          metadata: {},
+          payload: {
+            projectOrder: [ProjectId.makeUnsafe("project-sidebar-layout")],
+            pinnedThreadOrder: [ThreadId.makeUnsafe("thread-sidebar-layout")],
+            updatedAt: now,
+          },
+        });
+        const replayed = yield* Stream.runCollect(eventStore.readFromSequence(0, 10)).pipe(
+          Effect.map((chunk) => Array.from(chunk)),
+        );
+
+        // Then: aggregate identity and canonical ordered payload remain typed and intact.
+        assert.equal(replayed[0]?.aggregateId, SIDEBAR_LAYOUT_ID);
+        assert.deepStrictEqual(replayed[0]?.payload, {
+          projectOrder: [ProjectId.makeUnsafe("project-sidebar-layout")],
+          pinnedThreadOrder: [ThreadId.makeUnsafe("thread-sidebar-layout")],
+          updatedAt: now,
+        });
+      }).pipe(
+        Effect.ensuring(
+          sql`
+            DELETE FROM orchestration_events
+            WHERE event_id = 'evt-sidebar-layout-roundtrip'
+          `.pipe(Effect.orDie),
+        ),
+      );
+    }),
+  );
+
   it.effect("stores json columns as strings and replays decoded events", () =>
     Effect.gen(function* () {
       const eventStore = yield* OrchestrationEventStore;

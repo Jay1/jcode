@@ -25,6 +25,7 @@ const now = new Date().toISOString();
 
 const readModel: OrchestrationReadModel = {
   snapshotSequence: 2,
+  sidebarLayout: null,
   updatedAt: now,
   projects: [
     {

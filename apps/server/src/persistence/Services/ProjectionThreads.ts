@@ -82,6 +82,11 @@ export const ListProjectionThreadsByProjectInput = Schema.Struct({
 });
 export type ListProjectionThreadsByProjectInput = typeof ListProjectionThreadsByProjectInput.Type;
 
+export const ReplacePinnedMembershipInput = Schema.Struct({
+  threadIds: Schema.Array(ThreadId),
+});
+export type ReplacePinnedMembershipInput = typeof ReplacePinnedMembershipInput.Type;
+
 /**
  * ProjectionThreadRepositoryShape - Service API for projected thread records.
  */
@@ -108,6 +113,11 @@ export interface ProjectionThreadRepositoryShape {
   readonly listByProjectId: (
     input: ListProjectionThreadsByProjectInput,
   ) => Effect.Effect<ReadonlyArray<ProjectionThread>, ProjectionRepositoryError>;
+
+  /** Replace denormalized pin flags with exactly the live canonical membership. */
+  readonly replacePinnedMembership: (
+    input: ReplacePinnedMembershipInput,
+  ) => Effect.Effect<void, ProjectionRepositoryError>;
 
   /**
    * Soft-delete a projected thread row by id.

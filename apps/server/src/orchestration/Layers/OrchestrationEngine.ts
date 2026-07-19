@@ -1,10 +1,12 @@
-import type {
-  OrchestrationEvent,
-  OrchestrationReadModel,
+import type { OrchestrationEvent, OrchestrationReadModel, SidebarLayoutId } from "@jcode/contracts";
+import {
+  CommandId,
+  OrchestrationCommand,
+  ORCHESTRATION_WS_METHODS,
   ProjectId,
+  SIDEBAR_LAYOUT_ID,
   ThreadId,
 } from "@jcode/contracts";
-import { CommandId, OrchestrationCommand, ORCHESTRATION_WS_METHODS } from "@jcode/contracts";
 import {
   Cause,
   Deferred,
@@ -36,6 +38,7 @@ import { decideOrchestrationCommand } from "../decider.ts";
 import type { ProjectMetadataOrchestrationEvent } from "../projectMetadataProjection.ts";
 import { PROJECT_METADATA_SNAPSHOT_PROJECTORS } from "../projectMetadataProjection.ts";
 import { createEmptyReadModel, projectEvent } from "../projector.ts";
+import { ORCHESTRATION_PROJECTOR_NAMES } from "./ProjectionPipeline.ts";
 import { OrchestrationProjectionPipeline } from "../Services/ProjectionPipeline.ts";
 import {
   OrchestrationEngineService,
@@ -45,6 +48,8 @@ import { ProjectLanguageIconResolver } from "../../project/Services/ProjectLangu
 
 const ORCHESTRATION_DISPATCH_TIMEOUT_MS = 45_000;
 const STARTUP_PROJECT_ICON_METADATA_BACKFILL_LIMIT = 20;
+const PersistedSidebarProjectOrder = Schema.fromJsonString(Schema.Array(ProjectId));
+const PersistedSidebarPinnedThreadOrder = Schema.fromJsonString(Schema.Array(ThreadId));
 const AUTOMATIC_PROJECT_ICON_COMMAND_PREFIXES = [
   "project-icon-detect:",
   "project-icon-backfill:",
@@ -68,8 +73,8 @@ type CommittedCommandResult = {
 };
 
 function commandToAggregateRef(command: OrchestrationCommand): {
-  readonly aggregateKind: "project" | "thread";
-  readonly aggregateId: ProjectId | ThreadId;
+  readonly aggregateKind: "project" | "thread" | "sidebar-layout";
+  readonly aggregateId: ProjectId | ThreadId | SidebarLayoutId;
 } {
   switch (command.type) {
     case "project.create":
@@ -79,7 +84,17 @@ function commandToAggregateRef(command: OrchestrationCommand): {
         aggregateKind: "project",
         aggregateId: command.projectId,
       };
+    case "sidebar-layout.initialize":
+    case "sidebar-layout.project.move":
+    case "sidebar-layout.thread.pin":
+    case "sidebar-layout.thread.unpin":
+    case "sidebar-layout.pinned-thread.move":
+      return {
+        aggregateKind: "sidebar-layout",
+        aggregateId: SIDEBAR_LAYOUT_ID,
+      };
     default:
+      command satisfies { readonly threadId: ThreadId };
       return {
         aggregateKind: "thread",
         aggregateId: command.threadId,
@@ -371,6 +386,25 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         ORDER BY created_at ASC, project_id ASC
       `;
 
+    const layoutRows = yield* sql<{
+      readonly projectOrderJson: string;
+      readonly pinnedThreadOrderJson: string;
+      readonly revision: number;
+      readonly updatedAt: string;
+    }>`
+        SELECT
+          project_order_json AS "projectOrderJson",
+          pinned_thread_order_json AS "pinnedThreadOrderJson",
+          revision,
+          updated_at AS "updatedAt"
+        FROM projection_sidebar_layout
+        WHERE layout_key = ${SIDEBAR_LAYOUT_ID}
+      `;
+    const pinRows = yield* sql<{ readonly threadId: string; readonly isPinned: number }>`
+      SELECT thread_id AS "threadId", is_pinned AS "isPinned"
+      FROM projection_threads
+    `;
+
     const stateRows = yield* sql<{
       readonly projector: string;
       readonly lastAppliedSequence: number;
@@ -400,10 +434,41 @@ const makeOrchestrationEngine = Effect.gen(function* () {
     if (Number.isFinite(minSequence)) {
       snapshotSequence = minSequence;
     }
+    const layoutRow = layoutRows[0];
+    const pinnedByThreadId = new Map(
+      pinRows.map((row) => [row.threadId, row.isPinned === 1] as const),
+    );
+    const sidebarLayout =
+      layoutRow === undefined
+        ? null
+        : yield* Effect.all({
+            projectOrder: Schema.decodeUnknownEffect(PersistedSidebarProjectOrder)(
+              layoutRow.projectOrderJson,
+            ),
+            pinnedThreadOrder: Schema.decodeUnknownEffect(PersistedSidebarPinnedThreadOrder)(
+              layoutRow.pinnedThreadOrderJson,
+            ),
+          }).pipe(
+            Effect.map((orders) => ({
+              ...orders,
+              revision: layoutRow.revision,
+              updatedAt: layoutRow.updatedAt,
+            })),
+            Effect.mapError(
+              (cause) =>
+                new OrchestrationCommandInternalError({
+                  commandId: "repair-local-state",
+                  commandType: ORCHESTRATION_WS_METHODS.repairState,
+                  detail: "The rebuilt sidebar layout could not be decoded.",
+                  cause,
+                }),
+            ),
+          );
 
     const nextReadModel: OrchestrationReadModel = {
       ...readModel,
       snapshotSequence,
+      sidebarLayout,
       projects: projectRows.map((row) => ({
         id: row.projectId as ProjectId,
         kind: row.kind,
@@ -427,6 +492,10 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
         deletedAt: row.deletedAt,
+      })),
+      threads: readModel.threads.map((thread) => ({
+        ...thread,
+        isPinned: pinnedByThreadId.get(thread.id) ?? false,
       })),
       updatedAt: new Date().toISOString(),
     };
@@ -453,15 +522,20 @@ const makeOrchestrationEngine = Effect.gen(function* () {
     ),
   );
 
-  // Rebuild only the project projection rows and snapshot cursors.
+  // Rebuild project and sidebar-layout projections while retaining thread history.
   // Existing thread/chat projection rows stay in place so older installs do not
   // lose history that is no longer fully represented in orchestration_events.
   const resetDerivedProjectionState = sql.withTransaction(
     Effect.gen(function* () {
       yield* sql`DELETE FROM projection_projects`;
+      yield* sql`DELETE FROM projection_sidebar_layout`;
+      yield* sql`UPDATE projection_threads SET is_pinned = 0`;
       yield* sql`
         DELETE FROM projection_state
-        WHERE projector IN ${sql.in(PROJECT_METADATA_SNAPSHOT_PROJECTORS)}
+        WHERE projector IN ${sql.in([
+          ...PROJECT_METADATA_SNAPSHOT_PROJECTORS,
+          ORCHESTRATION_PROJECTOR_NAMES.sidebarLayout,
+        ])}
       `;
     }),
   );
@@ -470,8 +544,15 @@ const makeOrchestrationEngine = Effect.gen(function* () {
     Effect.gen(function* () {
       yield* sql`DROP TABLE IF EXISTS temp_repair_projection_projects`;
       yield* sql`DROP TABLE IF EXISTS temp_repair_projection_state`;
+      yield* sql`DROP TABLE IF EXISTS temp_repair_projection_sidebar_layout`;
+      yield* sql`DROP TABLE IF EXISTS temp_repair_projection_thread_pins`;
       yield* sql`CREATE TEMP TABLE temp_repair_projection_projects AS SELECT * FROM projection_projects`;
       yield* sql`CREATE TEMP TABLE temp_repair_projection_state AS SELECT * FROM projection_state`;
+      yield* sql`CREATE TEMP TABLE temp_repair_projection_sidebar_layout AS SELECT * FROM projection_sidebar_layout`;
+      yield* sql`
+        CREATE TEMP TABLE temp_repair_projection_thread_pins AS
+        SELECT thread_id, is_pinned FROM projection_threads
+      `;
     }),
   );
 
@@ -481,6 +562,22 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       yield* sql`INSERT INTO projection_projects SELECT * FROM temp_repair_projection_projects`;
       yield* sql`DELETE FROM projection_state`;
       yield* sql`INSERT INTO projection_state SELECT * FROM temp_repair_projection_state`;
+      yield* sql`DELETE FROM projection_sidebar_layout`;
+      yield* sql`
+        INSERT INTO projection_sidebar_layout
+        SELECT * FROM temp_repair_projection_sidebar_layout
+      `;
+      yield* sql`
+        UPDATE projection_threads
+        SET is_pinned = COALESCE(
+          (
+            SELECT backup.is_pinned
+            FROM temp_repair_projection_thread_pins AS backup
+            WHERE backup.thread_id = projection_threads.thread_id
+          ),
+          0
+        )
+      `;
     }),
   );
 
@@ -488,6 +585,8 @@ const makeOrchestrationEngine = Effect.gen(function* () {
     Effect.gen(function* () {
       yield* sql`DROP TABLE IF EXISTS temp_repair_projection_projects`;
       yield* sql`DROP TABLE IF EXISTS temp_repair_projection_state`;
+      yield* sql`DROP TABLE IF EXISTS temp_repair_projection_sidebar_layout`;
+      yield* sql`DROP TABLE IF EXISTS temp_repair_projection_thread_pins`;
     }),
   );
 
@@ -959,9 +1058,30 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           );
         }
 
-        const snapshot = yield* refreshReadModelFromProjectionState;
+        const refreshResult = yield* Effect.exit(refreshReadModelFromProjectionState);
+        if (refreshResult._tag === "Failure") {
+          yield* restoreDerivedProjectionState.pipe(
+            Effect.catchCause(() =>
+              Effect.logWarning(
+                "failed to restore orchestration projection backup after refresh failure",
+              ),
+            ),
+          );
+          readModel = previousReadModel;
+          yield* dropProjectionRepairBackup.pipe(Effect.catchCause(() => Effect.void));
+
+          return yield* Effect.logError(
+            "failed to refresh orchestration state after projection rebuild",
+          ).pipe(
+            Effect.annotateLogs({
+              cause: Cause.pretty(refreshResult.cause),
+            }),
+            Effect.flatMap(() => Effect.failCause(refreshResult.cause)),
+          );
+        }
+
         yield* dropProjectionRepairBackup.pipe(Effect.catchCause(() => Effect.void));
-        return snapshot;
+        return refreshResult.value;
       }),
     );
 

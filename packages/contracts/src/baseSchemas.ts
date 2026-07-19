@@ -17,6 +17,12 @@ const makeEntityId = <Brand extends string>(brand: Brand) =>
 
 export const ThreadId = makeEntityId("ThreadId");
 export type ThreadId = typeof ThreadId.Type;
+export const SidebarLayoutId = Schema.Literal("sidebar-layout").pipe(
+  Schema.brand("SidebarLayoutId"),
+);
+export type SidebarLayoutId = typeof SidebarLayoutId.Type;
+export const SIDEBAR_LAYOUT_ID: SidebarLayoutId =
+  Schema.decodeSync(SidebarLayoutId)("sidebar-layout");
 export const ProjectId = makeEntityId("ProjectId");
 export type ProjectId = typeof ProjectId.Type;
 export const EnvironmentId = makeEntityId("EnvironmentId");

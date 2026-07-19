@@ -14,6 +14,8 @@ import {
   OrchestrationLatestTurn,
   OrchestrationMessage,
   OrchestrationReadModel,
+  OrchestrationShellSnapshot,
+  OrchestrationShellStreamItem,
   ProviderKind,
   ProjectIconMetadata,
   ProjectCreatedPayload,
@@ -50,6 +52,214 @@ const decodeModelSelection = Schema.decodeUnknownEffect(ModelSelection);
 const decodeClientOrchestrationCommand = Schema.decodeUnknownEffect(ClientOrchestrationCommand);
 const decodeOrchestrationCommand = Schema.decodeUnknownEffect(OrchestrationCommand);
 const decodeOrchestrationEvent = Schema.decodeUnknownEffect(OrchestrationEvent);
+const decodeOrchestrationReadModel = Schema.decodeUnknownEffect(OrchestrationReadModel);
+const decodeOrchestrationShellSnapshot = Schema.decodeUnknownEffect(OrchestrationShellSnapshot);
+const decodeOrchestrationShellStreamItem = Schema.decodeUnknownEffect(OrchestrationShellStreamItem);
+
+it.effect("decodes an uninitialized sidebar layout in full and shell snapshots", () =>
+  Effect.gen(function* () {
+    const wire = {
+      snapshotSequence: 0,
+      sidebarLayout: null,
+      projects: [],
+      threads: [],
+      updatedAt: "2026-07-18T00:00:00.000Z",
+    } as const;
+
+    const fullSnapshot = yield* decodeOrchestrationReadModel(wire);
+    const shellSnapshot = yield* decodeOrchestrationShellSnapshot(wire);
+
+    assert.strictEqual(fullSnapshot.sidebarLayout, null);
+    assert.strictEqual(shellSnapshot.sidebarLayout, null);
+  }),
+);
+
+it.effect("decodes an initialized sidebar layout in full and shell snapshots", () =>
+  Effect.gen(function* () {
+    const wire = {
+      snapshotSequence: 12,
+      sidebarLayout: {
+        projectOrder: ["project-2", "project-1"],
+        pinnedThreadOrder: ["thread-2", "thread-1"],
+        revision: 11,
+        updatedAt: "2026-07-18T00:00:00.000Z",
+      },
+      projects: [],
+      threads: [],
+      updatedAt: "2026-07-18T00:00:00.000Z",
+    } as const;
+
+    const fullSnapshot = yield* decodeOrchestrationReadModel(wire);
+    const shellSnapshot = yield* decodeOrchestrationShellSnapshot(wire);
+
+    assert.deepStrictEqual(fullSnapshot.sidebarLayout, wire.sidebarLayout);
+    assert.deepStrictEqual(shellSnapshot.sidebarLayout, wire.sidebarLayout);
+  }),
+);
+
+it.effect("decodes all sidebar layout intent commands", () =>
+  Effect.gen(function* () {
+    const commands = [
+      {
+        type: "sidebar-layout.initialize",
+        commandId: "command-layout-initialize",
+        projectOrder: ["project-2", "project-1"],
+        pinnedThreadOrder: ["thread-2", "thread-1"],
+      },
+      {
+        type: "sidebar-layout.project.move",
+        commandId: "command-layout-project-move",
+        projectId: "project-2",
+        beforeProjectId: "project-1",
+      },
+      {
+        type: "sidebar-layout.thread.pin",
+        commandId: "command-layout-thread-pin",
+        threadId: "thread-2",
+        beforeThreadId: "thread-1",
+      },
+      {
+        type: "sidebar-layout.thread.unpin",
+        commandId: "command-layout-thread-unpin",
+        threadId: "thread-2",
+      },
+      {
+        type: "sidebar-layout.pinned-thread.move",
+        commandId: "command-layout-thread-move",
+        threadId: "thread-2",
+        beforeThreadId: null,
+      },
+    ] as const;
+
+    for (const command of commands) {
+      const parsed = yield* decodeClientOrchestrationCommand(command);
+
+      assert.strictEqual(parsed.type, command.type);
+      assert.strictEqual(parsed.commandId, command.commandId);
+    }
+  }),
+);
+
+it.effect("decodes sidebar layout domain and shell events", () =>
+  Effect.gen(function* () {
+    const sidebarLayout = {
+      projectOrder: ["project-1"],
+      pinnedThreadOrder: ["thread-1"],
+      revision: 17,
+      updatedAt: "2026-07-18T00:00:00.000Z",
+    } as const;
+    const domainEvent = yield* decodeOrchestrationEvent({
+      sequence: 17,
+      eventId: "event-layout-updated",
+      aggregateKind: "sidebar-layout",
+      aggregateId: "sidebar-layout",
+      type: "sidebar-layout.updated",
+      payload: {
+        projectOrder: sidebarLayout.projectOrder,
+        pinnedThreadOrder: sidebarLayout.pinnedThreadOrder,
+        updatedAt: sidebarLayout.updatedAt,
+      },
+      occurredAt: sidebarLayout.updatedAt,
+      commandId: "command-layout-project-move",
+      causationEventId: null,
+      correlationId: "command-layout-project-move",
+      metadata: {},
+    });
+    const shellItem = yield* decodeOrchestrationShellStreamItem({
+      kind: "sidebar-layout-updated",
+      sequence: 17,
+      sidebarLayout,
+    });
+
+    assert.strictEqual(domainEvent.type, "sidebar-layout.updated");
+    assert.strictEqual(domainEvent.aggregateId, "sidebar-layout");
+    assert.ok(shellItem.kind === "sidebar-layout-updated");
+    assert.deepStrictEqual(shellItem.sidebarLayout, sidebarLayout);
+  }),
+);
+
+it.effect("strips historical pin metadata from new client commands", () =>
+  Effect.gen(function* () {
+    const metaCommand = yield* decodeClientOrchestrationCommand({
+      type: "thread.meta.update",
+      commandId: "command-new-meta-pin",
+      threadId: "thread-1",
+      isPinned: true,
+    });
+
+    assert.strictEqual("isPinned" in metaCommand, false);
+  }),
+);
+
+it.effect("strips historical pin metadata from new thread creation", () =>
+  Effect.gen(function* () {
+    const createCommand = yield* decodeClientOrchestrationCommand({
+      type: "thread.create",
+      commandId: "command-new-thread-pin",
+      threadId: "thread-1",
+      projectId: "project-1",
+      title: "Thread 1",
+      modelSelection: { provider: "codex", model: "gpt-5.5" },
+      runtimeMode: "full-access",
+      branch: null,
+      worktreePath: null,
+      isPinned: true,
+      createdAt: "2026-07-18T00:00:00.000Z",
+    });
+
+    assert.strictEqual("isPinned" in createCommand, false);
+  }),
+);
+
+it.effect("rejects duplicate sidebar layout initialization candidates", () =>
+  Effect.gen(function* () {
+    const result = yield* Effect.exit(
+      decodeClientOrchestrationCommand({
+        type: "sidebar-layout.initialize",
+        commandId: "command-layout-duplicates",
+        projectOrder: ["project-1", "project-1"],
+        pinnedThreadOrder: ["thread-1", "thread-1"],
+      }),
+    );
+
+    assert.strictEqual(result._tag, "Failure");
+  }),
+);
+
+it.effect("rejects malformed sidebar layout anchors and aggregate IDs", () =>
+  Effect.gen(function* () {
+    const anchorResult = yield* Effect.exit(
+      decodeClientOrchestrationCommand({
+        type: "sidebar-layout.project.move",
+        commandId: "command-layout-invalid-anchor",
+        projectId: "project-1",
+        beforeProjectId: "   ",
+      }),
+    );
+    const aggregateResult = yield* Effect.exit(
+      decodeOrchestrationEvent({
+        sequence: 18,
+        eventId: "event-layout-invalid-id",
+        aggregateKind: "sidebar-layout",
+        aggregateId: "not-the-sidebar-layout",
+        type: "sidebar-layout.updated",
+        payload: {
+          projectOrder: [],
+          pinnedThreadOrder: [],
+          updatedAt: "2026-07-18T00:00:00.000Z",
+        },
+        occurredAt: "2026-07-18T00:00:00.000Z",
+        commandId: null,
+        causationEventId: null,
+        correlationId: null,
+        metadata: {},
+      }),
+    );
+
+    assert.strictEqual(anchorResult._tag, "Failure");
+    assert.strictEqual(aggregateResult._tag, "Failure");
+  }),
+);
 
 it.effect("accepts OpenClaw as a provider kind", () =>
   Effect.gen(function* () {
@@ -210,6 +420,7 @@ it.effect("preserves thread activity payloads through the RPC JSON codec", () =>
     const codec = Schema.toCodecJson(OrchestrationReadModel);
     const readModel = {
       snapshotSequence: 1,
+      sidebarLayout: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
       projects: [],
       threads: [
@@ -664,6 +875,33 @@ it.effect("decodes thread.meta-updated payloads with explicit provider", () =>
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
     assert.strictEqual(parsed.modelSelection?.provider, "claudeAgent");
+  }),
+);
+
+it.effect("preserves historical thread pin metadata events", () =>
+  Effect.gen(function* () {
+    const wire = {
+      sequence: 42,
+      eventId: "event-historical-pin",
+      aggregateKind: "thread",
+      aggregateId: "thread-1",
+      type: "thread.meta-updated",
+      occurredAt: "2026-01-01T00:00:00.000Z",
+      commandId: "command-historical-pin",
+      causationEventId: null,
+      correlationId: "command-historical-pin",
+      metadata: {},
+      payload: {
+        threadId: "thread-1",
+        isPinned: true,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    } as const;
+
+    const parsed = yield* decodeOrchestrationEvent(wire);
+
+    assert.deepStrictEqual(parsed.payload, wire.payload);
+    assert.strictEqual(parsed.payload.isPinned, true);
   }),
 );
 

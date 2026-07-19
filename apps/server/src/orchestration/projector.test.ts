@@ -1,4 +1,11 @@
-import { CommandId, EventId, ProjectId, ThreadId, type OrchestrationEvent } from "@jcode/contracts";
+import {
+  CommandId,
+  EventId,
+  ProjectId,
+  SIDEBAR_LAYOUT_ID,
+  ThreadId,
+  type OrchestrationEvent,
+} from "@jcode/contracts";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
@@ -21,7 +28,9 @@ function makeEvent(input: {
     aggregateId:
       input.aggregateKind === "project"
         ? ProjectId.makeUnsafe(input.aggregateId)
-        : ThreadId.makeUnsafe(input.aggregateId),
+        : input.aggregateKind === "thread"
+          ? ThreadId.makeUnsafe(input.aggregateId)
+          : SIDEBAR_LAYOUT_ID,
     occurredAt: input.occurredAt,
     commandId: input.commandId === null ? null : CommandId.makeUnsafe(input.commandId),
     causationEventId: null,
@@ -31,7 +40,133 @@ function makeEvent(input: {
   } as OrchestrationEvent;
 }
 
+async function makeModelWithThreads(
+  occurredAt: string,
+  threads: readonly { readonly id: string; readonly isPinned: boolean }[],
+) {
+  let model = createEmptyReadModel(occurredAt);
+  for (const [index, thread] of threads.entries()) {
+    model = await Effect.runPromise(
+      projectEvent(
+        model,
+        makeEvent({
+          sequence: index + 1,
+          type: "thread.created",
+          aggregateKind: "thread",
+          aggregateId: thread.id,
+          occurredAt,
+          commandId: `create-${thread.id}`,
+          payload: {
+            threadId: thread.id,
+            projectId: "project-a",
+            title: thread.id,
+            modelSelection: { provider: "codex", model: "gpt-5-codex" },
+            runtimeMode: "approval-required",
+            branch: null,
+            worktreePath: null,
+            isPinned: thread.isPinned,
+            createdAt: occurredAt,
+            updatedAt: occurredAt,
+          },
+        }),
+      ),
+    );
+  }
+  return model;
+}
+
 describe("orchestration projector", () => {
+  it("projects a canonical sidebar layout at the saved global event sequence", async () => {
+    // Given
+    const occurredAt = "2026-07-18T12:00:00.000Z";
+    const model = await makeModelWithThreads(occurredAt, [
+      { id: "thread-a", isPinned: false },
+      { id: "thread-b", isPinned: true },
+    ]);
+
+    // When
+    const next = await Effect.runPromise(
+      projectEvent(
+        model,
+        makeEvent({
+          sequence: 17,
+          type: "sidebar-layout.updated",
+          aggregateKind: "sidebar-layout",
+          aggregateId: SIDEBAR_LAYOUT_ID,
+          occurredAt,
+          commandId: "cmd-layout-update",
+          payload: {
+            projectOrder: ["project-b", "project-a"],
+            pinnedThreadOrder: ["thread-a"],
+            updatedAt: occurredAt,
+          },
+        }),
+      ),
+    );
+
+    // Then
+    expect(next.sidebarLayout).toEqual({
+      projectOrder: ["project-b", "project-a"],
+      pinnedThreadOrder: ["thread-a"],
+      revision: 17,
+      updatedAt: occurredAt,
+    });
+    expect(next.threads.map((thread) => [thread.id, thread.isPinned])).toEqual([
+      ["thread-a", true],
+      ["thread-b", false],
+    ]);
+  });
+
+  it("replays historical pin metadata but cannot override initialized canonical membership", async () => {
+    // Given
+    const occurredAt = "2026-07-18T12:00:00.000Z";
+    const model = await makeModelWithThreads(occurredAt, [{ id: "thread-a", isPinned: false }]);
+    const historicalPin = makeEvent({
+      sequence: 1,
+      type: "thread.meta-updated",
+      aggregateKind: "thread",
+      aggregateId: "thread-a",
+      occurredAt,
+      commandId: "legacy-pin",
+      payload: { threadId: "thread-a", isPinned: true, updatedAt: occurredAt },
+    });
+
+    // When
+    const beforeInitialization = await Effect.runPromise(projectEvent(model, historicalPin));
+    const initialized = await Effect.runPromise(
+      projectEvent(
+        beforeInitialization,
+        makeEvent({
+          sequence: 2,
+          type: "sidebar-layout.updated",
+          aggregateKind: "sidebar-layout",
+          aggregateId: SIDEBAR_LAYOUT_ID,
+          occurredAt,
+          commandId: "initialize-empty-pins",
+          payload: { projectOrder: [], pinnedThreadOrder: [], updatedAt: occurredAt },
+        }),
+      ),
+    );
+    const afterInitialization = await Effect.runPromise(
+      projectEvent(
+        initialized,
+        makeEvent({
+          sequence: 3,
+          type: "thread.meta-updated",
+          aggregateKind: "thread",
+          aggregateId: "thread-a",
+          occurredAt,
+          commandId: "legacy-pin-after-layout",
+          payload: { threadId: "thread-a", isPinned: true, updatedAt: occurredAt },
+        }),
+      ),
+    );
+
+    // Then
+    expect(beforeInitialization.threads[0]?.isPinned).toBe(true);
+    expect(afterInitialization.threads[0]?.isPinned).toBe(false);
+  });
+
   it("applies thread.created events", async () => {
     const now = new Date().toISOString();
     const model = createEmptyReadModel(now);

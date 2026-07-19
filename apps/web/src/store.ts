@@ -78,13 +78,6 @@ type ThreadUserInputResponseRequestedEvent = Extract<
 
 const PERSISTED_STATE_KEY = "jcode:renderer-state:v8";
 const LEGACY_PERSISTED_STATE_KEYS = [
-  "dpcode:renderer-state:v8",
-  "t3code:renderer-state:v8",
-  "t3code:renderer-state:v7",
-  "t3code:renderer-state:v6",
-  "t3code:renderer-state:v5",
-  "t3code:renderer-state:v4",
-  "t3code:renderer-state:v3",
   "codething:renderer-state:v4",
   "codething:renderer-state:v3",
   "codething:renderer-state:v2",
@@ -139,7 +132,6 @@ const initialState: AppState = {
   turnDiffSummaryByThreadId: {},
 };
 const persistedExpandedProjectCwds = new Set<string>();
-const persistedProjectOrderCwds: string[] = [];
 const persistedProjectNamesByCwd = new Map<string, string>();
 
 function projectCwdKey(cwd: string): string {
@@ -151,7 +143,9 @@ function basenameOfPath(value: string): string | null {
   return segments.at(-1) ?? null;
 }
 
-function rememberProjectUiState(projects: ReadonlyArray<Pick<Project, "cwd" | "expanded">>): void {
+function rememberProjectExpansionState(
+  projects: ReadonlyArray<Pick<Project, "cwd" | "expanded">>,
+): void {
   for (const project of projects) {
     const cwdKey = projectCwdKey(project.cwd);
     if (project.expanded) {
@@ -159,10 +153,69 @@ function rememberProjectUiState(projects: ReadonlyArray<Pick<Project, "cwd" | "e
     } else {
       persistedExpandedProjectCwds.delete(cwdKey);
     }
-    if (!persistedProjectOrderCwds.includes(cwdKey)) {
-      persistedProjectOrderCwds.push(cwdKey);
-    }
   }
+}
+
+type ParsedRendererStorage = {
+  readonly root: Record<string, unknown>;
+  readonly state: Record<string, unknown>;
+  readonly envelope: boolean;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseRendererStorage(raw: string | null): ParsedRendererStorage | null {
+  if (raw === null) {
+    return null;
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) {
+      return null;
+    }
+    const nestedState = parsed["state"];
+    if (isRecord(nestedState)) {
+      return { root: parsed, state: nestedState, envelope: true };
+    }
+    return { root: parsed, state: parsed, envelope: false };
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function storedStringItems(value: unknown): readonly string[] {
+  return Array.isArray(value)
+    ? value.filter((candidate): candidate is string => typeof candidate === "string")
+    : [];
+}
+
+function serializeRendererPresentation(
+  existing: ParsedRendererStorage | null,
+  presentation: {
+    readonly expandedProjectCwds: readonly string[];
+    readonly projectNamesByCwd: Readonly<Record<string, string>>;
+  },
+): string {
+  if (existing === null) {
+    return JSON.stringify(presentation);
+  }
+
+  const { projectOrderCwds, ...deviceLocalState } = existing.state;
+  const nextState = {
+    ...deviceLocalState,
+    ...presentation,
+    ...(Array.isArray(projectOrderCwds) ? { projectOrderCwds } : {}),
+  };
+  if (!existing.envelope) {
+    return JSON.stringify(nextState);
+  }
+  const { state: _state, ...envelope } = existing.root;
+  return JSON.stringify({ ...envelope, state: nextState });
 }
 
 function rememberProjectLocalNames(
@@ -186,26 +239,19 @@ function readPersistedState(): AppState {
   try {
     const raw = window.localStorage.getItem(PERSISTED_STATE_KEY);
     if (!raw) return initialState;
-    const parsed = JSON.parse(raw) as {
-      expandedProjectCwds?: string[];
-      projectOrderCwds?: string[];
-      projectNamesByCwd?: Record<string, string>;
-    };
+    const parsed = parseRendererStorage(raw);
+    if (parsed === null) return initialState;
     persistedExpandedProjectCwds.clear();
-    persistedProjectOrderCwds.length = 0;
     persistedProjectNamesByCwd.clear();
-    for (const cwd of parsed.expandedProjectCwds ?? []) {
-      if (typeof cwd === "string" && cwd.length > 0) {
+    for (const cwd of storedStringItems(parsed.state["expandedProjectCwds"])) {
+      if (cwd.length > 0) {
         persistedExpandedProjectCwds.add(projectCwdKey(cwd));
       }
     }
-    for (const cwd of parsed.projectOrderCwds ?? []) {
-      const cwdKey = typeof cwd === "string" ? projectCwdKey(cwd) : "";
-      if (cwdKey.length > 0 && !persistedProjectOrderCwds.includes(cwdKey)) {
-        persistedProjectOrderCwds.push(cwdKey);
-      }
-    }
-    for (const [cwd, name] of Object.entries(parsed.projectNamesByCwd ?? {})) {
+    const storedProjectNames = parsed.state["projectNamesByCwd"];
+    for (const [cwd, name] of Object.entries(
+      isRecord(storedProjectNames) ? storedProjectNames : {},
+    )) {
       if (typeof cwd !== "string" || cwd.length === 0) continue;
       if (typeof name !== "string") continue;
       const trimmedName = name.trim();
@@ -223,15 +269,17 @@ let legacyKeysCleanedUp = false;
 function persistState(state: AppState): void {
   if (typeof window === "undefined") return;
   try {
-    rememberProjectUiState(state.projects);
+    rememberProjectExpansionState(state.projects);
     rememberProjectLocalNames(state.projects);
+    const existing = parseRendererStorage(window.localStorage.getItem(PERSISTED_STATE_KEY));
+    const expandedProjectCwds =
+      state.threadsHydrated || state.projects.length > 0
+        ? state.projects.filter((project) => project.expanded).map((project) => project.cwd)
+        : [...persistedExpandedProjectCwds];
     window.localStorage.setItem(
       PERSISTED_STATE_KEY,
-      JSON.stringify({
-        expandedProjectCwds: state.projects
-          .filter((project) => project.expanded)
-          .map((project) => project.cwd),
-        projectOrderCwds: state.projects.map((project) => project.cwd),
+      serializeRendererPresentation(existing, {
+        expandedProjectCwds,
         projectNamesByCwd: Object.fromEntries(persistedProjectNamesByCwd),
       }),
     );
@@ -1827,39 +1875,11 @@ function mapProjectsFromReadModel(
   const previousByCwd = new Map(
     previous.map((project) => [projectCwdKey(project.cwd), project] as const),
   );
-  const previousOrderById = new Map(previous.map((project, index) => [project.id, index] as const));
-  const previousOrderByCwd = new Map(
-    previous.map((project, index) => [projectCwdKey(project.cwd), index] as const),
-  );
-  const persistedOrderByCwd = new Map(
-    persistedProjectOrderCwds.map((cwd, index) => [cwd, index] as const),
-  );
-  const usePersistedOrder = previous.length === 0;
-
-  const mappedProjects = incoming
-    .map((project) => {
-      const existing =
-        previousById.get(project.id) ?? previousByCwd.get(projectCwdKey(project.workspaceRoot));
-      return normalizeProjectFromReadModel(project, existing);
-    })
-    .map((project, incomingIndex) => {
-      const previousIndex =
-        previousOrderById.get(project.id) ?? previousOrderByCwd.get(projectCwdKey(project.cwd));
-      const persistedIndex = usePersistedOrder
-        ? persistedOrderByCwd.get(projectCwdKey(project.cwd))
-        : undefined;
-      const orderIndex =
-        previousIndex ??
-        persistedIndex ??
-        (usePersistedOrder ? persistedProjectOrderCwds.length : previous.length) + incomingIndex;
-      return { project, incomingIndex, orderIndex };
-    })
-    .toSorted((a, b) => {
-      const byOrder = a.orderIndex - b.orderIndex;
-      if (byOrder !== 0) return byOrder;
-      return a.incomingIndex - b.incomingIndex;
-    })
-    .map((entry) => entry.project);
+  const mappedProjects = incoming.map((project) => {
+    const existing =
+      previousById.get(project.id) ?? previousByCwd.get(projectCwdKey(project.workspaceRoot));
+    return normalizeProjectFromReadModel(project, existing);
+  });
 
   return arraysShallowEqual(previous, mappedProjects) ? previous : mappedProjects;
 }
@@ -1872,39 +1892,11 @@ function mapProjectsFromShellSnapshot(
   const previousByCwd = new Map(
     previous.map((project) => [projectCwdKey(project.cwd), project] as const),
   );
-  const previousOrderById = new Map(previous.map((project, index) => [project.id, index] as const));
-  const previousOrderByCwd = new Map(
-    previous.map((project, index) => [projectCwdKey(project.cwd), index] as const),
-  );
-  const persistedOrderByCwd = new Map(
-    persistedProjectOrderCwds.map((cwd, index) => [cwd, index] as const),
-  );
-  const usePersistedOrder = previous.length === 0;
-
-  const mappedProjects = incoming
-    .map((project) => {
-      const existing =
-        previousById.get(project.id) ?? previousByCwd.get(projectCwdKey(project.workspaceRoot));
-      return normalizeProjectFromShell(project, existing);
-    })
-    .map((project, incomingIndex) => {
-      const previousIndex =
-        previousOrderById.get(project.id) ?? previousOrderByCwd.get(projectCwdKey(project.cwd));
-      const persistedIndex = usePersistedOrder
-        ? persistedOrderByCwd.get(projectCwdKey(project.cwd))
-        : undefined;
-      const orderIndex =
-        previousIndex ??
-        persistedIndex ??
-        (usePersistedOrder ? persistedProjectOrderCwds.length : previous.length) + incomingIndex;
-      return { project, incomingIndex, orderIndex };
-    })
-    .toSorted((a, b) => {
-      const byOrder = a.orderIndex - b.orderIndex;
-      if (byOrder !== 0) return byOrder;
-      return a.incomingIndex - b.incomingIndex;
-    })
-    .map((entry) => entry.project);
+  const mappedProjects = incoming.map((project) => {
+    const existing =
+      previousById.get(project.id) ?? previousByCwd.get(projectCwdKey(project.workspaceRoot));
+    return normalizeProjectFromShell(project, existing);
+  });
 
   return arraysShallowEqual(previous, mappedProjects) ? previous : mappedProjects;
 }
@@ -3622,7 +3614,7 @@ export function syncServerShellSnapshot(
   state: AppState,
   snapshot: OrchestrationShellSnapshot,
 ): AppState {
-  rememberProjectUiState(state.projects);
+  rememberProjectExpansionState(state.projects);
   rememberProjectLocalNames(state.projects);
   const projects = mapProjectsFromShellSnapshot(snapshot.projects, state.projects);
   const nextThreadIds = new Set(snapshot.threads.map((thread) => thread.id));
@@ -3733,11 +3725,13 @@ export function applyShellEvent(state: AppState, event: OrchestrationShellStream
     }
     case "thread-removed":
       return removeThreadState(state, event.threadId);
+    case "sidebar-layout-updated":
+      return state;
   }
 }
 
 export function syncServerReadModel(state: AppState, readModel: OrchestrationReadModel): AppState {
-  rememberProjectUiState(state.projects);
+  rememberProjectExpansionState(state.projects);
   rememberProjectLocalNames(state.projects);
   const projects = mapProjectsFromReadModel(
     readModel.projects.filter((project) => project.deletedAt === null),
@@ -3897,22 +3891,6 @@ export function collapseProjectsExcept(
   return changed ? { ...state, projects } : state;
 }
 
-export function reorderProjects(
-  state: AppState,
-  draggedProjectId: Project["id"],
-  targetProjectId: Project["id"],
-): AppState {
-  if (draggedProjectId === targetProjectId) return state;
-  const draggedIndex = state.projects.findIndex((project) => project.id === draggedProjectId);
-  const targetIndex = state.projects.findIndex((project) => project.id === targetProjectId);
-  if (draggedIndex < 0 || targetIndex < 0) return state;
-  const projects = [...state.projects];
-  const [draggedProject] = projects.splice(draggedIndex, 1);
-  if (!draggedProject) return state;
-  projects.splice(targetIndex, 0, draggedProject);
-  return { ...state, projects };
-}
-
 export function renameProjectLocally(
   state: AppState,
   projectId: Project["id"],
@@ -4026,7 +4004,6 @@ interface AppStore extends AppState {
   setProjectExpanded: (projectId: Project["id"], expanded: boolean) => void;
   setAllProjectsExpanded: (expanded: boolean) => void;
   collapseProjectsExcept: (activeProjectId: Project["id"] | null) => void;
-  reorderProjects: (draggedProjectId: Project["id"], targetProjectId: Project["id"]) => void;
   renameProjectLocally: (projectId: Project["id"], name: string | null) => void;
   setError: (threadId: ThreadId, error: string | null) => void;
   setThreadWorkspace: (threadId: ThreadId, patch: ThreadWorkspacePatch) => void;
@@ -4057,8 +4034,6 @@ export const useStore = create<AppStore>((set) => ({
   setAllProjectsExpanded: (expanded) => set((state) => setAllProjectsExpanded(state, expanded)),
   collapseProjectsExcept: (activeProjectId) =>
     set((state) => collapseProjectsExcept(state, activeProjectId)),
-  reorderProjects: (draggedProjectId, targetProjectId) =>
-    set((state) => reorderProjects(state, draggedProjectId, targetProjectId)),
   renameProjectLocally: (projectId, name) => {
     set((state) => renameProjectLocally(state, projectId, name));
     persistAppStateNow();
@@ -4070,7 +4045,7 @@ export const useStore = create<AppStore>((set) => ({
 
 // Persist state changes with debouncing to avoid localStorage thrashing
 useStore.subscribe((state) => {
-  rememberProjectUiState(state.projects);
+  rememberProjectExpansionState(state.projects);
   rememberProjectLocalNames(state.projects);
   debouncedPersistState.maybeExecute(state);
 });

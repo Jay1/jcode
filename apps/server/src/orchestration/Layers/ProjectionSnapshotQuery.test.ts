@@ -20,6 +20,196 @@ const projectionSnapshotLayer = it.layer(
 );
 
 projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
+  it.effect("fences a thread detail snapshot at the slowest required projector cursor", () =>
+    Effect.gen(function* () {
+      // Given: one live thread and required projectors at different cursors.
+      const snapshotQuery = yield* ProjectionSnapshotQuery;
+      const sql = yield* SqlClient.SqlClient;
+      yield* sql`DELETE FROM projection_projects`;
+      yield* sql`DELETE FROM projection_threads`;
+      yield* sql`DELETE FROM projection_state`;
+      yield* sql`
+        INSERT INTO projection_projects (
+          project_id, title, workspace_root, default_model_selection_json,
+          scripts_json, created_at, updated_at, deleted_at
+        ) VALUES (
+          'project-fence', 'Fence Project', '/tmp/project-fence',
+          '{"provider":"codex","model":"gpt-5-codex"}', '[]',
+          '2026-07-18T00:00:00.000Z', '2026-07-18T00:00:00.000Z', NULL
+        )
+      `;
+      yield* sql`
+        INSERT INTO projection_threads (
+          thread_id, project_id, title, model_selection_json, created_at, updated_at, deleted_at
+        ) VALUES (
+          'thread-fence', 'project-fence', 'Fence Thread',
+          '{"provider":"codex","model":"gpt-5-codex"}',
+          '2026-07-18T00:00:01.000Z', '2026-07-18T00:00:01.000Z', NULL
+        )
+      `;
+      let sequence = 11;
+      for (const projector of Object.values(ORCHESTRATION_PROJECTOR_NAMES)) {
+        yield* sql`
+          INSERT INTO projection_state (projector, last_applied_sequence, updated_at)
+          VALUES (${projector}, ${sequence}, '2026-07-18T00:00:02.000Z')
+        `;
+        sequence += 1;
+      }
+
+      // When: the detail and its fence are read transactionally.
+      const detail = yield* snapshotQuery.getThreadDetailSnapshotById(asThreadId("thread-fence"));
+
+      // Then: the fence is the slowest cursor rather than a latest-row sequence.
+      assert.equal(Option.getOrNull(detail)?.snapshotSequence, 11);
+      yield* sql`DELETE FROM projection_threads WHERE thread_id = 'thread-fence'`;
+      yield* sql`DELETE FROM projection_projects WHERE project_id = 'project-fence'`;
+      yield* sql`DELETE FROM projection_state`;
+    }),
+  );
+
+  it.effect("returns null sidebar layout before initialization in full and shell snapshots", () =>
+    Effect.gen(function* () {
+      // Given: an uninitialized layout projection.
+      const snapshotQuery = yield* ProjectionSnapshotQuery;
+      const sql = yield* SqlClient.SqlClient;
+      yield* sql`DELETE FROM projection_sidebar_layout`;
+
+      // When: both public snapshots are read.
+      const [full, shell] = yield* Effect.all([
+        snapshotQuery.getSnapshot(),
+        snapshotQuery.getShellSnapshot(),
+      ]);
+
+      // Then: null is the only uninitialized layout state.
+      assert.isNull(full.sidebarLayout);
+      assert.isNull(shell.sidebarLayout);
+    }),
+  );
+
+  it.effect(
+    "normalizes initialized layout against every live entity inside the snapshot fence",
+    () =>
+      Effect.gen(function* () {
+        // Given: stored relative order with duplicates, deleted ids, unseen project kinds, and stale pins.
+        const snapshotQuery = yield* ProjectionSnapshotQuery;
+        const sql = yield* SqlClient.SqlClient;
+        yield* sql`DELETE FROM projection_sidebar_layout`;
+        yield* sql`DELETE FROM projection_projects`;
+        yield* sql`DELETE FROM projection_threads`;
+        yield* sql`DELETE FROM projection_state`;
+        yield* sql`
+        INSERT INTO projection_projects (
+          project_id, kind, title, workspace_root, default_model_selection_json,
+          scripts_json, created_at, updated_at, deleted_at
+        ) VALUES
+          ('project-stored-chat', 'chat', 'Stored Chat', '/tmp/stored-chat', NULL, '[]',
+           '2026-07-18T00:00:03.000Z', '2026-07-18T00:00:03.000Z', NULL),
+          ('project-stored', 'project', 'Stored Project', '/tmp/stored', NULL, '[]',
+           '2026-07-18T00:00:04.000Z', '2026-07-18T00:00:04.000Z', NULL),
+          ('project-unseen-b', 'chat', 'Unseen Chat', '/tmp/unseen-b', NULL, '[]',
+           '2026-07-18T00:00:01.000Z', '2026-07-18T00:00:01.000Z', NULL),
+          ('project-unseen-a', 'project', 'Unseen Project', '/tmp/unseen-a', NULL, '[]',
+           '2026-07-18T00:00:01.000Z', '2026-07-18T00:00:01.000Z', NULL),
+          ('project-deleted', 'project', 'Deleted Project', '/tmp/deleted', NULL, '[]',
+           '2026-07-18T00:00:00.000Z', '2026-07-18T00:00:00.000Z',
+           '2026-07-18T00:00:05.000Z')
+      `;
+        yield* sql`
+        INSERT INTO projection_threads (
+          thread_id, project_id, title, model_selection_json, is_pinned,
+          created_at, updated_at, deleted_at
+        ) VALUES
+          ('thread-layout', 'project-stored', 'Stored Pin',
+           '{"provider":"codex","model":"gpt-5-codex"}', 0,
+           '2026-07-18T00:00:01.000Z', '2026-07-18T00:00:01.000Z', NULL),
+          ('thread-flag-only', 'project-stored', 'Flag Is Not Authority',
+           '{"provider":"codex","model":"gpt-5-codex"}', 1,
+           '2026-07-18T00:00:02.000Z', '2026-07-18T00:00:02.000Z', NULL),
+          ('thread-deleted', 'project-stored', 'Deleted Pin',
+           '{"provider":"codex","model":"gpt-5-codex"}', 1,
+           '2026-07-18T00:00:00.000Z', '2026-07-18T00:00:00.000Z',
+           '2026-07-18T00:00:05.000Z')
+      `;
+        yield* sql`
+        INSERT INTO projection_sidebar_layout (
+          layout_key, project_order_json, pinned_thread_order_json,
+          revision, initialized_at, updated_at
+        ) VALUES (
+          'sidebar-layout',
+          '["project-stored-chat","project-deleted","project-stored","project-stored-chat"]',
+          '["thread-deleted","thread-layout","thread-layout"]',
+          42,
+          '2026-07-18T00:00:00.000Z',
+          '2026-07-18T00:00:06.000Z'
+        )
+      `;
+        for (const projector of Object.values(ORCHESTRATION_PROJECTOR_NAMES)) {
+          const sequence = projector === ORCHESTRATION_PROJECTOR_NAMES.sidebarLayout ? 7 : 12;
+          yield* sql`
+          INSERT INTO projection_state (projector, last_applied_sequence, updated_at)
+          VALUES (${projector}, ${sequence}, '2026-07-18T00:00:07.000Z')
+        `;
+        }
+
+        // When: full and shell snapshots are read from one fenced transaction each.
+        const [full, shell] = yield* Effect.all([
+          snapshotQuery.getSnapshot(),
+          snapshotQuery.getShellSnapshot(),
+        ]);
+
+        // Then: both expose identical canonical state and the layout cursor participates in fencing.
+        const expectedLayout = {
+          projectOrder: [
+            asProjectId("project-stored-chat"),
+            asProjectId("project-stored"),
+            asProjectId("project-unseen-a"),
+            asProjectId("project-unseen-b"),
+          ],
+          pinnedThreadOrder: [asThreadId("thread-layout")],
+          revision: 42,
+          updatedAt: "2026-07-18T00:00:06.000Z",
+        };
+        assert.deepEqual(full.sidebarLayout, expectedLayout);
+        assert.deepEqual(shell.sidebarLayout, expectedLayout);
+        assert.equal(full.snapshotSequence, 7);
+        assert.equal(shell.snapshotSequence, 7);
+
+        yield* sql`DELETE FROM projection_sidebar_layout`;
+        yield* sql`DELETE FROM projection_threads`;
+        yield* sql`DELETE FROM projection_projects`;
+        yield* sql`DELETE FROM projection_state`;
+      }),
+  );
+
+  it.effect("fails with a typed decode error when persisted layout JSON is corrupt", () =>
+    Effect.gen(function* () {
+      // Given: a malformed persisted layout row.
+      const snapshotQuery = yield* ProjectionSnapshotQuery;
+      const sql = yield* SqlClient.SqlClient;
+      yield* sql`DELETE FROM projection_sidebar_layout`;
+      yield* sql`
+        INSERT INTO projection_sidebar_layout (
+          layout_key, project_order_json, pinned_thread_order_json,
+          revision, initialized_at, updated_at
+        ) VALUES (
+          'sidebar-layout', '{malformed', '[]', 9,
+          '2026-07-18T00:00:00.000Z', '2026-07-18T00:00:01.000Z'
+        )
+      `;
+
+      // When: a snapshot boundary decodes the row.
+      const error = yield* snapshotQuery.getShellSnapshot().pipe(Effect.flip);
+
+      // Then: corruption is loud and typed rather than treated as uninitialized state.
+      assert.equal(error._tag, "PersistenceDecodeError");
+      assert.equal(
+        error.operation,
+        "ProjectionSnapshotQuery.getShellSnapshot:getSidebarLayout:decodeRow",
+      );
+      yield* sql`DELETE FROM projection_sidebar_layout`;
+    }),
+  );
+
   it.effect("hydrates read model from projection tables and computes snapshot sequence", () =>
     Effect.gen(function* () {
       const snapshotQuery = yield* ProjectionSnapshotQuery;

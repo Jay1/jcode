@@ -3,6 +3,11 @@ import { readFile } from "node:fs/promises";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   AuthSessionId,
+  CommandId,
+  EventId,
+  ProjectId,
+  SIDEBAR_LAYOUT_ID,
+  ThreadId,
   type AuthCapabilityScope,
   type ManagedSidecarSnapshot,
   type ManagedSidecarStartRequest,
@@ -21,11 +26,13 @@ import {
   requireManagedSidecarHealthRpcAccess,
   requireManagedSidecarDiagnosticsRpcAccess,
   requireManagedSidecarRepairRpcAccess,
+  requireOrchestrationCommandRpcAccess,
   requireOwnerWsRpcAccess,
   requireProviderStatusRpcAccess,
   repairManagedSidecarFromLifecycle,
   resolveLocalLegacyWsAuthSession,
   skipFirstRunWizardFromRpc,
+  toSidebarLayoutShellStreamEvent,
 } from "./wsRpc.ts";
 
 vi.mock("node:fs", () => ({
@@ -168,6 +175,74 @@ describe("managed sidecar wsRpc adapters", () => {
         ),
       ),
     ).rejects.toThrow("requires owner role");
+  });
+
+  it("keeps non-response orchestration commands behind the existing owner guard", async () => {
+    // Given: the production dispatch handler source.
+    const source = await readFile(new URL("./wsRpc.ts", import.meta.url), "utf8");
+
+    // When: the command-aware authorization boundary is inspected.
+    const dispatchGuardStart = source.indexOf("const withCommandScope");
+    const dispatchGuardEnd = source.indexOf("const noManagedWorktrees", dispatchGuardStart);
+    const dispatchGuard = source.slice(dispatchGuardStart, dispatchGuardEnd);
+
+    // Then: only the two response capabilities are exceptions; the default is owner-only.
+    expect(dispatchGuard).toContain("requireOrchestrationCommandRpcAccess(session, command)");
+  });
+
+  it.each([
+    "sidebar-layout.initialize",
+    "sidebar-layout.project.move",
+    "sidebar-layout.thread.pin",
+    "sidebar-layout.thread.unpin",
+    "sidebar-layout.pinned-thread.move",
+  ])("rejects %s from non-owner sessions", async (type) => {
+    // Given: a scoped non-owner session and one shared-layout mutation.
+    const session = makeAuthSession({
+      role: "client",
+      scopes: ["thread:read", "approval:respond", "user_input:respond"],
+    });
+
+    // When/Then: response scopes cannot authorize server-wide layout mutation.
+    await expect(
+      Effect.runPromise(requireOrchestrationCommandRpcAccess(session, { type })),
+    ).rejects.toThrow("requires owner role");
+  });
+
+  it("maps layout domain events to shell updates acknowledged by the event sequence", () => {
+    // Given: a canonical layout event whose global sequence differs from list contents.
+    const event = {
+      type: "sidebar-layout.updated" as const,
+      sequence: 37,
+      eventId: EventId.makeUnsafe("event-layout-stream"),
+      aggregateKind: "sidebar-layout" as const,
+      aggregateId: SIDEBAR_LAYOUT_ID,
+      occurredAt: "2026-07-18T00:00:01.000Z",
+      commandId: CommandId.makeUnsafe("command-layout-stream"),
+      causationEventId: null,
+      correlationId: CommandId.makeUnsafe("command-layout-stream"),
+      metadata: {},
+      payload: {
+        projectOrder: [ProjectId.makeUnsafe("project-layout-stream")],
+        pinnedThreadOrder: [ThreadId.makeUnsafe("thread-layout-stream")],
+        updatedAt: "2026-07-18T00:00:01.000Z",
+      },
+    };
+
+    // When: the domain event is mapped for shell subscribers.
+    const shellEvent = toSidebarLayoutShellStreamEvent(event);
+
+    // Then: the layout revision acknowledges exactly the event sequence.
+    expect(shellEvent).toEqual({
+      kind: "sidebar-layout-updated",
+      sequence: 37,
+      sidebarLayout: {
+        projectOrder: [ProjectId.makeUnsafe("project-layout-stream")],
+        pinnedThreadOrder: [ThreadId.makeUnsafe("thread-layout-stream")],
+        revision: 37,
+        updatedAt: "2026-07-18T00:00:01.000Z",
+      },
+    });
   });
 
   it("allows provider runtime health for provider-status scoped clients", async () => {
@@ -351,6 +426,12 @@ describe("managed sidecar wsRpc adapters", () => {
   });
 
   it("keeps observable WS RPC handlers limited to explicit scopes", async () => {
+    await expectWsRpcHandlerScopeGuarded("ORCHESTRATION_WS_METHODS.getSnapshot", "thread:read");
+    await expectWsRpcHandlerScopeGuarded(
+      "ORCHESTRATION_WS_METHODS.getShellSnapshot",
+      "thread:read",
+    );
+    await expectWsRpcHandlerScopeGuarded("ORCHESTRATION_WS_METHODS.subscribeShell", "thread:read");
     await expectWsRpcHandlerScopeGuarded(
       "WS_METHODS.subscribeOrchestrationDomainEvents",
       "thread:read",

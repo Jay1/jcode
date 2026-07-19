@@ -9,6 +9,7 @@ import {
   getFallbackThreadIdAfterDelete,
   getVisibleSidebarEntriesForPreview,
   getPinnedThreadsForSidebar,
+  getUnpinnedSectionThreadsForSidebar,
   getNextVisibleSidebarThreadId,
   getSidebarThreadIdForJumpCommand,
   getSidebarThreadIdsToPrewarm,
@@ -22,16 +23,18 @@ import {
   installDebugFeatureFlagConsoleCommands,
   isLoopbackHostname,
   isDuplicateProjectCreateError,
+  orderProjectsByCanonicalOrder,
   pruneDismissedThreadStatusKeys,
   pruneExpandedProjectThreadListsForCollapsedProjects,
   recoverExistingAddProjectTarget,
   resolveProjectEmptyState,
   resolveProjectStatusIndicator,
   resolveSidebarNewThreadEnvMode,
+  resolveSidebarPinnedThreadMoveIntent,
+  resolveSidebarProjectMoveIntent,
   resolveThreadRowClassName,
   resolveThreadStatusPill,
   shouldShowDebugFeatureFlagsMenu,
-  shouldPrunePinnedThreads,
   shouldClearThreadSelectionOnMouseDown,
   sortProjectsForSidebar,
   sortThreadsForSidebar,
@@ -378,9 +381,29 @@ describe("pin helpers", () => {
     ).toEqual([threads[0]]);
   });
 
-  it("waits for thread hydration before pruning persisted pins", () => {
-    expect(shouldPrunePinnedThreads({ threadsHydrated: false })).toBe(false);
-    expect(shouldPrunePinnedThreads({ threadsHydrated: true })).toBe(true);
+  it("filters canonical pins from a chat/Home section while preserving thread order", () => {
+    const chatProjectId = ProjectId.makeUnsafe("chat-home");
+    const chatProject = makeProject({ id: chatProjectId, kind: "chat", name: "Home" });
+    const first = makeSidebarThreadSummary({
+      id: ThreadId.makeUnsafe("chat-thread-first"),
+      projectId: chatProjectId,
+    });
+    const pinned = makeSidebarThreadSummary({
+      id: ThreadId.makeUnsafe("chat-thread-pinned"),
+      projectId: chatProjectId,
+    });
+    const last = makeSidebarThreadSummary({
+      id: ThreadId.makeUnsafe("chat-thread-last"),
+      projectId: chatProjectId,
+    });
+
+    expect(
+      getUnpinnedSectionThreadsForSidebar({
+        projects: [chatProject],
+        sortedThreadsByProjectId: new Map([[chatProjectId, [first, pinned, last]]]),
+        pinnedThreadIds: [pinned.id],
+      }),
+    ).toEqual([first, last]);
   });
 
   it("shows loading before the first project snapshot can prove the list is empty", () => {
@@ -1529,6 +1552,36 @@ describe("sortProjectsForSidebar", () => {
     ]);
   });
 
+  it("restores canonical manual order after rendering an automatic sort", () => {
+    const canonicalProjects = orderProjectsByCanonicalOrder(
+      [
+        makeProject({
+          id: ProjectId.makeUnsafe("project-1"),
+          name: "Older",
+          updatedAt: "2026-03-09T10:01:00.000Z",
+        }),
+        makeProject({
+          id: ProjectId.makeUnsafe("project-2"),
+          name: "Newer",
+          updatedAt: "2026-03-09T10:05:00.000Z",
+        }),
+      ],
+      [ProjectId.makeUnsafe("project-1"), ProjectId.makeUnsafe("project-2")],
+    );
+
+    const automatic = sortProjectsForSidebar(canonicalProjects, [], "updated_at");
+    const manualAgain = sortProjectsForSidebar(canonicalProjects, [], "manual");
+
+    expect(automatic.map((project) => project.id)).toEqual([
+      ProjectId.makeUnsafe("project-2"),
+      ProjectId.makeUnsafe("project-1"),
+    ]);
+    expect(manualAgain.map((project) => project.id)).toEqual([
+      ProjectId.makeUnsafe("project-1"),
+      ProjectId.makeUnsafe("project-2"),
+    ]);
+  });
+
   it("returns the project timestamp when no threads are present", () => {
     const timestamp = getProjectSortTimestamp(
       makeProject({ updatedAt: "2026-03-09T10:10:00.000Z" }),
@@ -1537,5 +1590,171 @@ describe("sortProjectsForSidebar", () => {
     );
 
     expect(timestamp).toBe(Date.parse("2026-03-09T10:10:00.000Z"));
+  });
+});
+
+describe("canonical sidebar project ordering", () => {
+  it("orders every project kind canonically before sections filter in relative order", () => {
+    const standardA = makeProject({ id: ProjectId.makeUnsafe("project-a"), name: "A" });
+    const chatA = {
+      ...makeProject({ id: ProjectId.makeUnsafe("chat-a"), name: "Chat A" }),
+      kind: "chat" as const,
+    };
+    const standardB = makeProject({ id: ProjectId.makeUnsafe("project-b"), name: "B" });
+    const chatB = {
+      ...makeProject({ id: ProjectId.makeUnsafe("chat-b"), name: "Chat B" }),
+      kind: "chat" as const,
+    };
+
+    const ordered = orderProjectsByCanonicalOrder(
+      [standardA, chatA, standardB, chatB],
+      [chatB.id, standardB.id, chatA.id, standardA.id],
+    );
+
+    expect(ordered.map((project) => project.id)).toEqual([
+      chatB.id,
+      standardB.id,
+      chatA.id,
+      standardA.id,
+    ]);
+    expect(
+      ordered.filter((project) => project.kind === "chat").map((project) => project.id),
+    ).toEqual([chatB.id, chatA.id]);
+    expect(
+      ordered.filter((project) => project.kind === "project").map((project) => project.id),
+    ).toEqual([standardB.id, standardA.id]);
+  });
+
+  it("appends a project absent from the displayed canonical order", () => {
+    const projectA = makeProject({ id: ProjectId.makeUnsafe("project-a"), name: "A" });
+    const projectB = makeProject({ id: ProjectId.makeUnsafe("project-b"), name: "B" });
+
+    const ordered = orderProjectsByCanonicalOrder([projectA, projectB], [projectB.id]);
+
+    expect(ordered.map((project) => project.id)).toEqual([projectB.id, projectA.id]);
+  });
+});
+
+describe("resolveSidebarProjectMoveIntent", () => {
+  const projectA = ProjectId.makeUnsafe("project-a");
+  const projectB = ProjectId.makeUnsafe("project-b");
+  const projectC = ProjectId.makeUnsafe("project-c");
+  const projectD = ProjectId.makeUnsafe("project-d");
+  const canonicalOrder = [projectA, projectB, projectC, projectD];
+
+  it.each([
+    {
+      name: "upward",
+      movedProjectId: projectC,
+      overProjectId: projectB,
+      beforeProjectId: projectB,
+    },
+    {
+      name: "downward",
+      movedProjectId: projectA,
+      overProjectId: projectC,
+      beforeProjectId: projectD,
+    },
+    {
+      name: "first",
+      movedProjectId: projectD,
+      overProjectId: projectA,
+      beforeProjectId: projectA,
+    },
+    {
+      name: "last",
+      movedProjectId: projectA,
+      overProjectId: projectD,
+      beforeProjectId: null,
+    },
+  ])("uses the final optimistic next sibling for a $name move", (testCase) => {
+    const intent = resolveSidebarProjectMoveIntent({
+      sortOrder: "manual",
+      projectOrder: canonicalOrder,
+      movedProjectId: testCase.movedProjectId,
+      overProjectId: testCase.overProjectId,
+    });
+
+    expect(intent).toEqual({
+      type: "sidebar-layout.project.move",
+      projectId: testCase.movedProjectId,
+      beforeProjectId: testCase.beforeProjectId,
+    });
+  });
+
+  it("does not create a canonical move in an automatic sort mode", () => {
+    const intent = resolveSidebarProjectMoveIntent({
+      sortOrder: "updated_at",
+      projectOrder: canonicalOrder,
+      movedProjectId: projectA,
+      overProjectId: projectC,
+    });
+
+    expect(intent).toBeNull();
+  });
+
+  it("does not create a move after the hovered project disappears", () => {
+    const intent = resolveSidebarProjectMoveIntent({
+      sortOrder: "manual",
+      projectOrder: canonicalOrder,
+      movedProjectId: projectA,
+      overProjectId: ProjectId.makeUnsafe("deleted-project"),
+    });
+
+    expect(intent).toBeNull();
+  });
+
+  it("does not create a move for a cancelled or repeated position", () => {
+    const intent = resolveSidebarProjectMoveIntent({
+      sortOrder: "manual",
+      projectOrder: canonicalOrder,
+      movedProjectId: projectB,
+      overProjectId: projectB,
+    });
+
+    expect(intent).toBeNull();
+  });
+});
+
+describe("resolveSidebarPinnedThreadMoveIntent", () => {
+  const threadA = ThreadId.makeUnsafe("thread-a");
+  const threadB = ThreadId.makeUnsafe("thread-b");
+  const threadC = ThreadId.makeUnsafe("thread-c");
+  const threadD = ThreadId.makeUnsafe("thread-d");
+  const canonicalOrder = [threadA, threadB, threadC, threadD];
+
+  it.each([
+    ["first", threadD, threadA, threadA],
+    ["middle", threadA, threadC, threadD],
+    ["end", threadA, threadD, null],
+  ])("uses the final optimistic next sibling for a %s move", (_name, moved, over, before) => {
+    expect(
+      resolveSidebarPinnedThreadMoveIntent({
+        pinnedThreadOrder: canonicalOrder,
+        movedThreadId: moved,
+        overThreadId: over,
+      }),
+    ).toEqual({
+      type: "sidebar-layout.pinned-thread.move",
+      threadId: moved,
+      beforeThreadId: before,
+    });
+  });
+
+  it("ignores a missing target or repeated position", () => {
+    expect(
+      resolveSidebarPinnedThreadMoveIntent({
+        pinnedThreadOrder: canonicalOrder,
+        movedThreadId: threadA,
+        overThreadId: ThreadId.makeUnsafe("missing-thread"),
+      }),
+    ).toBeNull();
+    expect(
+      resolveSidebarPinnedThreadMoveIntent({
+        pinnedThreadOrder: canonicalOrder,
+        movedThreadId: threadB,
+        overThreadId: threadB,
+      }),
+    ).toBeNull();
   });
 });

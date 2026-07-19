@@ -10,6 +10,7 @@ import {
   ListProjectionThreadsByProjectInput,
   ProjectionThread,
   ProjectionThreadRepository,
+  ReplacePinnedMembershipInput,
   type ProjectionThreadRepositoryShape,
 } from "../Services/ProjectionThreads.ts";
 import {
@@ -252,6 +253,20 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
       `,
   });
 
+  const replacePinnedMembershipRows = SqlSchema.void({
+    Request: ReplacePinnedMembershipInput,
+    execute: ({ threadIds }) =>
+      threadIds.length === 0
+        ? sql`UPDATE projection_threads SET is_pinned = 0`
+        : sql`
+            UPDATE projection_threads
+            SET is_pinned = CASE
+              WHEN deleted_at IS NULL AND thread_id IN ${sql.in(threadIds)} THEN 1
+              ELSE 0
+            END
+          `,
+  });
+
   const upsert: ProjectionThreadRepositoryShape["upsert"] = (row) =>
     upsertProjectionThreadRow(row).pipe(
       Effect.mapError(toPersistenceSqlError("ProjectionThreadRepository.upsert:query")),
@@ -272,10 +287,20 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
       Effect.mapError(toPersistenceSqlError("ProjectionThreadRepository.deleteById:query")),
     );
 
+  const replacePinnedMembership: ProjectionThreadRepositoryShape["replacePinnedMembership"] = (
+    input,
+  ) =>
+    replacePinnedMembershipRows(input).pipe(
+      Effect.mapError(
+        toPersistenceSqlError("ProjectionThreadRepository.replacePinnedMembership:query"),
+      ),
+    );
+
   return {
     upsert,
     getById,
     listByProjectId,
+    replacePinnedMembership,
     deleteById,
   } satisfies ProjectionThreadRepositoryShape;
 });

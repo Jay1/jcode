@@ -383,6 +383,19 @@ export const exportManagedSidecarDiagnosticsFromLifecycle = (input: {
 
 export const skipFirstRunWizardFromRpc = () => skipFirstRunWizard();
 
+export const toSidebarLayoutShellStreamEvent = (
+  event: Extract<OrchestrationEvent, { readonly type: "sidebar-layout.updated" }>,
+): Extract<OrchestrationShellStreamEvent, { readonly kind: "sidebar-layout-updated" }> => ({
+  kind: "sidebar-layout-updated",
+  sequence: event.sequence,
+  sidebarLayout: {
+    projectOrder: event.payload.projectOrder,
+    pinnedThreadOrder: event.payload.pinnedThreadOrder,
+    revision: event.sequence,
+    updatedAt: event.payload.updatedAt,
+  },
+});
+
 export const requireProviderStatusRpcAccess = (
   session: AuthenticatedSession,
 ): Effect.Effect<void, WsRpcError> =>
@@ -402,6 +415,33 @@ export const requireOwnerWsRpcAccess = (
   session.role === "owner"
     ? Effect.void
     : Effect.fail(new WsRpcError({ message: `${operation} requires owner role` }));
+
+export const requireOrchestrationCommandRpcAccess = (
+  session: AuthenticatedSession,
+  command: { readonly type: string },
+): Effect.Effect<void, WsRpcError> => {
+  if (session.role === "owner") {
+    return Effect.void;
+  }
+  switch (command.type) {
+    case "thread.approval.respond":
+      return requireScope(session, "approval:respond").pipe(
+        Effect.asVoid,
+        Effect.mapError((error) => new WsRpcError({ message: error.message, cause: error })),
+      );
+    case "thread.user-input.respond":
+      return requireScope(session, "user_input:respond").pipe(
+        Effect.asVoid,
+        Effect.mapError((error) => new WsRpcError({ message: error.message, cause: error })),
+      );
+    default:
+      return Effect.fail(
+        new WsRpcError({
+          message: "Insufficient permissions: this command requires owner role",
+        }),
+      );
+  }
+};
 
 const requireManagedSidecarOwnerRpcAccess = (
   session: AuthenticatedSession,
@@ -775,6 +815,8 @@ export const makeWsRpcLayer = () =>
                 threadId: event.payload.threadId,
               }),
             );
+          case "sidebar-layout.updated":
+            return Effect.succeed(Option.some(toSidebarLayoutShellStreamEvent(event)));
           default:
             if (event.aggregateKind !== "thread") return Effect.succeed(Option.none());
             return projectionReadModelQuery
@@ -895,27 +937,9 @@ export const makeWsRpcLayer = () =>
             if (!session) {
               return Effect.fail(new WsRpcError({ message: "Authentication required" }));
             }
-            if (session.role === "owner") {
-              return effect;
-            }
-            switch (command.type) {
-              case "thread.approval.respond":
-                return requireScope(session, "approval:respond").pipe(
-                  Effect.mapError((err) => new WsRpcError({ message: err.message, cause: err })),
-                  Effect.flatMap(() => effect),
-                );
-              case "thread.user-input.respond":
-                return requireScope(session, "user_input:respond").pipe(
-                  Effect.mapError((err) => new WsRpcError({ message: err.message, cause: err })),
-                  Effect.flatMap(() => effect),
-                );
-              default:
-                return Effect.fail(
-                  new WsRpcError({
-                    message: "Insufficient permissions: this command requires owner role",
-                  }),
-                );
-            }
+            return requireOrchestrationCommandRpcAccess(session, command).pipe(
+              Effect.flatMap(() => effect),
+            );
           }),
         );
 
