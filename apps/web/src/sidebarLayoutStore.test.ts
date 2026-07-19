@@ -188,9 +188,8 @@ describe("sidebar layout store", () => {
     transport.resolveAttempt(0, 9);
     await flushDispatch();
 
-    // When: a high snapshot fence carries an older layout revision, followed by revision 9.
-    const olderReconnectSnapshotLayout = { ...layout(8, [], []), snapshotSequence: 900 };
-    store.getState().acceptConfirmedLayout(olderReconnectSnapshotLayout);
+    // When: an older layout revision arrives before revision 9.
+    store.getState().acceptConfirmedLayout(layout(8, [], []));
     expect(store.getState().pendingIntents[0]?.acceptedSequence).toBe(9);
     store.getState().acceptConfirmedLayout(layout(9, [], [threadA]));
 

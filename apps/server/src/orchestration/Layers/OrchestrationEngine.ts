@@ -38,6 +38,7 @@ import { decideOrchestrationCommand } from "../decider.ts";
 import type { ProjectMetadataOrchestrationEvent } from "../projectMetadataProjection.ts";
 import { PROJECT_METADATA_SNAPSHOT_PROJECTORS } from "../projectMetadataProjection.ts";
 import { createEmptyReadModel, projectEvent } from "../projector.ts";
+import { ORCHESTRATION_PROJECTOR_NAMES } from "./ProjectionPipeline.ts";
 import { OrchestrationProjectionPipeline } from "../Services/ProjectionPipeline.ts";
 import {
   OrchestrationEngineService,
@@ -47,7 +48,6 @@ import { ProjectLanguageIconResolver } from "../../project/Services/ProjectLangu
 
 const ORCHESTRATION_DISPATCH_TIMEOUT_MS = 45_000;
 const STARTUP_PROJECT_ICON_METADATA_BACKFILL_LIMIT = 20;
-const SIDEBAR_LAYOUT_PROJECTOR = "projection.sidebar-layout";
 const PersistedSidebarProjectOrder = Schema.fromJsonString(Schema.Array(ProjectId));
 const PersistedSidebarPinnedThreadOrder = Schema.fromJsonString(Schema.Array(ThreadId));
 const AUTOMATIC_PROJECT_ICON_COMMAND_PREFIXES = [
@@ -455,11 +455,12 @@ const makeOrchestrationEngine = Effect.gen(function* () {
               updatedAt: layoutRow.updatedAt,
             })),
             Effect.mapError(
-              () =>
+              (cause) =>
                 new OrchestrationCommandInternalError({
                   commandId: "repair-local-state",
                   commandType: ORCHESTRATION_WS_METHODS.repairState,
                   detail: "The rebuilt sidebar layout could not be decoded.",
+                  cause,
                 }),
             ),
           );
@@ -533,7 +534,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         DELETE FROM projection_state
         WHERE projector IN ${sql.in([
           ...PROJECT_METADATA_SNAPSHOT_PROJECTORS,
-          SIDEBAR_LAYOUT_PROJECTOR,
+          ORCHESTRATION_PROJECTOR_NAMES.sidebarLayout,
         ])}
       `;
     }),
