@@ -5,6 +5,7 @@ import {
   EventId,
   MessageId,
   ProjectId,
+  SIDEBAR_LAYOUT_ID,
   ThreadId,
   TurnId,
   type ProjectIconMetadata,
@@ -13,7 +14,8 @@ import {
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Effect, Layer, ManagedRuntime, Queue, Stream } from "effect";
+import { Effect, Layer, ManagedRuntime, Option, Queue, Stream } from "effect";
+import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { describe, expect, it } from "vitest";
 
 import { PersistenceSqlError } from "../../persistence/Errors.ts";
@@ -70,7 +72,7 @@ async function createOrchestrationSystem(
     Layer.provide(OrchestrationEventStoreLive),
     Layer.provide(OrchestrationCommandReceiptRepositoryLive),
     Layer.provide(projectLanguageIconResolverLayer),
-    Layer.provide(SqlitePersistenceMemory),
+    Layer.provideMerge(SqlitePersistenceMemory),
     Layer.provideMerge(ServerConfigLayer),
     Layer.provideMerge(NodeServices.layer),
   );
@@ -78,7 +80,7 @@ async function createOrchestrationSystem(
   const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
   return {
     engine,
-    run: <A, E>(effect: Effect.Effect<A, E>) => runtime.runPromise(effect),
+    run: <A, E>(effect: Effect.Effect<A, E, SqlClient.SqlClient>) => runtime.runPromise(effect),
     dispose: () => runtime.dispose(),
   };
 }
@@ -915,6 +917,569 @@ describe("OrchestrationEngine", () => {
     );
 
     expect(eventTypes).toEqual(["thread.created", "thread.meta-updated"]);
+    await system.dispose();
+  });
+
+  it("publishes an accepted persisted event before dispatch resolves", async () => {
+    // Given
+    const system = await createOrchestrationSystem();
+    const { engine } = system;
+    const createdAt = now();
+
+    await system.run(
+      Effect.gen(function* () {
+        const eventQueue = yield* Queue.unbounded<OrchestrationEvent>();
+        yield* Effect.forkScoped(
+          Stream.take(engine.streamDomainEvents, 1).pipe(
+            Stream.runForEach((event) => Queue.offer(eventQueue, event).pipe(Effect.asVoid)),
+          ),
+        );
+        yield* Effect.yieldNow;
+
+        // When
+        const result = yield* engine.dispatch({
+          type: "project.create",
+          commandId: CommandId.makeUnsafe("cmd-project-publish-before-response"),
+          projectId: asProjectId("project-publish-before-response"),
+          title: "Published Project",
+          workspaceRoot: "/tmp/project-publish-before-response",
+          defaultModelSelection: null,
+          createdAt,
+        });
+        const publishedEvent = yield* Queue.poll(eventQueue);
+
+        // Then
+        expect(Option.isSome(publishedEvent)).toBe(true);
+        if (Option.isSome(publishedEvent)) {
+          expect(publishedEvent.value.sequence).toBe(result.sequence);
+          expect(publishedEvent.value.type).toBe("project.created");
+        }
+      }).pipe(Effect.scoped),
+    );
+
+    await system.dispose();
+  });
+
+  it("serializes every sidebar layout intent into a distinct canonical revision", async () => {
+    // Given
+    const system = await createOrchestrationSystem();
+    const { engine } = system;
+    const createdAt = now();
+    const projectA = asProjectId("project-layout-a");
+    const projectB = asProjectId("project-layout-b");
+    const threadA = ThreadId.makeUnsafe("thread-layout-a");
+    const threadB = ThreadId.makeUnsafe("thread-layout-b");
+
+    for (const [projectId, title] of [
+      [projectA, "Project A"],
+      [projectB, "Project B"],
+    ] as const) {
+      await system.run(
+        engine.dispatch({
+          type: "project.create",
+          commandId: CommandId.makeUnsafe(`create-${projectId}`),
+          projectId,
+          title,
+          workspaceRoot: `/tmp/${projectId}`,
+          defaultModelSelection: null,
+          createdAt,
+        }),
+      );
+    }
+    for (const [threadId, projectId] of [
+      [threadA, projectA],
+      [threadB, projectB],
+    ] as const) {
+      await system.run(
+        engine.dispatch({
+          type: "thread.create",
+          commandId: CommandId.makeUnsafe(`create-${threadId}`),
+          threadId,
+          projectId,
+          title: threadId,
+          modelSelection: { provider: "codex", model: "gpt-5-codex" },
+          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+          runtimeMode: "approval-required",
+          branch: null,
+          worktreePath: null,
+          createdAt,
+        }),
+      );
+    }
+
+    // When
+    const receipts = [];
+    receipts.push(
+      await system.run(
+        engine.dispatch({
+          type: "sidebar-layout.initialize",
+          commandId: CommandId.makeUnsafe("layout-initialize-first"),
+          projectOrder: [projectB, projectA],
+          pinnedThreadOrder: [threadA],
+        }),
+      ),
+    );
+    receipts.push(
+      await system.run(
+        engine.dispatch({
+          type: "sidebar-layout.initialize",
+          commandId: CommandId.makeUnsafe("layout-initialize-losing"),
+          projectOrder: [projectA, projectB],
+          pinnedThreadOrder: [threadB],
+        }),
+      ),
+    );
+    receipts.push(
+      await system.run(
+        engine.dispatch({
+          type: "sidebar-layout.project.move",
+          commandId: CommandId.makeUnsafe("layout-project-self-move"),
+          projectId: projectB,
+          beforeProjectId: projectB,
+        }),
+      ),
+    );
+    receipts.push(
+      await system.run(
+        engine.dispatch({
+          type: "sidebar-layout.thread.pin",
+          commandId: CommandId.makeUnsafe("layout-pin-b"),
+          threadId: threadB,
+          beforeThreadId: threadA,
+        }),
+      ),
+    );
+    receipts.push(
+      await system.run(
+        engine.dispatch({
+          type: "sidebar-layout.pinned-thread.move",
+          commandId: CommandId.makeUnsafe("layout-pinned-self-move"),
+          threadId: threadB,
+          beforeThreadId: threadB,
+        }),
+      ),
+    );
+    receipts.push(
+      await system.run(
+        engine.dispatch({
+          type: "sidebar-layout.thread.unpin",
+          commandId: CommandId.makeUnsafe("layout-unpin-a"),
+          threadId: threadA,
+        }),
+      ),
+    );
+    receipts.push(
+      await system.run(
+        engine.dispatch({
+          type: "sidebar-layout.thread.unpin",
+          commandId: CommandId.makeUnsafe("layout-unpin-a-again"),
+          threadId: threadA,
+        }),
+      ),
+    );
+
+    // Then
+    expect(receipts.map((receipt) => receipt.sequence)).toEqual([5, 6, 7, 8, 9, 10, 11]);
+    const events = await system.run(
+      Stream.runCollect(engine.readEvents(4)).pipe(
+        Effect.map((chunk): OrchestrationEvent[] => Array.from(chunk)),
+      ),
+    );
+    expect(events).toHaveLength(7);
+    expect(events.every((event) => event.type === "sidebar-layout.updated")).toBe(true);
+
+    const readModel = await system.run(engine.getReadModel());
+    expect(readModel.sidebarLayout).toEqual({
+      projectOrder: [projectB, projectA],
+      pinnedThreadOrder: [threadB],
+      revision: 11,
+      updatedAt: expect.any(String),
+    });
+    expect(readModel.threads.map((thread) => [thread.id, thread.isPinned])).toEqual([
+      [threadA, false],
+      [threadB, true],
+    ]);
+
+    const retry = await system.run(
+      engine.dispatch({
+        type: "sidebar-layout.thread.unpin",
+        commandId: CommandId.makeUnsafe("layout-unpin-a-again"),
+        threadId: threadA,
+      }),
+    );
+    const eventsAfterRetry = await system.run(
+      Stream.runCollect(engine.readEvents(4)).pipe(
+        Effect.map((chunk): OrchestrationEvent[] => Array.from(chunk)),
+      ),
+    );
+    expect(retry.sequence).toBe(11);
+    expect(eventsAfterRetry).toHaveLength(7);
+
+    await system.dispose();
+  });
+
+  it("repairs a corrupt layout row and stale pins by replaying the layout projector", async () => {
+    // Given
+    const system = await createOrchestrationSystem();
+    const { engine } = system;
+    const createdAt = "2026-07-18T14:00:00.000Z";
+    const projectId = asProjectId("project-layout-repair-success");
+    const threadA = ThreadId.makeUnsafe("thread-layout-repair-success-a");
+    const threadB = ThreadId.makeUnsafe("thread-layout-repair-success-b");
+
+    await system.run(
+      engine.dispatch({
+        type: "project.create",
+        commandId: CommandId.makeUnsafe("cmd-layout-repair-success-project"),
+        projectId,
+        title: "Layout repair success",
+        workspaceRoot: "/tmp/layout-repair-success",
+        defaultModelSelection: null,
+        createdAt,
+      }),
+    );
+    for (const [threadId, suffix] of [
+      [threadA, "a"],
+      [threadB, "b"],
+    ] as const) {
+      await system.run(
+        engine.dispatch({
+          type: "thread.create",
+          commandId: CommandId.makeUnsafe(`cmd-layout-repair-success-thread-${suffix}`),
+          threadId,
+          projectId,
+          title: `Thread ${suffix}`,
+          modelSelection: { provider: "codex", model: "gpt-5-codex" },
+          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+          runtimeMode: "full-access",
+          branch: null,
+          worktreePath: null,
+          createdAt,
+        }),
+      );
+    }
+    await system.run(
+      engine.dispatch({
+        type: "sidebar-layout.initialize",
+        commandId: CommandId.makeUnsafe("cmd-layout-repair-success-initialize"),
+        projectOrder: [projectId],
+        pinnedThreadOrder: [threadA],
+      }),
+    );
+    await system.run(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        yield* sql`
+          UPDATE projection_sidebar_layout
+          SET pinned_thread_order_json = ${JSON.stringify([threadB])}, revision = 777
+          WHERE layout_key = ${SIDEBAR_LAYOUT_ID}
+        `;
+        yield* sql`
+          UPDATE projection_threads
+          SET is_pinned = CASE WHEN thread_id = ${threadB} THEN 1 ELSE 0 END
+        `;
+      }),
+    );
+
+    // When
+    const repaired = await system.run(engine.repairState());
+
+    // Then
+    expect(repaired.sidebarLayout).toEqual({
+      projectOrder: [projectId],
+      pinnedThreadOrder: [threadA],
+      revision: 4,
+      updatedAt: expect.any(String),
+    });
+    expect(repaired.threads.map((thread) => [thread.id, thread.isPinned])).toEqual([
+      [threadA, true],
+      [threadB, false],
+    ]);
+    const persisted = await system.run(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        const layout = yield* sql<{
+          readonly pinnedThreadOrderJson: string;
+          readonly revision: number;
+        }>`
+          SELECT pinned_thread_order_json AS "pinnedThreadOrderJson", revision
+          FROM projection_sidebar_layout
+          WHERE layout_key = ${SIDEBAR_LAYOUT_ID}
+        `;
+        const pins = yield* sql<{ readonly threadId: string; readonly isPinned: number }>`
+          SELECT thread_id AS "threadId", is_pinned AS "isPinned"
+          FROM projection_threads
+          WHERE thread_id IN (${threadA}, ${threadB})
+          ORDER BY thread_id ASC
+        `;
+        const cursor = yield* sql<{ readonly lastAppliedSequence: number }>`
+          SELECT last_applied_sequence AS "lastAppliedSequence"
+          FROM projection_state
+          WHERE projector = 'projection.sidebar-layout'
+        `;
+        return { layout, pins, cursor };
+      }),
+    );
+    expect(persisted).toEqual({
+      layout: [{ pinnedThreadOrderJson: JSON.stringify([threadA]), revision: 4 }],
+      pins: [
+        { threadId: threadA, isPinned: 1 },
+        { threadId: threadB, isPinned: 0 },
+      ],
+      cursor: [{ lastAppliedSequence: 4 }],
+    });
+    await system.dispose();
+  });
+
+  it("restores layout, cursor, pins, and memory when the repair layout projector fails", async () => {
+    // Given
+    const system = await createOrchestrationSystem();
+    const { engine } = system;
+    const createdAt = "2026-07-18T15:00:00.000Z";
+    const projectId = asProjectId("project-layout-repair-failure");
+    const threadA = ThreadId.makeUnsafe("thread-layout-repair-failure-a");
+    const threadB = ThreadId.makeUnsafe("thread-layout-repair-failure-b");
+
+    await system.run(
+      engine.dispatch({
+        type: "project.create",
+        commandId: CommandId.makeUnsafe("cmd-layout-repair-failure-project"),
+        projectId,
+        title: "Layout repair failure",
+        workspaceRoot: "/tmp/layout-repair-failure",
+        defaultModelSelection: null,
+        createdAt,
+      }),
+    );
+    for (const [threadId, suffix] of [
+      [threadA, "a"],
+      [threadB, "b"],
+    ] as const) {
+      await system.run(
+        engine.dispatch({
+          type: "thread.create",
+          commandId: CommandId.makeUnsafe(`cmd-layout-repair-failure-thread-${suffix}`),
+          threadId,
+          projectId,
+          title: `Thread ${suffix}`,
+          modelSelection: { provider: "codex", model: "gpt-5-codex" },
+          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+          runtimeMode: "full-access",
+          branch: null,
+          worktreePath: null,
+          createdAt,
+        }),
+      );
+    }
+    await system.run(
+      engine.dispatch({
+        type: "sidebar-layout.initialize",
+        commandId: CommandId.makeUnsafe("cmd-layout-repair-failure-initialize"),
+        projectOrder: [projectId],
+        pinnedThreadOrder: [threadA],
+      }),
+    );
+    const beforeMemory = await system.run(engine.getReadModel());
+    await system.run(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        yield* sql`
+          UPDATE projection_sidebar_layout
+          SET pinned_thread_order_json = ${JSON.stringify([threadB])}, revision = 888
+          WHERE layout_key = ${SIDEBAR_LAYOUT_ID}
+        `;
+        yield* sql`
+          UPDATE projection_threads
+          SET is_pinned = CASE WHEN thread_id = ${threadB} THEN 1 ELSE 0 END
+        `;
+        yield* sql`
+          CREATE TEMP TRIGGER fail_layout_repair_projector
+          BEFORE INSERT ON projection_sidebar_layout
+          WHEN NOT EXISTS (
+            SELECT 1 FROM projection_state WHERE projector = 'projection.sidebar-layout'
+          )
+          BEGIN
+            SELECT RAISE(ABORT, 'injected layout repair projector failure');
+          END
+        `;
+      }),
+    );
+
+    // When
+    const repairExit = await system.run(Effect.exit(engine.repairState()));
+    await system.run(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        yield* sql`DROP TRIGGER fail_layout_repair_projector`;
+      }),
+    );
+
+    // Then
+    expect(repairExit._tag).toBe("Failure");
+    const afterMemory = await system.run(engine.getReadModel());
+    expect(afterMemory).toEqual(beforeMemory);
+    const persisted = await system.run(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        const layout = yield* sql<{
+          readonly pinnedThreadOrderJson: string;
+          readonly revision: number;
+        }>`
+          SELECT pinned_thread_order_json AS "pinnedThreadOrderJson", revision
+          FROM projection_sidebar_layout
+          WHERE layout_key = ${SIDEBAR_LAYOUT_ID}
+        `;
+        const pins = yield* sql<{ readonly threadId: string; readonly isPinned: number }>`
+          SELECT thread_id AS "threadId", is_pinned AS "isPinned"
+          FROM projection_threads
+          WHERE thread_id IN (${threadA}, ${threadB})
+          ORDER BY thread_id ASC
+        `;
+        const cursor = yield* sql<{ readonly lastAppliedSequence: number }>`
+          SELECT last_applied_sequence AS "lastAppliedSequence"
+          FROM projection_state
+          WHERE projector = 'projection.sidebar-layout'
+        `;
+        return { layout, pins, cursor };
+      }),
+    );
+    expect(persisted).toEqual({
+      layout: [{ pinnedThreadOrderJson: JSON.stringify([threadB]), revision: 888 }],
+      pins: [
+        { threadId: threadA, isPinned: 0 },
+        { threadId: threadB, isPinned: 1 },
+      ],
+      cursor: [{ lastAppliedSequence: 4 }],
+    });
+    await system.dispose();
+  });
+
+  it("restores layout, cursor, pins, memory, and backups when repair refresh fails", async () => {
+    // Given
+    const system = await createOrchestrationSystem();
+    const { engine } = system;
+    const createdAt = "2026-07-18T15:30:00.000Z";
+    const projectId = asProjectId("project-layout-repair-refresh-failure");
+    const threadA = ThreadId.makeUnsafe("thread-layout-repair-refresh-failure-a");
+    const threadB = ThreadId.makeUnsafe("thread-layout-repair-refresh-failure-b");
+
+    await system.run(
+      engine.dispatch({
+        type: "project.create",
+        commandId: CommandId.makeUnsafe("cmd-layout-repair-refresh-failure-project"),
+        projectId,
+        title: "Layout repair refresh failure",
+        workspaceRoot: "/tmp/layout-repair-refresh-failure",
+        defaultModelSelection: null,
+        createdAt,
+      }),
+    );
+    for (const [threadId, suffix] of [
+      [threadA, "a"],
+      [threadB, "b"],
+    ] as const) {
+      await system.run(
+        engine.dispatch({
+          type: "thread.create",
+          commandId: CommandId.makeUnsafe(`cmd-layout-repair-refresh-failure-thread-${suffix}`),
+          threadId,
+          projectId,
+          title: `Thread ${suffix}`,
+          modelSelection: { provider: "codex", model: "gpt-5-codex" },
+          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+          runtimeMode: "full-access",
+          branch: null,
+          worktreePath: null,
+          createdAt,
+        }),
+      );
+    }
+    await system.run(
+      engine.dispatch({
+        type: "sidebar-layout.initialize",
+        commandId: CommandId.makeUnsafe("cmd-layout-repair-refresh-failure-initialize"),
+        projectOrder: [projectId],
+        pinnedThreadOrder: [threadA],
+      }),
+    );
+    const beforeMemory = await system.run(engine.getReadModel());
+    await system.run(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        yield* sql`
+          UPDATE projection_sidebar_layout
+          SET pinned_thread_order_json = ${JSON.stringify([threadB])}, revision = 888
+          WHERE layout_key = ${SIDEBAR_LAYOUT_ID}
+        `;
+        yield* sql`
+          UPDATE projection_threads
+          SET is_pinned = CASE WHEN thread_id = ${threadB} THEN 1 ELSE 0 END
+        `;
+        yield* sql`
+          CREATE TEMP TRIGGER corrupt_rebuilt_layout_after_cursor_insert
+          AFTER INSERT ON projection_state
+          WHEN NEW.projector = 'projection.sidebar-layout'
+          BEGIN
+            UPDATE projection_sidebar_layout
+            SET pinned_thread_order_json = 'invalid-json';
+          END
+        `;
+      }),
+    );
+
+    // When
+    const repairExit = await system.run(Effect.exit(engine.repairState()));
+    await system.run(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        yield* sql`DROP TRIGGER corrupt_rebuilt_layout_after_cursor_insert`;
+      }),
+    );
+
+    // Then
+    expect(repairExit._tag).toBe("Failure");
+    const afterMemory = await system.run(engine.getReadModel());
+    expect(afterMemory).toEqual(beforeMemory);
+    const persisted = await system.run(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        const layout = yield* sql<{
+          readonly pinnedThreadOrderJson: string;
+          readonly revision: number;
+        }>`
+          SELECT pinned_thread_order_json AS "pinnedThreadOrderJson", revision
+          FROM projection_sidebar_layout
+          WHERE layout_key = ${SIDEBAR_LAYOUT_ID}
+        `;
+        const pins = yield* sql<{ readonly threadId: string; readonly isPinned: number }>`
+          SELECT thread_id AS "threadId", is_pinned AS "isPinned"
+          FROM projection_threads
+          WHERE thread_id IN (${threadA}, ${threadB})
+          ORDER BY thread_id ASC
+        `;
+        const cursor = yield* sql<{ readonly lastAppliedSequence: number }>`
+          SELECT last_applied_sequence AS "lastAppliedSequence"
+          FROM projection_state
+          WHERE projector = 'projection.sidebar-layout'
+        `;
+        const backupTables = yield* sql<{ readonly name: string }>`
+          SELECT name
+          FROM sqlite_temp_master
+          WHERE type = 'table' AND name LIKE 'temp_repair_%'
+          ORDER BY name ASC
+        `;
+        return { layout, pins, cursor, backupTables };
+      }),
+    );
+    expect(persisted).toEqual({
+      layout: [{ pinnedThreadOrderJson: JSON.stringify([threadB]), revision: 888 }],
+      pins: [
+        { threadId: threadA, isPinned: 0 },
+        { threadId: threadB, isPinned: 1 },
+      ],
+      cursor: [{ lastAppliedSequence: 4 }],
+      backupTables: [],
+    });
     await system.dispose();
   });
 

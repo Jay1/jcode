@@ -6,6 +6,7 @@ import {
   EventId,
   MessageId,
   ProjectId,
+  SIDEBAR_LAYOUT_ID,
   ThreadId,
   TurnId,
 } from "@jcode/contracts";
@@ -2539,20 +2540,235 @@ it.effect("restores pending turn-start metadata across projection pipeline resta
   ),
 );
 
-const engineLayer = it.layer(
-  OrchestrationEngineLive.pipe(
-    Layer.provide(OrchestrationProjectionPipelineLive),
-    Layer.provide(OrchestrationEventStoreLive),
-    Layer.provide(OrchestrationCommandReceiptRepositoryLive),
-    Layer.provide(NoopProjectLanguageIconResolverLayer),
-    Layer.provideMerge(SqlitePersistenceMemory),
-    Layer.provideMerge(
-      ServerConfig.layerTest(process.cwd(), {
-        prefix: "t3-projection-pipeline-engine-dispatch-",
-      }),
-    ),
-    Layer.provideMerge(NodeServices.layer),
+const EngineDispatchTestLayer = OrchestrationEngineLive.pipe(
+  Layer.provideMerge(OrchestrationProjectionPipelineLive),
+  Layer.provide(OrchestrationEventStoreLive),
+  Layer.provide(OrchestrationCommandReceiptRepositoryLive),
+  Layer.provide(NoopProjectLanguageIconResolverLayer),
+  Layer.provideMerge(SqlitePersistenceMemory),
+  Layer.provideMerge(
+    ServerConfig.layerTest(process.cwd(), {
+      prefix: "t3-projection-pipeline-engine-dispatch-",
+    }),
   ),
+  Layer.provideMerge(NodeServices.layer),
+);
+
+const engineLayer = it.layer(EngineDispatchTestLayer);
+
+engineLayer("OrchestrationProjectionPipeline via engine dispatch", (it) => {
+  it.effect(
+    "rolls back layout, exact pins, cursor, event, and receipt when pin projection fails",
+    () =>
+      Effect.gen(function* () {
+        // Given
+        const engine = yield* OrchestrationEngineService;
+        const sql = yield* SqlClient.SqlClient;
+        const createdAt = "2026-07-18T12:00:00.000Z";
+        const projectId = ProjectId.makeUnsafe("project-layout-atomic");
+        const threadA = ThreadId.makeUnsafe("thread-layout-atomic-a");
+        const threadB = ThreadId.makeUnsafe("thread-layout-atomic-b");
+
+        yield* engine.dispatch({
+          type: "project.create",
+          commandId: CommandId.makeUnsafe("cmd-layout-atomic-project"),
+          projectId,
+          title: "Layout atomicity",
+          workspaceRoot: "/tmp/layout-atomicity",
+          defaultModelSelection: null,
+          createdAt,
+        });
+        for (const [threadId, suffix] of [
+          [threadA, "a"],
+          [threadB, "b"],
+        ] as const) {
+          yield* engine.dispatch({
+            type: "thread.create",
+            commandId: CommandId.makeUnsafe(`cmd-layout-atomic-thread-${suffix}`),
+            threadId,
+            projectId,
+            title: `Thread ${suffix}`,
+            modelSelection: { provider: "codex", model: "gpt-5-codex" },
+            runtimeMode: "full-access",
+            interactionMode: "default",
+            branch: null,
+            worktreePath: null,
+            createdAt,
+          });
+        }
+        yield* engine.dispatch({
+          type: "sidebar-layout.initialize",
+          commandId: CommandId.makeUnsafe("cmd-layout-atomic-initialize"),
+          projectOrder: [projectId],
+          pinnedThreadOrder: [threadA],
+        });
+        yield* sql`
+        CREATE TEMP TRIGGER fail_layout_pin_projection
+        BEFORE UPDATE OF is_pinned ON projection_threads
+        WHEN NEW.thread_id = 'thread-layout-atomic-b' AND NEW.is_pinned = 1
+        BEGIN
+          SELECT RAISE(ABORT, 'injected layout pin projection failure');
+        END
+      `;
+
+        // When
+        const failedCommandId = CommandId.makeUnsafe("cmd-layout-atomic-pin-b");
+        const failure = yield* Effect.exit(
+          engine.dispatch({
+            type: "sidebar-layout.thread.pin",
+            commandId: failedCommandId,
+            threadId: threadB,
+          }),
+        );
+        yield* sql`DROP TRIGGER fail_layout_pin_projection`;
+
+        // Then
+        assert.equal(failure._tag, "Failure");
+        const layoutRows = yield* sql<{
+          readonly pinnedThreadOrderJson: string;
+          readonly revision: number;
+        }>`
+        SELECT
+          pinned_thread_order_json AS "pinnedThreadOrderJson",
+          revision
+        FROM projection_sidebar_layout
+        WHERE layout_key = ${SIDEBAR_LAYOUT_ID}
+      `;
+        assert.deepEqual(layoutRows, [
+          { pinnedThreadOrderJson: JSON.stringify([threadA]), revision: 4 },
+        ]);
+        const pinRows = yield* sql<{ readonly threadId: string; readonly isPinned: number }>`
+        SELECT thread_id AS "threadId", is_pinned AS "isPinned"
+        FROM projection_threads
+        WHERE thread_id IN (${threadA}, ${threadB})
+        ORDER BY thread_id ASC
+      `;
+        assert.deepEqual(pinRows, [
+          { threadId: threadA, isPinned: 1 },
+          { threadId: threadB, isPinned: 0 },
+        ]);
+        const cursorRows = yield* sql<{ readonly lastAppliedSequence: number }>`
+        SELECT last_applied_sequence AS "lastAppliedSequence"
+        FROM projection_state
+        WHERE projector = 'projection.sidebar-layout'
+      `;
+        assert.deepEqual(cursorRows, [{ lastAppliedSequence: 4 }]);
+        const failedEventRows = yield* sql<{ readonly count: number }>`
+        SELECT COUNT(*) AS count
+        FROM orchestration_events
+        WHERE command_id = ${failedCommandId}
+      `;
+        const failedReceiptRows = yield* sql<{ readonly count: number }>`
+        SELECT COUNT(*) AS count
+        FROM orchestration_command_receipts
+        WHERE command_id = ${failedCommandId}
+      `;
+        assert.deepEqual(failedEventRows, [{ count: 0 }]);
+        assert.deepEqual(failedReceiptRows, [{ count: 0 }]);
+      }),
+  );
+});
+
+it.layer(Layer.fresh(EngineDispatchTestLayer))(
+  "OrchestrationProjectionPipeline layout rebuild",
+  (it) => {
+    it.effect(
+      "rebuilds an absent layout row and cursor over stale pins including empty membership",
+      () =>
+        Effect.gen(function* () {
+          // Given
+          const engine = yield* OrchestrationEngineService;
+          const projectionPipeline = yield* OrchestrationProjectionPipeline;
+          const sql = yield* SqlClient.SqlClient;
+          const createdAt = "2026-07-18T13:00:00.000Z";
+          const projectId = ProjectId.makeUnsafe("project-layout-rebuild");
+          const threadA = ThreadId.makeUnsafe("thread-layout-rebuild-a");
+          const threadB = ThreadId.makeUnsafe("thread-layout-rebuild-b");
+
+          yield* engine.dispatch({
+            type: "project.create",
+            commandId: CommandId.makeUnsafe("cmd-layout-rebuild-project"),
+            projectId,
+            title: "Layout rebuild",
+            workspaceRoot: "/tmp/layout-rebuild",
+            defaultModelSelection: null,
+            createdAt,
+          });
+          for (const [threadId, suffix] of [
+            [threadA, "a"],
+            [threadB, "b"],
+          ] as const) {
+            yield* engine.dispatch({
+              type: "thread.create",
+              commandId: CommandId.makeUnsafe(`cmd-layout-rebuild-thread-${suffix}`),
+              threadId,
+              projectId,
+              title: `Thread ${suffix}`,
+              modelSelection: { provider: "codex", model: "gpt-5-codex" },
+              runtimeMode: "full-access",
+              interactionMode: "default",
+              branch: null,
+              worktreePath: null,
+              createdAt,
+            });
+          }
+          yield* engine.dispatch({
+            type: "sidebar-layout.initialize",
+            commandId: CommandId.makeUnsafe("cmd-layout-rebuild-initialize"),
+            projectOrder: [projectId],
+            pinnedThreadOrder: [threadA],
+          });
+          yield* engine.dispatch({
+            type: "sidebar-layout.thread.unpin",
+            commandId: CommandId.makeUnsafe("cmd-layout-rebuild-empty"),
+            threadId: threadA,
+          });
+          yield* sql`DELETE FROM projection_sidebar_layout`;
+          yield* sql`DELETE FROM projection_state WHERE projector = 'projection.sidebar-layout'`;
+          yield* sql`UPDATE projection_threads SET is_pinned = 1`;
+
+          // When
+          yield* projectionPipeline.bootstrap;
+
+          // Then
+          const layoutRows = yield* sql<{
+            readonly projectOrderJson: string;
+            readonly pinnedThreadOrderJson: string;
+            readonly revision: number;
+          }>`
+        SELECT
+          project_order_json AS "projectOrderJson",
+          pinned_thread_order_json AS "pinnedThreadOrderJson",
+          revision
+        FROM projection_sidebar_layout
+        WHERE layout_key = ${SIDEBAR_LAYOUT_ID}
+      `;
+          assert.deepEqual(layoutRows, [
+            {
+              projectOrderJson: JSON.stringify([projectId]),
+              pinnedThreadOrderJson: "[]",
+              revision: 5,
+            },
+          ]);
+          const pinRows = yield* sql<{ readonly threadId: string; readonly isPinned: number }>`
+        SELECT thread_id AS "threadId", is_pinned AS "isPinned"
+        FROM projection_threads
+        WHERE thread_id IN (${threadA}, ${threadB})
+        ORDER BY thread_id ASC
+      `;
+          assert.deepEqual(pinRows, [
+            { threadId: threadA, isPinned: 0 },
+            { threadId: threadB, isPinned: 0 },
+          ]);
+          const cursorRows = yield* sql<{ readonly lastAppliedSequence: number }>`
+        SELECT last_applied_sequence AS "lastAppliedSequence"
+        FROM projection_state
+        WHERE projector = 'projection.sidebar-layout'
+      `;
+          assert.deepEqual(cursorRows, [{ lastAppliedSequence: 5 }]);
+        }),
+    );
+  },
 );
 
 engineLayer("OrchestrationProjectionPipeline via engine dispatch", (it) => {

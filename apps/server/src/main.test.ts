@@ -337,6 +337,7 @@ it.layer(testLayer)("server CLI command", (it) => {
           getSnapshot: () =>
             Effect.succeed({
               snapshotSequence: 0,
+              sidebarLayout: null,
               projects: [] as OrchestrationReadModel["projects"],
               threads: [] as OrchestrationReadModel["threads"],
               updatedAt: new Date(0).toISOString(),

@@ -26,6 +26,7 @@ import {
   PositiveInt,
   ProjectId,
   ProviderItemId,
+  SidebarLayoutId,
   ThreadId,
   TrimmedNonEmptyString,
   TurnId,
@@ -637,8 +638,27 @@ export const OrchestrationThreadShell = Schema.Struct({
 });
 export type OrchestrationThreadShell = typeof OrchestrationThreadShell.Type;
 
+const hasUniqueItems = <Item>(items: readonly Item[]): boolean =>
+  new Set(items).size === items.length;
+
+const SidebarProjectOrder = Schema.Array(ProjectId).check(
+  Schema.makeFilter(hasUniqueItems, { identifier: "SidebarProjectOrder" }),
+);
+const SidebarPinnedThreadOrder = Schema.Array(ThreadId).check(
+  Schema.makeFilter(hasUniqueItems, { identifier: "SidebarPinnedThreadOrder" }),
+);
+
+export const SidebarLayout = Schema.Struct({
+  projectOrder: SidebarProjectOrder,
+  pinnedThreadOrder: SidebarPinnedThreadOrder,
+  revision: NonNegativeInt,
+  updatedAt: IsoDateTime,
+});
+export type SidebarLayout = typeof SidebarLayout.Type;
+
 export const OrchestrationReadModel = Schema.Struct({
   snapshotSequence: NonNegativeInt,
+  sidebarLayout: Schema.NullOr(SidebarLayout),
   projects: Schema.Array(OrchestrationProject),
   threads: Schema.Array(OrchestrationThread),
   updatedAt: IsoDateTime,
@@ -647,6 +667,7 @@ export type OrchestrationReadModel = typeof OrchestrationReadModel.Type;
 
 export const OrchestrationShellSnapshot = Schema.Struct({
   snapshotSequence: NonNegativeInt,
+  sidebarLayout: Schema.NullOr(SidebarLayout),
   projects: Schema.Array(OrchestrationProjectShell),
   threads: Schema.Array(OrchestrationThreadShell),
   updatedAt: IsoDateTime,
@@ -673,6 +694,11 @@ export const OrchestrationShellStreamEvent = Schema.Union([
     kind: Schema.Literal("thread-removed"),
     sequence: NonNegativeInt,
     threadId: ThreadId,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("sidebar-layout-updated"),
+    sequence: NonNegativeInt,
+    sidebarLayout: SidebarLayout,
   }),
 ]);
 export type OrchestrationShellStreamEvent = typeof OrchestrationShellStreamEvent.Type;
@@ -739,7 +765,6 @@ const ThreadCreateCommand = Schema.Struct({
   createBranchFlowCompleted: Schema.optional(Schema.Boolean).pipe(
     Schema.withDecodingDefault(() => false),
   ),
-  isPinned: Schema.optional(Schema.Boolean).pipe(Schema.withDecodingDefault(() => false)),
   parentThreadId: Schema.optional(Schema.NullOr(ThreadId)).pipe(
     Schema.withDecodingDefault(() => null),
   ),
@@ -850,7 +875,6 @@ const ThreadMetaUpdateCommand = Schema.Struct({
   associatedWorktreeBranch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   associatedWorktreeRef: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   createBranchFlowCompleted: Schema.optional(Schema.Boolean),
-  isPinned: Schema.optional(Schema.Boolean),
   parentThreadId: Schema.optional(Schema.NullOr(ThreadId)),
   subagentAgentId: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   subagentNickname: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
@@ -1064,6 +1088,46 @@ const ThreadGoalClearCommand = Schema.Struct({
   createdAt: IsoDateTime,
 });
 
+const SidebarLayoutInitializeCommand = Schema.Struct({
+  type: Schema.Literal("sidebar-layout.initialize"),
+  commandId: CommandId,
+  projectOrder: SidebarProjectOrder,
+  pinnedThreadOrder: SidebarPinnedThreadOrder,
+});
+
+const SidebarLayoutProjectMoveCommand = Schema.Struct({
+  type: Schema.Literal("sidebar-layout.project.move"),
+  commandId: CommandId,
+  projectId: ProjectId,
+  beforeProjectId: Schema.optional(Schema.NullOr(ProjectId)).pipe(
+    Schema.withDecodingDefault(() => null),
+  ),
+});
+
+const SidebarLayoutThreadPinCommand = Schema.Struct({
+  type: Schema.Literal("sidebar-layout.thread.pin"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  beforeThreadId: Schema.optional(Schema.NullOr(ThreadId)).pipe(
+    Schema.withDecodingDefault(() => null),
+  ),
+});
+
+const SidebarLayoutThreadUnpinCommand = Schema.Struct({
+  type: Schema.Literal("sidebar-layout.thread.unpin"),
+  commandId: CommandId,
+  threadId: ThreadId,
+});
+
+const SidebarLayoutPinnedThreadMoveCommand = Schema.Struct({
+  type: Schema.Literal("sidebar-layout.pinned-thread.move"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  beforeThreadId: Schema.optional(Schema.NullOr(ThreadId)).pipe(
+    Schema.withDecodingDefault(() => null),
+  ),
+});
+
 const DispatchableClientOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
@@ -1090,6 +1154,11 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ThreadGoalResumeCommand,
   ThreadGoalCompleteCommand,
   ThreadGoalClearCommand,
+  SidebarLayoutInitializeCommand,
+  SidebarLayoutProjectMoveCommand,
+  SidebarLayoutThreadPinCommand,
+  SidebarLayoutThreadUnpinCommand,
+  SidebarLayoutPinnedThreadMoveCommand,
 ]);
 export type DispatchableClientOrchestrationCommand =
   typeof DispatchableClientOrchestrationCommand.Type;
@@ -1120,6 +1189,11 @@ export const ClientOrchestrationCommand = Schema.Union([
   ThreadGoalResumeCommand,
   ThreadGoalCompleteCommand,
   ThreadGoalClearCommand,
+  SidebarLayoutInitializeCommand,
+  SidebarLayoutProjectMoveCommand,
+  SidebarLayoutThreadPinCommand,
+  SidebarLayoutThreadUnpinCommand,
+  SidebarLayoutPinnedThreadMoveCommand,
 ]);
 export type ClientOrchestrationCommand = typeof ClientOrchestrationCommand.Type;
 
@@ -1253,10 +1327,11 @@ export const OrchestrationEventType = Schema.Literals([
   "thread.goal-resumed",
   "thread.goal-completed",
   "thread.goal-cleared",
+  "sidebar-layout.updated",
 ]);
 export type OrchestrationEventType = typeof OrchestrationEventType.Type;
 
-export const OrchestrationAggregateKind = Schema.Literals(["project", "thread"]);
+export const OrchestrationAggregateKind = Schema.Literals(["project", "thread", "sidebar-layout"]);
 export type OrchestrationAggregateKind = typeof OrchestrationAggregateKind.Type;
 export const OrchestrationActorKind = Schema.Literals(["client", "server", "provider"]);
 
@@ -1545,6 +1620,13 @@ export const ThreadGoalClearedPayload = Schema.Struct({
   updatedAt: IsoDateTime,
 });
 
+export const SidebarLayoutUpdatedPayload = Schema.Struct({
+  projectOrder: SidebarProjectOrder,
+  pinnedThreadOrder: SidebarPinnedThreadOrder,
+  updatedAt: IsoDateTime,
+});
+export type SidebarLayoutUpdatedPayload = typeof SidebarLayoutUpdatedPayload.Type;
+
 export const OrchestrationEventMetadata = Schema.Struct({
   providerTurnId: Schema.optional(TrimmedNonEmptyString),
   providerItemId: Schema.optional(ProviderItemId),
@@ -1558,7 +1640,7 @@ const EventBaseFields = {
   sequence: NonNegativeInt,
   eventId: EventId,
   aggregateKind: OrchestrationAggregateKind,
-  aggregateId: Schema.Union([ProjectId, ThreadId]),
+  aggregateId: Schema.Union([ProjectId, ThreadId, SidebarLayoutId]),
   occurredAt: IsoDateTime,
   commandId: Schema.NullOr(CommandId),
   causationEventId: Schema.NullOr(EventId),
@@ -1721,6 +1803,13 @@ export const OrchestrationEvent = Schema.Union([
     ...EventBaseFields,
     type: Schema.Literal("thread.goal-cleared"),
     payload: ThreadGoalClearedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    aggregateKind: Schema.Literal("sidebar-layout"),
+    aggregateId: SidebarLayoutId,
+    type: Schema.Literal("sidebar-layout.updated"),
+    payload: SidebarLayoutUpdatedPayload,
   }),
 ]);
 export type OrchestrationEvent = typeof OrchestrationEvent.Type;

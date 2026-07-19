@@ -18,6 +18,7 @@ import {
 } from "../../persistence/Services/ProjectionPendingApprovals.ts";
 import { ProjectionProjectRepository } from "../../persistence/Services/ProjectionProjects.ts";
 import { ProjectionStateRepository } from "../../persistence/Services/ProjectionState.ts";
+import { ProjectionSidebarLayoutRepository } from "../../persistence/Services/ProjectionSidebarLayout.ts";
 import {
   type ProjectionThreadActivity,
   type ProjectionThreadActivityRepositoryShape,
@@ -45,6 +46,7 @@ import {
 import { ProjectionPendingApprovalRepositoryLive } from "../../persistence/Layers/ProjectionPendingApprovals.ts";
 import { ProjectionProjectRepositoryLive } from "../../persistence/Layers/ProjectionProjects.ts";
 import { ProjectionStateRepositoryLive } from "../../persistence/Layers/ProjectionState.ts";
+import { ProjectionSidebarLayoutRepositoryLive } from "../../persistence/Layers/ProjectionSidebarLayout.ts";
 import { ProjectionThreadActivityRepositoryLive } from "../../persistence/Layers/ProjectionThreadActivities.ts";
 import { ProjectionThreadMessageRepositoryLive } from "../../persistence/Layers/ProjectionThreadMessages.ts";
 import { ProjectionThreadProposedPlanRepositoryLive } from "../../persistence/Layers/ProjectionThreadProposedPlans.ts";
@@ -80,6 +82,7 @@ export const ORCHESTRATION_PROJECTOR_NAMES = {
   threadTurns: "projection.thread-turns",
   checkpoints: "projection.checkpoints",
   pendingApprovals: "projection.pending-approvals",
+  sidebarLayout: "projection.sidebar-layout",
 } as const;
 
 type ProjectorName =
@@ -109,6 +112,10 @@ const THREAD_SHELL_SUMMARY_ACTIVITY_KINDS = new Set([
   "user-input.resolved",
   "provider.user-input.respond.failed",
 ]);
+
+function isSidebarLayoutEvent(event: OrchestrationEvent): boolean {
+  return event.type === "sidebar-layout.updated";
+}
 
 const materializeAttachmentsForProjection = Effect.fn(
   (input: { readonly attachments: ReadonlyArray<ChatAttachment> }) =>
@@ -568,6 +575,7 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const eventStore = yield* OrchestrationEventStore;
   const projectionStateRepository = yield* ProjectionStateRepository;
+  const projectionSidebarLayoutRepository = yield* ProjectionSidebarLayoutRepository;
   const projectionProjectRepository = yield* ProjectionProjectRepository;
   const projectionThreadRepository = yield* ProjectionThreadRepository;
   const projectionThreadMessageRepository = yield* ProjectionThreadMessageRepository;
@@ -914,6 +922,26 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
           return;
       }
     });
+
+  const applySidebarLayoutProjection: ProjectorDefinition["apply"] = (event) =>
+    event.type === "sidebar-layout.updated"
+      ? Effect.gen(function* () {
+          const currentLayout = yield* projectionSidebarLayoutRepository.get();
+          yield* projectionSidebarLayoutRepository.upsert({
+            layoutKey: event.aggregateId,
+            projectOrder: event.payload.projectOrder,
+            pinnedThreadOrder: event.payload.pinnedThreadOrder,
+            revision: event.sequence,
+            initializedAt: Option.isSome(currentLayout)
+              ? currentLayout.value.initializedAt
+              : event.occurredAt,
+            updatedAt: event.payload.updatedAt,
+          });
+          yield* projectionThreadRepository.replacePinnedMembership({
+            threadIds: event.payload.pinnedThreadOrder,
+          });
+        })
+      : Effect.void;
 
   // Keep denormalized shell summary work out of the live transcript projector path.
   const applyThreadShellSummariesProjection: ProjectorDefinition["apply"] = (event) =>
@@ -1771,6 +1799,12 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
       apply: applyThreadsProjection,
     },
     {
+      name: ORCHESTRATION_PROJECTOR_NAMES.sidebarLayout,
+      phase: "hot",
+      shouldApply: isSidebarLayoutEvent,
+      apply: applySidebarLayoutProjection,
+    },
+    {
       name: ORCHESTRATION_PROJECTOR_NAMES.threadShellSummaries,
       phase: "deferred",
       shouldApply: shouldRefreshThreadShellSummary,
@@ -1815,6 +1849,8 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
         prunedThreadRelativePaths: new Map<string, Set<string>>(),
       };
 
+      // SqlClient transaction scope is re-entrant: live projection joins the engine's
+      // event/receipt transaction, while standalone replay owns this transaction.
       yield* sql.withTransaction(
         projector.apply(event, attachmentSideEffects).pipe(
           Effect.flatMap(() =>
@@ -2020,4 +2056,5 @@ export const OrchestrationProjectionPipelineLive = Layer.effect(
   Layer.provideMerge(ProjectionTurnRepositoryLive),
   Layer.provideMerge(ProjectionPendingApprovalRepositoryLive),
   Layer.provideMerge(ProjectionStateRepositoryLive),
+  Layer.provideMerge(ProjectionSidebarLayoutRepositoryLive),
 );

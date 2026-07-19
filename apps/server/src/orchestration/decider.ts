@@ -4,7 +4,10 @@ import type {
   OrchestrationGoalStatus,
   OrchestrationReadModel,
   OrchestrationThread,
+  ProjectId,
+  ThreadId,
 } from "@jcode/contracts";
+import { SIDEBAR_LAYOUT_ID } from "@jcode/contracts";
 import {
   deriveAssociatedWorktreeMetadata,
   deriveAssociatedWorktreeMetadataPatch,
@@ -29,6 +32,7 @@ import {
   requireThreadArchived,
   requireThreadNotArchived,
 } from "./commandInvariants.ts";
+import { decideSidebarLayoutCommand } from "./sidebarLayoutDecider.ts";
 
 const nowIso = () => new Date().toISOString();
 const DEFAULT_ASSISTANT_DELIVERY_MODE = "buffered" as const;
@@ -151,6 +155,32 @@ function deriveConversationRollbackTarget(
   };
 }
 
+function makeSidebarLayoutUpdatedEvent(
+  command: OrchestrationCommand,
+  layout: {
+    readonly projectOrder: readonly ProjectId[];
+    readonly pinnedThreadOrder: readonly ThreadId[];
+  },
+) {
+  const occurredAt = nowIso();
+  return {
+    ...withEventBase({
+      aggregateKind: "sidebar-layout",
+      aggregateId: SIDEBAR_LAYOUT_ID,
+      occurredAt,
+      commandId: command.commandId,
+    }),
+    aggregateKind: "sidebar-layout" as const,
+    aggregateId: SIDEBAR_LAYOUT_ID,
+    type: "sidebar-layout.updated" as const,
+    payload: {
+      projectOrder: layout.projectOrder,
+      pinnedThreadOrder: layout.pinnedThreadOrder,
+      updatedAt: occurredAt,
+    },
+  };
+}
+
 export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand")(function* ({
   command,
   readModel,
@@ -162,6 +192,16 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
   OrchestrationCommandInvariantError
 > {
   switch (command.type) {
+    case "sidebar-layout.initialize":
+    case "sidebar-layout.project.move":
+    case "sidebar-layout.thread.pin":
+    case "sidebar-layout.thread.unpin":
+    case "sidebar-layout.pinned-thread.move":
+      return makeSidebarLayoutUpdatedEvent(
+        command,
+        yield* decideSidebarLayoutCommand({ command, readModel }),
+      );
+
     case "project.create": {
       yield* requireProjectAbsent({
         readModel,
@@ -338,7 +378,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
               : {}),
           }),
           createBranchFlowCompleted: command.createBranchFlowCompleted,
-          isPinned: command.isPinned,
+          isPinned: false,
           parentThreadId: command.parentThreadId,
           subagentAgentId: command.subagentAgentId,
           subagentNickname: command.subagentNickname,
@@ -669,7 +709,6 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
           ...(command.createBranchFlowCompleted !== undefined
             ? { createBranchFlowCompleted: command.createBranchFlowCompleted }
             : {}),
-          ...(command.isPinned !== undefined ? { isPinned: command.isPinned } : {}),
           ...(command.parentThreadId !== undefined
             ? { parentThreadId: command.parentThreadId }
             : {}),
