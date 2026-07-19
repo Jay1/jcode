@@ -24,6 +24,7 @@ import { render } from "vitest-browser-react";
 
 import { useComposerDraftStore } from "../composerDraftStore";
 import { getRouter } from "../router";
+import { sidebarLayoutStore } from "../sidebarLayoutStore";
 import { useStore } from "../store";
 import { __resetWsNativeApiForTests } from "../wsNativeApi";
 
@@ -232,6 +233,9 @@ function resolveWsRpc(tag: string): unknown {
   }
   if (tag === ORCHESTRATION_WS_METHODS.getShellSnapshot) {
     return createShellSnapshotFromFixtureSnapshot(fixture.snapshot);
+  }
+  if (tag === ORCHESTRATION_WS_METHODS.dispatchCommand) {
+    return { sequence: fixture.snapshot.snapshotSequence + 1 };
   }
   if (tag === WS_METHODS.serverGetConfig) {
     return fixture.serverConfig;
@@ -462,6 +466,12 @@ describe("Keybindings update toast", () => {
       threads: [],
       sidebarThreadSummaryById: {},
       threadsHydrated: false,
+    });
+    sidebarLayoutStore.setState({
+      confirmedLayout: null,
+      pendingIntents: [],
+      lifecycle: { projects: [], threads: [] },
+      inFlightCommandId: null,
     });
   });
 
